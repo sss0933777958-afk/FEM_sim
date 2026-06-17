@@ -1,0 +1,64 @@
+% Non-orthogonal basis projection (general formulation)
+% Compile with: xelatex nonorthogonal_basis_projection.tex
+\documentclass{article}
+\usepackage[UTF8]{ctex}
+% Overleaf (Linux) 環境用 Noto CJK TC，Windows 在地編譯可改成 PMingLiU / Microsoft JhengHei
+\setCJKmainfont{Noto Serif CJK TC}
+% \setCJKmainfont{Noto Sans CJK TC}     % 改用無襯線（黑體）
+% \setCJKmainfont{PMingLiU}             % Windows 在地：新細明體
+% \setCJKmainfont{Microsoft JhengHei}   % Windows 在地：微軟正黑體
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{bm}
+
+\begin{document}
+
+\subsubsection*{非正交基底投影}
+
+假設存在一組非正交座標，將向量 $\mathbf{v}$ 分解到非正交基底向量
+$\{\mathbf{e}_1, \mathbf{e}_2, \mathbf{e}_3\}$ 上：
+\begin{equation}
+\mathbf{v} \;=\; \lambda_1 \mathbf{e}_1 + \lambda_2 \mathbf{e}_2 + \lambda_3 \mathbf{e}_3
+\qquad \text{（三維）} .
+\end{equation}
+
+將基底向量以 column 形式排列成矩陣，可改寫為
+\begin{equation}
+\mathbf{v}
+\;=\;
+\begin{bmatrix} \mathbf{e}_1 & \mathbf{e}_2 & \mathbf{e}_3 \end{bmatrix}
+\begin{bmatrix} \lambda_1 \\ \lambda_2 \\ \lambda_3 \end{bmatrix} .
+\end{equation}
+
+兩邊左乘 $\bigl[\mathbf{e}_1\; \mathbf{e}_2\; \mathbf{e}_3\bigr]^{-1}$，
+即可解出座標
+\begin{equation}
+\begin{bmatrix} \mathbf{e}_1 & \mathbf{e}_2 & \mathbf{e}_3 \end{bmatrix}^{-1}
+\mathbf{v}
+\;=\;
+\begin{bmatrix} \lambda_1 \\ \lambda_2 \\ \lambda_3 \end{bmatrix} .
+\end{equation}
+
+\paragraph{通用形式（二維與三維皆適用）。}
+令 $E = \bigl[\mathbf{e}_1\; \mathbf{e}_2\; \cdots\; \mathbf{e}_n\bigr]$ 為將
+基底向量依 column 排列所形成之矩陣，
+$\bm{\lambda} = (\lambda_1,\ldots,\lambda_n)^{\!\top}$ 為對應之座標向量，則
+\begin{equation}
+\mathbf{v} \;=\; E\,\bm{\lambda},
+\qquad
+\bm{\lambda} \;=\; E^{-1} \mathbf{v}
+\quad\text{（$E$ 為方陣且基底線性獨立時）} .
+\end{equation}
+二維情形只需令 $E = \bigl[\mathbf{e}_1\; \mathbf{e}_2\bigr] \in \mathbb{R}^{2\times 2}$，
+形式完全相同。
+
+\paragraph{過定基底（over-determined）。}
+當基底向量數量超過所嵌入空間的維度時（例如四支磁極軸投影至 2D 平面），
+$E$ 不再為方陣，$E^{-1}$ 不存在。此時最小平方意義下的座標解為
+\begin{equation}
+\bm{\lambda} \;=\; (E^{\!\top} E)^{-1} E^{\!\top} \mathbf{v}
+\;=\; E^{+}\,\mathbf{v} ,
+\end{equation}
+其中 $E^{+}$ 為 Moore--Penrose 偽逆。
+
+\end{document}

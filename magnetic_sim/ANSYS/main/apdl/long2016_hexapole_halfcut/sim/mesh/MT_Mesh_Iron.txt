@@ -1,0 +1,42 @@
+! ====================================================================
+! MT_Mesh_Iron.txt  [ADDED]
+! Extract STEEL-ONLY mesh from the faithful baseline mesh (mesh_baseline.db).
+! Steel = volumes 1-6 (poles) + 8 (body) = MAT_MT (per MT_Sim_P1 line 453-454).
+! Air volumes are mesh-attached, so use VCLEAR (NOT EDELE) to remove their mesh;
+! coil SOURC36 elements are not volume-attached, remove with EDELE.
+! Result is the exact steel subset of the 494889-node baseline mesh (faithful).
+! ====================================================================
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\mesh\standard_iron'
+/CLEAR,NOSTART
+
+! --- load the full faithful baseline mesh by explicit path ---
+RESUME,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\mesh\standard\mesh_baseline','db'
+
+/PREP7
+! --- clear mesh on all NON-steel (air) volumes ---
+VSEL,S,VOLU,,1,6         ! 6 poles
+VSEL,A,VOLU,,8           ! steel body
+VSEL,INVE                ! -> air volumes (V7 inner sphere, V9 outer cyl, etc.)
+VCLEAR,ALL               ! remove air elements + their (non-shared) nodes
+
+! --- remove coil SOURC36 elements (not attached to volumes) ---
+ALLSEL,ALL
+ESEL,S,ENAME,,SOURC36
+EDELE,ALL
+
+! --- keep only the steel mesh ---
+ALLSEL,ALL
+VSEL,S,VOLU,,1,6
+VSEL,A,VOLU,,8
+ESLV,S                   ! elements of selected (steel) volumes
+NSLE,S                   ! their nodes
+
+! --- report counts ---
+*GET,n_node,NODE,0,COUNT
+*GET,n_elem,ELEM,0,COUNT
+/COM,STEEL-ONLY MESH: nodes = %n_node% , elements = %n_elem%
+
+! --- save steel-only db + portable cdb archive ---
+SAVE                                   ! -> mesh_baseline_iron.db (jobname)
+CDWRITE,DB,'mesh_baseline_iron','cdb'  ! -> portable mesh archive
+FINISH

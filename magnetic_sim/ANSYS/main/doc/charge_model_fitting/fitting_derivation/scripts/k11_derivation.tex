@@ -1,0 +1,41 @@
+\documentclass[12pt]{article}
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{bm}
+\usepackage{fontspec}
+
+\newfontfamily\cjk{Noto Sans CJK HK}
+\newcommand{\zh}[1]{{\cjk #1}}
+
+\renewcommand{\vec}[1]{\mathbf{#1}}
+
+\begin{document}
+
+\noindent\textbf{1.\quad \zh{由} Hopkinson's law}
+
+\begin{align*}
+\widehat{\Phi}^{\,\mathrm{FEM}}
+&= \frac{N_c}{R_a}\,\widehat{\mathbf{K}}_I\cdot \mathbf{I}
+ = \frac{N_c}{R_a}\,\frac{6}{5}k_{11}\,\widehat{\mathbf{K}}_I^{\,\mathrm{FEM}}\cdot \mathbf{I}\\[1.2ex]
+\widehat{g}_B
+&= \frac{6}{5}\,\frac{N_c\,k_{11}}{4\pi R_a\,\widehat{\ell}^{\,2}}
+ \quad\Rightarrow\quad
+ R_a = \frac{6}{5}\,\frac{N_c\,k_{11}}{4\pi\,\widehat{g}_B\,\widehat{\ell}^{\,2}}\\[1.2ex]
+\Rightarrow\ \widehat{\Phi}^{\,\mathrm{FEM}}
+&= \frac{5}{6}\,\frac{4\pi\,\widehat{g}_B\,\widehat{\ell}^{\,2}}{N_c\,k_{11}}\,
+   N_c\,\frac{6}{5}\,\widehat{\mathbf{K}}_I^{\,\mathrm{FEM}}\cdot \mathbf{I}
+ = \frac{4\pi\,\widehat{g}_B\,\widehat{\ell}^{\,2}}{k_{11}}\,
+   \widehat{\mathbf{K}}_I^{\,\mathrm{FEM}}
+ \qquad(\text{\cjk 解}\ k_{11})
+\end{align*}
+
+\vspace{1em}
+
+\noindent\textbf{2.\quad \zh{再由}}
+
+\[
+R_a = \frac{6}{5}\,\frac{N_c\,k_{11}}{4\pi\,\widehat{g}_B\,\widehat{\ell}^{\,2}}
+\qquad(\text{\cjk 解}\ R_a)
+\]
+
+\end{document}

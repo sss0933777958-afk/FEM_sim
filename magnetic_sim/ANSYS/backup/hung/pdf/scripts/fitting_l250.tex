@@ -1,0 +1,49 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{booktabs}
+\usepackage{siunitx}
+\usepackage{colortbl}
+\usepackage{xcolor}
+\usepackage{amsmath}
+
+\begin{document}
+
+\begin{table}[htbp]
+\centering
+\caption{Hung $l=250~\si{\micro\metre}$ \quad (fitting region: $\pm$50~\si{\micro\metre})}
+\label{tab:hung_l250_50um}
+
+\vspace{0.5em}
+\[
+\text{Error} = \frac{\text{RMSE}}{|\mathbf{B}_{FEM}|} \cdot 100
+\]
+\vspace{0.5em}
+
+\begin{tabular}{c c S[table-format=3.1] S[table-format=3.1]}
+\toprule
+ & & \multicolumn{2}{c}{\cellcolor{yellow!30}\textbf{Hung (Error=0.41\%)}} \\
+\cmidrule(lr){3-4}
+Pole & & {$|\ell|$ [\si{\micro\metre}]} & {Tip$\to$Charge} \\
+\midrule
+P1 & Lower & 443.0 & 193.0 \\
+P2 & Upper & 440.3 & 190.3 \\
+P3 & Lower & 443.5 & 193.5 \\
+P4 & Upper & 439.9 & 189.9 \\
+P5 & Upper & 440.6 & 190.6 \\
+P6 & Lower & 443.4 & 193.4 \\
+\midrule
+Lower &       & 443.3 & 193.3 \\
+Upper &       & 440.2 & 190.2 \\
+\midrule
+$R_a$ (Lower) & & \multicolumn{2}{c}{$1.62 \times 10^{9}$\,A/Wb} \\
+$R_a$ (Upper) & & \multicolumn{2}{c}{$1.88 \times 10^{9}$\,A/Wb} \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.5em}
+\small
+Tip$\to$Origin = 250~\si{\micro\metre} \hfill Tip$\to$Charge = $|\ell|$ $-$ 250
+
+\end{table}
+
+\end{document}

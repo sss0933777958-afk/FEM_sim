@@ -1,0 +1,154 @@
+! Export all simulation parts as individual IGES (SolidWorks units)
+! Output to magnetic_sim/hung/IGES/
+/CWD,'C:\Users\pmero\Documents\Lab406\FEM_sim\magnetic_sim\hung\IGES'
+
+! ============================================================
+! Part 1: Mag_Pole_Bottom (D-shape pole along +X axis)
+! ============================================================
+/CLEAR, NOSTART
+/PREP7
+*afun, DEG
+MM = 1.0/25.4
+
+POLE_R         = 3.175*MM
+POLE_CONE_LEN  = 15.875*MM
+POLE_TOTAL_LEN = 43.0*MM
+POLE_FLAT_LEN  = 28.0*MM
+
+! Tip at origin, axis = +X, side_perp = +Y
+! Front section (D-shape, 0~28mm): VROTAT 180°
+K, 1, 0, 0, 0                                          ! tip
+K, 2, POLE_CONE_LEN, POLE_R, 0                         ! cone-cyl junction
+K, 3, POLE_FLAT_LEN, POLE_R, 0                         ! flat cut boundary
+K, 4, POLE_FLAT_LEN, 0, 0                              ! flat cut boundary (axis)
+K, 5, POLE_TOTAL_LEN, 0, 0                             ! far end (axis)
+
+L, 1, 2
+L, 2, 3
+L, 3, 4
+L, 4, 1
+AL, 1, 2, 3, 4
+VROTAT, 1, ,,,, , 1, 5, 180, 2
+
+ALLSEL, ALL
+
+! Back section (full round, 28~43mm): VROTAT 360°
+*get, KP_NUM, KP, , NUM, MAX
+KS = KP_NUM + 1
+NUMSTR, KP, KS
+*get, LI_NUM, LINE, , NUM, MAX
+LS = LI_NUM + 1
+NUMSTR, LINE, LS
+
+K, KS,   POLE_FLAT_LEN, 0, 0
+K, KS+1, POLE_FLAT_LEN, POLE_R, 0
+K, KS+2, POLE_TOTAL_LEN, POLE_R, 0
+K, KS+3, POLE_TOTAL_LEN, 0, 0
+
+L, KS, KS+1
+L, KS+1, KS+2
+L, KS+2, KS+3
+L, KS+3, KS
+
+*get, AR_NUM, AREA, , NUM, MAX
+AS = AR_NUM + 1
+NUMSTR, AREA, AS
+AL, LS, LS+1, LS+2, LS+3
+VROTAT, AS, ,,,, , KS, KS+3, , 4
+
+ALLSEL, ALL
+IGESOUT, 'Mag_Pole_Bottom', 'iges'
+*msg, INFO
+ Part 1: Mag_Pole_Bottom exported
+
+! ============================================================
+! Part 2: Pole_Block_Top (upper block, L-shape, 25x22x10mm)
+! ============================================================
+/CLEAR, NOSTART
+/PREP7
+*afun, DEG
+MM = 1.0/25.4
+BLK_T = 10.0*MM
+
+! L-shape cross-section in XY plane, extrude along Z
+! Part1: X [-0.25, 12.75], Y [-11, 11] mm (main body)
+! Part2: X [-12.25, -0.25], Y [-5, 5] mm (extension)
+BLOCK, -0.25*MM, 12.75*MM, -11*MM, 11*MM, 0, BLK_T
+BLOCK, -12.25*MM, -0.25*MM, -5*MM, 5*MM, 0, BLK_T
+
+*get, V2, VOLU, 0, NUM, MAX
+VADD, V2-1, V2
+
+ALLSEL, ALL
+IGESOUT, 'Pole_Block_Top', 'iges'
+*msg, INFO
+ Part 2: Pole_Block_Top exported
+
+! ============================================================
+! Part 3: Pole_Block_Bottom (lower block, L-shape, 22x22x10mm)
+! ============================================================
+/CLEAR, NOSTART
+/PREP7
+*afun, DEG
+MM = 1.0/25.4
+BLK_T = 10.0*MM
+
+! Part1: X [2, 9], Y [-11, 11] mm
+! Part2: X [-13, 2], Y [-5, 5] mm
+BLOCK, 2*MM, 9*MM, -11*MM, 11*MM, 0, BLK_T
+BLOCK, -13*MM, 2*MM, -5*MM, 5*MM, 0, BLK_T
+
+*get, V2, VOLU, 0, NUM, MAX
+VADD, V2-1, V2
+
+ALLSEL, ALL
+IGESOUT, 'Pole_Block_Bottom', 'iges'
+*msg, INFO
+ Part 3: Pole_Block_Bottom exported
+
+! ============================================================
+! Part 4: Mag_Guide_Post (cylinder R=4mm, H=41mm)
+! ============================================================
+/CLEAR, NOSTART
+/PREP7
+*afun, DEG
+MM = 1.0/25.4
+
+CYL4, 0, 0, 4.0*MM, 0, , 360, 41.0*MM
+
+ALLSEL, ALL
+IGESOUT, 'Mag_Guide_Post', 'iges'
+*msg, INFO
+ Part 4: Mag_Guide_Post exported
+
+! ============================================================
+! Part 5: Coil (ring R_in=10, R_out=12, H=15mm)
+! ============================================================
+/CLEAR, NOSTART
+/PREP7
+*afun, DEG
+MM = 1.0/25.4
+
+CYL4, 0, 0, 10.0*MM, 0, 12.0*MM, 360, 15.0*MM
+
+ALLSEL, ALL
+IGESOUT, 'Coil', 'iges'
+*msg, INFO
+ Part 5: Coil exported
+
+! ============================================================
+! Part 6: Mag_Iron_Ring (yoke R_in=38, R_out=62.5, T=2mm)
+! ============================================================
+/CLEAR, NOSTART
+/PREP7
+*afun, DEG
+MM = 1.0/25.4
+
+CYL4, 0, 0, 38.0*MM, 0, 62.5*MM, 360, 2.0*MM
+
+ALLSEL, ALL
+IGESOUT, 'Mag_Iron_Ring', 'iges'
+*msg, INFO
+ Part 6: Mag_Iron_Ring exported
+
+FINISH

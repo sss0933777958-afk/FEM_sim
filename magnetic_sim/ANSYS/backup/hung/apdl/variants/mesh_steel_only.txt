@@ -1,0 +1,564 @@
+! =======================================
+! mesh_steel_only.txt
+! 只建鋼件幾何（D-shape + R=40um fillet）+ mesh
+! 不含空氣域（球體、圓柱）
+! 輸出：mesh_steel_filleted.db
+! =======================================
+
+/CWD,'C:\Users\pmero\Documents\Lab406\FEM_sim\magnetic_sim\hung\results'
+
+/PREP7
+*afun, DEG
+BTOL, 1e-6
+/UNITS, MKS
+MM = 1.0e-3
+
+! ===== Pole 尺寸 =====
+POLE_R         = 3.175*MM
+POLE_CONE_LEN  = 15.875*MM
+POLE_TOTAL_LEN = 43.0*MM
+POLE_FLAT_LEN  = 28.0*MM
+
+! ===== Tip fillet (R=40um) =====
+POLE_TIP_R    = 0.040*MM
+PCH           = sqrt(POLE_CONE_LEN*POLE_CONE_LEN + POLE_R*POLE_R)
+FANG1         = acos(POLE_R/PCH)
+FANG2         = 90 - FANG1
+LFIL          = POLE_CONE_LEN*POLE_TIP_R/POLE_R
+PTC           = LFIL/cos(FANG2)
+PCN2          = LFIL*cos(FANG2)
+PTR2          = POLE_TIP_R*cos(FANG2)
+FDROP         = PTC - POLE_TIP_R
+FPROT         = PCN2 - FDROP
+JUNC_X        = POLE_CONE_LEN - FDROP
+
+! ===== 球面幾何 =====
+R_sphere = 0.5*MM
+fc_theta = 54.74
+fc_h = cos(fc_theta)*R_sphere
+fc_r = sin(fc_theta)*R_sphere
+
+TILT_UP = 35.0
+TILT_DN = 5.71
+
+! ===== 6 根 pole 定義 =====
+*dim, fc_tx, , 6
+*dim, fc_ty, , 6
+*dim, fc_tz, , 6
+*dim, fc_ia, , 6
+*dim, fc_ra, , 6
+
+fc_tx(1) = fc_r
+fc_ty(1) = 0
+fc_tz(1) = -fc_h
+fc_ia(1) = -TILT_DN
+fc_ra(1) = 0
+
+fc_tx(5) = cos(60)*fc_r
+fc_ty(5) = sin(60)*fc_r
+fc_tz(5) = fc_h
+fc_ia(5) = TILT_UP
+fc_ra(5) = 60
+
+fc_tx(3) = cos(120)*fc_r
+fc_ty(3) = sin(120)*fc_r
+fc_tz(3) = -fc_h
+fc_ia(3) = -TILT_DN
+fc_ra(3) = 120
+
+fc_tx(2) = cos(180)*fc_r
+fc_ty(2) = sin(180)*fc_r
+fc_tz(2) = fc_h
+fc_ia(2) = TILT_UP
+fc_ra(2) = 180
+
+fc_tx(6) = cos(240)*fc_r
+fc_ty(6) = sin(240)*fc_r
+fc_tz(6) = -fc_h
+fc_ia(6) = -TILT_DN
+fc_ra(6) = 240
+
+fc_tx(4) = cos(300)*fc_r
+fc_ty(4) = sin(300)*fc_r
+fc_tz(4) = fc_h
+fc_ia(4) = TILT_UP
+fc_ra(4) = 300
+
+! ===== 建立 6 根 pole（兩段式：前段 D 型 + 後段全圓）=====
+*do, fc_pi, 1, 6, 1
+
+    fc_incl = fc_ia(fc_pi)
+    fc_azim = fc_ra(fc_pi)
+
+    fc_ax = cos(fc_incl)*cos(fc_azim)
+    fc_ay = cos(fc_incl)*sin(fc_azim)
+    fc_az = sin(fc_incl)
+
+    *if, fc_incl, GE, 0, THEN
+        fc_nsx = -sin(fc_azim)
+        fc_nsy = cos(fc_azim)
+    *else
+        fc_nsx = sin(fc_azim)
+        fc_nsy = -cos(fc_azim)
+    *endif
+
+    *get, KP_NUM, KP, , NUM, MAX
+    *if, KP_NUM, LT, 1, THEN
+        KP_NUM = 0
+    *endif
+    KP_START = KP_NUM + 1
+    NUMSTR, KP, KP_START
+
+    *get, LI_NUM, LINE, , NUM, MAX
+    *if, LI_NUM, LT, 1, THEN
+        LI_NUM = 0
+    *endif
+    LI_START = LI_NUM + 1
+    NUMSTR, LINE, LI_START
+
+    p1x = fc_tx(fc_pi)
+    p1y = fc_ty(fc_pi)
+    p1z = fc_tz(fc_pi)
+
+    fc_fx = p1x + POLE_FLAT_LEN*fc_ax
+    fc_fy = p1y + POLE_FLAT_LEN*fc_ay
+    fc_fz = p1z + POLE_FLAT_LEN*fc_az
+    fc_ex = p1x + POLE_TOTAL_LEN*fc_ax
+    fc_ey = p1y + POLE_TOTAL_LEN*fc_ay
+    fc_ez = p1z + POLE_TOTAL_LEN*fc_az
+
+    K, KP_START,   p1x, p1y, p1z
+    K, KP_START+1, p1x + FPROT*fc_ax + PTR2*fc_nsx, p1y + FPROT*fc_ay + PTR2*fc_nsy, p1z + FPROT*fc_az
+    K, KP_START+2, p1x + JUNC_X*fc_ax + POLE_R*fc_nsx, p1y + JUNC_X*fc_ay + POLE_R*fc_nsy, p1z + JUNC_X*fc_az
+    K, KP_START+3, fc_fx + POLE_R*fc_nsx, fc_fy + POLE_R*fc_nsy, fc_fz
+    K, KP_START+4, fc_fx, fc_fy, fc_fz
+    K, KP_START+5, fc_ex, fc_ey, fc_ez
+    K, KP_START+6, p1x + POLE_TIP_R*fc_ax, p1y + POLE_TIP_R*fc_ay, p1z + POLE_TIP_R*fc_az
+
+    LARC, KP_START, KP_START+1, KP_START+6, POLE_TIP_R
+    L, KP_START+1, KP_START+2
+    L, KP_START+2, KP_START+3
+    L, KP_START+3, KP_START+4
+    L, KP_START+4, KP_START
+
+    *get, AR_NUM, AREA, , NUM, MAX
+    *if, AR_NUM, LT, 1, THEN
+        AR_NUM = 0
+    *endif
+    AR_START = AR_NUM + 1
+    NUMSTR, AREA, AR_START
+    AL, LI_START, LI_START+1, LI_START+2, LI_START+3, LI_START+4
+
+    VROTAT, AR_START, ,,,, , KP_START, KP_START+5, 180, 2
+
+    ALLSEL, ALL
+
+    *get, KP_NUM, KP, , NUM, MAX
+    KP_START2 = KP_NUM + 1
+    NUMSTR, KP, KP_START2
+
+    *get, LI_NUM, LINE, , NUM, MAX
+    LI_START2 = LI_NUM + 1
+    NUMSTR, LINE, LI_START2
+
+    K, KP_START2,   fc_fx, fc_fy, fc_fz
+    K, KP_START2+1, fc_fx + POLE_R*fc_nsx, fc_fy + POLE_R*fc_nsy, fc_fz
+    K, KP_START2+2, fc_ex + POLE_R*fc_nsx, fc_ey + POLE_R*fc_nsy, fc_ez
+    K, KP_START2+3, fc_ex, fc_ey, fc_ez
+
+    L, KP_START2, KP_START2+1
+    L, KP_START2+1, KP_START2+2
+    L, KP_START2+2, KP_START2+3
+    L, KP_START2+3, KP_START2
+
+    *get, AR_NUM, AREA, , NUM, MAX
+    AR_START2 = AR_NUM + 1
+    NUMSTR, AREA, AR_START2
+    AL, LI_START2, LI_START2+1, LI_START2+2, LI_START2+3
+
+    VROTAT, AR_START2, ,,,, , KP_START2, KP_START2+3, , 4
+
+    ALLSEL, ALL
+
+    *msg, INFO, fc_pi
+     Pole P%I built
+
+*enddo
+
+! ===== Block =====
+PENE_UP = 7.0*MM
+PENE_DN = 4.5*MM
+BLK_T   = 10.0*MM
+
+*do, fc_pi, 1, 6, 1
+
+    fc_incl = fc_ia(fc_pi)
+    fc_azim = fc_ra(fc_pi)
+
+    fc_ax = cos(fc_incl)*cos(fc_azim)
+    fc_ay = cos(fc_incl)*sin(fc_azim)
+    fc_az = sin(fc_incl)
+
+    fc_ux = -sin(fc_incl)*cos(fc_azim)
+    fc_uy = -sin(fc_incl)*sin(fc_azim)
+    fc_uz = cos(fc_incl)
+
+    fc_sx = sin(fc_azim)
+    fc_sy = -cos(fc_azim)
+
+    p1x = fc_tx(fc_pi)
+    p1y = fc_ty(fc_pi)
+    p1z = fc_tz(fc_pi)
+
+    *if, fc_incl, GE, 0, THEN
+        fc_pene = PENE_UP
+        fc_s1a = -0.25*MM
+        fc_s1b = 12.75*MM
+        fc_u1a = -11.0*MM
+        fc_u1b = 11.0*MM
+        fc_s2a = -12.25*MM
+        fc_s2b = -0.25*MM
+        fc_u2a = -5.0*MM
+        fc_u2b = 5.0*MM
+    *else
+        fc_pene = PENE_DN
+        fc_s1a = 2.0*MM
+        fc_s1b = 9.0*MM
+        fc_u1a = -11.0*MM
+        fc_u1b = 11.0*MM
+        fc_s2a = -13.0*MM
+        fc_s2b = 2.0*MM
+        fc_u2a = -5.0*MM
+        fc_u2b = 5.0*MM
+    *endif
+
+    fc_endx = p1x + POLE_TOTAL_LEN*fc_ax
+    fc_endy = p1y + POLE_TOTAL_LEN*fc_ay
+    fc_endz = p1z + POLE_TOTAL_LEN*fc_az
+
+    fc_entx = fc_endx - fc_pene*fc_ax
+    fc_enty = fc_endy - fc_pene*fc_ay
+    fc_entz = fc_endz - fc_pene*fc_az
+
+    *if, fc_incl, GE, 0, THEN
+        fc_zbot = fc_entz
+        fc_ztop = fc_entz + BLK_T
+        fc_dt = BLK_T/sin(TILT_UP)
+        fc_cx = fc_entx + fc_dt*fc_ax
+        fc_cy = fc_enty + fc_dt*fc_ay
+    *else
+        fc_zbot = fc_endz - BLK_T/2
+        fc_ztop = fc_endz + BLK_T/2
+        fc_cx = fc_endx
+        fc_cy = fc_endy
+    *endif
+
+    fc_twx = -cos(fc_azim)
+    fc_twy = -sin(fc_azim)
+    fc_sdx = sin(fc_azim)
+    fc_sdy = -cos(fc_azim)
+
+    *get, KP_NUM, KP, , NUM, MAX
+    *if, KP_NUM, LT, 1, THEN
+        KP_NUM = 0
+    *endif
+    fc_bkp = KP_NUM + 1
+    NUMSTR, KP, fc_bkp
+
+    K,fc_bkp,  fc_cx+fc_s1a*fc_twx+fc_u1a*fc_sdx, fc_cy+fc_s1a*fc_twy+fc_u1a*fc_sdy, fc_zbot
+    K,fc_bkp+1,fc_cx+fc_s1b*fc_twx+fc_u1a*fc_sdx, fc_cy+fc_s1b*fc_twy+fc_u1a*fc_sdy, fc_zbot
+    K,fc_bkp+2,fc_cx+fc_s1b*fc_twx+fc_u1b*fc_sdx, fc_cy+fc_s1b*fc_twy+fc_u1b*fc_sdy, fc_zbot
+    K,fc_bkp+3,fc_cx+fc_s1a*fc_twx+fc_u1b*fc_sdx, fc_cy+fc_s1a*fc_twy+fc_u1b*fc_sdy, fc_zbot
+    K,fc_bkp+4,fc_cx+fc_s1a*fc_twx+fc_u1a*fc_sdx, fc_cy+fc_s1a*fc_twy+fc_u1a*fc_sdy, fc_ztop
+    K,fc_bkp+5,fc_cx+fc_s1b*fc_twx+fc_u1a*fc_sdx, fc_cy+fc_s1b*fc_twy+fc_u1a*fc_sdy, fc_ztop
+    K,fc_bkp+6,fc_cx+fc_s1b*fc_twx+fc_u1b*fc_sdx, fc_cy+fc_s1b*fc_twy+fc_u1b*fc_sdy, fc_ztop
+    K,fc_bkp+7,fc_cx+fc_s1a*fc_twx+fc_u1b*fc_sdx, fc_cy+fc_s1a*fc_twy+fc_u1b*fc_sdy, fc_ztop
+
+    V,fc_bkp,fc_bkp+1,fc_bkp+2,fc_bkp+3,fc_bkp+4,fc_bkp+5,fc_bkp+6,fc_bkp+7
+
+    *get, KP_NUM, KP, , NUM, MAX
+    fc_bkp2 = KP_NUM + 1
+    NUMSTR, KP, fc_bkp2
+
+    K,fc_bkp2,  fc_cx+fc_s2a*fc_twx+fc_u2a*fc_sdx, fc_cy+fc_s2a*fc_twy+fc_u2a*fc_sdy, fc_zbot
+    K,fc_bkp2+1,fc_cx+fc_s2b*fc_twx+fc_u2a*fc_sdx, fc_cy+fc_s2b*fc_twy+fc_u2a*fc_sdy, fc_zbot
+    K,fc_bkp2+2,fc_cx+fc_s2b*fc_twx+fc_u2b*fc_sdx, fc_cy+fc_s2b*fc_twy+fc_u2b*fc_sdy, fc_zbot
+    K,fc_bkp2+3,fc_cx+fc_s2a*fc_twx+fc_u2b*fc_sdx, fc_cy+fc_s2a*fc_twy+fc_u2b*fc_sdy, fc_zbot
+    K,fc_bkp2+4,fc_cx+fc_s2a*fc_twx+fc_u2a*fc_sdx, fc_cy+fc_s2a*fc_twy+fc_u2a*fc_sdy, fc_ztop
+    K,fc_bkp2+5,fc_cx+fc_s2b*fc_twx+fc_u2a*fc_sdx, fc_cy+fc_s2b*fc_twy+fc_u2a*fc_sdy, fc_ztop
+    K,fc_bkp2+6,fc_cx+fc_s2b*fc_twx+fc_u2b*fc_sdx, fc_cy+fc_s2b*fc_twy+fc_u2b*fc_sdy, fc_ztop
+    K,fc_bkp2+7,fc_cx+fc_s2a*fc_twx+fc_u2b*fc_sdx, fc_cy+fc_s2a*fc_twy+fc_u2b*fc_sdy, fc_ztop
+
+    V,fc_bkp2,fc_bkp2+1,fc_bkp2+2,fc_bkp2+3,fc_bkp2+4,fc_bkp2+5,fc_bkp2+6,fc_bkp2+7
+
+    *get, fc_bv2, VOLU, 0, NUM, MAX
+    fc_bv1 = fc_bv2 - 1
+    VADD, fc_bv1, fc_bv2
+
+    ALLSEL, ALL
+
+    *msg, INFO, fc_pi
+     Block for P%I built
+
+*enddo
+
+! ===== Yoke =====
+COIL_H  = 14.0*MM
+YOKE_RI = 38.0*MM
+YOKE_RO = 62.5*MM
+YOKE_T  = 2.0*MM
+
+fc_up_endz = fc_tz(2) + POLE_TOTAL_LEN*sin(TILT_UP)
+fc_up_entz = fc_up_endz - PENE_UP*sin(TILT_UP)
+fc_up_blk_top = fc_up_entz + BLK_T
+fc_yoke_zbot = fc_up_blk_top + COIL_H
+fc_yoke_ztop = fc_yoke_zbot + YOKE_T
+
+*get, KP_NUM, KP, , NUM, MAX
+*if, KP_NUM, LT, 1, THEN
+    KP_NUM = 0
+*endif
+fc_ykp = KP_NUM + 1
+NUMSTR, KP, fc_ykp
+
+K, fc_ykp,   YOKE_RI, 0, fc_yoke_zbot
+K, fc_ykp+1, YOKE_RO, 0, fc_yoke_zbot
+K, fc_ykp+2, YOKE_RO, 0, fc_yoke_ztop
+K, fc_ykp+3, YOKE_RI, 0, fc_yoke_ztop
+K, fc_ykp+4, 0, 0, fc_yoke_zbot
+K, fc_ykp+5, 0, 0, fc_yoke_ztop
+
+*get, LI_NUM, LINE, , NUM, MAX
+*if, LI_NUM, LT, 1, THEN
+    LI_NUM = 0
+*endif
+fc_yli = LI_NUM + 1
+NUMSTR, LINE, fc_yli
+
+L, fc_ykp, fc_ykp+1
+L, fc_ykp+1, fc_ykp+2
+L, fc_ykp+2, fc_ykp+3
+L, fc_ykp+3, fc_ykp
+
+*get, AR_NUM, AREA, , NUM, MAX
+*if, AR_NUM, LT, 1, THEN
+    AR_NUM = 0
+*endif
+fc_yar = AR_NUM + 1
+NUMSTR, AREA, fc_yar
+AL, fc_yli, fc_yli+1, fc_yli+2, fc_yli+3
+
+VROTAT, fc_yar, ,,,, , fc_ykp+4, fc_ykp+5, , 4
+
+ALLSEL, ALL
+
+! ===== Guide Posts =====
+GP_R = 4.0*MM
+
+fc_lo_endz = fc_tz(1) + POLE_TOTAL_LEN*sin(-TILT_DN)
+fc_lo_blk_top = fc_lo_endz + BLK_T/2
+
+*dim, fc_gpi, , 3
+fc_gpi(1) = 1
+fc_gpi(2) = 3
+fc_gpi(3) = 6
+
+*do, fc_gi, 1, 3, 1
+    fc_idx = fc_gpi(fc_gi)
+    fc_azim = fc_ra(fc_idx)
+
+    fc_ax = cos(-TILT_DN)*cos(fc_azim)
+    fc_ay = cos(-TILT_DN)*sin(fc_azim)
+    fc_gcx = fc_tx(fc_idx) + POLE_TOTAL_LEN*fc_ax
+    fc_gcy = fc_ty(fc_idx) + POLE_TOTAL_LEN*fc_ay
+
+    fc_gz2 = fc_yoke_zbot
+    fc_gz1 = fc_lo_endz - BLK_T/2
+
+    *get, KP_NUM, KP, , NUM, MAX
+    *if, KP_NUM, LT, 1, THEN
+        KP_NUM = 0
+    *endif
+    fc_gkp = KP_NUM + 1
+    NUMSTR, KP, fc_gkp
+
+    K, fc_gkp,   fc_gcx+GP_R, fc_gcy, fc_gz1
+    K, fc_gkp+1, fc_gcx+GP_R, fc_gcy, fc_gz2
+    K, fc_gkp+2, fc_gcx,      fc_gcy, fc_gz2
+    K, fc_gkp+3, fc_gcx,      fc_gcy, fc_gz1
+
+    *get, LI_NUM, LINE, , NUM, MAX
+    *if, LI_NUM, LT, 1, THEN
+        LI_NUM = 0
+    *endif
+    fc_gli = LI_NUM + 1
+    NUMSTR, LINE, fc_gli
+
+    L, fc_gkp, fc_gkp+1
+    L, fc_gkp+1, fc_gkp+2
+    L, fc_gkp+2, fc_gkp+3
+    L, fc_gkp+3, fc_gkp
+
+    *get, AR_NUM, AREA, , NUM, MAX
+    *if, AR_NUM, LT, 1, THEN
+        AR_NUM = 0
+    *endif
+    fc_gar = AR_NUM + 1
+    NUMSTR, AREA, fc_gar
+    AL, fc_gli, fc_gli+1, fc_gli+2, fc_gli+3
+
+    VROTAT, fc_gar, ,,,, , fc_gkp+2, fc_gkp+3, , 4
+
+    ALLSEL, ALL
+*enddo
+
+! ===== Upper Cores =====
+fc_up_blk_top2 = fc_up_entz + BLK_T
+
+*dim, fc_upi, , 3
+fc_upi(1) = 2
+fc_upi(2) = 4
+fc_upi(3) = 5
+
+*do, fc_ui, 1, 3, 1
+    fc_idx = fc_upi(fc_ui)
+    fc_azim = fc_ra(fc_idx)
+
+    fc_ax_tmp = cos(TILT_UP)*cos(fc_azim)
+    fc_ay_tmp = cos(TILT_UP)*sin(fc_azim)
+    fc_endx_tmp = fc_tx(fc_idx) + POLE_TOTAL_LEN*fc_ax_tmp
+    fc_endy_tmp = fc_ty(fc_idx) + POLE_TOTAL_LEN*fc_ay_tmp
+    fc_entx_tmp = fc_endx_tmp - PENE_UP*fc_ax_tmp
+    fc_enty_tmp = fc_endy_tmp - PENE_UP*fc_ay_tmp
+    fc_dt_tmp = BLK_T/sin(TILT_UP)
+    fc_ucx = fc_entx_tmp + fc_dt_tmp*fc_ax_tmp
+    fc_ucy = fc_enty_tmp + fc_dt_tmp*fc_ay_tmp
+
+    fc_ucz1 = fc_up_blk_top2
+    fc_ucz2 = fc_yoke_zbot
+
+    *get, KP_NUM, KP, , NUM, MAX
+    *if, KP_NUM, LT, 1, THEN
+        KP_NUM = 0
+    *endif
+    fc_uckp = KP_NUM + 1
+    NUMSTR, KP, fc_uckp
+
+    K,fc_uckp,  fc_ucx+GP_R, fc_ucy, fc_ucz1
+    K,fc_uckp+1,fc_ucx+GP_R, fc_ucy, fc_ucz2
+    K,fc_uckp+2,fc_ucx,      fc_ucy, fc_ucz2
+    K,fc_uckp+3,fc_ucx,      fc_ucy, fc_ucz1
+
+    *get, LI_NUM, LINE, , NUM, MAX
+    fc_ucli = LI_NUM + 1
+    NUMSTR, LINE, fc_ucli
+    L,fc_uckp,fc_uckp+1
+    L,fc_uckp+1,fc_uckp+2
+    L,fc_uckp+2,fc_uckp+3
+    L,fc_uckp+3,fc_uckp
+
+    *get, AR_NUM, AREA, , NUM, MAX
+    fc_ucar = AR_NUM + 1
+    NUMSTR, AREA, fc_ucar
+    AL,fc_ucli,fc_ucli+1,fc_ucli+2,fc_ucli+3
+
+    VROTAT,fc_ucar,,,,,,fc_uckp+2,fc_uckp+3,,4
+
+    ALLSEL, ALL
+*enddo
+
+! ===== VADD 所有鋼件 =====
+CSYS, 0
+ALLSEL, ALL
+*get, fc_nv_all, VOLU, 0, NUM, MAX
+*msg, INFO, fc_nv_all
+ Steel volumes before VADD: %I
+FLST, 2, fc_nv_all, 6, ORDE, 2
+FITEM, 2, 1
+FITEM, 2, -fc_nv_all
+VADD, P51X
+
+! ===== Mesh 鋼件 =====
+ET, 1, SOLID96
+MP, MURX, 1, 280
+
+ALLSEL, ALL
+VATT, 1, 1, 1
+
+mshape, 1, 3D
+mshkey, 0
+ESIZE, 1.5e-3
+vmesh, all
+
+ALLSEL, ALL
+
+! ===== SOURC36 Coils =====
+ET, 2, SOURC36
+COIL_MEAN_R = 11.0*MM
+COIL_DY = 2.0*MM
+COIL_DZ = 15.0*MM
+TURNS = 70
+
+*dim, CURR_ARRAY, , 6
+CURR_ARRAY(1) = 1
+CURR_ARRAY(2) = 0
+CURR_ARRAY(3) = 0
+CURR_ARRAY(4) = 0
+CURR_ARRAY(5) = 0
+CURR_ARRAY(6) = 0
+
+R, 1, 1, TURNS*CURR_ARRAY(1), COIL_DY, COIL_DZ
+R, 2, 1, TURNS*CURR_ARRAY(2), COIL_DY, COIL_DZ
+R, 3, 1, TURNS*CURR_ARRAY(3), COIL_DY, COIL_DZ
+R, 4, 1, TURNS*CURR_ARRAY(4), COIL_DY, COIL_DZ
+R, 5, 1, TURNS*CURR_ARRAY(5), COIL_DY, COIL_DZ
+R, 6, 1, TURNS*CURR_ARRAY(6), COIL_DY, COIL_DZ
+
+NUMCMP, NODE
+*get, NODE_NUM, NODE, , NUM, MAX
+NODE_START = NODE_NUM + 1
+
+*do, sc_pi, 1, 6, 1
+    sc_azim = fc_ra(sc_pi)
+    sc_incl = fc_ia(sc_pi)
+
+    *if, sc_incl, LT, 0, THEN
+        sc_ax = cos(-TILT_DN)*cos(sc_azim)
+        sc_ay = cos(-TILT_DN)*sin(sc_azim)
+        sc_cx = fc_tx(sc_pi) + POLE_TOTAL_LEN*sc_ax
+        sc_cy = fc_ty(sc_pi) + POLE_TOTAL_LEN*sc_ay
+        sc_cz = fc_lo_blk_top + COIL_DZ/2
+    *else
+        sc_ax = cos(TILT_UP)*cos(sc_azim)
+        sc_ay = cos(TILT_UP)*sin(sc_azim)
+        sc_cx = fc_tx(sc_pi) + POLE_TOTAL_LEN*sc_ax
+        sc_cy = fc_ty(sc_pi) + POLE_TOTAL_LEN*sc_ay
+        sc_cz = fc_up_blk_top2 + COIL_DZ/2
+    *endif
+
+    sc_n1 = NODE_START + (sc_pi-1)*3
+    sc_n2 = sc_n1 + 1
+    sc_n3 = sc_n1 + 2
+
+    N, sc_n1, sc_cx, sc_cy+COIL_MEAN_R, sc_cz
+    N, sc_n2, sc_cx+COIL_MEAN_R, sc_cy, sc_cz
+    N, sc_n3, sc_cx, sc_cy, sc_cz
+
+    TYPE, 2
+    REAL, sc_pi
+    E, sc_n1, sc_n2, sc_n3
+*enddo
+
+ALLSEL, ALL
+*get, fc_nn, NODE, 0, COUNT
+*get, fc_ne, ELEM, 0, COUNT
+*msg, INFO, fc_nn, fc_ne
+ Mesh done: Nodes=%I, Elements=%I
+
+! ===== 儲存 =====
+SAVE, 'mesh_steel_filleted', 'db'
+
+FINISH
+
+*msg, INFO
+ Saved: mesh_steel_filleted.db

@@ -1,0 +1,45 @@
+\documentclass[12pt]{article}
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{bm}
+\usepackage{fontspec}
+
+\newfontfamily\cjk{Noto Sans CJK HK}
+\newcommand{\zh}[1]{{\cjk #1}}
+
+\begin{document}
+
+\begin{center}
+{\Large\bfseries \zh{初始猜測值} (Initial Guess)}
+\end{center}
+
+\vspace{1em}
+
+\zh{通量分布矩陣的初始猜測值取為理想、高度對稱的耦合矩陣（對角線為} $5/6$\zh{，非對角線為} $-1/6$\zh{）：}
+
+\[
+\widehat{\mathbf{K}}_{I}^{\mathrm{FEM}}
+=
+\begin{bmatrix}
+\dfrac{5}{6} & -\dfrac{1}{6} & -\dfrac{1}{6} & -\dfrac{1}{6} & -\dfrac{1}{6} & -\dfrac{1}{6}\\[2.2ex]
+-\dfrac{1}{6} & \dfrac{5}{6} & -\dfrac{1}{6} & -\dfrac{1}{6} & -\dfrac{1}{6} & -\dfrac{1}{6}\\[2.2ex]
+-\dfrac{1}{6} & -\dfrac{1}{6} & \dfrac{5}{6} & -\dfrac{1}{6} & -\dfrac{1}{6} & -\dfrac{1}{6}\\[2.2ex]
+-\dfrac{1}{6} & -\dfrac{1}{6} & -\dfrac{1}{6} & \dfrac{5}{6} & -\dfrac{1}{6} & -\dfrac{1}{6}\\[2.2ex]
+-\dfrac{1}{6} & -\dfrac{1}{6} & -\dfrac{1}{6} & -\dfrac{1}{6} & \dfrac{5}{6} & -\dfrac{1}{6}\\[2.2ex]
+-\dfrac{1}{6} & -\dfrac{1}{6} & -\dfrac{1}{6} & -\dfrac{1}{6} & -\dfrac{1}{6} & \dfrac{5}{6}
+\end{bmatrix}
+\]
+
+\vspace{1em}
+
+\zh{其餘兩個純量初始猜測值為：}
+
+\[
+\widehat{\ell} = 0.5~\mathrm{mm}
+\]
+
+\[
+\widehat{g}_{B} = 1
+\]
+
+\end{document}

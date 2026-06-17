@@ -1,0 +1,44 @@
+! MT_Mesh_IGES.txt — mesh the Long2016 halfcut hexapole IGES (iron only)
+! Imports the BREP/NURBS solid IGES (mm), free-tet meshes it, saves a .db for
+! GUI inspection (EPLOT). No air domain, no physics, no solve — mesh view only.
+
+/TITLE, Long2016 halfcut hexapole - IGES mesh (iron only)
+/NERR,,99999
+
+! ---------- 1. import IGES solids (units = mm per global flag 2) ----------
+/AUX15
+IOPTN,IGES,SMOOTH        ! defeature/smooth import
+IOPTN,MERGE,YES          ! merge coincident entities
+IOPTN,SOLID,YES          ! create solid volumes
+IOPTN,SMALL,YES          ! delete tiny areas
+IOPTN,GTOLER,DEFA        ! default geometric tolerance
+IGESIN,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\IGES_converted\long2016_hexapole_halfcut\Long2016_HexapoleHalfcut_Geom','iges'
+FINISH
+
+! ---------- 2. free-tet mesh the imported iron volumes ----------
+/PREP7
+ET,1,SOLID187            ! 10-node tetrahedral (robust for imported NURBS)
+MSHAPE,1,3D              ! tetrahedral shape
+MSHKEY,0                 ! free mesh
+SMRTSIZE,6               ! medium density (yoke 106mm vs tip 40um -> view only)
+VMESH,ALL
+
+*get,nvol ,VOLU,,COUNT
+*get,nnode,NODE,,COUNT
+*get,nelem,ELEM,,COUNT
+/com,
+/com, ===== IGES MESH DONE : volumes=%nvol%  nodes=%nnode%  elements=%nelem% =====
+/com,
+
+! ---------- 3. save database for GUI viewing ----------
+SAVE,'halfcut_iges_mesh','db'
+
+! ---------- 4. preview PNG (isometric mesh plot) ----------
+/SHOW,PNG
+/VIEW,1,1,1,1
+/ANG,1
+/PNUM,DEFA
+/TYPE,1,0
+EPLOT
+/SHOW,CLOSE
+FINISH

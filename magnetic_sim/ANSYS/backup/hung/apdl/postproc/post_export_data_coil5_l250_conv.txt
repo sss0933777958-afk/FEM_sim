@@ -1,0 +1,33 @@
+! POST1 export for l=250 coil5 — /FILNAME matches jobname
+/FILNAME, coil5_l250_conv
+RESUME, 'sim1', 'db'
+/POST1
+SET, LAST
+
+/FORMAT,7,,17,9,1000000
+/PAGE,1000000,,1000000
+
+! --- Full dataset ---
+ALLSEL, ALL
+/OUTPUT, 'coil5_coord_all', 'dat'
+NLIST, ALL, , , COORD
+/OUTPUT
+/OUTPUT, 'coil5_bfield_all', 'dat'
+PRNSOL, B, COMP
+/OUTPUT
+
+! --- WP region (R < 2mm) ---
+LOCAL, 12, 2, 0, 0, 0
+CSYS, 12
+NSEL, S, LOC, X, 0, 2e-3
+CSYS, 0
+
+/OUTPUT, 'coil5_coord_wp', 'dat'
+NLIST, ALL, , , COORD
+/OUTPUT
+/OUTPUT, 'coil5_bfield_wp', 'dat'
+PRNSOL, B, COMP
+/OUTPUT
+
+ALLSEL, ALL
+FINISH

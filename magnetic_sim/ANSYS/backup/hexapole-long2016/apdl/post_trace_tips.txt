@@ -1,0 +1,58 @@
+! Post-processing: B-field at each pole tip (Long2016)
+! SPH_OFST = -PROT_H - 6e-3 + R_norm_z = -7e-3 - 6e-3 + 0.289e-3 = -12.711e-3
+! R_norm_xy = 0.40825e-3, R_norm_z = 0.28868e-3
+
+/FILNAME, 3DMTmagneticfield
+RESUME, '3DMTmagneticfield', 'db'
+/POST1
+SET, LAST
+
+sph_z = -12.711e-3
+
+! P1 (lower, 0°)
+nd1 = NODE(0.40825e-3, 0, sph_z - 0.28868e-3)
+*GET, b1, NODE, nd1, B, SUM
+
+! P2 (upper, 180°) — Long2016 mapping: pole4=upper, 60° offset
+! Lower: pole1=0°, pole2=120°, pole3=240°
+! Upper: pole4=60°, pole5=180°, pole6=300°
+! P5 in Long2016 = 180° upper
+nd5 = NODE(-0.40825e-3, 0, sph_z + 0.28868e-3)
+*GET, b5, NODE, nd5, B, SUM
+
+! P3 (lower, 120°)
+nd2 = NODE(0.40825e-3*cos(120*3.14159/180), 0.40825e-3*sin(120*3.14159/180), sph_z - 0.28868e-3)
+*GET, b2, NODE, nd2, B, SUM
+
+! P4 (upper, 300°) — Long2016: pole6=300° upper
+nd6 = NODE(0.40825e-3*cos(300*3.14159/180), 0.40825e-3*sin(300*3.14159/180), sph_z + 0.28868e-3)
+*GET, b6, NODE, nd6, B, SUM
+
+! P5 (upper, 60°) — Long2016: pole4=60° upper
+nd4 = NODE(0.40825e-3*cos(60*3.14159/180), 0.40825e-3*sin(60*3.14159/180), sph_z + 0.28868e-3)
+*GET, b4, NODE, nd4, B, SUM
+
+! P6 (lower, 240°)
+nd3 = NODE(0.40825e-3*cos(240*3.14159/180), 0.40825e-3*sin(240*3.14159/180), sph_z - 0.28868e-3)
+*GET, b3, NODE, nd3, B, SUM
+
+! WP center
+nd0 = NODE(0, 0, sph_z)
+*GET, b0, NODE, nd0, B, SUM
+
+*MSG, INFO, nd0, b0*1000
+ WP_center:  node=%I  Bsum=%G mT
+*MSG, INFO, nd1, b1*1000
+ P1_tip:     node=%I  Bsum=%G mT
+*MSG, INFO, nd5, b5*1000
+ P2_tip:     node=%I  Bsum=%G mT
+*MSG, INFO, nd2, b2*1000
+ P3_tip:     node=%I  Bsum=%G mT
+*MSG, INFO, nd6, b6*1000
+ P4_tip:     node=%I  Bsum=%G mT
+*MSG, INFO, nd4, b4*1000
+ P5_tip:     node=%I  Bsum=%G mT
+*MSG, INFO, nd3, b3*1000
+ P6_tip:     node=%I  Bsum=%G mT
+
+FINISH

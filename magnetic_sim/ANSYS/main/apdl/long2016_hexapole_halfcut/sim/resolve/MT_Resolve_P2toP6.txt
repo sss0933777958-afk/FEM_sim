@@ -1,0 +1,85 @@
+! MT_Resolve_P2toP6.txt — re-solve P2..P6 by REUSING the P1 graded-mesh master .db
+! The mesh is identical for all 6 poles (only the coil current differs), so we RESUME
+! the saved master database and just change the SOURC36 real-constant current per pole,
+! re-solve, and dump the WP-region B field. This SKIPS the (slow) meshing entirely.
+!
+! Master mesh/db comes from MT_Sim_P1_graded.txt -> P1_graded\3DMTmagneticfield.db
+! Source convention (each excited pole = SOURCE, flux toward WP):
+!   lower poles P1/P3/P6 (APDL coil 1/2/3) -> current = -1
+!   upper poles P2/P4/P5 (APDL coil 4/5/6) -> current = +1
+! Run order here: P2(coil5,+1) P3(coil2,-1) P4(coil6,+1) P5(coil4,+1) P6(coil3,-1)
+! WP dat written to the run CWD as coil<N>_{coord,bfield}_wp.dat (N = APDL coil index).
+! [KUO 2026-06-15] This is one COMBINED solve writing coil2..6 .dat to a single CWD.
+!   New per-coil layout = coilN/graded/. CWD set to coil2/graded below; AFTER re-running
+!   this script, move coil3/4/5/6_*_wp.dat from coil2/graded/ to their own coilN/graded/.
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\coil2\graded'
+
+FINISH
+/CLEAR,NOSTART
+
+! ---- restore the master graded mesh (model + P1 solution; mesh is what we reuse) ----
+RESUME,'3DMTmagneticfield','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\coil1\graded\'
+
+! ---- defensively redefine the few constants we need (RESUME normally restores them) ----
+*afun,DEG
+PROT_H     = 7.0e-3
+Z0_LOW     = -PROT_H
+R_norm     = 500e-6
+R_norm_z   = R_norm/sqrt(3.0)
+SPH_OFST   = Z0_LOW - 6e-3 + R_norm_z
+COIL_OUT_R = 8e-3
+COIL_IN_R  = 5e-3
+COIL_THK   = COIL_OUT_R - COIL_IN_R
+COIL_H     = PROT_H
+TURNS      = 70
+
+! ---- run list: APDL coil index + source sign for P2..P6 ----
+*dim,RUN_API ,,5
+*dim,RUN_SGN ,,5
+RUN_API(1) = 5  $ RUN_SGN(1) = +1    ! P2 (upper)
+RUN_API(2) = 2  $ RUN_SGN(2) = -1    ! P3 (lower)
+RUN_API(3) = 6  $ RUN_SGN(3) = +1    ! P4 (upper)
+RUN_API(4) = 4  $ RUN_SGN(4) = +1    ! P5 (upper)
+RUN_API(5) = 3  $ RUN_SGN(5) = -1    ! P6 (lower)
+
+*do,k,1,5,1
+    api = RUN_API(k)
+    sgn = RUN_SGN(k)
+
+    ! --- set this pole's coil current (others zero) via SOURC36 real constants ---
+    /PREP7
+    *do,j,1,6,1
+        R,j,1,0,COIL_THK,COIL_H              ! zero every coil first
+    *enddo
+    R,api,1,TURNS*sgn,COIL_THK,COIL_H        ! energise the target pole, source sign
+    FINISH
+
+    ! --- solve (DSP scalar potential; MAG=0 BC already in the db) ---
+    /SOLU
+    magsolv,3,,,,,1
+    FINISH
+
+    ! --- POST1: WP-region dump only (matches MT_Sim_P1_graded) ---
+    /POST1
+    SET,LAST
+    ALLSEL,ALL
+    /HEADER,OFF,OFF,OFF,OFF,OFF,OFF
+    /FORMAT,10,,20,12,,
+    /PAGE,1000000,,1000000
+
+    LOCAL,12,2, 0, 0, SPH_OFST
+    CSYS,12
+    NSEL,S,LOC,X, 0, 2e-3
+    CSYS,0
+
+    /OUTPUT,'coil%api%_coord_wp','dat'
+    NLIST,ALL, , ,COORD
+    /OUTPUT
+
+    /OUTPUT,'coil%api%_bfield_wp','dat'
+    PRNSOL,B,COMP
+    /OUTPUT
+
+    ALLSEL,ALL
+    FINISH
+*enddo

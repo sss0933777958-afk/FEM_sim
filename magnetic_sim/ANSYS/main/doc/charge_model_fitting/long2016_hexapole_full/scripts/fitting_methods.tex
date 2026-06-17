@@ -1,0 +1,441 @@
+% ============================================================
+%  Long Fei (2016) Hexapole — Point-Charge Fitting Methods
+%  Three methods: [A] sphere baseline -> [J] free 3D joint
+%  -> [B-6x] all-excitation ell+delta (final canonical).
+%
+%  Compile on Overleaf with XeLaTeX (ctex requires it).
+%  Fonts: Noto Serif/Sans CJK TC (default Overleaf-supplied).
+% ============================================================
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[a4paper,margin=2.2cm]{geometry}
+\usepackage{ctex}
+\setCJKmainfont{Noto Serif CJK TC}
+\setCJKsansfont{Noto Sans CJK TC}
+\setCJKmonofont{Noto Sans Mono CJK TC}
+
+\usepackage{amsmath,amssymb,bm}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\hypersetup{colorlinks=true, linkcolor=blue!60!black, urlcolor=blue!60!black}
+\usepackage{xcolor}
+\usepackage{listings}
+\lstset{
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  frame=single,
+  framesep=4pt,
+  rulecolor=\color{gray!50},
+  backgroundcolor=\color{gray!5},
+  columns=fullflexible
+}
+
+% Notation shortcuts
+\newcommand{\mzero}{\mu_0}
+\newcommand{\km}{k_m}
+\newcommand{\Ra}{\mathcal{R}_a}
+\newcommand{\Nc}{N_c}
+\newcommand{\KI}{\mathbf{K}_I}
+\newcommand{\Idiss}{\mathbf{I}_{\mathrm{diss}}}
+\newcommand{\bvec}{\mathbf{B}}
+\newcommand{\pvec}{\mathbf{p}}
+\newcommand{\cvec}{\mathbf{c}}
+\newcommand{\dhat}{\hat{\mathbf{d}}}
+\newcommand{\bdelta}{\bm{\delta}}
+
+\title{Long Fei (2016) Hexapole 點磁荷擬合方法\\
+\large [A] 球面基線 \(\rightarrow\) [J] 自由 3D 聯合 \(\rightarrow\) [B-6x] 全激勵 \texttt{ell+delta}}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+本文整理 Long Fei (2016) 博士論文 hexapole 磁鑷的「點磁荷等效模型」三種擬合方法。
+所有方法皆以 ANSYS magnetostatic FEM 為真值，將 6 根 pole 等效為 6 個磁荷，
+擬合磁荷位置 \(\cvec_i\) 與整體振幅 \(C = \Nc/(\mzero \Ra)\)。
+方法 [A] 為論文標準兩參數球面模型；[J] 為 18 + 6 自由度的聯合自由 3D 擬合；
+[B-6x] 為定案版（19 自由度），結合 [A] 的球面錨點與全激勵資料，平均擬合誤差 0.07\%。
+\end{abstract}
+
+\tableofcontents
+\vspace{0.5em}\hrule\vspace{0.5em}
+
+% ============================================================
+\section{共同基礎}
+% ============================================================
+
+\subsection{物理模型}
+
+每根 pole 等效為一個位於 \(\cvec_i\) 的點磁荷。
+單個磁荷在觀察點 \(\pvec\) 產生的磁場（Coulomb 形式）：
+\begin{equation}
+\bvec_i(\pvec) = \km \, w_i \,
+\frac{\pvec - \cvec_i}{\|\pvec - \cvec_i\|^3},
+\end{equation}
+其中 \(\km = \mzero/(4\pi) = 10^{-7}\)（磁 Coulomb 常數），
+\(w_i\) 是該磁荷的權重（由 \(\KI\) 矩陣與電流向量決定，見 \S\ref{sec:KI}）。
+
+6 極疊加並引入整體振幅 \(C\)：
+\begin{equation}
+\boxed{\;
+\bvec(\pvec) = C \cdot \km \sum_{i=1}^{6}
+w_i \cdot \frac{\pvec - \cvec_i}{\|\pvec - \cvec_i\|^3}
+\;}
+\label{eq:model}
+\end{equation}
+其中
+\begin{equation}
+C = \frac{\Nc}{\mzero \, \Ra},\qquad
+\Nc = 70,\quad \Ra \;\text{[A/Wb]} \;\text{為空氣磁阻（待擬合）}.
+\end{equation}
+
+\subsection{\(\KI\) 矩陣與權重向量}\label{sec:KI}
+
+定義名義磁通分佈矩陣
+\begin{equation}
+\KI = \mathbf{I}_6 - \tfrac{1}{6} \mathbf{1}_{6\times 6},
+\end{equation}
+即對角 \(5/6\)、非對角 \(-1/6\)。
+
+當 coil \(k\) 通 1 A 電流時，6 個磁荷的權重向量
+\begin{equation}
+\mathbf{w} = \KI \, \Idiss .
+\end{equation}
+範例：激勵 P1（\(\Idiss = [1,0,0,0,0,0]^\top\)）
+\begin{equation}
+\mathbf{w} = \left[\,\tfrac{5}{6},\, -\tfrac{1}{6},\, -\tfrac{1}{6},\,
+-\tfrac{1}{6},\, -\tfrac{1}{6},\, -\tfrac{1}{6}\,\right]^\top .
+\end{equation}
+即 P1 為主導（\(5/6\)），其餘 5 極為被動回流（各 \(-1/6\)）。
+
+\paragraph{符號慣例。}
+程式中以 \(-w_i\) 進入 (\ref{eq:model})，因為 APDL 繞線方向使「被激勵極」成為磁通匯（flux sink）。
+
+\subsection{資料與座標}
+
+來源：ANSYS magnetostatic FEM（\(\mu_r = 280\)，1018 steel 線性近似）。
+\begin{enumerate}[leftmargin=*]
+\item 載入 ANSYS 節點與 B 場（總 390{,}579 nodes）；
+\item APDL \(\rightarrow\) WP 中心座標：\(z_{wp} = z_{\text{APDL}} - \mathrm{SPH\_OFST}\)，
+其中 \(\mathrm{SPH\_OFST} = -12.711\) mm；
+\item 幾何圓錐排除鐵心節點 \(\rightarrow\) 341{,}428 nodes（air）；
+\item 在 WP 周圍取 100 µm 立方體（\(|x|,|y|,|z_{wp}| < 50\) µm）\(\rightarrow\) 647 nodes。
+\end{enumerate}
+擬合資料：位置 \(p_x, p_y, p_z\)（647 × 3）與 B 場 \(b_x, b_y, b_z\)（647 × 3），
+堆疊為 \(\bvec_{\text{FEM}} = [b_x;\, b_y;\, b_z]\)（1941 × 1）。
+
+\subsection{幾何參數}
+
+\begin{itemize}[leftmargin=*]
+\item Pole tip 到 WP 中心：\(R = 500\) µm（皆同）；
+\item 球面極角：\(\alpha = \arctan(\sqrt{2}) \approx 54.74^\circ\)（由 3 對正交軸 + 上下層 60° 偏移導出，幾何鎖死）；
+\item 6 極方位角：\(\theta_{P1}=0^\circ\), \(\theta_{P2}=180^\circ\), \(\theta_{P3}=120^\circ\),
+\(\theta_{P4}=300^\circ\), \(\theta_{P5}=60^\circ\), \(\theta_{P6}=240^\circ\)；
+\item Lower 三極 \(\{P1, P3, P6\}\)：磨平半錐體；Upper 三極 \(\{P2, P4, P5\}\)：完整錐體。
+\end{itemize}
+
+單位方向向量
+\begin{equation}
+\dhat_i = \big(\cos\theta_i \sin\alpha,\; \sin\theta_i \sin\alpha,\; s_i \cos\alpha\big)^\top,\quad
+s_i = \begin{cases} -1 & \text{lower (}P1, P3, P6\text{)} \\ +1 & \text{upper (}P2, P4, P5\text{)} \end{cases}
+\end{equation}
+
+\subsection{APDL \(\leftrightarrow\) Paper 索引映射}
+
+ANSYS 內部 coil 編號（APDL）與論文標籤（Paper）不同：
+\begin{equation}
+\text{APDL coil } (1,2,3,4,5,6) \;\longleftrightarrow\;
+\text{Paper } (P_1, P_3, P_6, P_5, P_2, P_4).
+\end{equation}
+擬合程式皆以 paper 編號儲存磁荷位置與 \(\KI\) 矩陣；載入 APDL coil \(k\) 資料時，
+\(\Idiss\) 向量必須先轉換到 paper 空間。
+
+\subsection{Variable Projection（VarPro）}\label{sec:varpro}
+
+三種方法共用的核心化簡技巧：模型 \(\bvec = C \cdot \bvec_{\text{unit}}(\cdot)\)，
+固定其他參數後，\(C\) 為線性最小平方解
+\begin{equation}
+C^\star = \frac{\bvec_{\text{unit}}^\top \bvec_{\text{FEM}}}{\bvec_{\text{unit}}^\top \bvec_{\text{unit}}}.
+\end{equation}
+[J] 為 per-coil \(C_k\)（共 6 個解析解）；[A] 與 [B-6x] 為共用單一 \(C\)。
+此技巧將 optimizer 搜尋維度降低 1（或 6）。
+
+% ============================================================
+\section{方法 [A]：共用 \texttt{ell} 球面擬合（2 參數）}
+% ============================================================
+
+\textbf{腳本：} \texttt{fit\_charge\_model.m} \(\rightarrow\) \texttt{data/charge\_model\_fit.mat}
+
+\subsection{情境}
+
+論文標準兩參數模型。6 個磁荷全部位於半徑 \texttt{ell} 的球面上，方向由 pole tip 幾何鎖定，
+僅使用 coil~1（paper P1）的單 coil FEM 資料。
+
+\subsection{模型設定}
+
+\begin{equation}
+\cvec_i = \texttt{ell} \cdot \dhat_i, \qquad i = 1, \dots, 6.
+\end{equation}
+約束：6 個磁荷共用同一個 \texttt{ell}，方向完全由 \(\dhat_i\) 決定，無偏移。
+
+\subsection{推導與求解}
+
+\begin{enumerate}[leftmargin=*]
+\item 給定 \texttt{ell}，建構單位場 \(\bvec_{\text{unit}}(\texttt{ell}) =
+\km \sum_i w_i (\pvec - \cvec_i)/\|\pvec - \cvec_i\|^3\)（令 \(C = 1\)）；
+\item VarPro 解析求解 \(C^\star(\texttt{ell})\)（\S\ref{sec:varpro}）；
+\item 一維搜尋 \texttt{ell}：粗掃 \(400 \sim 2000\) µm，再以 \texttt{fminbnd} 精修；
+\item 回推 \(\Ra = \Nc / (\mzero \cdot |C^\star|)\)。
+\end{enumerate}
+
+\subsection{自由度}
+\(\underbrace{1}_{\text{優化}} \;+\; \underbrace{1}_{\text{解析} (C \to \Ra)} \;=\; 2.\)
+
+\subsection{結果}
+\begin{align*}
+\texttt{ell} &= 835.4 \;\text{µm} \\
+\Ra          &= 9.21 \times 10^{8} \;\text{A/Wb} \\
+\text{向量誤差} &: \text{mean} = 4.94\%, \;\; \text{max} = 7.94\%
+\end{align*}
+
+\subsection{角色}
+
+[A] 提供 \texttt{ell} baseline，被 [B-6x] 用作固定的球面基線距離。
+
+% ============================================================
+\section{方法 [J]：6-coil 自由 3D 聯合擬合（24 參數）}
+% ============================================================
+
+\textbf{腳本：} \texttt{test\_joint\_6coil\_fit.m} \(\rightarrow\) \texttt{data/joint\_6coil\_19param\_fit.mat}
+
+\subsection{情境}
+
+6 個磁荷的 3D 位置完全自由（共 18 個座標），同時使用全部 6 組 coil 的 FEM 資料聯合擬合。
+每組 coil 有自己的 \(C_k\)（解析求解）。
+
+\subsection{為什麼需要 6-coil 聯合擬合}
+
+單 coil 時，僅受激勵極有大權重（\(5/6\)），其餘 5 極各只有 \(-1/6\) \(\Rightarrow\) 那 5 極位置幾乎不可辨識。
+6 coil 聯合則讓每組資料中由不同極主導，所有 18 個座標皆可解。
+
+\subsection{模型設定}
+
+\begin{equation}
+\cvec_i = (x_i, y_i, z_i)^\top, \qquad i = 1, \dots, 6.
+\end{equation}
+資料量：\(6 \times 647 \times 3 = 11\,646\) 數據點，per-coil \(C_k\) 各自吸收強度差。
+
+\subsection{推導與求解}
+
+\begin{enumerate}[leftmargin=*]
+\item 對每個 coil \(k\)，建構 \(\mathbf{w}_k = \KI \, \Idiss^{(k)}\)；
+\item 建構單位場 \(\bvec_{\text{unit},k}(\{\cvec_i\}, \mathbf{w}_k)\)；
+\item VarPro 解析求解 \(C_k^\star\)；
+\item 總 cost \(= \sum_{k=1}^{6} \|C_k^\star \bvec_{\text{unit},k} - \bvec_{\text{FEM},k}\|^2\)；
+\item \texttt{fminsearch} 在 18 維空間搜尋；5 組隨機初始條件驗證唯一性。
+\end{enumerate}
+
+\subsection{自由度}
+\(\underbrace{18}_{\text{優化}} \;+\; \underbrace{6}_{\text{解析} (C_1 \dots C_6)} \;=\; 24.\)
+
+資料/優化參數比：\(11\,646 / 18 \approx 647:1\)。
+
+\subsection{可辨識性}
+
+5 組隨機初始條件收斂位置 spread \(0.3 \sim 0.4\) µm（極佳）。
+
+\subsection{結果}
+
+\begin{center}
+\begin{tabular}{lrlr}
+\toprule
+Pole & \(|\cvec|\) [µm] & Pole & \(|\cvec|\) [µm] \\
+\midrule
+P1 (Lower) & 814.8 & P2 (Upper) & 765.8 \\
+P3 (Lower) & 817.3 & P4 (Upper) & 768.2 \\
+P6 (Lower) & 815.2 & P5 (Upper) & 766.8 \\
+\midrule
+Lower avg  & 815.9 & Upper avg  & 766.9 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{align*}
+\Ra^{\,\text{avg}} &\approx 1.01 \times 10^{9} \;\text{A/Wb}\;\; (\text{per-coil spread} \sim 2\%) \\
+\text{Mean error}  &: 1.11\%
+\end{align*}
+
+方向偏差：lower \(\sim 1.5^\circ\)、upper \(\sim 5.5^\circ\)。
+Lower 磁荷在錐體外部（向 \(-z\) 偏移 \(\sim 163\) µm，反映磨平半錐效應）。
+
+% ============================================================
+\section{方法 [B-6x]：全激勵 \texttt{ell+delta} 擬合（19 參數）★ 定案}
+% ============================================================
+
+\textbf{腳本：} \texttt{fit\_all6\_with\_bias.m} \(\rightarrow\) \texttt{data/all6\_bias\_fit.mat}
+
+\subsection{情境}
+
+使用 all6 資料（所有 6 coil 同時 \(+1\) A），以 \(\texttt{ell} + \bdelta\) 參數化磁荷位置，
+共用單一 \(C\)。
+
+\subsection{為什麼 all6 \(=\) 每對 \(\pm 1\)}
+
+APDL 全 \(+1\) A 時，由於 SOURC36 繞線方向：
+\begin{itemize}[leftmargin=*]
+\item Lower pole \(\{P_1, P_3, P_6\}\) 通 \(+1\) A \(\Rightarrow\) tip 為磁通匯 \(\Rightarrow\) model \(I_{\text{diss}} = +1\)；
+\item Upper pole \(\{P_2, P_4, P_5\}\) 通 \(+1\) A \(\Rightarrow\) tip 為磁通源 \(\Rightarrow\) model \(I_{\text{diss}} = -1\)。
+\end{itemize}
+因此
+\begin{equation}
+\Idiss = [+1, -1, +1, -1, -1, +1]^\top, \qquad \sum_i I_{\text{diss},i} = 0
+\;\Rightarrow\; \mathbf{w} = \KI \Idiss = \Idiss.
+\end{equation}
+所有 6 極皆 \(|w_i| = 1\)（等權約束）。
+
+\subsection{相對於 [J] 與 single-coil 的優勢}
+
+\begin{itemize}[leftmargin=*]
+\item vs [J]：共用 \(C\)（更貼近論文模型），自由度 19 vs 24；
+\item vs single-coil：所有極等權（\(|w|=1\) 全部 vs \(5/6\) 與 \(-1/6\) 混合）\(\Rightarrow\) identifiability 更佳；
+\item \(\texttt{ell}+\bdelta\) 參數化提供球面錨點，含隱式正則化，比直接 3D 位置更穩定。
+\end{itemize}
+
+\subsection{模型設定}
+
+\begin{equation}
+\cvec_i = \texttt{ell} \cdot \dhat_i + \bdelta_i, \qquad \bdelta_i \in \mathbb{R}^3,\;\; i=1,\dots,6.
+\end{equation}
+其中 \(\texttt{ell}\) 固定為 [A] 的結果（\(835\) µm），\(C\) 共用 1 個（VarPro 解析）。
+
+\subsection{推導與求解}
+
+\begin{enumerate}[leftmargin=*]
+\item 固定 \(\texttt{ell} = 835\) µm，建構 \(\dhat_i\)；
+\item 給定 \(\{\bdelta_i\}\)，計算 \(\cvec_i = \texttt{ell} \cdot \dhat_i + \bdelta_i\)；
+\item 建構單位場，VarPro 解析求解 \(C^\star\)；
+\item \texttt{fminsearch} 在 18 維 \(\bdelta\) 空間搜尋（3 組初始條件：zero、\(50\) µm、\(100\) µm random）；
+\item 回推 \(\Ra = \Nc / (\mzero \cdot |C^\star|)\)。
+\end{enumerate}
+
+\subsection{自由度}
+\(\underbrace{18}_{\bdelta} \;+\; \underbrace{1}_{C \to \Ra} \;=\; 19.\)
+
+\subsection{結果}
+
+\begin{align*}
+\texttt{ell (fixed)} &= 835 \;\text{µm} \\
+\Ra                  &= 1.03 \times 10^{9} \;\text{A/Wb} \\
+\text{Mean fitting error} &= 0.07\%
+\end{align*}
+
+\begin{center}
+\begin{tabular}{lrlr}
+\toprule
+Pole & \(|\cvec|\) [µm] & Pole & \(|\cvec|\) [µm] \\
+\midrule
+P1 (Lower) & \(\sim 781\) & P2 (Upper) & \(\sim 734\) \\
+P3 (Lower) & \(\sim 783\) & P4 (Upper) & \(\sim 734\) \\
+P6 (Lower) & \(\sim 780\) & P5 (Upper) & \(\sim 734\) \\
+\midrule
+Lower avg  & \(\sim 781\) & Upper avg  & \(\sim 734\) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+與 [J] 結果一致（per-pole 差異 \(\le 45\) µm）。
+
+% ============================================================
+\section{方法對比}
+% ============================================================
+
+\subsection{結果總表}
+
+\begin{center}
+\begin{tabular}{lcccccl}
+\toprule
+Method   & Params & \texttt{ell} [µm]   & \(|\Ra|\) [A/Wb]  & Mean err & Data         & Note \\
+\midrule
+{[A]}    & 2      & 835 (all)           & \(9.21 \times 10^8\) & 4.94\%   & 1 coil       & 論文標準 \\
+{[J]}    & 24     & \(766 \sim 818\)     & \(1.01 \times 10^9\) & 1.11\%   & 6 coils      & 中間參考 \\
+{[B-6x]} & 19     & \(734 \sim 783\)     & \(1.03 \times 10^9\) & \textbf{0.07\%} & all6 & \textbf{★ 定案} \\
+\midrule
+Diss.    & \(\sim 2\) & \(\sim 900\)     & \(\sim 6.3 \times 10^8\) & ?    & ?            & 論文發表值 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{誤差來源分解}
+
+\begin{center}
+\begin{tabular}{lr}
+\toprule
+誤差來源                                            & 貢獻 \\
+\midrule
+Point-charge 模型固有 floor （[B-6x] 接近）          & \(\sim 0.07\%\) \\
+\(+\) 方向固定 + 共用 \texttt{ell}                  （[A] 有、[J] 無） & \(\sim 1.04\%\) \\
+\(+\) 6 \(C_k\) vs 1 \(C\) + 非等權              （[A] 有、[B-6x] 無）  & \(\sim 3.83\%\) \\
+\midrule
+{[A]} total                                         & \(\sim 4.94\%\) \\
+{[J]} total                                         & \(\sim 1.11\%\) \\
+{[B-6x]} total                                      & \(\sim 0.07\%\) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Lower vs Upper 不對稱}
+
+所有方法一致顯示 \(|\cvec|_{\text{Lower}}^{\text{avg}} > |\cvec|_{\text{Upper}}^{\text{avg}}\)，
+差異 \(\sim 45 \sim 50\) µm。
+\par 物理原因：lower 三極的半錐體（磨平）使等效磁荷重心向外（朝遠離 WP 方向）偏移。
+
+\subsection{\(\Ra\) 偏離論文值}
+
+三種方法的 \(\Ra \sim 0.8 \sim 1.0 \times 10^9\)，皆高於論文發表的 \(\sim 6.3 \times 10^8\)。
+主因：FEM 用 \(\mu_r = 280\)（低場線性近似），使 WP 中心場比論文低 \(\sim 25\%\)，
+反映在等效空氣磁阻偏大。此為材料模型限制而非擬合方法差異。
+
+% ============================================================
+\section{腳本索引與相依關係}
+% ============================================================
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+Method   & Script                          & Output \\
+\midrule
+{[A]}    & \texttt{fit\_charge\_model.m}        & \texttt{charge\_model\_fit.mat} \\
+{[J]}    & \texttt{test\_joint\_6coil\_fit.m}   & \texttt{joint\_6coil\_19param\_fit.mat} \\
+{[B-6x]} & \texttt{fit\_all6\_with\_bias.m}     & \texttt{all6\_bias\_fit.mat} \;\textbf{★} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{共同相依（位於 \texttt{magnetic_sim/hexapole-long2016/analysis/}）：}
+\begin{itemize}[leftmargin=*]
+\item \texttt{mt\_constants.m} — 幾何 \& 物理常數；
+\item \texttt{import\_ansys\_data.m} — 載入 ANSYS \texttt{.dat} 節點/B 場；
+\item \texttt{filter\_iron\_nodes.m} — 幾何圓錐排除鐵心節點；
+\item \texttt{point\_charge\_model.m} — [A] 的 B 場計算（\(C = 1\) unit field）。
+\end{itemize}
+
+\paragraph{執行順序：}
+\begin{enumerate}[leftmargin=*]
+\item \texttt{fit\_charge\_model.m}     \(\;\rightarrow\;\) \texttt{charge\_model\_fit.mat}（提供 \texttt{ell} baseline）；
+\item \texttt{test\_joint\_6coil\_fit.m} \(\;\rightarrow\;\) \texttt{joint\_6coil\_19param\_fit.mat}（中間參考）；
+\item \texttt{fit\_all6\_with\_bias.m}   \(\;\rightarrow\;\) \texttt{all6\_bias\_fit.mat}（定案）。
+\end{enumerate}
+
+\paragraph{相關圖表腳本：}
+\begin{itemize}[leftmargin=*]
+\item \texttt{generate\_figures\_2\_3.m}, \texttt{generate\_figures\_2\_4.m} — 論文 Fig 2.3/2.4（純 FEM）；
+\item \texttt{generate\_figures\_2\_6.m}, \texttt{generate\_fig26\_coil1.m},
+       \texttt{plot\_fig26\_B6x.m} — 論文 Fig 2.6 變體（分別用 [A] / [J] / [B-6x]）；
+\item \texttt{verify\_superposition.m} — 線性疊加驗證（all6 \(=\) sum of singles）。
+\end{itemize}
+
+\end{document}

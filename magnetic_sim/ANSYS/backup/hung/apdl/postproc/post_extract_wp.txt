@@ -1,0 +1,29 @@
+! Post-processing: extract B-field at Working Point (origin)
+/FILNAME, coil1
+RESUME, 'sim1', 'db'
+/POST1
+SET, LAST
+
+! Find node nearest to origin (0,0,0)
+wp_node = NODE(0, 0, 0)
+
+! Get B-field components at WP
+*GET, wp_bx, NODE, wp_node, B, X
+*GET, wp_by, NODE, wp_node, B, Y
+*GET, wp_bz, NODE, wp_node, B, Z
+*GET, wp_bsum, NODE, wp_node, B, SUM
+
+! Print results
+*MSG, INFO, wp_node, wp_bx, wp_by, wp_bz, wp_bsum
+WP node=%I  BX=%G  BY=%G  BZ=%G  BSUM=%G (Tesla)
+
+! Convert to mT for readability
+wp_bx_mt = wp_bx*1000
+wp_by_mt = wp_by*1000
+wp_bz_mt = wp_bz*1000
+wp_bsum_mt = wp_bsum*1000
+
+*MSG, INFO, wp_bsum_mt
+WP BSUM = %G mT
+
+FINISH

@@ -1,0 +1,55 @@
+! Post-processing: B-field at each pole tip surface (R_norm = 0.5mm from origin)
+/FILNAME, coil1
+RESUME, 'sim1', 'db'
+/POST1
+SET, LAST
+
+! Hung pole tips 座標 (MKS)
+! R_sphere = 0.5mm, magic angle = 54.74°
+! fc_h = cos(54.74°)*0.5mm = 0.2887mm
+! fc_r = sin(54.74°)*0.5mm = 0.4082mm
+
+! P1 (lower, 0°): (0.4082, 0, -0.2887)mm
+nd1 = NODE(0.4082e-3, 0, -0.2887e-3)
+*GET, b1, NODE, nd1, B, SUM
+
+! P2 (upper, 180°): (-0.4082, 0, +0.2887)mm
+nd2 = NODE(-0.4082e-3, 0, 0.2887e-3)
+*GET, b2, NODE, nd2, B, SUM
+
+! P3 (lower, 120°): (-0.2041, 0.3536, -0.2887)mm
+nd3 = NODE(-0.2041e-3, 0.3536e-3, -0.2887e-3)
+*GET, b3, NODE, nd3, B, SUM
+
+! P4 (upper, 300°): (0.2041, -0.3536, +0.2887)mm
+nd4 = NODE(0.2041e-3, -0.3536e-3, 0.2887e-3)
+*GET, b4, NODE, nd4, B, SUM
+
+! P5 (upper, 60°): (0.2041, 0.3536, +0.2887)mm
+nd5 = NODE(0.2041e-3, 0.3536e-3, 0.2887e-3)
+*GET, b5, NODE, nd5, B, SUM
+
+! P6 (lower, 240°): (-0.2041, -0.3536, -0.2887)mm
+nd6 = NODE(-0.2041e-3, -0.3536e-3, -0.2887e-3)
+*GET, b6, NODE, nd6, B, SUM
+
+! WP center
+nd0 = NODE(0, 0, 0)
+*GET, b0, NODE, nd0, B, SUM
+
+*MSG, INFO, nd0, b0*1000
+ WP_center:  node=%I  Bsum=%G mT
+*MSG, INFO, nd1, b1*1000
+ P1_tip:     node=%I  Bsum=%G mT
+*MSG, INFO, nd2, b2*1000
+ P2_tip:     node=%I  Bsum=%G mT
+*MSG, INFO, nd3, b3*1000
+ P3_tip:     node=%I  Bsum=%G mT
+*MSG, INFO, nd4, b4*1000
+ P4_tip:     node=%I  Bsum=%G mT
+*MSG, INFO, nd5, b5*1000
+ P5_tip:     node=%I  Bsum=%G mT
+*MSG, INFO, nd6, b6*1000
+ P6_tip:     node=%I  Bsum=%G mT
+
+FINISH

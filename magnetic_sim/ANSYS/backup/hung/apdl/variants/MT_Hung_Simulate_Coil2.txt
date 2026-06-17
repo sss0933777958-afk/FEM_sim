@@ -1,0 +1,744 @@
+! =======================================
+! MT_Hung_Simulate_Coil1_6coil.txt
+! [MODIFIED] Coil R_in=10, R_out=12, DZ=15, coil on GP, 6coil comparison
+! [ADDED] 從球面幾何建立 6 根 D 型 pole
+! 上層 (P2, P4, P5)：相對水平往上傾斜 35°
+! 下層 (P1, P3, P6)：相對水平往下傾斜 5.71°
+! R_sphere = 0.5mm, 方位角 120° 等距, magic angle
+! Pole 尺寸來自 Mag_Pole_Bottom.STEP
+! =======================================
+
+/CWD,'C:\Users\pmero\Documents\Lab406\FEM_sim\magnetic_sim\hung\results\coil2'
+
+/PREP7
+*afun, DEG
+BTOL, 1e-8
+/UNITS, MKS
+MM = 1.0e-3                   ! MKS: 1mm = 0.001m
+
+! ===== Pole 尺寸 (from Mag_Pole_Bottom.STEP) =====
+POLE_R         = 3.175*MM     ! [MODIFIED] 圓柱半徑
+POLE_CONE_LEN  = 15.875*MM    ! [MODIFIED] 錐段長度
+POLE_TOTAL_LEN = 43.0*MM      ! [MODIFIED] 總長
+POLE_FLAT_LEN  = 28.0*MM      ! [MODIFIED] 削平長度
+
+! ===== 球面幾何 =====
+R_sphere = 0.5*MM             ! [MODIFIED] 球半徑
+fc_theta = 54.74              ! [ADDED] magic angle (極角)
+fc_h = cos(fc_theta)*R_sphere      ! [MODIFIED] 上層平面高度 (乘號前後不能有空格!)
+fc_r = sin(fc_theta)*R_sphere      ! [MODIFIED] 上層圓半徑
+
+TILT_UP = 35.0                ! [ADDED] 上層傾斜角 (度)
+TILT_DN = 5.71                ! [ADDED] 下層傾斜角 (度)
+
+! ===== 6 根 pole 定義 =====
+! [MODIFIED] ANSYS 座標對齊 measured 座標系：ANSYS +X = X_m = P1 方向
+! 索引 1-6 = P1-P6
+! 逆時針：P1(0°) P5(60°) P3(120°) P2(180°) P6(240°) P4(300°)
+*dim, fc_tx, , 6
+*dim, fc_ty, , 6
+*dim, fc_tz, , 6
+*dim, fc_ia, , 6              ! incline (正=上, 負=下)
+*dim, fc_ra, , 6              ! azimuth (outward 方向, = measured 方位角)
+
+! --- P1 (lower, 0°) ---
+fc_tx(1) = fc_r
+fc_ty(1) = 0
+fc_tz(1) = -fc_h
+fc_ia(1) = -TILT_DN
+fc_ra(1) = 0
+
+! --- P5 (upper, 60°) ---
+fc_tx(5) = cos(60)*fc_r
+fc_ty(5) = sin(60)*fc_r
+fc_tz(5) = fc_h
+fc_ia(5) = TILT_UP
+fc_ra(5) = 60
+
+! --- P3 (lower, 120°) ---
+fc_tx(3) = cos(120)*fc_r
+fc_ty(3) = sin(120)*fc_r
+fc_tz(3) = -fc_h
+fc_ia(3) = -TILT_DN
+fc_ra(3) = 120
+
+! --- P2 (upper, 180°) ---
+fc_tx(2) = cos(180)*fc_r
+fc_ty(2) = sin(180)*fc_r
+fc_tz(2) = fc_h
+fc_ia(2) = TILT_UP
+fc_ra(2) = 180
+
+! --- P6 (lower, 240°) ---
+fc_tx(6) = cos(240)*fc_r
+fc_ty(6) = sin(240)*fc_r
+fc_tz(6) = -fc_h
+fc_ia(6) = -TILT_DN
+fc_ra(6) = 240
+
+! --- P4 (upper, 300°) ---
+fc_tx(4) = cos(300)*fc_r
+fc_ty(4) = sin(300)*fc_r
+fc_tz(4) = fc_h
+fc_ia(4) = TILT_UP
+fc_ra(4) = 300
+
+! ===== 建立 6 根 pole（兩段式：前段 D 型 + 後段全圓）=====
+*do, fc_pi, 1, 6, 1
+
+    fc_incl = fc_ia(fc_pi)
+    fc_azim = fc_ra(fc_pi)
+
+    ! --- 方向向量 ---
+    fc_ax = cos(fc_incl)*cos(fc_azim)
+    fc_ay = cos(fc_incl)*sin(fc_azim)
+    fc_az = sin(fc_incl)
+
+    ! [MODIFIED] 截面偏移方向：決定削平面朝向
+    ! Upper pole: -side_perp → VROTAT 180° 保留下半 → 削平面朝上
+    ! Lower pole: +side_perp → VROTAT 180° 保留上半 → 削平面朝下（轉 180°）
+    *if, fc_incl, GE, 0, THEN
+        fc_nsx = -sin(fc_azim)
+        fc_nsy = cos(fc_azim)
+    *else
+        fc_nsx = sin(fc_azim)
+        fc_nsy = -cos(fc_azim)
+    *endif
+
+    ! --- Numbering ---
+    *get, KP_NUM, KP, , NUM, MAX
+    *if, KP_NUM, LT, 1, THEN
+        KP_NUM = 0
+    *endif
+    KP_START = KP_NUM + 1
+    NUMSTR, KP, KP_START
+
+    *get, LI_NUM, LINE, , NUM, MAX
+    *if, LI_NUM, LT, 1, THEN
+        LI_NUM = 0
+    *endif
+    LI_START = LI_NUM + 1
+    NUMSTR, LINE, LI_START
+
+    ! --- Tip 位置 ---
+    p1x = fc_tx(fc_pi)
+    p1y = fc_ty(fc_pi)
+    p1z = fc_tz(fc_pi)
+
+    ! --- 軸上關鍵位置 ---
+    ! 削平交界（tip 起 28mm）
+    fc_fx = p1x + POLE_FLAT_LEN*fc_ax
+    fc_fy = p1y + POLE_FLAT_LEN*fc_ay
+    fc_fz = p1z + POLE_FLAT_LEN*fc_az
+    ! 後端（tip 起 43mm）
+    fc_ex = p1x + POLE_TOTAL_LEN*fc_ax
+    fc_ey = p1y + POLE_TOTAL_LEN*fc_ay
+    fc_ez = p1z + POLE_TOTAL_LEN*fc_az
+
+    ! ==========================================
+    ! [ADDED] 前段：tip → 28mm（D 型，VROTAT 180°）
+    ! 截面偏移用 -side_perp → 削平面朝上
+    ! ==========================================
+    ! KP+0: tip（軸上）
+    ! KP+1: 錐-柱交界（偏移 -side_perp）
+    ! KP+2: 削平交界（偏移 -side_perp）
+    ! KP+3: 削平交界（軸上）
+    ! KP+4: 後端（軸上，僅作 VROTAT 軸用）
+
+    K, KP_START,   p1x, p1y, p1z
+    K, KP_START+1, p1x + POLE_CONE_LEN*fc_ax + POLE_R*fc_nsx, p1y + POLE_CONE_LEN*fc_ay + POLE_R*fc_nsy, p1z + POLE_CONE_LEN*fc_az
+    K, KP_START+2, fc_fx + POLE_R*fc_nsx, fc_fy + POLE_R*fc_nsy, fc_fz
+    K, KP_START+3, fc_fx, fc_fy, fc_fz
+    K, KP_START+4, fc_ex, fc_ey, fc_ez
+
+    L, KP_START, KP_START+1
+    L, KP_START+1, KP_START+2
+    L, KP_START+2, KP_START+3
+    L, KP_START+3, KP_START
+
+    *get, AR_NUM, AREA, , NUM, MAX
+    *if, AR_NUM, LT, 1, THEN
+        AR_NUM = 0
+    *endif
+    AR_START = AR_NUM + 1
+    NUMSTR, AREA, AR_START
+    AL, LI_START, LI_START+1, LI_START+2, LI_START+3
+
+    VROTAT, AR_START, ,,,, , KP_START, KP_START+4, 180, 2
+
+    ALLSEL, ALL
+
+    ! ==========================================
+    ! [ADDED] 後段：28mm → 43mm（全圓，VROTAT 360°）
+    ! 用獨立 KP 避免共用問題
+    ! ==========================================
+    *get, KP_NUM, KP, , NUM, MAX
+    KP_START2 = KP_NUM + 1
+    NUMSTR, KP, KP_START2
+
+    *get, LI_NUM, LINE, , NUM, MAX
+    LI_START2 = LI_NUM + 1
+    NUMSTR, LINE, LI_START2
+
+    ! KP+0: 削平交界（軸上）— 獨立 KP
+    ! KP+1: 削平交界（偏移 -side_perp）— 獨立 KP
+    ! KP+2: 後端（偏移 -side_perp）
+    ! KP+3: 後端（軸上）— 獨立 KP
+
+    K, KP_START2,   fc_fx, fc_fy, fc_fz
+    K, KP_START2+1, fc_fx + POLE_R*fc_nsx, fc_fy + POLE_R*fc_nsy, fc_fz
+    K, KP_START2+2, fc_ex + POLE_R*fc_nsx, fc_ey + POLE_R*fc_nsy, fc_ez
+    K, KP_START2+3, fc_ex, fc_ey, fc_ez
+
+    L, KP_START2, KP_START2+1
+    L, KP_START2+1, KP_START2+2
+    L, KP_START2+2, KP_START2+3
+    L, KP_START2+3, KP_START2
+
+    *get, AR_NUM, AREA, , NUM, MAX
+    AR_START2 = AR_NUM + 1
+    NUMSTR, AREA, AR_START2
+    AL, LI_START2, LI_START2+1, LI_START2+2, LI_START2+3
+
+    VROTAT, AR_START2, ,,,, , KP_START2, KP_START2+3, , 4
+
+    ALLSEL, ALL
+
+    *msg, INFO, fc_pi
+     Pole P%I built (D-shape + round)
+
+*enddo
+
+! ===== [ADDED] 安裝 block =====
+! Upper block: 25×22×10mm, L型截面, 伸入7mm
+! Lower block: 22×22×10mm, L型截面, 伸入4.5mm
+! 寬邊朝 workspace, block 厚度沿 pole 軸
+
+PENE_UP = 7.0*MM              ! 上層伸入量
+PENE_DN = 4.5*MM              ! 下層伸入量
+BLK_T   = 10.0*MM             ! block 厚度 (兩者相同)
+
+*do, fc_pi, 1, 6, 1
+
+    fc_incl = fc_ia(fc_pi)
+    fc_azim = fc_ra(fc_pi)
+
+    ! 軸方向
+    fc_ax = cos(fc_incl)*cos(fc_azim)
+    fc_ay = cos(fc_incl)*sin(fc_azim)
+    fc_az = sin(fc_incl)
+
+    ! up_perp (垂直軸,朝上)
+    fc_ux = -sin(fc_incl)*cos(fc_azim)
+    fc_uy = -sin(fc_incl)*sin(fc_azim)
+    fc_uz = cos(fc_incl)
+
+    ! side_perp (側向)
+    fc_sx = sin(fc_azim)
+    fc_sy = -cos(fc_azim)
+
+    ! Tip 位置
+    p1x = fc_tx(fc_pi)
+    p1y = fc_ty(fc_pi)
+    p1z = fc_tz(fc_pi)
+
+    ! 判斷上下層 → 決定伸入量和 block 尺寸
+    *if, fc_incl, GE, 0, THEN
+        ! Upper pole → upper block (25×22×10)
+        fc_pene = PENE_UP
+        ! L型截面 (STEP coords → local: STEP_X=side, STEP_Y=up)
+        ! Part1: side -0.5~12.5, up -11~11 (main body)
+        ! Part2: side -12.5~-0.5, up -5~5 (extension)
+        ! [MODIFIED] 平移 +0.25mm 讓 slot 中心對齊 pole 軸
+        fc_s1a = -0.25*MM
+        fc_s1b = 12.75*MM
+        fc_u1a = -11.0*MM
+        fc_u1b = 11.0*MM
+        fc_s2a = -12.25*MM
+        fc_s2b = -0.25*MM
+        fc_u2a = -5.0*MM
+        fc_u2b = 5.0*MM
+    *else
+        ! Lower pole → lower block (22×22×10)
+        ! Part1: side 0~11, up -11~11 (main body)
+        ! Part2: side -11~0, up -5~5 (extension)
+        fc_pene = PENE_DN
+        ! [MODIFIED] 平移 -2mm 讓 slot 中心(x=2)對齊 pole 軸
+        fc_s1a = 2.0*MM       ! 4-2=2
+        fc_s1b = 9.0*MM       ! 11-2=9
+        fc_u1a = -11.0*MM
+        fc_u1b = 11.0*MM
+        fc_s2a = -13.0*MM     ! -11-2=-13
+        fc_s2b = 2.0*MM       ! 4-2=2
+        fc_u2a = -5.0*MM
+        fc_u2b = 5.0*MM
+    *endif
+
+    ! Block 起點（沿 pole 軸，從 tip 算）
+    fc_bstart = POLE_TOTAL_LEN - fc_pene
+
+    ! [MODIFIED] Block 水平, global 座標, 不用 LOCAL CS
+    ! Pole 尾端
+    fc_endx = p1x + POLE_TOTAL_LEN*fc_ax
+    fc_endy = p1y + POLE_TOTAL_LEN*fc_ay
+    fc_endz = p1z + POLE_TOTAL_LEN*fc_az
+
+    ! Entry point (workspace face, pole 尾端往回 PENE)
+    fc_entx = fc_endx - fc_pene*fc_ax
+    fc_enty = fc_endy - fc_pene*fc_ay
+    fc_entz = fc_endz - fc_pene*fc_az
+
+    ! Block Z 範圍 + XY 中心
+    *if, fc_incl, GE, 0, THEN
+        ! Upper: entry=bottom, outer=top
+        fc_zbot = fc_entz
+        fc_ztop = fc_entz + BLK_T
+        ! Block 中心 = pole 軸在 outer face (top) 的 XY
+        ! outer = entry + (BLK_T/sin(tilt))*axis
+        fc_dt = BLK_T/sin(TILT_UP)
+        fc_cx = fc_entx + fc_dt*fc_ax
+        fc_cy = fc_enty + fc_dt*fc_ay
+    *else
+        ! Lower: pole 從側面穿過 block → block 垂直居中在 pole 軸上
+        fc_zbot = fc_endz - BLK_T/2
+        fc_ztop = fc_endz + BLK_T/2
+        ! Block 中心 = pole 尾端 XY
+        fc_cx = fc_endx
+        fc_cy = fc_endy
+    *endif
+
+    ! XY 方向向量 (水平面, 朝 workspace = azim+180°)
+    fc_twx = -cos(fc_azim)
+    fc_twy = -sin(fc_azim)
+    fc_sdx = sin(fc_azim)
+    fc_sdy = -cos(fc_azim)
+
+    ! --- Block Part 1: 8 角點 (global) ---
+    *get, KP_NUM, KP, , NUM, MAX
+    *if, KP_NUM, LT, 1, THEN
+        KP_NUM = 0
+    *endif
+    fc_bkp = KP_NUM + 1
+    NUMSTR, KP, fc_bkp
+
+    ! Bottom face (z=fc_zbot), 4 corners: (s1a,u1a) (s1b,u1a) (s1b,u1b) (s1a,u1b)
+    K,fc_bkp,  fc_cx+fc_s1a*fc_twx+fc_u1a*fc_sdx, fc_cy+fc_s1a*fc_twy+fc_u1a*fc_sdy, fc_zbot
+    K,fc_bkp+1,fc_cx+fc_s1b*fc_twx+fc_u1a*fc_sdx, fc_cy+fc_s1b*fc_twy+fc_u1a*fc_sdy, fc_zbot
+    K,fc_bkp+2,fc_cx+fc_s1b*fc_twx+fc_u1b*fc_sdx, fc_cy+fc_s1b*fc_twy+fc_u1b*fc_sdy, fc_zbot
+    K,fc_bkp+3,fc_cx+fc_s1a*fc_twx+fc_u1b*fc_sdx, fc_cy+fc_s1a*fc_twy+fc_u1b*fc_sdy, fc_zbot
+    ! Top face (z=fc_ztop)
+    K,fc_bkp+4,fc_cx+fc_s1a*fc_twx+fc_u1a*fc_sdx, fc_cy+fc_s1a*fc_twy+fc_u1a*fc_sdy, fc_ztop
+    K,fc_bkp+5,fc_cx+fc_s1b*fc_twx+fc_u1a*fc_sdx, fc_cy+fc_s1b*fc_twy+fc_u1a*fc_sdy, fc_ztop
+    K,fc_bkp+6,fc_cx+fc_s1b*fc_twx+fc_u1b*fc_sdx, fc_cy+fc_s1b*fc_twy+fc_u1b*fc_sdy, fc_ztop
+    K,fc_bkp+7,fc_cx+fc_s1a*fc_twx+fc_u1b*fc_sdx, fc_cy+fc_s1a*fc_twy+fc_u1b*fc_sdy, fc_ztop
+
+    V,fc_bkp,fc_bkp+1,fc_bkp+2,fc_bkp+3,fc_bkp+4,fc_bkp+5,fc_bkp+6,fc_bkp+7
+
+    ! --- Block Part 2: 8 角點 ---
+    *get, KP_NUM, KP, , NUM, MAX
+    fc_bkp2 = KP_NUM + 1
+    NUMSTR, KP, fc_bkp2
+
+    K,fc_bkp2,  fc_cx+fc_s2a*fc_twx+fc_u2a*fc_sdx, fc_cy+fc_s2a*fc_twy+fc_u2a*fc_sdy, fc_zbot
+    K,fc_bkp2+1,fc_cx+fc_s2b*fc_twx+fc_u2a*fc_sdx, fc_cy+fc_s2b*fc_twy+fc_u2a*fc_sdy, fc_zbot
+    K,fc_bkp2+2,fc_cx+fc_s2b*fc_twx+fc_u2b*fc_sdx, fc_cy+fc_s2b*fc_twy+fc_u2b*fc_sdy, fc_zbot
+    K,fc_bkp2+3,fc_cx+fc_s2a*fc_twx+fc_u2b*fc_sdx, fc_cy+fc_s2a*fc_twy+fc_u2b*fc_sdy, fc_zbot
+    K,fc_bkp2+4,fc_cx+fc_s2a*fc_twx+fc_u2a*fc_sdx, fc_cy+fc_s2a*fc_twy+fc_u2a*fc_sdy, fc_ztop
+    K,fc_bkp2+5,fc_cx+fc_s2b*fc_twx+fc_u2a*fc_sdx, fc_cy+fc_s2b*fc_twy+fc_u2a*fc_sdy, fc_ztop
+    K,fc_bkp2+6,fc_cx+fc_s2b*fc_twx+fc_u2b*fc_sdx, fc_cy+fc_s2b*fc_twy+fc_u2b*fc_sdy, fc_ztop
+    K,fc_bkp2+7,fc_cx+fc_s2a*fc_twx+fc_u2b*fc_sdx, fc_cy+fc_s2a*fc_twy+fc_u2b*fc_sdy, fc_ztop
+
+    V,fc_bkp2,fc_bkp2+1,fc_bkp2+2,fc_bkp2+3,fc_bkp2+4,fc_bkp2+5,fc_bkp2+6,fc_bkp2+7
+
+    ! VADD
+    *get, fc_bv2, VOLU, 0, NUM, MAX
+    fc_bv1 = fc_bv2 - 1
+    VADD, fc_bv1, fc_bv2
+
+    ALLSEL, ALL
+
+    *msg, INFO, fc_pi
+     Block for P%I built
+
+*enddo
+
+! 模擬不建 coil 實體 (只用 SOURC36), 但需要 COIL_H 計算 yoke 位置
+COIL_H  = 14.0*MM
+
+! ===== [ADDED] 安裝 Yoke =====
+! 環形板, 中心在原點, 軸 Z, 在上層 coil 頂面上方
+! R_inner=40, R_outer=52, 厚度 2mm
+
+YOKE_RI = 38.0*MM             ! [MODIFIED] 內徑縮小讓導柱不露出
+YOKE_RO = 62.5*MM             ! [MODIFIED] 從導磁鐵環.STEP 提取
+YOKE_T  = 2.0*MM
+
+! 上層 coil top z: 需要從上層 block 計算
+! 上層 entry_z 已在 coil 迴圈中算過, 重新算一次
+! 所有上層 pole 的 fc_endz 相同, 取 P2 的
+fc_up_endz = fc_tz(2) + POLE_TOTAL_LEN*sin(TILT_UP)
+fc_up_entz = fc_up_endz - PENE_UP*sin(TILT_UP)
+fc_up_blk_top = fc_up_entz + BLK_T
+fc_yoke_zbot = fc_up_blk_top + COIL_H
+fc_yoke_ztop = fc_yoke_zbot + YOKE_T
+
+! Yoke 截面 KP (矩形: R_inner~R_outer, zbot~ztop)
+*get, KP_NUM, KP, , NUM, MAX
+*if, KP_NUM, LT, 1, THEN
+    KP_NUM = 0
+*endif
+fc_ykp = KP_NUM + 1
+NUMSTR, KP, fc_ykp
+
+K, fc_ykp,   YOKE_RI, 0, fc_yoke_zbot
+K, fc_ykp+1, YOKE_RO, 0, fc_yoke_zbot
+K, fc_ykp+2, YOKE_RO, 0, fc_yoke_ztop
+K, fc_ykp+3, YOKE_RI, 0, fc_yoke_ztop
+! 軸 KP (Z 軸, 通過原點)
+K, fc_ykp+4, 0, 0, fc_yoke_zbot
+K, fc_ykp+5, 0, 0, fc_yoke_ztop
+
+*get, LI_NUM, LINE, , NUM, MAX
+*if, LI_NUM, LT, 1, THEN
+    LI_NUM = 0
+*endif
+fc_yli = LI_NUM + 1
+NUMSTR, LINE, fc_yli
+
+L, fc_ykp, fc_ykp+1
+L, fc_ykp+1, fc_ykp+2
+L, fc_ykp+2, fc_ykp+3
+L, fc_ykp+3, fc_ykp
+
+*get, AR_NUM, AREA, , NUM, MAX
+*if, AR_NUM, LT, 1, THEN
+    AR_NUM = 0
+*endif
+fc_yar = AR_NUM + 1
+NUMSTR, AREA, fc_yar
+AL, fc_yli, fc_yli+1, fc_yli+2, fc_yli+3
+
+VROTAT, fc_yar, ,,,, , fc_ykp+4, fc_ykp+5, , 4
+
+ALLSEL, ALL
+
+*msg, INFO
+ Yoke built
+
+! ===== [ADDED] 安裝磁場導柱 =====
+! 3 根, 連接 yoke → 下層 block, 穿過上層 coil 中心孔
+! 簡化為圓柱 R=4mm, 從 lower_block_top 到 yoke_bottom
+! XY = 下層 block 中心 (P1, P3, P6)
+
+GP_R = 4.0*MM                 ! 導柱半徑 (取最大截面)
+GP_H = 41.0*MM                ! [MODIFIED] 導柱從 yoke 底到 block 底（不伸出）
+GP_YOKE_R = 57.5*MM           ! [ADDED] 導柱在 yoke 上的徑向位置 (螺絲孔)
+
+! 下層 block top z (所有下層相同)
+fc_lo_endz = fc_tz(1) + POLE_TOTAL_LEN*sin(-TILT_DN)
+fc_lo_blk_top = fc_lo_endz + BLK_T/2
+
+! 下層 pole 索引: P1=1, P3=3, P6=6
+*dim, fc_gpi, , 3
+fc_gpi(1) = 1
+fc_gpi(2) = 3
+fc_gpi(3) = 6
+
+*do, fc_gi, 1, 3, 1
+    fc_idx = fc_gpi(fc_gi)
+    fc_azim = fc_ra(fc_idx)
+
+    ! 導柱 XY = 下層 block 中心
+    fc_ax = cos(-TILT_DN)*cos(fc_azim)
+    fc_ay = cos(-TILT_DN)*sin(fc_azim)
+    fc_gcx = fc_tx(fc_idx) + POLE_TOTAL_LEN*fc_ax
+    fc_gcy = fc_ty(fc_idx) + POLE_TOTAL_LEN*fc_ay
+
+    ! [MODIFIED] 導柱頂端接 yoke 底面，底端剛好到 block 底
+    fc_gz2 = fc_yoke_zbot             ! 導柱頂 = yoke 底面
+    fc_gz1 = fc_lo_endz - BLK_T/2    ! [MODIFIED] 導柱底 = lower block 底（不伸出）
+
+    ! 截面 KP (矩形 0~R, z1~z2) + 軸 KP
+    *get, KP_NUM, KP, , NUM, MAX
+    *if, KP_NUM, LT, 1, THEN
+        KP_NUM = 0
+    *endif
+    fc_gkp = KP_NUM + 1
+    NUMSTR, KP, fc_gkp
+
+    K, fc_gkp,   fc_gcx+GP_R, fc_gcy, fc_gz1
+    K, fc_gkp+1, fc_gcx+GP_R, fc_gcy, fc_gz2
+    K, fc_gkp+2, fc_gcx,      fc_gcy, fc_gz2
+    K, fc_gkp+3, fc_gcx,      fc_gcy, fc_gz1
+
+    *get, LI_NUM, LINE, , NUM, MAX
+    *if, LI_NUM, LT, 1, THEN
+        LI_NUM = 0
+    *endif
+    fc_gli = LI_NUM + 1
+    NUMSTR, LINE, fc_gli
+
+    L, fc_gkp, fc_gkp+1
+    L, fc_gkp+1, fc_gkp+2
+    L, fc_gkp+2, fc_gkp+3
+    L, fc_gkp+3, fc_gkp
+
+    *get, AR_NUM, AREA, , NUM, MAX
+    *if, AR_NUM, LT, 1, THEN
+        AR_NUM = 0
+    *endif
+    fc_gar = AR_NUM + 1
+    NUMSTR, AREA, fc_gar
+    AL, fc_gli, fc_gli+1, fc_gli+2, fc_gli+3
+
+    ! VROTAT 繞垂直軸 (通過導柱中心)
+    VROTAT, fc_gar, ,,,, , fc_gkp+2, fc_gkp+3, , 4
+
+    ALLSEL, ALL
+
+    *msg, INFO, fc_gi
+     Guide post %I built
+
+*enddo
+
+! ===== [ADDED] 上層 Core =====
+! 3 根, 連接 yoke → 上層 block, R=4mm
+! XY = 上層 block 中心 (P2, P4, P5)
+
+fc_up_blk_top2 = fc_up_entz + BLK_T
+
+*dim, fc_upi, , 3
+fc_upi(1) = 2
+fc_upi(2) = 4
+fc_upi(3) = 5
+
+*do, fc_ui, 1, 3, 1
+    fc_idx = fc_upi(fc_ui)
+    fc_azim = fc_ra(fc_idx)
+
+    ! 上層 core XY = 上層 block 中心
+    fc_pene_tmp = PENE_UP
+    fc_ax_tmp = cos(TILT_UP)*cos(fc_azim)
+    fc_ay_tmp = cos(TILT_UP)*sin(fc_azim)
+    fc_endx_tmp = fc_tx(fc_idx) + POLE_TOTAL_LEN*fc_ax_tmp
+    fc_endy_tmp = fc_ty(fc_idx) + POLE_TOTAL_LEN*fc_ay_tmp
+    fc_endz_tmp = fc_tz(fc_idx) + POLE_TOTAL_LEN*sin(TILT_UP)
+    fc_entx_tmp = fc_endx_tmp - fc_pene_tmp*fc_ax_tmp
+    fc_enty_tmp = fc_endy_tmp - fc_pene_tmp*fc_ay_tmp
+    fc_dt_tmp = BLK_T/sin(TILT_UP)
+    fc_ucx = fc_entx_tmp + fc_dt_tmp*fc_ax_tmp
+    fc_ucy = fc_enty_tmp + fc_dt_tmp*fc_ay_tmp
+
+    ! Core Z: 上層 block top → yoke bottom
+    fc_ucz1 = fc_up_blk_top2
+    fc_ucz2 = fc_yoke_zbot
+
+    ! 截面 + 軸 KP
+    *get, KP_NUM, KP, , NUM, MAX
+    *if, KP_NUM, LT, 1, THEN
+        KP_NUM = 0
+    *endif
+    fc_uckp = KP_NUM + 1
+    NUMSTR, KP, fc_uckp
+
+    K,fc_uckp,  fc_ucx+GP_R, fc_ucy, fc_ucz1
+    K,fc_uckp+1,fc_ucx+GP_R, fc_ucy, fc_ucz2
+    K,fc_uckp+2,fc_ucx,      fc_ucy, fc_ucz2
+    K,fc_uckp+3,fc_ucx,      fc_ucy, fc_ucz1
+
+    *get, LI_NUM, LINE, , NUM, MAX
+    fc_ucli = LI_NUM + 1
+    NUMSTR, LINE, fc_ucli
+    L,fc_uckp,fc_uckp+1
+    L,fc_uckp+1,fc_uckp+2
+    L,fc_uckp+2,fc_uckp+3
+    L,fc_uckp+3,fc_uckp
+
+    *get, AR_NUM, AREA, , NUM, MAX
+    fc_ucar = AR_NUM + 1
+    NUMSTR, AREA, fc_ucar
+    AL,fc_ucli,fc_ucli+1,fc_ucli+2,fc_ucli+3
+
+    VROTAT,fc_ucar,,,,,,fc_uckp+2,fc_uckp+3,,4
+
+    ALLSEL, ALL
+
+    *msg, INFO, fc_ui
+     Upper core %I built
+
+*enddo
+
+! ===== VADD 所有鋼件 =====
+CSYS, 0
+ALLSEL, ALL
+*get, fc_nv_all, VOLU, 0, NUM, MAX
+*msg, INFO, fc_nv_all
+ Steel volumes before VADD: %I
+FLST, 2, fc_nv_all, 6, ORDE, 2
+FITEM, 2, 1
+FITEM, 2, -fc_nv_all
+VADD, P51X
+
+! ===== 空氣域 =====
+SPH_FINE_R = 7.0*MM
+AIR_CYL_R  = 80.0*MM
+AIR_CYL_H  = 80.0*MM
+SPHERE, 0, SPH_FINE_R
+fc_air_zc = (fc_yoke_ztop + fc_lo_endz - BLK_T/2)/2
+WPOFFS, 0, 0, fc_air_zc - AIR_CYL_H/2
+CYL4, 0, 0, AIR_CYL_R, , , , AIR_CYL_H
+WPOFFS, 0, 0, -(fc_air_zc - AIR_CYL_H/2)
+
+! ===== VOVLAP + VGLUE =====
+ALLSEL, ALL
+VOVLAP, ALL
+NUMCMP, VOLU
+VGLUE, 8, 1, 2, 3, 4, 5, 6
+
+! ===== 材料 (比照 Long2016, 用精確 volume ID) =====
+ET, 1, SOLID96
+ET, 2, SOURC36
+MP, MURX, 1, 1
+MP, MURX, 2, 280
+MP, MURX, 3, 1
+
+ALLSEL, ALL
+VSEL, S, VOLU, , 1, 6
+VSEL, A, VOLU, , 8
+VATT, 2, 1, 1
+
+VSEL, S, VOLU, , 7
+VATT, 1, 1, 1
+
+VSEL, S, VOLU, , 9
+VATT, 3, 1, 1
+ALLSEL, ALL
+
+! ===== Mesh (SmartSize 3 → 接近 Long2016 的 ~3M elements) =====
+mshape, 1, 3D
+mshkey, 0
+
+! [MODIFIED] 分區 mesh: 球內細、鋼件中、空氣粗
+! 目標: 總元素 ~3M (跟 Long2016 一樣)
+
+! 1. Pole tips (V1-V6): 最細 — 磁極尖端需最高解析度
+VSEL, S, VOLU, , 1, 6
+ESIZE, 0.3e-3               ! tip mesh 0.3mm
+vmesh, ALL
+ALLSEL, ALL
+
+! 1b. 球內空氣 (V7): 細
+VSEL, S, VOLU, , 7
+ESIZE, 0.3e-3               ! 0.3mm
+vmesh, ALL
+ALLSEL, ALL
+
+! 2. 鋼主體 (V8): 中等
+VSEL, S, VOLU, , 8
+ESIZE, 1.5e-3               ! 1.5mm
+vmesh, ALL
+ALLSEL, ALL
+
+! 3. 圓柱外空氣 (V9): 較粗
+VSEL, S, VOLU, , 9
+ESIZE, 4.0e-3               ! 4mm
+vmesh, ALL
+ALLSEL, ALL
+
+*get, fc_nn, NODE, 0, COUNT
+*get, fc_ne, ELEM, 0, COUNT
+*msg, INFO, fc_nn, fc_ne
+ Mesh: Nodes=%I, Elements=%I
+
+! ===== SOURC36 Coils =====
+TURNS = 70
+COIL_MEAN_R = 11.0*MM            ! [MODIFIED] (R_in=10 + R_out=12)/2 = 11mm
+COIL_DY = 2.0*MM                 ! R_out - R_in = 12 - 10 = 2mm
+COIL_DZ = 15.0*MM                ! 高度 15mm
+
+*dim, CURR_ARRAY, , 6
+CURR_ARRAY(1) = 0
+CURR_ARRAY(2) = 1
+CURR_ARRAY(3) = 0
+CURR_ARRAY(4) = 0
+CURR_ARRAY(5) = 0
+CURR_ARRAY(6) = 0
+
+R, 1, 1, TURNS*CURR_ARRAY(1), COIL_DY, COIL_DZ
+R, 2, 1, TURNS*CURR_ARRAY(2), COIL_DY, COIL_DZ
+R, 3, 1, TURNS*CURR_ARRAY(3), COIL_DY, COIL_DZ
+R, 4, 1, TURNS*CURR_ARRAY(4), COIL_DY, COIL_DZ
+R, 5, 1, TURNS*CURR_ARRAY(5), COIL_DY, COIL_DZ
+R, 6, 1, TURNS*CURR_ARRAY(6), COIL_DY, COIL_DZ
+
+NUMCMP, NODE
+*get, NODE_NUM, NODE, , NUM, MAX
+NODE_START = NODE_NUM + 1
+
+! [MODIFIED] Coil 在 guide post / upper core 上（水平，照 Long2016 參數）
+*do, sc_pi, 1, 6, 1
+    sc_azim = fc_ra(sc_pi)
+    sc_incl = fc_ia(sc_pi)
+
+    *if, sc_incl, LT, 0, THEN
+        ! Lower pole → coil 貼在 lower block 上方
+        sc_ax = cos(-TILT_DN)*cos(sc_azim)
+        sc_ay = cos(-TILT_DN)*sin(sc_azim)
+        sc_cx = fc_tx(sc_pi) + POLE_TOTAL_LEN*sc_ax
+        sc_cy = fc_ty(sc_pi) + POLE_TOTAL_LEN*sc_ay
+        sc_cz = fc_lo_blk_top + COIL_DZ/2    ! [MODIFIED] block 頂 + DZ/2
+    *else
+        ! Upper pole → coil 貼在 upper block 上方
+        sc_ax = cos(TILT_UP)*cos(sc_azim)
+        sc_ay = cos(TILT_UP)*sin(sc_azim)
+        sc_cx = fc_tx(sc_pi) + POLE_TOTAL_LEN*sc_ax
+        sc_cy = fc_ty(sc_pi) + POLE_TOTAL_LEN*sc_ay
+        sc_cz = fc_up_blk_top2 + COIL_DZ/2   ! [MODIFIED] block 頂 + DZ/2
+    *endif
+
+    sc_n1 = NODE_START + (sc_pi-1)*3
+    sc_n2 = sc_n1 + 1
+    sc_n3 = sc_n1 + 2
+
+    ! [MODIFIED] 順時針繞向：N1/N2 swap → flux 向 -Z（toward block）
+    N, sc_n1, sc_cx, sc_cy+COIL_MEAN_R, sc_cz
+    N, sc_n2, sc_cx+COIL_MEAN_R, sc_cy, sc_cz
+    N, sc_n3, sc_cx, sc_cy, sc_cz
+
+    TYPE, 2
+    REAL, sc_pi
+    E, sc_n1, sc_n2, sc_n3
+*enddo
+
+*msg, INFO
+ SOURC36 done
+
+SAVE, 'sim1', 'db'
+
+! ===== /SOLU =====
+FINISH
+/SOLU
+
+! BC: 圓柱外表面 MAG=0
+ALLSEL, ALL
+NSEL, S, LOC, Z, fc_air_zc + AIR_CYL_H/2 - 1e-5, fc_air_zc + AIR_CYL_H/2 + 1e-5
+D, ALL, MAG, 0
+ALLSEL, ALL
+NSEL, S, LOC, Z, fc_air_zc - AIR_CYL_H/2 - 1e-5, fc_air_zc - AIR_CYL_H/2 + 1e-5
+D, ALL, MAG, 0
+
+LOCAL, 99, 1, 0, 0, 0
+CSYS, 99
+ALLSEL, ALL
+NSEL, S, LOC, X, AIR_CYL_R*0.99, AIR_CYL_R*1.01
+D, ALL, MAG, 0
+CSYS, 0
+ALLSEL, ALL
+
+magsolv, 3, , , , , 1
+
+FINISH
+/POST1
+SET, LAST
+SAVE, 'sim1', 'db'
+FINISH

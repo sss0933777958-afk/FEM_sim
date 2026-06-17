@@ -1,0 +1,266 @@
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{siunitx}
+\usepackage{colortbl}
+\usepackage{xcolor}
+
+\title{Multipole-Expansion Fit Model for the In-Plane Magnetic Field
+       of a Kuo Quadrupole Magnetic Tweezer}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+\vspace{-2em}
+
+\section*{Context}
+This document specifies the forward model used to fit the magnetic
+field in the workspace plane ($z = 0$) of the Kuo Quadrupole
+magnetic tweezer (4 in-plane poles, fillet radius
+\SI{45}{\micro\metre}, pole-tip distance
+$R_{\text{pole}} = \SI{500}{\micro\metre}$). The model replaces the
+classical point-charge ansatz by a component-wise real polynomial
+expansion, which is the natural representation of the projection of
+a 3D harmonic field onto the workspace plane.
+
+% =====================================================================
+\section{Forward model}
+\label{sec:forward}
+
+For each Cartesian field component
+$\alpha \in \{x, y, z\}$, the model expresses
+$B_\alpha$ at any planar point $(x, y)$ as a real polynomial in
+the normalized coordinates $\tilde{x} \equiv x / r_0$ and
+$\tilde{y} \equiv y / r_0$:
+%
+\begin{equation}
+\label{eq:model}
+\boxed{\;
+B_\alpha(x, y) \;=\;
+\sum_{\substack{i,\, j \,\ge\, 0 \\ i + j \,\le\, M}}
+   c^{(\alpha)}_{ij}
+   \left(\frac{x}{r_0}\right)^{i}
+   \left(\frac{y}{r_0}\right)^{j}
+\;,\qquad
+\alpha \in \{x, y, z\}
+\;}
+\end{equation}
+%
+The three components $B_x$, $B_y$, $B_z$ are fit \emph{independently}
+(no coupling is imposed across components).
+The symbols are summarized in Table~\ref{tab:symbols}.
+
+\begin{table}[htbp]
+\centering
+\caption{Symbol definitions for the forward model in
+         Eq.~\eqref{eq:model}.}
+\label{tab:symbols}
+\begin{tabular}{c l l}
+\toprule
+Symbol & Meaning & Value / range \\
+\midrule
+$\alpha$           & Cartesian field component index & $\{x, y, z\}$ \\
+$(x, y)$           & Field-evaluation point in workspace plane &
+                     $z = 0$ slice \\
+$r_0$              & Normalization length (conditioning) &
+                     $\SI{500}{\micro\metre}$ ($= R_{\text{pole}}$) \\
+$M$                & Polynomial truncation total degree &
+                     $1, 2, \dots$ (e.g.\ 4, 6, 8, 12) \\
+$(i, j)$           & Multi-index of basis monomial & $i + j \le M$ \\
+$c^{(\alpha)}_{ij}$ & Real expansion coefficient (free parameter)
+                     & determined by least squares \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The number of free coefficients per component is
+%
+\begin{equation}
+\label{eq:dof}
+K(M) \;=\; \binom{M + 2}{2} \;=\; \frac{(M+1)(M+2)}{2},
+\end{equation}
+%
+so the total number of free parameters in the joint
+$(B_x, B_y, B_z)$ model is $3\,K(M)$.
+
+% =====================================================================
+\section{Coefficient interpretation}
+\label{sec:interpretation}
+
+The polynomial basis
+$\{\tilde{x}^{i} \tilde{y}^{j} : i + j \le M\}$
+is a complete basis for analytic functions on a disk and contains
+the conventional in-plane multipole expansion as a subset.
+A monomial of total degree $n = i + j$ corresponds to multipole
+moments of order $\le n$. Specifically, the change of basis to
+$r^{n} \cos(m\phi)$ and $r^{n} \sin(m\phi)$
+($r^{2} = \tilde{x}^{2} + \tilde{y}^{2}$,
+$\phi = \arctan(y/x)$, $0 \le m \le n$, with $n - m$ even)
+gives the standard multipole interpretation listed in
+Table~\ref{tab:interp}.
+
+\begin{table}[htbp]
+\centering
+\caption{Physical meaning of the coefficients
+         $c^{(\alpha)}_{ij}$ grouped by total degree
+         $n = i + j$, expressed for each component
+         $\alpha \in \{x, y, z\}$. ``Multipole order'' refers to the
+         angular index $m$ in the $\cos(m\phi)$ / $\sin(m\phi)$
+         basis. Each row contributes $(n + 1)$ monomials per component.}
+\label{tab:interp}
+\begin{tabular}{c c c l}
+\toprule
+$n = i+j$ & Coefficients & Multipole order(s) $m$ & Physical meaning \\
+\midrule
+0 & $c^{(\alpha)}_{00}$
+  & $0$
+  & Uniform background (offset, measurement bias) \\
+1 & $c^{(\alpha)}_{10},\; c^{(\alpha)}_{01}$
+  & $1$
+  & Linear field gradient (dipole-equivalent) \\
+2 & $c^{(\alpha)}_{20},\; c^{(\alpha)}_{11},\; c^{(\alpha)}_{02}$
+  & $0,\; 2$
+  & \cellcolor{yellow!25}\textbf{Quadrupole gradient (dominant mode for 4 in-plane poles)} \\
+3 & $c^{(\alpha)}_{30},\, c^{(\alpha)}_{21},\, c^{(\alpha)}_{12},\, c^{(\alpha)}_{03}$
+  & $1,\; 3$
+  & Sextupole correction \\
+4 & $c^{(\alpha)}_{40} \dots c^{(\alpha)}_{04}$
+  & $0,\; 2,\; 4$
+  & Octupole correction \\
+$\vdots$ & $\vdots$ & $\vdots$ & higher-order corrections \\
+$M$ & $c^{(\alpha)}_{M,0} \dots c^{(\alpha)}_{0,M}$
+    & up to $m = M$
+    & truncation level chosen by accuracy requirement \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Relation to analytic 2D Taylor expansion.}
+A pure 2D analytic Taylor expansion of the complex field would write
+$B_x - i B_y = \sum_{m=0}^{M} a_m\, z^{m}$
+with $z = x + i y$, contributing only $2(M+1)$ real DOF per component
+pair. The polynomial basis in Eq.~\eqref{eq:model} is a
+strict superset, containing additional non-analytic monomials such
+as $r^{2}\, x^{i} y^{j}$ that the analytic ansatz cannot represent.
+Section~\ref{sec:why} explains why these extra terms are required.
+
+% =====================================================================
+\section{Why a component-wise polynomial basis}
+\label{sec:why}
+
+Inside the air region surrounding the workspace, the magnetic field
+$\mathbf{B}$ satisfies the source-free 3D equations
+$\nabla \cdot \mathbf{B} = 0$ and
+$\nabla \times \mathbf{B} = \mathbf{0}$,
+so each Cartesian component is a 3D harmonic function.
+Restricted to the workspace plane $z = 0$, however, the 2D divergence
+of the in-plane components is in general \emph{not} zero:
+%
+\begin{equation}
+\label{eq:divxy}
+\left.\frac{\partial B_x}{\partial x}
+   + \frac{\partial B_y}{\partial y}\right|_{z=0}
+\;=\; -\,\left.\frac{\partial B_z}{\partial z}\right|_{z=0}
+\;\neq\; 0.
+\end{equation}
+%
+For a $z$-symmetric pole geometry the right-hand side is even in $z$
+and finite at $z = 0$, even though $B_z(z = 0) = 0$ by symmetry.
+Consequently, the in-plane field components do not satisfy the 2D
+Cauchy--Riemann conditions that an analytic Taylor expansion in
+$z = x + i y$ would require. The component-wise real polynomial
+basis in Eq.~\eqref{eq:model} does \emph{not} impose such a
+constraint and therefore captures the full projection of the 3D
+harmonic field onto the workspace plane, including the non-analytic
+$r^{2k}$ corrections.
+
+% =====================================================================
+\section{Fit procedure}
+\label{sec:fit}
+
+Given $N$ FEM samples
+$\{(x_k, y_k,\, B_x^{(k)},\, B_y^{(k)},\, B_z^{(k)})\}_{k=1}^{N}$
+(typically restricted to $z = 0 \pm z_{\text{tol}}$ and to a sampling
+disk $x_k^{2} + y_k^{2} \le R^{2}$, with iron-pole wedges removed),
+construct the design matrix
+%
+\begin{equation}
+A_{k,\,p(i,j)}
+\;=\; \left(\frac{x_k}{r_0}\right)^{i}
+      \left(\frac{y_k}{r_0}\right)^{j},
+\qquad i + j \le M,
+\end{equation}
+%
+where $p(i,j)$ enumerates the $K(M)$ basis monomials. The $A$ matrix
+has shape $N \times K$ and is shared across components. Each
+component is then fit by ordinary linear least squares,
+%
+\begin{equation}
+\label{eq:lstsq}
+\hat{\mathbf{c}}^{(\alpha)}
+\;=\; \arg\min_{\mathbf{c}^{(\alpha)} \in \mathbb{R}^{K}}
+      \big\|\, A\, \mathbf{c}^{(\alpha)} - \mathbf{B}^{(\alpha)} \,\big\|_{2}^{\,2},
+\qquad \alpha \in \{x, y, z\},
+\end{equation}
+%
+which has a closed-form normal-equation solution and contains no
+nonlinear parameters and no iterative optimization.
+
+% =====================================================================
+\section{Degrees of freedom}
+\label{sec:dof}
+
+\begin{table}[htbp]
+\centering
+\caption{Free parameters per component, $K(M) = (M+1)(M+2)/2$, and
+         total parameters $3K(M)$ for the joint
+         $(B_x, B_y, B_z)$ model. The rightmost column lists the
+         highest multipole order $m_{\max} = M$ that the
+         truncation can represent.}
+\label{tab:dof}
+\begin{tabular}{c c c c}
+\toprule
+$M$ & $K(M)$ per component & $3K(M)$ total &
+      Highest multipole $m_{\max}$ \\
+\midrule
+1  &  3  &   9 & dipole \\
+2  &  6  &  18 & quadrupole \\
+3  & 10  &  30 & sextupole \\
+4  & 15  &  45 & octupole \\
+6  & 28  &  84 & dodecapole \\
+8  & 45  & 135 & 16-pole \\
+10 & 66  & 198 & 20-pole \\
+12 & 91  & 273 & 24-pole \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% =====================================================================
+\appendix
+\section{Explicit basis listing for $M = 4$}
+\label{app:m4}
+
+For concreteness, the $K(4) = 15$ basis monomials of total degree
+$\le 4$ used in Eq.~\eqref{eq:model} are
+%
+\begin{align*}
+n = 0:\quad & 1 \\
+n = 1:\quad & \tilde{x},\; \tilde{y} \\
+n = 2:\quad & \tilde{x}^{2},\; \tilde{x}\tilde{y},\; \tilde{y}^{2} \\
+n = 3:\quad & \tilde{x}^{3},\; \tilde{x}^{2}\tilde{y},\;
+              \tilde{x}\tilde{y}^{2},\; \tilde{y}^{3} \\
+n = 4:\quad & \tilde{x}^{4},\; \tilde{x}^{3}\tilde{y},\;
+              \tilde{x}^{2}\tilde{y}^{2},\;
+              \tilde{x}\tilde{y}^{3},\; \tilde{y}^{4}
+\end{align*}
+%
+with $\tilde{x} = x / r_0$, $\tilde{y} = y / r_0$.
+Each of $B_x, B_y, B_z$ uses these same 15 monomials, fit
+independently, for a total of $3 \times 15 = 45$ free parameters
+at $M = 4$.
+
+\end{document}

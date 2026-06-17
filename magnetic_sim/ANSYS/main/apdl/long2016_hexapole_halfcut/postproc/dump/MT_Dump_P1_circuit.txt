@@ -1,0 +1,33 @@
+! MT_Dump_P1_circuit.txt — re-extract the P1 (all-source, graded) field over the full
+! magnetic-circuit region as a y~0 side-view slab, from the saved P1_graded master .db.
+! The graded sim only dumped the 2mm WP sphere; this recovers the wide-region field
+! needed for the P1 magnetic-circuit side view (cone->arm->post->yoke->coil).
+! Slab: |y| < 1mm, x in [-5,60]mm, z in [-17,5]mm (APDL frame).
+
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\coil1\graded'
+
+RESUME,'3DMTmagneticfield','db'
+
+/POST1
+SET,LAST
+ALLSEL,ALL
+
+! y~0 slab over the whole circuit
+NSEL,S,LOC,X,-5e-3, 60e-3
+NSEL,R,LOC,Y,-1e-3,  1e-3
+NSEL,R,LOC,Z,-17e-3, 5e-3
+
+/HEADER,OFF,OFF,OFF,OFF,OFF,OFF
+/FORMAT,10,,20,12,,
+/PAGE,1000000,,1000000
+
+/OUTPUT,'coil1_coord_circuit','dat'
+NLIST,ALL, , ,COORD
+/OUTPUT
+
+/OUTPUT,'coil1_bfield_circuit','dat'
+PRNSOL,B,COMP
+/OUTPUT
+
+ALLSEL,ALL
+FINISH

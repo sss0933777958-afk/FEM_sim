@@ -1,0 +1,36 @@
+! Post-processing: export coordinate + B-field data for MATLAB plotting
+! Output: coil2_coord_all.dat, coil2_bfield_all.dat (full model)
+!         coil2_coord_wp.dat,  coil2_bfield_wp.dat  (WP region, R<2mm)
+/FILNAME, coil1
+RESUME, 'sim1', 'db'
+/POST1
+SET, LAST
+
+/FORMAT,7,,17,9,1000000
+/PAGE,1000000,,1000000
+
+! --- Full dataset ---
+ALLSEL, ALL
+/OUTPUT, 'coil2_coord_all', 'dat'
+NLIST, ALL, , , COORD
+/OUTPUT
+/OUTPUT, 'coil2_bfield_all', 'dat'
+PRNSOL, B, COMP
+/OUTPUT
+
+! --- WP region (nodes within 2mm of origin) ---
+! Hung WP center = origin (0,0,0)
+LOCAL, 12, 2, 0, 0, 0       ! Spherical CS at origin
+CSYS, 12
+NSEL, S, LOC, X, 0, 2e-3    ! R < 2mm
+CSYS, 0
+
+/OUTPUT, 'coil2_coord_wp', 'dat'
+NLIST, ALL, , , COORD
+/OUTPUT
+/OUTPUT, 'coil2_bfield_wp', 'dat'
+PRNSOL, B, COMP
+/OUTPUT
+
+ALLSEL, ALL
+FINISH

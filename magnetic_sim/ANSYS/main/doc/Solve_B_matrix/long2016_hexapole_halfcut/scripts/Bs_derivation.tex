@@ -1,0 +1,88 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{xeCJK}
+\usepackage{geometry}
+\usepackage{graphicx}
+\geometry{margin=2.5cm}
+
+\setCJKmainfont{Noto Sans CJK TC}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+
+\begin{document}
+
+\section{Derivation: $V_{out}/V_{in}$}
+
+\begin{enumerate}
+    \item 令輸入為 $I_{in}$,輸出為 $V_{out} = V_{ij}$。
+
+    其中
+    \begin{equation}
+        V_{ij} = S \cdot B_{ij}
+    \end{equation}
+
+    則
+    \begin{equation}
+        \frac{V_{ij}}{I_{in}} = \frac{S}{I_{in}}
+        \begin{bmatrix}
+            B_{11} & \cdots & \cdots & \cdots & \cdots & B_{16} \\
+            B_{21} & \cdots & \cdots & \cdots & \cdots & B_{26} \\
+            B_{31} & \cdots & \cdots & \cdots & \cdots & \vdots \\
+            B_{41} & \cdots & \cdots & \cdots & \cdots & \vdots \\
+            B_{51} & \cdots & \cdots & \cdots & \cdots & \vdots \\
+            B_{61} & \cdots & \cdots & \cdots & \cdots & B_{66}
+        \end{bmatrix}
+        = \frac{S}{I_{in}} \overline{B}_S
+    \end{equation}
+
+    其中 $B_{ij}$ 為激發第 $j$ 個磁極、從第 $i$ 個磁極量測到之磁通密度,$S$ 為霍爾感測器敏感度。
+
+    \item 考慮放大器 $\Rightarrow I_{in} = V_{in} \cdot k_A$
+
+    則
+    \begin{equation}
+        \frac{V_{out}}{V_{in}} = \underbrace{\frac{k_A \cdot S}{I_{in}}}_{\alpha}\,\overline{B}_S
+    \end{equation}
+\end{enumerate}
+
+\section{Sensor placement}
+
+每顆磁極都依照 Long Fei 標準:沿磁極表面 4.572 mm + 垂直磁極表面 0.41 mm,Hall sensor 直徑 0.3 mm,disc 平均(721 點 annular sampling)。
+
+\textbf{Lower poles (P1/P3/P6)} — milled flat (halfcut 切割面),$\hat{n}_+$ 純垂直 milled flat 向外。
+
+\textbf{Upper poles (P2/P4/P5)} — 沿 cone top slant 4.572 mm + 垂直 slant 0.41 mm,$\hat{n}_+ = (-\sin\beta, \cos\beta, 0)$ in pole-local,$\beta = \arctan(3/15) \approx 11.31^\circ$。
+
+\section{FEM 結果 (Long2016 verbatim baseline)}
+
+\textbf{模擬條件}:Long2016 verbatim halfcut hexapole,$\mu_r = 280$,$I_{in} = 1.0$ A,每顆 coil 70 匝 CCW (looking from $+z$),mesh node $\approx 494{,}873$ 一致。Sign convention: 對每根磁極 $j$,raw FEM 矩陣的第 $j$ 行乘以 $\mathrm{sign}(\bar{B}_S(j,j))$ 使對角為正(+I 對應 yoke $\to$ tip $\to$ WP)。
+
+\subsection{$\overline{B}_S$ matrix (Tesla)}
+
+\input{Bbar_S_4p572_body.tex}
+
+\subsection{$V_{out}/V_{in}$ matrix (dimensionless)}
+
+$V_{out}/V_{in} = k_A \cdot S_{\mathrm{Hall}} / I_{in} \cdot \overline{B}_S$,with $k_A = 0.3614$\,A/V (power amplifier gain),$S_{\mathrm{Hall}} = 130$\,V/T (EQ-730L)。
+
+\input{Vout_Vin_4p572_body.tex}
+
+\subsection{Lower vs Upper diagonal}
+
+\begin{tabular}{lll}
+\hline
+組別 & 磁極 & $\bar{B}_S$ 對角 (mT) \\
+\hline
+Lower (halfcut D-shape) & P1, P3, P6 & 10.6, 11.5, 10.2 (avg 10.74) \\
+Upper (full cone)       & P2, P4, P5 & 9.5, 9.4, 9.5 (avg 9.49) \\
+\hline
+\multicolumn{2}{l}{比例 Lower / Upper} & 1.13 \\
+\hline
+\end{tabular}
+
+Lower halfcut 把 cone 削掉一半,殘餘截面 flux 集中,fringe 在 milled flat 上方反而更強;upper full cone flux 在整個截面分散,fringe 較弱。
+
+\end{document}

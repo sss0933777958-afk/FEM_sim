@@ -1,0 +1,65 @@
+! Post-processing: trace B-field along P1 magnetic circuit
+/FILNAME, coil1
+RESUME, 'sim1', 'db'
+/POST1
+SET, LAST
+
+! P1 磁路採樣點 (MKS, meters)
+! P1: azim=0°, tilt=-5.71°
+! Pole axis: (0.995, 0, -0.0995)
+! Tip: (0.408e-3, 0, -0.289e-3)
+! Pole end: (43.2e-3, 0, -4.57e-3)
+! GP XY: (43.2e-3, 0), GP Z: -9.57e-3 ~ 44.9e-3
+! Block Z: -9.57e-3 ~ 0.43e-3
+
+! --- Point 1: GP 頂端 (靠 yoke) ---
+nd1 = NODE(43.2e-3, 0, 40e-3)
+*GET, b1, NODE, nd1, B, SUM
+
+! --- Point 2: GP 中段 (coil 位置附近) ---
+nd2 = NODE(43.2e-3, 0, 4e-3)
+*GET, b2, NODE, nd2, B, SUM
+
+! --- Point 3: Block 頂面 ---
+nd3 = NODE(43.2e-3, 0, 0.4e-3)
+*GET, b3, NODE, nd3, B, SUM
+
+! --- Point 4: Block 中心 (pole end) ---
+nd4 = NODE(43.2e-3, 0, -4.5e-3)
+*GET, b4, NODE, nd4, B, SUM
+
+! --- Point 5: Pole 近 block 端 (R~35mm) ---
+nd5 = NODE(35e-3, 0, -3.8e-3)
+*GET, b5, NODE, nd5, B, SUM
+
+! --- Point 6: Pole 中段 (R~20mm) ---
+nd6 = NODE(20e-3, 0, -2.2e-3)
+*GET, b6, NODE, nd6, B, SUM
+
+! --- Point 7: Pole 近 tip (R~5mm) ---
+nd7 = NODE(5e-3, 0, -0.7e-3)
+*GET, b7, NODE, nd7, B, SUM
+
+! --- Point 8: WP (原點) ---
+nd8 = NODE(0, 0, 0)
+*GET, b8, NODE, nd8, B, SUM
+
+! --- 輸出 ---
+*MSG, INFO, nd1, b1*1000
+ PT1 GP_top:       node=%I  Bsum=%G mT
+*MSG, INFO, nd2, b2*1000
+ PT2 GP_coil:      node=%I  Bsum=%G mT
+*MSG, INFO, nd3, b3*1000
+ PT3 Block_top:    node=%I  Bsum=%G mT
+*MSG, INFO, nd4, b4*1000
+ PT4 Block_ctr:    node=%I  Bsum=%G mT
+*MSG, INFO, nd5, b5*1000
+ PT5 Pole_block:   node=%I  Bsum=%G mT
+*MSG, INFO, nd6, b6*1000
+ PT6 Pole_mid:     node=%I  Bsum=%G mT
+*MSG, INFO, nd7, b7*1000
+ PT7 Pole_tip:     node=%I  Bsum=%G mT
+*MSG, INFO, nd8, b8*1000
+ PT8 WP:           node=%I  Bsum=%G mT
+
+FINISH

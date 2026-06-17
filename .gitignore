@@ -1,0 +1,81 @@
+# ANSYS result files (large, regenerable)
+*.rmg
+*.esav
+*.full
+*.rst
+*.rth
+*.db
+*.emat
+*.BCS
+*.stat
+*.r001
+*.ldhi
+*.mlv
+*.page
+
+# ANSYS log/temp files
+*.err
+*.log
+*.out
+*.lock
+*.mntr
+
+# Results directories
+**/results/
+
+# FEM output byproducts under magnetic_sim/ANSYS/main/ANSYS_data/ (FEM data tree; renamed from results/ -> data/ -> ANSYS_data/).
+# The heavy .rst/.db/.rmg/.esav/.full/.out/.log are already ignored globally above by extension.
+# These remaining ANSYS artifacts had no extension rule and were only covered by **/results/.
+# Scoped to magnetic_sim/ANSYS/main/ANSYS_data/ so they never touch tracked files elsewhere (e.g. apdl/*.inp).
+# MATLAB outputs live in magnetic_sim/ANSYS/main/MATLAB_data/ (*.mat/.csv/.npz) and stay TRACKED.
+magnetic_sim/ANSYS/main/ANSYS_data/**/*.dat
+magnetic_sim/ANSYS/main/ANSYS_data/**/*.DSP*
+magnetic_sim/ANSYS/main/ANSYS_data/**/*.dbe
+magnetic_sim/ANSYS/main/ANSYS_data/**/*.dbb
+magnetic_sim/ANSYS/main/ANSYS_data/**/*.rdb
+magnetic_sim/ANSYS/main/ANSYS_data/**/*.cdb
+magnetic_sim/ANSYS/main/ANSYS_data/**/*.ans
+magnetic_sim/ANSYS/main/ANSYS_data/**/*.inp
+magnetic_sim/ANSYS/main/ANSYS_data/**/*.bat
+magnetic_sim/ANSYS/main/ANSYS_data/**/*.BAT
+magnetic_sim/ANSYS/main/ANSYS_data/**/*.png
+magnetic_sim/ANSYS/main/ANSYS_data/**/scratch
+magnetic_sim/ANSYS/main/ANSYS_data/**/scratch/
+
+# SEMulator GUI build artefacts (auto-generated next to .vproc when GUI builds)
+magnetic_sim/ANSYS/main/semulator/**/*-Input/
+magnetic_sim/ANSYS/main/semulator/**/*-Output/
+magnetic_sim/ANSYS/main/semulator/**/__semu_*.py
+
+# COMSOL files (large binary, not tracked)
+magnetic_sim/ANSYS/backup/hung/comsol/
+
+# COMSOL model files (.mph) — large binary, many >100MB (exceed GitHub limit); keep local only
+*.mph
+
+# MATLAB temp files
+*.asv
+*.m~
+
+# Python bytecode cache
+__pycache__/
+*.pyc
+
+# ANSYS auto-generated cleanup scripts
+cleanup-ansys-*.bat
+file0.bat
+
+# MCP server config (local)
+.mcp.json
+
+# LTspice simulation byproducts (regenerable from .asc/.cir sources)
+magnetic_sim/ANSYS/main/LTspice/**/*.raw
+magnetic_sim/ANSYS/main/LTspice/**/*.net
+
+# OS files
+Thumbs.db
+desktop.ini
+.DS_Store
+.claude/settings.local.json
+# Claude Code local settings at ANY depth (root rule above is anchored)
+**/.claude/settings.local.json

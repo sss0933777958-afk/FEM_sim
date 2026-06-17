@@ -1,0 +1,46 @@
+/FILNAME, coil1
+RESUME, 'sim1', 'db'
+
+! Graphics setup for PNG output
+/SHOW, PNG
+/GFILE, 800
+/COLOR, ELEM, BLUE, 1
+/COLOR, ELEM, CYAN, 2
+/COLOR, ELEM, RED, 3
+
+! --- Plot 1: Volume plot (isometric) ---
+/PREP7
+ALLSEL, ALL
+/VIEW, 1, 1, 1, 1
+/ANG, 1, 0
+/AUTO, 1
+/TITLE, Hung Hexapole Model - Isometric View (Volumes)
+VPLOT, ALL
+
+! --- Plot 2: Volume plot (top view) ---
+/VIEW, 1, 0, 0, 1
+/ANG, 1, 0
+/AUTO, 1
+/TITLE, Hung Hexapole Model - Top View
+VPLOT, ALL
+
+! --- Plot 3: Volume plot (front view) ---
+/VIEW, 1, 0, 1, 0
+/ANG, 1, 0
+/AUTO, 1
+/TITLE, Hung Hexapole Model - Front View
+VPLOT, ALL
+
+! --- Plot 4: Isometric without outer air cylinder ---
+VSEL, S, VOLU, , 1, 8
+ASLV, S
+LSLA, S
+KSLK, S
+/VIEW, 1, 1, 1, 1
+/AUTO, 1
+/TITLE, Hung Hexapole - Steel + Sphere Air (no outer air)
+VPLOT, ALL
+
+ALLSEL, ALL
+/SHOW, CLOSE
+FINISH

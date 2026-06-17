@@ -1,0 +1,35 @@
+! Post-processing wrapper for l=250 coil1 (jobname = coil1_l250_conv)
+! Export coordinate + B-field data for MATLAB plotting.
+! [MODIFIED] /FILNAME matches jobname 'coil1_l250_conv' so SET finds coil1_l250_conv.rmg
+/FILNAME, coil1_l250_conv
+RESUME, 'sim1', 'db'
+/POST1
+SET, LAST
+
+/FORMAT,7,,17,9,1000000
+/PAGE,1000000,,1000000
+
+! --- Full dataset ---
+ALLSEL, ALL
+/OUTPUT, 'coil1_coord_all', 'dat'
+NLIST, ALL, , , COORD
+/OUTPUT
+/OUTPUT, 'coil1_bfield_all', 'dat'
+PRNSOL, B, COMP
+/OUTPUT
+
+! --- WP region (nodes within 2mm of origin) ---
+LOCAL, 12, 2, 0, 0, 0
+CSYS, 12
+NSEL, S, LOC, X, 0, 2e-3
+CSYS, 0
+
+/OUTPUT, 'coil1_coord_wp', 'dat'
+NLIST, ALL, , , COORD
+/OUTPUT
+/OUTPUT, 'coil1_bfield_wp', 'dat'
+PRNSOL, B, COMP
+/OUTPUT
+
+ALLSEL, ALL
+FINISH

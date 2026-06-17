@@ -1,0 +1,54 @@
+\documentclass[12pt]{article}
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{fontspec}
+
+\newfontfamily\cjk{Noto Sans CJK HK}
+\newcommand{\zh}[1]{{\cjk #1}}
+
+\setlength{\parindent}{0pt}
+
+\begin{document}
+
+{\large\textbf{NRMSE \zh{的兩種正規化方式}}}
+
+\vspace{1.5em}
+
+\textbf{1. \zh{除以最大場}（normalized by the maximum field）}
+
+\[
+\mathrm{NRMSE}_{\max}
+=\frac{\sqrt{\dfrac{1}{N}\displaystyle\sum_{k=1}^{N}
+\big\|\mathbf{B}_{\mathrm{model}}(\mathbf{p}_k)-\mathbf{B}_{\mathrm{FEM}}(\mathbf{p}_k)\big\|^{2}}}
+{\displaystyle\max_{k}\big|\mathbf{B}_{\mathrm{FEM}}(\mathbf{p}_k)\big|}\times100\%
+\]
+
+\vspace{1em}
+
+\textbf{2. \zh{除以平均場}（normalized by the mean field）}
+
+\[
+\mathrm{NRMSE}_{\mathrm{mean}}
+=\frac{\sqrt{\dfrac{1}{N}\displaystyle\sum_{k=1}^{N}
+\big\|\mathbf{B}_{\mathrm{model}}(\mathbf{p}_k)-\mathbf{B}_{\mathrm{FEM}}(\mathbf{p}_k)\big\|^{2}}}
+{\dfrac{1}{N}\displaystyle\sum_{k=1}^{N}\big|\mathbf{B}_{\mathrm{FEM}}(\mathbf{p}_k)\big|}\times100\%
+\]
+
+\vspace{2em}
+
+\zh{其中}：
+
+\[
+\text{RMSE}=\sqrt{\frac{1}{N}\sum_{k=1}^{N}
+\big\|\mathbf{B}_{\mathrm{model}}(\mathbf{p}_k)-\mathbf{B}_{\mathrm{FEM}}(\mathbf{p}_k)\big\|^{2}}
+\]
+
+\begin{itemize}
+\item $\mathbf{B}_{\mathrm{model}}(\mathbf{p}_k)$：\zh{模型在取樣點} $\mathbf{p}_k$ \zh{預測的磁場}
+\item $\mathbf{B}_{\mathrm{FEM}}(\mathbf{p}_k)$：\zh{FEM 在取樣點} $\mathbf{p}_k$ \zh{的磁場（真值）}
+\item $N$：\zh{取樣點總數}
+\item \zh{分母分別為最大場} $\max_k|\mathbf{B}_{\mathrm{FEM}}|$ \zh{與平均場}
+      $\frac{1}{N}\sum_k|\mathbf{B}_{\mathrm{FEM}}|$
+\end{itemize}
+
+\end{document}

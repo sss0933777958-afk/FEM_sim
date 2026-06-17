@@ -1,0 +1,51 @@
+% Style mirrors magnetic_sim/ANSYS/main/doc/kuo_quadrupole/scripts/fitting_F20_cube70.tex
+% Long Fei FULL hexapole — Method [J] joint 6-coil 19-parameter fit
+% cube_half = 25 um (smallest, lowest err, near WP)
+
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{booktabs}
+\usepackage{siunitx}
+\usepackage{colortbl}
+\usepackage{xcolor}
+\usepackage{amsmath}
+
+\begin{document}
+
+\begin{table}[htbp]
+\centering
+\caption{Long Fei FULL hexapole — Method [J] joint 6-coil fit\quad (fitting region: cube $\pm$25~\si{\micro\metre}, full FEM mesh)}
+\label{tab:long2016_J_cube25}
+
+\vspace{0.5em}
+\[
+\text{Error} = \frac{1}{N}\sum_{i=1}^{N} \frac{|\mathbf{B}_{model} - \mathbf{B}_{FEM}|_i}{|\mathbf{B}_{FEM}|_i} \cdot 100
+\]
+\vspace{0.5em}
+
+\begin{tabular}{c S[table-format=4.1] S[table-format=+5.1] S[table-format=1.2e+2]}
+\toprule
+ & \multicolumn{3}{c}{\cellcolor{yellow!30}\textbf{Long Fei hexapole (Error = 0.29\%)}} \\
+\cmidrule(lr){2-4}
+Pole & {$|\ell|$ [\si{\micro\metre}]} & {Tip$\to$Charge [\si{\micro\metre}]} & {$R_{a}$ [A/Wb]} \\
+\midrule
+P1 & 7939.8 &  +7439.8 & 1.18e+07 \\
+P2 & 6308.9 &  +5808.9 & 1.25e+07 \\
+P3 & 7008.9 &  +6508.9 & 1.62e+07 \\
+P4 & 5505.7 &  +5005.7 & 9.36e+06 \\
+P5 & 6711.7 &  +6211.7 & 1.71e+07 \\
+P6 & 9780.0 &  +9280.0 & 8.51e+06 \\
+\midrule
+Average & 7209.2 &  +6709.2 & 1.26e+07 \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.5em}
+\small
+Tip$\to$Origin = 500~\si{\micro\metre} \hfill Tip$\to$Charge = $|\ell|$ $-$ 500
+
+\vspace{0.3em}
+$N_c = 70$ (70 turns per coil, Long Fei dissertation hexapole). 
+\end{table}
+
+\end{document}

@@ -1,0 +1,65 @@
+! Export single Mag_Pole_Bottom with full-round body + R=40um fillet tip
+! (matches _round_filleted variant: full-round, no D-cut, 80um diameter fillet)
+! Output: magnetic_sim/hung/IGES/Mag_Pole_Bottom_round_filleted.iges
+/CWD,'C:\Users\pmero\Documents\Lab406\FEM_sim\magnetic_sim\hung\IGES'
+
+/CLEAR, NOSTART
+/PREP7
+*afun, DEG
+MM = 1.0/25.4                 ! inches for SolidWorks compatibility
+
+! ===== Pole dimensions =====
+POLE_R         = 3.175*MM
+POLE_CONE_LEN  = 15.875*MM
+POLE_TOTAL_LEN = 43.0*MM
+
+! ===== Tip fillet (40 µm radius = 80 µm diameter, matches Long 2016) =====
+POLE_TIP_R = 0.040*MM
+
+! Cone semi-angle ANG2
+POLE_CONE_HYP = sqrt(POLE_CONE_LEN*POLE_CONE_LEN + POLE_R*POLE_R)
+ANG1 = acos(POLE_R/POLE_CONE_HYP)
+ANG2 = 90 - ANG1
+
+! Fillet geometry (Long 2016 formulas, smooth tangent)
+L_FILLET        = POLE_CONE_LEN*POLE_TIP_R/POLE_R
+POLE_TIP_CENTER = L_FILLET/cos(ANG2)
+POLE_CONE2_LEN  = L_FILLET*cos(ANG2)
+POLE_TIP_R2     = POLE_TIP_R*cos(ANG2)
+FILLET_DROP     = POLE_TIP_CENTER - POLE_TIP_R
+FILLET_PROT     = POLE_CONE2_LEN - FILLET_DROP
+
+! New cone-cyl junction X (shifted back by FILLET_DROP)
+JUNC_X = POLE_CONE_LEN - FILLET_DROP
+
+! ===== Keypoints (full-round profile, no flat cut) =====
+! K1: foremost point of fillet (at original tip position)
+! K2: tangent point on cone (fillet meets cone surface)
+! K3: cone-cyl junction (shifted back so cone semi-angle stays exact)
+! K4: far end (off axis, cylinder edge)
+! K5: far end (on axis)
+! K6: fillet center (for LARC)
+
+K, 1, 0,              0,           0
+K, 2, FILLET_PROT,    POLE_TIP_R2, 0
+K, 3, JUNC_X,         POLE_R,      0
+K, 4, POLE_TOTAL_LEN, POLE_R,      0
+K, 5, POLE_TOTAL_LEN, 0,           0
+K, 6, POLE_TIP_R,     0,           0
+
+! ===== Lines: fillet arc + cone + cylinder + end face + axis =====
+LARC, 1, 2, 6, POLE_TIP_R    ! Line 1: fillet arc K1->K2 centred at K6
+L, 2, 3                       ! Line 2: cone surface
+L, 3, 4                       ! Line 3: cylinder surface (full length to far end)
+L, 4, 5                       ! Line 4: end face (K4 -> K5 on axis)
+L, 5, 1                       ! Line 5: axis back to foremost
+
+AL, 1, 2, 3, 4, 5             ! Area 1: pentagon
+
+! ===== Single VROTAT 360° around K1-K5 axis (full-round body) =====
+VROTAT, 1, ,,,, , 1, 5, 360, 4
+
+ALLSEL, ALL
+IGESOUT, 'Mag_Pole_Bottom_round_filleted', 'iges'
+
+FINISH

@@ -1,0 +1,94 @@
+! Export single Mag_Pole_Bottom with 40µm diameter (20µm radius) tip fillet
+! Output: magnetic_sim/hung/IGES/Mag_Pole_Bottom_filleted.iges
+/CWD,'C:\Users\pmero\Documents\Lab406\FEM_sim\magnetic_sim\hung\IGES'
+
+/CLEAR, NOSTART
+/PREP7
+*afun, DEG
+MM = 1.0/25.4
+
+! ===== Pole dimensions =====
+POLE_R         = 3.175*MM
+POLE_CONE_LEN  = 15.875*MM
+POLE_TOTAL_LEN = 43.0*MM
+POLE_FLAT_LEN  = 28.0*MM
+
+! ===== Tip fillet (80 µm diameter = 40 µm radius, 與 sim 腳本 + Long 2016 一致) =====
+POLE_TIP_R = 0.040*MM
+
+! Cone semi-angle ANG2
+POLE_CONE_HYP = sqrt(POLE_CONE_LEN*POLE_CONE_LEN + POLE_R*POLE_R)
+ANG1 = acos(POLE_R/POLE_CONE_HYP)
+ANG2 = 90 - ANG1
+
+! Fillet geometry (from Long2016 formulas)
+L_FILLET        = POLE_CONE_LEN*POLE_TIP_R/POLE_R
+POLE_TIP_CENTER = L_FILLET/cos(ANG2)
+POLE_CONE2_LEN  = L_FILLET*cos(ANG2)
+POLE_TIP_R2     = POLE_TIP_R*cos(ANG2)
+FILLET_DROP     = POLE_TIP_CENTER - POLE_TIP_R
+FILLET_PROT     = POLE_CONE2_LEN - FILLET_DROP
+
+! New cone-cyl junction X (shifted back by FILLET_DROP)
+JUNC_X = POLE_CONE_LEN - FILLET_DROP
+
+! ===== Front section keypoints =====
+! K1: foremost point of fillet (at original tip position)
+! K2: tangent point on cone (where fillet meets cone surface)
+! K3: cone-cyl junction (shifted back so cone semi-angle stays exact)
+! K4: flat-cut boundary (offset)
+! K5: flat-cut boundary (axis)
+! K6: far end (axis, used as VROTAT axis endpoint)
+! K7: fillet center (for LARC)
+
+K, 1, 0,            0,           0
+K, 2, FILLET_PROT,  POLE_TIP_R2, 0
+K, 3, JUNC_X,       POLE_R,      0
+K, 4, POLE_FLAT_LEN, POLE_R,     0
+K, 5, POLE_FLAT_LEN, 0,          0
+K, 6, POLE_TOTAL_LEN, 0,         0
+K, 7, POLE_TIP_R,   0,           0
+
+! ===== Front section lines =====
+LARC, 1, 2, 7, POLE_TIP_R    ! Line 1: fillet arc K1→K2 around K7
+L, 2, 3                       ! Line 2: cone surface
+L, 3, 4                       ! Line 3: cylinder surface
+L, 4, 5                       ! Line 4: flat
+L, 5, 1                       ! Line 5: axis back to foremost
+
+AL, 1, 2, 3, 4, 5             ! Area 1: pentagon
+
+! VROTAT 180° around K1-K6 axis
+VROTAT, 1, ,,,, , 1, 6, 180, 2
+
+ALLSEL, ALL
+
+! ===== Back section (full round, 28~43 mm) =====
+*get, KP_NUM, KP, , NUM, MAX
+KS = KP_NUM + 1
+NUMSTR, KP, KS
+
+*get, LI_NUM, LINE, , NUM, MAX
+LS = LI_NUM + 1
+NUMSTR, LINE, LS
+
+K, KS,   POLE_FLAT_LEN, 0,      0
+K, KS+1, POLE_FLAT_LEN, POLE_R, 0
+K, KS+2, POLE_TOTAL_LEN, POLE_R, 0
+K, KS+3, POLE_TOTAL_LEN, 0,     0
+
+L, KS,   KS+1
+L, KS+1, KS+2
+L, KS+2, KS+3
+L, KS+3, KS
+
+*get, AR_NUM, AREA, , NUM, MAX
+AS = AR_NUM + 1
+NUMSTR, AREA, AS
+AL, LS, LS+1, LS+2, LS+3
+VROTAT, AS, ,,,, , KS, KS+3, , 4
+
+ALLSEL, ALL
+IGESOUT, 'Mag_Pole_Bottom_filleted', 'iges'
+
+FINISH

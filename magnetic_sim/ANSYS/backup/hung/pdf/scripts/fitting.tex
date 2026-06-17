@@ -1,0 +1,49 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{booktabs}
+\usepackage{siunitx}
+\usepackage{colortbl}
+\usepackage{xcolor}
+\usepackage{amsmath}
+
+\begin{document}
+
+\begin{table}[htbp]
+\centering
+\caption{Long (2016) \quad Hung \quad (fitting region: $\pm$50~\si{\micro\metre})}
+\label{tab:long_hung_50um}
+
+\vspace{0.5em}
+\[
+\text{Error} = \frac{\text{RMSE}}{|\mathbf{B}_{FEM}|} \cdot 100
+\]
+\vspace{0.5em}
+
+\begin{tabular}{c c S[table-format=3.1] S[table-format=3.1] S[table-format=3.1] S[table-format=3.1]}
+\toprule
+ & & \multicolumn{2}{c}{Long (Error=1.19\%)} & \multicolumn{2}{c}{\cellcolor{yellow!30}\textbf{Hung (Error=0.28\%)}} \\
+\cmidrule(lr){3-4} \cmidrule(lr){5-6}
+Pole & & {$|\ell|$ [\si{\micro\metre}]} & {Tip$\to$Charge} & {$|\ell|$ [\si{\micro\metre}]} & {Tip$\to$Charge} \\
+\midrule
+P1 & Lower & 814.8 & 314.8 & 921.2 & 421.2 \\
+P2 & Upper & 765.8 & 265.8 & 918.0 & 418.0 \\
+P3 & Lower & 817.3 & 317.3 & 921.7 & 421.7 \\
+P4 & Upper & 768.2 & 268.2 & 918.0 & 418.0 \\
+P5 & Upper & 766.8 & 266.8 & 918.6 & 418.6 \\
+P6 & Lower & 815.2 & 315.2 & 923.5 & 423.5 \\
+\midrule
+Lower &       & 815.9 & 315.8 & 922.1 & 422.1 \\
+Upper &       & 766.9 & 266.9 & 918.2 & 418.2 \\
+\midrule
+$R_a$ (Lower) & & \multicolumn{2}{c}{$\sim 1.01 \times 10^{9}$\,A/Wb} & \multicolumn{2}{c}{$7.77 \times 10^{8}$\,A/Wb} \\
+$R_a$ (Upper) & & \multicolumn{2}{c}{$\sim 1.01 \times 10^{9}$\,A/Wb} & \multicolumn{2}{c}{$8.83 \times 10^{8}$\,A/Wb} \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.5em}
+\small
+Tip$\to$Origin = 500~\si{\micro\metre} \hfill Tip$\to$Charge = $|\ell|$ $-$ 500
+
+\end{table}
+
+\end{document}

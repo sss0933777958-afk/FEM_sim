@@ -1,0 +1,61 @@
+\documentclass[border=10pt]{standalone}
+
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning}
+\usepackage{xeCJK}
+\setCJKmainfont{Noto Sans CJK TC}
+
+\tikzset{
+    startstop/.style={
+        rectangle, rounded corners,
+        minimum width=3.5cm, minimum height=0.9cm,
+        text centered, draw=black, fill=blue!10,
+        font=\small
+    },
+    process/.style={
+        rectangle,
+        minimum width=4.5cm, minimum height=0.9cm,
+        text centered, draw=black, fill=orange!15,
+        font=\small
+    },
+    decision/.style={
+        diamond, aspect=2.2,
+        minimum width=4cm, minimum height=1cm,
+        text centered, draw=black, fill=yellow!20,
+        font=\small, inner sep=0pt
+    },
+    success/.style={
+        rectangle, rounded corners,
+        minimum width=4cm, minimum height=0.9cm,
+        text centered, draw=black, fill=green!20,
+        font=\small
+    },
+    arrow/.style={thick, -{Stealth[length=2.5mm]}}
+}
+
+\begin{document}
+
+\begin{tikzpicture}[node distance=1.3cm]
+
+\node (start) [startstop] {1. 初始猜 $\mu_r = 280$};
+
+\node (sim) [process, below=of start] {2. 跑模擬,得到 $H$ 範圍 $[H_{\min},\,H_{\max}]$};
+
+\node (lookup) [process, below=of sim] {3. 查表:該範圍內真實 $\mu_r$ 平均值 $=\mu_{r,\text{new}}$};
+
+\node (check) [decision, below=1.5cm of lookup] {4. $\left|\mu_{r,\text{new}} - 280\right| < 10\%$?};
+
+\node (yes) [success, below=1.6cm of check] {✅ 收斂,假設成立};
+
+\node (no) [process, right=2.5cm of check] {改用 $\mu_{r,\text{new}}$ 重跑};
+
+\draw [arrow] (start) -- (sim);
+\draw [arrow] (sim) -- (lookup);
+\draw [arrow] (lookup) -- (check);
+\draw [arrow] (check) -- node[anchor=east, font=\small] {Yes} (yes);
+\draw [arrow] (check) -- node[anchor=south, font=\small] {No} (no);
+\draw [arrow] (no.north) |- ([yshift=2mm]sim.east) -- (sim.east);
+
+\end{tikzpicture}
+
+\end{document}

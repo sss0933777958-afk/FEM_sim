@@ -1,0 +1,77 @@
+! post_plot_geometry.txt — Tip region view matching Long2016 Fig (b)
+
+/AUX15
+IOPTN, IGES, SMOOTH
+IOPTN, MERGE, YES
+IOPTN, SOLID, YES
+IOPTN, SMALL, YES
+IOPTN, GTOLER, DEFA
+IGESIN, 'Full_Assembly_filleted', 'iges', 'C:\Users\pmero\Documents\Lab406\FEM_sim\magnetic_sim\hung\IGES'
+FINISH
+
+/PREP7
+ALLSEL, ALL
+
+/CWD,'C:\Users\pmero\Documents\Lab406\FEM_sim\magnetic_sim\hung\figures\geometry\ansys_raw'
+
+! PNG setup
+/SHOW, PNG, , 0
+PNGR, ORIENT, HORIZ
+PNGR, COLOR, 2
+PNGR, COMP, 1, 0
+/GFILE, 1600
+
+! Dark background
+/RGB, INDEX, 20, 20, 25, 0
+/RGB, INDEX, 100, 100, 100, 15
+
+! ===== View 1: Full assembly isometric =====
+ALLSEL, ALL
+/VIEW, 1, 1, -1, 0.7
+/AUTO, 1
+/REP, FAST
+VPLOT
+
+! ===== View 2: Tip region only =====
+! Select only areas near origin (within 30mm = 1.18 inch)
+! This hides yoke (R=38-62mm) and shows poles + blocks
+ASEL, S, LOC, X, -1.2, 1.2
+ASEL, R, LOC, Y, -1.2, 1.2
+ASEL, R, LOC, Z, -1.2, 1.2
+/VIEW, 1, 0.8, -0.6, 0.5
+/AUTO, 1
+/REP, FAST
+APLOT
+
+! ===== View 3: Closer to tips (within 15mm = 0.59 inch) =====
+ALLSEL, ALL
+ASEL, S, LOC, X, -0.6, 0.6
+ASEL, R, LOC, Y, -0.6, 0.6
+ASEL, R, LOC, Z, -0.6, 0.6
+/VIEW, 1, 0.8, -0.6, 0.5
+/AUTO, 1
+/REP, FAST
+APLOT
+
+! ===== View 4: Even closer (within 5mm = 0.2 inch) =====
+ALLSEL, ALL
+ASEL, S, LOC, X, -0.25, 0.25
+ASEL, R, LOC, Y, -0.25, 0.25
+ASEL, R, LOC, Z, -0.25, 0.25
+/VIEW, 1, 0.8, -0.6, 0.5
+/AUTO, 1
+/REP, FAST
+APLOT
+
+! ===== View 5: Top view of tips =====
+ALLSEL, ALL
+ASEL, S, LOC, X, -0.6, 0.6
+ASEL, R, LOC, Y, -0.6, 0.6
+ASEL, R, LOC, Z, -0.6, 0.6
+/VIEW, 1, 0, 0, 1
+/AUTO, 1
+/REP, FAST
+APLOT
+
+/SHOW, CLOSE
+FINISH

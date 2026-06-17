@@ -1,0 +1,290 @@
+! ====================================================================
+! Long Fei HEXAPOLE (HALFCUT) — geometry-only export
+! 1 yoke ring + 6 protrusions + 3 lower poles + 3 upper tilted poles
+! Lower poles (P1/P3/P6): milled half cone (磨平半錐體)
+! Upper poles (P2/P4/P5): full cone (完整錐體)
+! Sourced from: magnetic_sim/ANSYS/main/apdl/long2016_hexapole_full/geom/MT_Geom_Export.txt
+! Half-cut logic replicated from hexapole-long2016 MT_..._Coil1.txt L186-188.
+! NO air domain, NO mesh, NO solve. Exports IGES + 3 PNG views.
+! ====================================================================
+
+! [MODIFIED] /CWD points to neutral scratch dir; ANSYS .db/.out/.png stay there
+! [MODIFIED] IGESOUT at end of file writes .iges directly into magnetic_sim/ANSYS/main/IGES/ dir
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\geom_export_metre_gap200um'
+
+Finish
+/cle
+/PREP7
+
+POLE_NUM = 6
+*afun, DEG
+BTOL, 1e-7
+/UNITS, MKS
+
+R_norm    = 500e-6       ! [MODIFIED] match Long Fei original (was 1e-3) — Long Fei p.14 + APDL Coil1.txt:38
+R_norm_xy = R_norm*sqrt(2.0/3.0)
+R_norm_z  = R_norm/sqrt(3.0)
+
+YOKE_IN_R  = 84e-3/2.0
+YOKE_OUT_R = 106e-3/2.0
+YOKE_MID_R = (YOKE_IN_R + YOKE_OUT_R)/2.0
+YOKE_H     = 2.0e-3
+PROT_R     = 10.0e-3/2.0
+PROT_H     = 7.0e-3
+
+POLE_R        = 6.0e-3/2
+POLE_TIP_R    = 40.0e-6
+POLE_CONE_LEN = 15e-3
+POLE_CONE_HYP = sqrt(POLE_CONE_LEN**2 + POLE_R**2)
+ANG1 = acos(POLE_R/POLE_CONE_HYP)
+ANG2 = 90 - ANG1
+L = POLE_CONE_LEN*POLE_TIP_R/POLE_R
+POLE_TIP_CENTER = L/cos(ANG2)
+POLE_CONE2_LEN  = L*cos(ANG2)
+POLE_TIP_R2     = POLE_TIP_R*cos(ANG2)
+POLE_TIP_FILLET_DROP = POLE_TIP_CENTER - POLE_TIP_R
+POLE_TIP_FILLET_PROT = (POLE_CONE2_LEN - POLE_TIP_FILLET_DROP)
+
+! ===== Yoke ring + 6 protrusions =====
+WPLANE, 1,0,0,0,,,,,,
+WPcsys,-1,0
+
+CYL4,0,0,YOKE_IN_R,0,YOKE_OUT_R,360,YOKE_H
+
+! [ADDED gap200um] 200 um air slab (SI metres; PROT_H = 7.0e-3 m)
+AIR_GAP = 200e-6
+PROT_STEEL_H = PROT_H - AIR_GAP
+
+! [ADDED gap200um] Each protrusion = 2 stacked CYL4 (yoke-side air slab + steel)
+*do, prot_ind, 1, POLE_NUM,1
+    WPLANE,1,0,0,0,,,,,,
+    WPcsys,-1,0
+    *if, prot_ind,LE,3, then
+        temp_prot_ang = 120*(prot_ind - 1)
+        xc = YOKE_MID_R*cos(temp_prot_ang)
+        yc = YOKE_MID_R*sin(temp_prot_ang)
+        CYL4, xc, yc, PROT_R, 0, , , -AIR_GAP        ! yoke-side air slab
+        WPOFFS, 0, 0, -AIR_GAP
+        CYL4, xc, yc, PROT_R, 0, , , -PROT_STEEL_H   ! steel main
+    *else
+        temp_prot_ang = 120*(prot_ind - 4) + 60
+        xc = YOKE_MID_R*cos(temp_prot_ang)
+        yc = YOKE_MID_R*sin(temp_prot_ang)
+        WPOFFS, 0, 0, YOKE_H
+        CYL4, xc, yc, PROT_R, 0, , , AIR_GAP         ! yoke-side air slab
+        WPOFFS, 0, 0, AIR_GAP
+        CYL4, xc, yc, PROT_R, 0, , , PROT_STEEL_H    ! steel main
+    *endif
+*enddo
+
+! [MODIFIED] Skip yoke+protrusions VADD — let final VOVLAP handle all topology
+! (matches strategy used in p1p2_yoke / dipole_lower / dipole_tilted variants)
+
+! ===== 3 lower poles (4 BLOCKs + filled cone) at azimuth 0°, 120°, 240° =====
+X0_LOW = YOKE_MID_R*cos(0)
+Y0_LOW = YOKE_MID_R*sin(0)
+Z0_LOW = -PROT_H
+
+*do, pole_ind,1,3,1
+    WPLANE, 1,0,0,0,,,,,,
+    WPcsys,-1,0
+    ROTA_ANG = 120*(pole_ind-1)
+    WPROTA, ROTA_ANG
+
+    *get, VL_NUM, VOLU, ,NUM, MAX
+    VL_START = VL_NUM + 1
+    numstr, VOLU, VL_START
+
+    BLOCK, X0_LOW - 5e-3,  X0_LOW + 11e-3, Y0_LOW - 5e-3,  Y0_LOW + 5e-3,  Z0_LOW - 10e-3, Z0_LOW
+    BLOCK, X0_LOW - 5e-3,  X0_LOW - 2e-3,  Y0_LOW - 10e-3, Y0_LOW + 10e-3, Z0_LOW - 10e-3, Z0_LOW - 5e-3
+    BLOCK, X0_LOW - 10e-3, X0_LOW - 2e-3,  Y0_LOW - 5e-3,  Y0_LOW + 5e-3,  Z0_LOW - 10e-3, Z0_LOW - 2e-3
+    BLOCK, X0_LOW - 10e-3, X0_LOW - 5e-3,  Y0_LOW - 10e-3, Y0_LOW + 10e-3, Z0_LOW - 10e-3, Z0_LOW - 5e-3
+
+    *get, KP_NUM, KP  , ,NUM, MAX
+    *get, LI_NUM, LINE, ,NUM, MAX
+    KP_START = KP_NUM + 1
+    LI_START = LI_NUM + 1
+    numstr, KP,   KP_START
+    numstr, LINE, LI_START
+
+    l1 = R_norm_xy
+    l1_ang = atan2( 0 , R_norm_xy )
+    l2 = sqrt( (R_norm_xy + POLE_TIP_FILLET_PROT)**2 + POLE_TIP_R2**2 )
+    l2_ang = atan2( POLE_TIP_R2 , (R_norm_xy + POLE_TIP_FILLET_PROT) )
+    POLE_CONE_LEN_SHIFT = POLE_CONE_LEN + (R_norm_xy - POLE_TIP_FILLET_DROP)
+    l3 = sqrt( POLE_CONE_LEN_SHIFT**2 + POLE_R**2 )
+    l3_ang = atan2( POLE_R , POLE_CONE_LEN )
+    l4 = sqrt( (X0_LOW - 10e-3)**2 + POLE_R**2 )
+    l4_ang = atan2( POLE_R , (X0_LOW - 10e-3) )
+    l5 = abs( X0_LOW - 10e-3 )
+    l5_ang = atan2( 0 , (X0_LOW - 10e-3) )
+    l6 = abs( R_norm_xy + POLE_TIP_R )
+    l6_ang = atan2( 0, R_norm_xy + POLE_TIP_R )
+
+    K , , l1*cos(ROTA_ANG + l1_ang) , l1*sin(ROTA_ANG + l1_ang), Z0_LOW - 6e-3
+    K , , l2*cos(ROTA_ANG + l2_ang) , l2*sin(ROTA_ANG + l2_ang), Z0_LOW - 6e-3
+    K , , l3*cos(ROTA_ANG + l3_ang) , l3*sin(ROTA_ANG + l3_ang), Z0_LOW - 6e-3
+    K , , l4*cos(ROTA_ANG + l4_ang) , l4*sin(ROTA_ANG + l4_ang), Z0_LOW - 6e-3
+    K , , l5*cos(ROTA_ANG + l5_ang) , l5*sin(ROTA_ANG + l5_ang), Z0_LOW - 6e-3
+    K , , l6*cos(ROTA_ANG + l6_ang) , l6*sin(ROTA_ANG + l6_ang), Z0_LOW - 6e-3
+
+    LARC , KP_START , KP_START + 1 , KP_START + 5 , POLE_TIP_R
+    L , KP_START + 1 , KP_START + 2,,,,,,,,
+    L , KP_START + 2 , KP_START + 3,,,,,,,,
+    L , KP_START + 3 , KP_START + 4,,,,,,,,
+    L , KP_START + 4 , KP_START,,,,,,,,
+
+    *get, AR_NUM, AREA, ,NUM, MAX
+    AR_START = AR_NUM + 1
+    numstr, AREA, AR_START
+
+    AL, LI_START, LI_START + 1, LI_START + 2, LI_START + 3, LI_START + 4
+    VROTAT, AR_START, ,,,,,KP_START,KP_START + 4,,4
+
+    ! [ADDED] Half-cut lower pole: subtract an upper-half block directly from
+    ! [ADDED] the 4 VROTAT cone segments. Half-cut logic (BLOCK + VSBV) from
+    ! [ADDED] magnetic_sim/hexapole-long2016/apdl/MT_..._Coil1.txt lines 186-188.
+    ! [ADDED] Result: 磨平半錐體, flat top at z = Z0_LOW - 6e-3.
+    ! [ADDED] No VADD is used: boolean ops free low volume numbers, so a
+    ! [ADDED] post-boolean *get,NUM,MAX is unreliable. The 4 cone-segment
+    ! [ADDED] numbers are captured BEFORE any boolean op (reliable), and
+    ! [ADDED] numstr forces the cut block to a deterministic number above them.
+    vl_cone_first = VL_START + 4
+    *get, vl_cone_max, VOLU, , NUM, MAX
+    vl_cut = vl_cone_max + 1
+    numstr, VOLU, vl_cut
+    BLOCK, 0, X0_LOW - 10e-3, Y0_LOW - 10e-3, Y0_LOW + 10e-3, Z0_LOW - 6e-3, Z0_LOW
+    FLST, 2, (vl_cone_max - vl_cone_first + 1), 6, ORDE, 2
+    FITEM, 2, vl_cone_first
+    FITEM, 2, -vl_cone_max
+    VSBV, P51X, vl_cut
+*enddo
+
+ALLSEL
+
+! ===== 3 upper poles (3 BLOCKs + tilted cone) at azimuth 60°, 180°, 300° =====
+X0_HIGH = YOKE_MID_R*cos(0)
+Y0_HIGH = YOKE_MID_R*sin(0)
+Z0_HIGH = YOKE_H + PROT_H
+
+*do, pole_ind,4,6,1
+    WPLANE, 1,0,0,0,,,,,,
+    WPcsys,-1,0
+    ROTA_ANG = 120*(pole_ind-4) + 60
+    WPROTA, ROTA_ANG
+
+    *get, VL_NUM, VOLU, ,NUM, MAX
+    VL_START = VL_NUM + 1
+    numstr, VOLU, VL_START
+
+    BLOCK, X0_HIGH - 3.5e-3,  X0_HIGH + 8.5e-3, Y0_HIGH - 5e-3,  Y0_HIGH + 5e-3,  Z0_HIGH, Z0_HIGH + 10e-3
+    BLOCK, X0_HIGH - 6.5e-3,  X0_HIGH - 3.5e-3, Y0_HIGH - 11e-3, Y0_HIGH + 11e-3, Z0_HIGH, Z0_HIGH + 10e-3
+    BLOCK, X0_HIGH - 16.5e-3, X0_HIGH - 6.5e-3, Y0_HIGH - 11e-3, Y0_HIGH + 11e-3, Z0_HIGH, Z0_HIGH + 10e-3
+
+    tip_upper_x = R_norm_xy*cos(ROTA_ANG)
+    tip_upper_y = R_norm_xy*sin(ROTA_ANG)
+    tip_upper_z = Z0_LOW - 6e-3 + R_norm_z*2
+
+    end_upper_x0 = X0_HIGH - 11.5e-3
+    end_upper_y0 = Y0_HIGH
+    end_upper_z0 = Z0_HIGH + 5e-3
+    end_upper_x = sqrt( end_upper_x0**2 + end_upper_y0**2 )*cos(ROTA_ANG)
+    end_upper_y = sqrt( end_upper_x0**2 + end_upper_y0**2 )*sin(ROTA_ANG)
+    end_upper_z = end_upper_z0
+
+    INCLINE_VECTORx = end_upper_x - tip_upper_x
+    INCLINE_VECTORy = end_upper_y - tip_upper_y
+    INCLINE_VECTORz = end_upper_z - tip_upper_z
+    INCLINE_ANG = atan2( INCLINE_VECTORz, sqrt(INCLINE_VECTORx**2+INCLINE_VECTORy**2) )
+
+    *get, KP_NUM, KP  , ,NUM, MAX
+    *get, LI_NUM, LINE, ,NUM, MAX
+    KP_START = KP_NUM + 1
+    LI_START = LI_NUM + 1
+    numstr, KP,   KP_START
+    numstr, LINE, LI_START
+
+    p1x = tip_upper_x
+    p1y = tip_upper_y
+    p1z = tip_upper_z
+
+    p2x = p1x + POLE_TIP_FILLET_PROT*cos(INCLINE_ANG)*cos(ROTA_ANG) - POLE_TIP_R2*sin(ROTA_ANG)
+    p2y = p1y + POLE_TIP_FILLET_PROT*cos(INCLINE_ANG)*sin(ROTA_ANG) + POLE_TIP_R2*cos(ROTA_ANG)
+    p2z = p1z + POLE_TIP_FILLET_PROT*sin(INCLINE_ANG)
+
+    POLE_CONE_LEN_SHIFT = POLE_CONE_LEN + (R_norm_xy - POLE_TIP_FILLET_DROP)
+    p3x = p1x + POLE_CONE_LEN_SHIFT*cos(INCLINE_ANG)*cos(ROTA_ANG) - POLE_R*sin(ROTA_ANG)
+    p3y = p1y + POLE_CONE_LEN_SHIFT*cos(INCLINE_ANG)*sin(ROTA_ANG) + POLE_R*cos(ROTA_ANG)
+    p3z = p1z + POLE_CONE_LEN_SHIFT*sin(INCLINE_ANG)
+
+    p4x = end_upper_x - POLE_R*sin(ROTA_ANG)
+    p4y = end_upper_y + POLE_R*cos(ROTA_ANG)
+    p4z = end_upper_z
+
+    p5x = end_upper_x
+    p5y = end_upper_y
+    p5z = end_upper_z
+
+    p6x = p1x + POLE_CONE_LEN*cos(INCLINE_ANG)*cos(ROTA_ANG)
+    p6y = p1y + POLE_CONE_LEN*cos(INCLINE_ANG)*sin(ROTA_ANG)
+    p6z = p1z + POLE_CONE_LEN*sin(INCLINE_ANG)
+
+    K,, p1x , p1y , p1z
+    K,, p2x , p2y , p2z
+    K,, p3x , p3y , p3z
+    K,, p4x , p4y , p4z
+    K,, p5x , p5y , p5z
+    K,, p6x , p6y , p6z
+
+    LARC , KP_START , KP_START + 1 , KP_START + 5 , POLE_TIP_R
+    L , KP_START + 1 , KP_START + 2,,,,,,,,
+    L , KP_START + 2 , KP_START + 3,,,,,,,,
+    L , KP_START + 3 , KP_START + 4,,,,,,,,
+    L , KP_START + 4 , KP_START,,,,,,,,
+
+    *get, AR_NUM, AREA, ,NUM, MAX
+    AR_START = AR_NUM + 1
+    numstr, AREA, AR_START
+
+    AL, LI_START, LI_START + 1, LI_START + 2, LI_START + 3, LI_START + 4
+    VROTAT, AR_START, ,,,,,KP_START, KP_START + 4,,4
+*enddo
+
+ALLSEL
+
+! ===== VOVLAP (clean topology) =====
+ALLSEL, ALL
+VOVLAP, ALL
+NUMCMP, VOLU
+ALLSEL, ALL
+
+! ===== Render multiple PNG views =====
+/SHOW, PNG
+/COLOR, VOLU, MRED
+
+! ISO view
+/VIEW, 1, 1, 1, 1
+/ANG, 1
+/AUTO, 1
+VPLOT
+
+! Front view (xz plane, looking from -y)
+/VIEW, 1, 0, -1, 0
+/ANG, 1
+/AUTO, 1
+VPLOT
+
+! Top view (xy plane, looking from +z)
+/VIEW, 1, 0, 0, 1
+/ANG, 1
+/AUTO, 1
+VPLOT
+
+/SHOW, CLOSE
+
+! ===== IGES export =====
+ALLSEL, ALL
+! [MODIFIED] Absolute path so IGES lands in magnetic_sim/ANSYS/main/IGES/ even though /CWD is elsewhere
+IGESOUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\IGES\long2016_hexapole_halfcut\Long2016_HexapoleHalfcut_Geom_gap200um', 'iges'
+
+FINISH
