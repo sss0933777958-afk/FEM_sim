@@ -8,7 +8,7 @@ function plot_P1P2_circuit_with_flux()
 %   P1:half disc (D-shape, lower halfcut)
 %   P2:full disc (upper full cone)
 
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\hexapole-long2016\analysis');
+    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');
     cnst = mt_constants();
 
     %% 幾何常數

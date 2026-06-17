@@ -8,7 +8,7 @@
 %  Part 1 (Sections 0-4): Iron interior analysis using PATH data
 %  Part 2 (Sections 5-7): Air-side comparison using full-mesh data
 %
-%  Run from magnetic_sim/hexapole-long2016/analysis/ directory.
+%  Run from magnetic_sim/ANSYS/backup/hexapole-long2016/analysis/ directory.
 
 clear; clc; close all;
 

@@ -20,7 +20,7 @@
 %    angle — deviation of B from surface normal [deg]
 %            (0° = B perfectly perpendicular to surface)
 %
-%  Run from magnetic_sim/hexapole-long2016/analysis/ directory.
+%  Run from magnetic_sim/ANSYS/backup/hexapole-long2016/analysis/ directory.
 
 clear; clc; close all;
 

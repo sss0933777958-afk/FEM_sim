@@ -244,7 +244,7 @@ APDL index → paper index 映射：APDL `{1,2,3,4,5,6}` = Paper `{P1, P3, P6, P
 
 ## 2. Method [A] — 共用 ell 球面擬合（2 參數）
 
-**腳本**：`magnetic_sim/hexapole-long2016/analysis/fit_charge_model.m`
+**腳本**：`magnetic_sim/ANSYS/backup/hexapole-long2016/analysis/fit_charge_model.m`
 **輸出**：`data/charge_model_fit.mat`
 **主結果**：ell = 835.4 µm, R_a = 9.21×10⁸ A/Wb, mean err 4.94%
 
@@ -392,7 +392,7 @@ Cost landscape:
 
 ## 3. Method [J] — 6-coil joint 自由 3D 擬合（24 參數）
 
-**腳本**：`magnetic_sim/hexapole-long2016/analysis/test_joint_6coil_fit.m`
+**腳本**：`magnetic_sim/ANSYS/backup/hexapole-long2016/analysis/test_joint_6coil_fit.m`
 **輸出**：`data/joint_6coil_19param_fit.mat`
 **主結果**：Lower |c| avg 815.9 µm, Upper |c| avg 766.9 µm, R_a avg 1.01×10⁹, mean err 1.11%
 
@@ -597,7 +597,7 @@ P5     Upper    5.59      68.6          92.2          YES
 
 ## 4. Method [B-6x] — ell+δ 全激勵擬合（19 參數）★ 定案
 
-**腳本**：`magnetic_sim/hexapole-long2016/analysis/fit_all6_with_bias.m`
+**腳本**：`magnetic_sim/ANSYS/backup/hexapole-long2016/analysis/fit_all6_with_bias.m`
 **輸出**：`data/all6_bias_fit.mat`
 **主結果**：ell = 835 µm (fixed), R_a = 1.03×10⁹, mean err **0.07%**（達 point-charge model 物理極限）
 
@@ -887,7 +887,7 @@ Point-charge model 固有極限              ~0.07%  ([B-6x] 達到)
 
 ## 7. 腳本/資料/圖檔清單
 
-### 7.1 腳本（在 `magnetic_sim/hexapole-long2016/analysis/`）
+### 7.1 腳本（在 `magnetic_sim/ANSYS/backup/hexapole-long2016/analysis/`）
 
 | 檔案 | 用途 | 對應方法 |
 |---|---|---|
@@ -946,8 +946,8 @@ Point-charge model 固有極限              ~0.07%  ([B-6x] 達到)
 
 ## 9. 延伸閱讀
 
-- **原始技術文件**：`magnetic_sim/hexapole-long2016/docs/charge-model-fitting.md`（完整推導，1300+ 行）
-- **方法總結**：`magnetic_sim/hexapole-long2016/docs/fitting-methods.md`（精簡版）
+- **原始技術文件**：`magnetic_sim/ANSYS/backup/hexapole-long2016/docs/charge-model-fitting.md`（完整推導，1300+ 行）
+- **方法總結**：`magnetic_sim/ANSYS/backup/hexapole-long2016/docs/fitting-methods.md`（精簡版）
 - **Long Fei 原文**：dissertation Section 2.2.3 (printed page 17-20), Eq 2.1-2.4
 - **Memory**：[[J-fit-validity-by-pole-shape]] — cylinder vs cone-fillet validity 邊界差 4×
 - **相關**：[[long-fei-vs-paper-lab406]] — paper LAB406 與 dissertation 的 ρ 不一致根因

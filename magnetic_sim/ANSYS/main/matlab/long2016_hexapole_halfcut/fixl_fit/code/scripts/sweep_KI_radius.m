@@ -13,7 +13,7 @@
 clear; clc; close all;
 
 %% paths
-addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\hexapole-long2016\analysis');
+addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');
 results_root = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut';
 data_dir = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\long2016_hexapole_halfcut\charge_fit\fit_KI_ball';
 tex_dir  = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\doc\charge_model_fitting\long2016_hexapole_halfcut\scripts';

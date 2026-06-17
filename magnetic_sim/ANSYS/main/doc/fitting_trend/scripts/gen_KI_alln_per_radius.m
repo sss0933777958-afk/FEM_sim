@@ -10,7 +10,7 @@
 %  COLUMNS for display so all diagonals are positive. Error uses the ORIGINAL Khat
 %  (sign flip is a pure relabel, error unchanged).
 clear; clc;
-addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\hexapole-long2016\analysis');
+addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');
 results_root = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut';
 data_dir = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\long2016_hexapole_halfcut\charge_fit\fitting_trend';
 texdir   = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\doc\fitting_trend\scripts\per_radius';

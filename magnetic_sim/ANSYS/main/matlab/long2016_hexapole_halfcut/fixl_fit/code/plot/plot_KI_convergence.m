@@ -4,7 +4,7 @@
 %  the 10 ball radii (50..500 um) on one semilogy plot.
 
 clear; clc; close all;
-addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\hexapole-long2016\analysis');
+addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');
 results_root = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut';
 fig_dir = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\figures\long2016_hexapole_halfcut';
 if ~exist(fig_dir,'dir'); mkdir(fig_dir); end

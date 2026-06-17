@@ -9,8 +9,8 @@
 %  Smooth version: 3D scatteredInterpolant at y_a=0 (no slab), N=401 grid,
 %                  + light Gaussian smoothing (sigma=1 px).
 %
-%  Data source: magnetic_sim/hung/results/coil1/filleted/  (3-pass NREFINE)
-%  Output:      magnetic_sim/hung/figures/coil1/Bcontour_xaza_Dfillet_smooth.png
+%  Data source: magnetic_sim/ANSYS/backup/hung/results/coil1/filleted/  (3-pass NREFINE)
+%  Output:      magnetic_sim/ANSYS/backup/hung/figures/coil1/Bcontour_xaza_Dfillet_smooth.png
 
 addpath(fullfile(fileparts(mfilename('fullpath')), '..', 'core'));
 

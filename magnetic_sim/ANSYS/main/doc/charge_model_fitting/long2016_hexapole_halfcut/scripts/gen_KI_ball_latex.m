@@ -6,7 +6,7 @@ function gen_KI_ball_latex(Rum)
 %  fit sample (Neq pts/coil), and writes raw Khat + ell + gB + Error.
 %  Error = (1/N) sum_i |B_model_i - B_FEM_i|/|B_FEM_i| * 100   (per-point, equal weight).
     if nargin < 1, Rum = 100; end
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\hexapole-long2016\analysis');
+    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');
     dir_P1     = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\coil1\graded';
     dir_P2toP6 = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\coil2\graded';
     texdir     = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\doc\charge_model_fitting\long2016_hexapole_halfcut\scripts';

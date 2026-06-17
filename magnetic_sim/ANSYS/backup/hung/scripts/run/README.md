@@ -1,6 +1,6 @@
 # Batch Run Scripts
 
-Shell scripts that wrap MAPDL calls to automate running Coil2-6 simulations sequentially. They **do not contain simulation logic** — that lives in `magnetic_sim/hung/apdl/sim/*.txt` and `magnetic_sim/hung/apdl/postproc/*.txt`. These are just convenience loops that pass the right APDL script to MAPDL for each coil.
+Shell scripts that wrap MAPDL calls to automate running Coil2-6 simulations sequentially. They **do not contain simulation logic** — that lives in `magnetic_sim/ANSYS/backup/hung/apdl/sim/*.txt` and `magnetic_sim/ANSYS/backup/hung/apdl/postproc/*.txt`. These are just convenience loops that pass the right APDL script to MAPDL for each coil.
 
 ## Scripts (current)
 
@@ -22,11 +22,11 @@ Kept for reference; not part of the current workflow.
 
 ```bash
 # From project root:
-bash magnetic_sim/hung/scripts/run/run_coil2to6_refined_v2.sh   # ~40 min total
-bash magnetic_sim/hung/scripts/run/run_post2to6.sh              # ~5 min total (POST1 only)
+bash magnetic_sim/ANSYS/backup/hung/scripts/run/run_coil2to6_refined_v2.sh   # ~40 min total
+bash magnetic_sim/ANSYS/backup/hung/scripts/run/run_post2to6.sh              # ~5 min total (POST1 only)
 ```
 
-Logs go to `magnetic_sim/hung/results/logs/run_*.log`.
+Logs go to `magnetic_sim/ANSYS/backup/hung/results/logs/run_*.log`.
 
 ## Why these are scripts and not in `apdl/`
 

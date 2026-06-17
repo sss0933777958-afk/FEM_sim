@@ -13,8 +13,8 @@
 %    β component -> filled circle marker (⊙ = out of page toward tip), size + colour ∝ |β|
 %
 %  Outputs:
-%    magnetic_sim/hung/figures/coil1/Bvector_P1_projections_RoundFillet_l500_xsec_cyl.png   (s=25)
-%    magnetic_sim/hung/figures/coil1/Bvector_P1_projections_RoundFillet_l500_xsec_cone.png  (s=10)
+%    magnetic_sim/ANSYS/backup/hung/figures/coil1/Bvector_P1_projections_RoundFillet_l500_xsec_cyl.png   (s=25)
+%    magnetic_sim/ANSYS/backup/hung/figures/coil1/Bvector_P1_projections_RoundFillet_l500_xsec_cone.png  (s=10)
 
 addpath(fullfile(fileparts(mfilename('fullpath')), '..', 'core'));
 

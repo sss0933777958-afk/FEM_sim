@@ -1,6 +1,6 @@
 # Fitting Data (`.mat` files)
 
-MATLAB fitting results produced by scripts in `magnetic_sim/hung/analysis/`. Structure mirrors `magnetic_sim/hung/analysis/`:
+MATLAB fitting results produced by scripts in `magnetic_sim/ANSYS/backup/hung/analysis/`. Structure mirrors `magnetic_sim/ANSYS/backup/hung/analysis/`:
 - Root level → produced by `analysis/fit/` main pipeline
 - `variants/` → produced by `analysis/variants/` alternative-version scripts, or legacy orphans
 
@@ -20,7 +20,7 @@ MATLAB fitting results produced by scripts in `magnetic_sim/hung/analysis/`. Str
 ## Pipeline execution order
 
 ```matlab
-cd magnetic_sim/hung/analysis/fit
+cd magnetic_sim/ANSYS/backup/hung/analysis/fit
 run fit_ell_percoil         % → single_charge_ell.mat
 run fit_ell_perlayer        % → KI_fit.mat
 run fit_J                   % → J_ideal_fit.mat      (needed by B6x_1C/6C)
@@ -31,7 +31,7 @@ run fit_B6x_allcoil         % → all6_bias_fit.mat    (needs charge_model_fit.m
 
 ## `variants/` — alternative / legacy versions
 
-Not in the active pipeline. Kept available; re-runnable from `magnetic_sim/hung/analysis/variants/` if needed.
+Not in the active pipeline. Kept available; re-runnable from `magnetic_sim/ANSYS/backup/hung/analysis/variants/` if needed.
 
 | File | Source | Status |
 |------|--------|--------|
@@ -42,6 +42,6 @@ Not in the active pipeline. Kept available; re-runnable from `magnetic_sim/hung/
 
 ## Regenerating a file
 
-All active files are regenerable by running the corresponding script in `magnetic_sim/hung/analysis/fit/`, assuming the upstream prerequisites exist (see pipeline order).
+All active files are regenerable by running the corresponding script in `magnetic_sim/ANSYS/backup/hung/analysis/fit/`, assuming the upstream prerequisites exist (see pipeline order).
 
-`charge_model_fit.mat` is the one exception — there is no Hung script that produces it yet. If it's ever deleted and needs to be rebuilt, a Hung method [A] script must be written (similar to `magnetic_sim/hexapole-long2016/analysis/fit_charge_model.m`).
+`charge_model_fit.mat` is the one exception — there is no Hung script that produces it yet. If it's ever deleted and needs to be rebuilt, a Hung method [A] script must be written (similar to `magnetic_sim/ANSYS/backup/hexapole-long2016/analysis/fit_charge_model.m`).

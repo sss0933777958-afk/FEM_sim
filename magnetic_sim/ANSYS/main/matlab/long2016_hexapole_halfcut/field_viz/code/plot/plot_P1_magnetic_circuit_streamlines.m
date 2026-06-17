@@ -26,8 +26,8 @@ function plot_P1_magnetic_circuit_streamlines()
     COL_HALFCUT = [0.45 0.45 0.45];
 
     %% --- Paths ---
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\hung\analysis\core');
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\hexapole-long2016\analysis');
+    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hung\analysis\core');
+    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');
 
     cnst = mt_constants();
 

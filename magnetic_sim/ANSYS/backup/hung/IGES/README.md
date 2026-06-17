@@ -27,7 +27,7 @@ To convert to STEP for other CAD software:
 
 ## Regenerating
 When part dimensions change:
-1. Update values in `magnetic_sim/hung/apdl/geom/export_parts.txt`
+1. Update values in `magnetic_sim/ANSYS/backup/hung/apdl/geom/export_parts.txt`
 2. Run: `MAPDL -b -np 1 -m 2000 -dir "IGES" -j "parts" -i "apdl/geom/export_parts.txt"`
 3. For full assembly: run `apdl/variants/MT_Hung_SphereModel.txt`, copy output to `Full_Assembly.iges`, fix unit flag with `sed -i "s/,1.0,6,,/,1.0,1,,/" Full_Assembly.iges`
 

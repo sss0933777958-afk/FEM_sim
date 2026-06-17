@@ -1,7 +1,7 @@
 %% sweep_J_validity_hung.m — Sweep [J] fit cube sizes for hung hexapole
 %   Mirrors magnetic_sim/ANSYS/main/analysis/fit/sweep_J_validity.m but for 6-pole hexapole.
 %
-%   Output: magnetic_sim/hung/figures/coil1/fit_J_validity_boundary_hung.png
+%   Output: magnetic_sim/ANSYS/backup/hung/figures/coil1/fit_J_validity_boundary_hung.png
 
 addpath(fullfile(fileparts(mfilename('fullpath')), '..', 'core'));
 clear; clc;

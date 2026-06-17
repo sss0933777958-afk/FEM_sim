@@ -7,7 +7,7 @@ ANSYS APDL magnetostatic simulation of the Hung hexapole magnetic tweezers desig
 ## Folder Structure
 
 ```
-magnetic_sim/hung/
+magnetic_sim/ANSYS/backup/hung/
 ├── apdl/              APDL scripts
 │   ├── MT_Hung_Simulate_Coil[1-6].txt        Original D-shape poles
 │   ├── MT_Hung_Simulate_Coil1_filleted.txt    D-shape + R=40um fillet
@@ -69,7 +69,7 @@ magnetic_sim/hung/
 ## Quick Start
 
 ```bash
-cd magnetic_sim/hung
+cd magnetic_sim/ANSYS/backup/hung
 
 # Run simulation (D-shape + fillet, coil 1)
 MAPDL -b -np 2 -m 8000 -dir "results/coil1/filleted" -j "coil1" \

@@ -3,7 +3,7 @@
 ## Directory Structure
 
 ```
-magnetic_sim/hung/apdl/
+magnetic_sim/ANSYS/backup/hung/apdl/
 ├── geom/        Geometry build + IGES export (D-shape + 40 um fillet, main design)
 ├── sim/         6-coil simulation scripts (main D+fillet design)
 ├── postproc/    Post-processing: extract/export B-field data, generate figures
@@ -17,7 +17,7 @@ magnetic_sim/hung/apdl/
 |------|-------------|
 | `MT_Hung_Assembly_Dfillet.txt` | Build full hexapole (D-shape + 40 um fillet) and export `Full_Assembly_filleted.iges`. **Main geometry script.** Method A: smooth tangent fillet, cone semi-angle 11.31°, junction at 15.793 mm |
 | `export_pole_filleted.txt` | Export single D+fillet pole as `Mag_Pole_Bottom_filleted.iges` |
-| `export_parts.txt` | Export individual parts as separate IGES files to `magnetic_sim/hung/IGES/`. Dimensions are hardcoded — update values when part sizes change, then re-run |
+| `export_parts.txt` | Export individual parts as separate IGES files to `magnetic_sim/ANSYS/backup/hung/IGES/`. Dimensions are hardcoded — update values when part sizes change, then re-run |
 
 ## sim/ — Main Simulation (D + fillet, 6 coils)
 
@@ -65,7 +65,7 @@ To enable a variant, run the script directly — all use the same post-processin
 ## Running the Main Pipeline
 
 ```bash
-# From project root, paths assume magnetic_sim/hung/ as working tree
+# From project root, paths assume magnetic_sim/ANSYS/backup/hung/ as working tree
 MAPDL="C:\Program Files\ANSYS2025R2\v252\ansys\bin\winx64\MAPDL.exe"
 BASE="$PWD/hung"
 
@@ -88,11 +88,11 @@ BASE="$PWD/hung"
   -o "$BASE/results/coil1/filleted/wp_extract.out"
 ```
 
-For batch-running Coils 2-6, use the shell scripts in `magnetic_sim/hung/scripts/run/`:
+For batch-running Coils 2-6, use the shell scripts in `magnetic_sim/ANSYS/backup/hung/scripts/run/`:
 - `run_coil2to6_refined_v2.sh` — **latest**, 3-pass NREFINE + POST1 export (recommended)
 - `run_post2to6.sh` — re-export data only (reuses existing `sim1.db`)
 
-See `magnetic_sim/hung/scripts/run/README.md` for details and `magnetic_sim/hung/scripts/run/variants/` for earlier versions.
+See `magnetic_sim/ANSYS/backup/hung/scripts/run/README.md` for details and `magnetic_sim/ANSYS/backup/hung/scripts/run/variants/` for earlier versions.
 
 ## Legacy → New Path Mapping
 

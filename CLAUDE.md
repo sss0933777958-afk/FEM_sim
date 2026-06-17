@@ -4,7 +4,7 @@
 
 ## Quick Triggers
 - 當使用者說「**建 hexapole**」時，參照 `.claude/rules/hexapole-build.md` 執行建模流程
-- 當工作涉及 `magnetic_sim/hung/` 目錄時，參照 `.claude/rules/hung-docs.md` 讀取必要文件
+- 當工作涉及 `magnetic_sim/ANSYS/backup/hung/` 目錄時，參照 `.claude/rules/hung-docs.md` 讀取必要文件
 - 當工作涉及 `magnetic_sim/ANSYS/main/` 目錄（cwd 在 magnetic_sim/ANSYS/main/、討論 Quadrupole、編輯 magnetic_sim/ANSYS/main/* 檔案）時，參照 `.claude/rules/main-workspace.md`，所有新產物寫進 magnetic_sim/ANSYS/main/ 下對應子目錄，不得寫到其他設計目錄或外部路徑
 - 當使用者要求 SolidWorks 出檔／解析 STEP／寫 MT_Geom／檢查模型 等 kuo 流程操作時（自然語觸發，例「出 STEP」「解析 STEP」「建 APDL 幾何」「檢查模型」），參照 `.claude/rules/main-workflows.md` 啟動對應 SOP（`magnetic_sim/ANSYS/main/doc/workflows/`）
 - 當工作涉及「**清 sim 副產物 / 清 ANSYS results / 磁碟滿 / 整理 result dir / cleanup sim**」等清理動作時，**動手前必須先完整讀 `.claude/rules/sim-cleanup.md`**；該規則寫死「6 項不可影響工作 + 2 項不可失去能力」criteria、強制 dry-run、預設 half-clean（保 `.db` + 主 `.rmg`）、`--full` 要使用者明確批准；helper script `magnetic_sim/ANSYS/main/apdl/common/clean_sim_dir.sh`
@@ -31,8 +31,8 @@ G:\ANSYS Inc\v252\ansys\bin\winx64\MAPDL.exe
 ```bash
 ANSYS="G:\ANSYS Inc\v252\ansys\bin\winx64\MAPDL.exe"
 
-# Run single coil (batch mode, no GUI) — run from magnetic_sim/hexapole-long2016/
-cd magnetic_sim/hexapole-long2016
+# Run single coil (batch mode, no GUI) — run from magnetic_sim/ANSYS/backup/hexapole-long2016/
+cd magnetic_sim/ANSYS/backup/hexapole-long2016
 "$ANSYS" -b -np 4 -m 24000 \
   -dir "results/coil1" -j "coil1" \
   -i "$(pwd)/apdl/MT_Modeling_Geometry_Meshing_Solving_Coil1.txt" \
@@ -118,7 +118,7 @@ These constraints apply to ALL hexapole designs in this repo. They are non-negot
 
 ## Notation Standard
 All symbols and terms follow Fei Long's 2016 dissertation. See the full glossary:
-- `magnetic_sim/hexapole-long2016/docs/notation-glossary.md` - **canonical** symbol/term mapping
+- `magnetic_sim/ANSYS/backup/hexapole-long2016/docs/notation-glossary.md` - **canonical** symbol/term mapping
 
 Key conventions:
 - Use **paper pole names** (P1-P6) in all user-facing text, figures, and discussion
@@ -129,22 +129,22 @@ Key conventions:
 - Units: ANSYS outputs Tesla; figures use mT for WP region; dissertation Fig. 2.4 uses Gauss
 
 ## Detailed Docs
-- `magnetic_sim/hexapole-long2016/docs/fitting-methods.md` - **[A]→[J]→[B-6x] fitting methods, [B-6x] is final**
-- `magnetic_sim/hexapole-long2016/docs/model-validation.md` - APDL vs dissertation comparison
-- `magnetic_sim/hexapole-long2016/docs/notation-glossary.md` - unified notation, dissertation alignment
-- `magnetic_sim/hexapole-long2016/docs/coil-winding-sign-convention.md` - pole polarity & coil_sign correction
-- `magnetic_sim/hexapole-long2016/docs/charge-model-fitting.md` - point-charge model derivation
-- `magnetic_sim/hexapole-long2016/docs/ansys-environment.md` - ANSYS install, batch mode, hardware
-- `magnetic_sim/hexapole-long2016/docs/simulation-parameters.md` - geometry, materials, mesh, solver
-- `magnetic_sim/hexapole-long2016/docs/workflow.md` - 4-stage simulation-to-publication pipeline
-- `magnetic_sim/hexapole-long2016/docs/troubleshooting.md` - known errors and fixes
+- `magnetic_sim/ANSYS/backup/hexapole-long2016/docs/fitting-methods.md` - **[A]→[J]→[B-6x] fitting methods, [B-6x] is final**
+- `magnetic_sim/ANSYS/backup/hexapole-long2016/docs/model-validation.md` - APDL vs dissertation comparison
+- `magnetic_sim/ANSYS/backup/hexapole-long2016/docs/notation-glossary.md` - unified notation, dissertation alignment
+- `magnetic_sim/ANSYS/backup/hexapole-long2016/docs/coil-winding-sign-convention.md` - pole polarity & coil_sign correction
+- `magnetic_sim/ANSYS/backup/hexapole-long2016/docs/charge-model-fitting.md` - point-charge model derivation
+- `magnetic_sim/ANSYS/backup/hexapole-long2016/docs/ansys-environment.md` - ANSYS install, batch mode, hardware
+- `magnetic_sim/ANSYS/backup/hexapole-long2016/docs/simulation-parameters.md` - geometry, materials, mesh, solver
+- `magnetic_sim/ANSYS/backup/hexapole-long2016/docs/workflow.md` - 4-stage simulation-to-publication pipeline
+- `magnetic_sim/ANSYS/backup/hexapole-long2016/docs/troubleshooting.md` - known errors and fixes
 
 ## Compact Instructions
 When context is compressed, preserve:
 1. The 6 scripts differ ONLY in CURR_ARRAY (coil N has CURR_ARRAY(N)=1)
 2. Boundary condition D,ALL,MAG,0 is mandatory for DSP solver
-3. Results go to magnetic_sim/hexapole-long2016/results/coilN/ directories
+3. Results go to magnetic_sim/ANSYS/backup/hexapole-long2016/results/coilN/ directories
 4. User prefers Traditional Chinese explanations
 5. Use paper pole names P1-P6 (not APDL indices) in all discussion
-6. Notation follows Long 2016 dissertation — see `magnetic_sim/hexapole-long2016/docs/notation-glossary.md`
+6. Notation follows Long 2016 dissertation — see `magnetic_sim/ANSYS/backup/hexapole-long2016/docs/notation-glossary.md`
 7. alpha = 54.74 deg is FIXED for all hexapole designs

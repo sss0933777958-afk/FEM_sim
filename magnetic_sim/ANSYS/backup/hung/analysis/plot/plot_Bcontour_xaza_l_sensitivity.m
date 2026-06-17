@@ -4,8 +4,8 @@
 %  in the exact style of the reference figure, for l-sensitivity comparison.
 %
 %  Data sources:
-%    l=500: magnetic_sim/hung/results/coil1/filleted_conv/       (4-pass NREFINE, 732k nodes)
-%    l=250: magnetic_sim/hung/results/coil1/filleted_l250_conv/  (4-pass NREFINE, 718k nodes)
+%    l=500: magnetic_sim/ANSYS/backup/hung/results/coil1/filleted_conv/       (4-pass NREFINE, 732k nodes)
+%    l=250: magnetic_sim/ANSYS/backup/hung/results/coil1/filleted_l250_conv/  (4-pass NREFINE, 718k nodes)
 %
 %  Actuator frame (x_a, y_a, z_a) aligned with pole directions:
 %    x_a -> P1 (lower, azimuth 0 deg)
@@ -13,8 +13,8 @@
 %    z_a -> P5 (upper, azimuth 60 deg)
 %
 %  Outputs:
-%    magnetic_sim/hung/figures/coil1/Bcontour_xaza_Dfillet_l500.png
-%    magnetic_sim/hung/figures/coil1/Bcontour_xaza_Dfillet_l250.png
+%    magnetic_sim/ANSYS/backup/hung/figures/coil1/Bcontour_xaza_Dfillet_l500.png
+%    magnetic_sim/ANSYS/backup/hung/figures/coil1/Bcontour_xaza_Dfillet_l250.png
 
 addpath(fullfile(fileparts(mfilename('fullpath')), '..', 'core'));
 

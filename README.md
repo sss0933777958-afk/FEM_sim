@@ -40,7 +40,7 @@ FEM_sim/                     通用 FEM 模擬容器
 
 Run a single coil simulation (batch mode):
 ```bash
-cd magnetic_sim/hexapole-long2016
+cd magnetic_sim/ANSYS/backup/hexapole-long2016
 "C:\Program Files\ANSYS2025R2\v252\ansys\bin\winx64\MAPDL.exe" -b -np 4 -m 24000 \
   -dir "results/coil1" -j "coil1" \
   -i "$(pwd)/apdl/MT_Modeling_Geometry_Meshing_Solving_Coil1.txt" \
@@ -49,7 +49,7 @@ cd magnetic_sim/hexapole-long2016
 
 Process results in MATLAB:
 ```matlab
-cd magnetic_sim/hexapole-long2016/analysis
+cd magnetic_sim/ANSYS/backup/hexapole-long2016/analysis
 fit_charge_model        % [A] baseline fit
 fit_all6_with_bias      % [B-6x] final 19-parameter fit
 ```

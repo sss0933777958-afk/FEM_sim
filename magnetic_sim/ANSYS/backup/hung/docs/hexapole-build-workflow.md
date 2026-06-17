@@ -283,7 +283,7 @@ print(fig2, 'step1_topview.png', '-dpng', '-r200');
 - **上層 pole**：削平面朝上
 - **下層 pole**：削平面朝下（轉 180°）
 
-完整腳本見 `magnetic_sim/hung/apdl/variants/MT_Hung_SphereModel.txt`，以該檔案為準。
+完整腳本見 `magnetic_sim/ANSYS/backup/hung/apdl/variants/MT_Hung_SphereModel.txt`，以該檔案為準。
 
 ### 削平方法
 

@@ -12,7 +12,7 @@
 - `comsol-livelink.md` — COMSOL LiveLink 連線通用法（拆兩 process：獨立 server + `matlab -batch` 內 `mphstart(2036)`）。
 - `fit-current-matches-sim.md` — 擬合電流必須等於 FEM 激發電流（目前 1A），不可把操作電流 0.6A 灌進 fit。
 - `charge-model-source-convention.md` — 電荷模型符號慣例：每顆極激發時 B 一律從尖端射出（全 source）。
-- `hung-docs.md` — 涉及 `magnetic_sim/hung/` 時的必讀文件清單（troubleshooting、build workflow…）。
+- `hung-docs.md` — 涉及 `magnetic_sim/ANSYS/backup/hung/` 時的必讀文件清單（troubleshooting、build workflow…）。
 - `hexapole-build.md` — 「建 hexapole」觸發流程：依序收集 4 個參數、嚴格照 build-workflow 執行。
 - `iges-model-id.md` — 貼 `IGES_converted/<topic>/*.iges` 路徑時，從路徑識別物理模型，不問「這是哪個模型」。
 - `simulation-constraints.md` — APDL 幾何/材料/求解器硬約束（alpha=54.74° FIXED、tip 公式鎖定、元素型別、BC）。

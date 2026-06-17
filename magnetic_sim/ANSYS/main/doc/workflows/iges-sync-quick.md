@@ -38,8 +38,8 @@
 ### hung(inches — 參考用,不在本 workflow scope)
 
 ```bash
-cp magnetic_sim/hung/IGES/Part.iges magnetic_sim/hung/IGES_converted/Part.iges
-sed -i "s/,1.0,6,,/,1.0,1,,/" magnetic_sim/hung/IGES_converted/Part.iges
+cp magnetic_sim/ANSYS/backup/hung/IGES/Part.iges magnetic_sim/ANSYS/backup/hung/IGES_converted/Part.iges
+sed -i "s/,1.0,6,,/,1.0,1,,/" magnetic_sim/ANSYS/backup/hung/IGES_converted/Part.iges
 ```
 
 (本 SOP **只管 kuo**;hung 的請參 `.claude/rules/hung-docs.md`)

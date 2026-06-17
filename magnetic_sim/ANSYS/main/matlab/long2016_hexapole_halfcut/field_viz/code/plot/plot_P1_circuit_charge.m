@@ -9,7 +9,7 @@ function plot_P1_circuit_charge(mode, showArrows, Rum)
     if nargin < 1, mode = 'full'; end
     if nargin < 2, showArrows = true; end
     if nargin < 3, Rum = 50; end
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\hexapole-long2016\analysis');
+    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');
     cnst = mt_constants();
     res_dir = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\coil1\standard';
     out_dir = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\figures\long2016_hexapole_halfcut';

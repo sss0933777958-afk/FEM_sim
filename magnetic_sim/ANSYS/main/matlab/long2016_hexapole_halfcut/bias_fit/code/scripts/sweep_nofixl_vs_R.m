@@ -15,7 +15,7 @@
 clear; clc;
 
 addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\common');         % ansys_path / matlab_path
-addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\hexapole-long2016\analysis');   % mt_constants / import_ansys_data / filter_iron_nodes
+addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');   % mt_constants / import_ansys_data / filter_iron_nodes
 model = 'long2016_hexapole_halfcut';
 
 % ---- 頂層參數 --------------------------------------------------------------

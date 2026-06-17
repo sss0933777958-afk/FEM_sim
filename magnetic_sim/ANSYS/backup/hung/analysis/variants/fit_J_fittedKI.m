@@ -8,7 +8,7 @@
 %  I_vec = +1 for each coil, C_k will be negative (VarPro handles sign).
 %  apdl_to_paper = identity mapping [1,2,3,4,5,6].
 %
-%  Run from magnetic_sim/hung/analysis/ directory.
+%  Run from magnetic_sim/ANSYS/backup/hung/analysis/ directory.
 
 %% 1. Load constants and fitted K_I
 cnst = mt_constants();

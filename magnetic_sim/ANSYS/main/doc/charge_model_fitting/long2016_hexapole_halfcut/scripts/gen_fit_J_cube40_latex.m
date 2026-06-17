@@ -3,7 +3,7 @@
 %   halfcut hexapole (kuo V4 baseline, 6 coils x 0.6 A), cube +/-40 um.
 %
 %   Loads the fit result (joint_6coil_40um_fit.mat) and writes a standalone
-%   LaTeX table in the same style as magnetic_sim/hung/pdf/scripts/fitting_l250_cube20.tex.
+%   LaTeX table in the same style as magnetic_sim/ANSYS/backup/hung/pdf/scripts/fitting_l250_cube20.tex.
 %
 %   Output:
 %     magnetic_sim/ANSYS/main/doc/fitting_charge/long2016_hexapole_halfcut/scripts/fit_J_cube40.tex

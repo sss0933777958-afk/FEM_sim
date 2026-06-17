@@ -6,7 +6,7 @@
 %  ============================================================================
 clear; clc;
 addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\common');
-addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\hexapole-long2016\analysis');
+addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');
 model = 'long2016_hexapole_halfcut';
 
 cnst = mt_constants();

@@ -37,7 +37,7 @@
 
 上下層 tip 從兩側匯聚到 working point。
 
-**Source:** STEP 實測 `magnetic_sim/hung/step_for_fem/組合件1-7.STEP`
+**Source:** STEP 實測 `magnetic_sim/ANSYS/backup/hung/step_for_fem/組合件1-7.STEP`
 
 ### Long2016
 
@@ -285,7 +285,7 @@ Angle B-C: 90.0000° ✓
 
 ### ANSYS 驗證（已完成）
 
-模型建構：`magnetic_sim/hung/apdl/variants/MT_Hung_SphereModel.txt` → `Hung_SphereModel.iges`
+模型建構：`magnetic_sim/ANSYS/backup/hung/apdl/variants/MT_Hung_SphereModel.txt` → `Hung_SphereModel.iges`
 SolidWorks 量測確認：
 
 ```
@@ -311,6 +311,6 @@ ANSYS 模擬比較（Coil1 激發, 70 A-turns）：
 ---
 
 ## Source
-- Hung STEP: `magnetic_sim/hung/step_for_fem/Hexapole_Assembly_FEM.STEP`, `magnetic_sim/hung/step_for_fem/組合件1-7.STEP`
+- Hung STEP: `magnetic_sim/ANSYS/backup/hung/step_for_fem/Hexapole_Assembly_FEM.STEP`, `magnetic_sim/ANSYS/backup/hung/step_for_fem/組合件1-7.STEP`
 - Long2016 STEP: `01Long Fei Tweezer/01CAD Model/hall sensor assembly and Supporter Structure (2014-10-9)/ASSEM_The_Whole_Setup.STEP`
 - Cone apex 提取方法：semi-angle matching (0.1974 rad = 11.31°)

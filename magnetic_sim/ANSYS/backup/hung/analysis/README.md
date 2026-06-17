@@ -7,7 +7,7 @@
 ## Directory Structure
 
 ```
-magnetic_sim/hung/analysis/
+magnetic_sim/ANSYS/backup/hung/analysis/
 ├── core/        Shared utilities (constants, data loader)
 ├── fit/         Charge-model fitting pipeline ([pre-J] → [J] → [B-6x])
 ├── plot/        Figure generation (B-field, quiver error, RMSE, projection)
@@ -72,7 +72,7 @@ This lets you `cd` into `fit/` (or `plot/`, `util/`) and run scripts directly wi
 
 ```matlab
 % Generate B-field figures for coil1
-cd magnetic_sim/hung/analysis/plot
+cd magnetic_sim/ANSYS/backup/hung/analysis/plot
 run('plot_Bfield_2d.m')
 run('plot_Bfield_3d.m')
 
@@ -90,7 +90,7 @@ run('plot_J_quiver.m')
 run('plot_J_rmse.m')
 ```
 
-Output `.mat` files go to `magnetic_sim/hung/data/`. Output `.png` files go to `magnetic_sim/hung/figures/` (2D/3D B-field) or `magnetic_sim/hung/figures/analytic/` (fitting error, projection).
+Output `.mat` files go to `magnetic_sim/ANSYS/backup/hung/data/`. Output `.png` files go to `magnetic_sim/ANSYS/backup/hung/figures/` (2D/3D B-field) or `magnetic_sim/ANSYS/backup/hung/figures/analytic/` (fitting error, projection).
 
 ## Data Format
 The `.dat` files produced by `post_export_data_coilN.txt`:

@@ -31,7 +31,7 @@
 | `magnetic_sim/ANSYS/main/IGES_converted/long2016_h1h2_harmonic/*.iges` | Long Fei H1/H2 AC(渦電流)|
 | `magnetic_sim/ANSYS/main/IGES_converted/kuo_quadrupole/*.iges` | Kuo 4-pole MEMS Quadrupole(主 Lp046 + V2 ScaleDown 變體)|
 | `magnetic_sim/ANSYS/main/IGES_converted/zhang_quadrupole/*.iges` | Zhang 4-pole 0/90/180/270° |
-| `magnetic_sim/hung/IGES_converted/*.iges` | Hung Hexapole(獨立 design root)|
+| `magnetic_sim/ANSYS/backup/hung/IGES_converted/*.iges` | Hung Hexapole(獨立 design root)|
 
 新增模型時,在本檔清單加一列即可。
 

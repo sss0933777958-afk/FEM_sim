@@ -1,6 +1,6 @@
 # Kuo Quadrupole 工作目錄規則
 
-當工作涉及 `magnetic_sim/ANSYS/main/` 目錄（cwd 在 `magnetic_sim/ANSYS/main/`、討論 Quadrupole、編輯 `magnetic_sim/ANSYS/main/*` 檔案）時，**所有新建的模擬結果、程式碼、圖檔都必須寫進 `magnetic_sim/ANSYS/main/` 下對應子目錄**，不得寫到 `magnetic_sim/hexapole-long2016/`、`magnetic_sim/hung/`、外部 `G:\my_workspace\report\...` 或 git root。
+當工作涉及 `magnetic_sim/ANSYS/main/` 目錄（cwd 在 `magnetic_sim/ANSYS/main/`、討論 Quadrupole、編輯 `magnetic_sim/ANSYS/main/*` 檔案）時，**所有新建的模擬結果、程式碼、圖檔都必須寫進 `magnetic_sim/ANSYS/main/` 下對應子目錄**，不得寫到 `magnetic_sim/ANSYS/backup/hexapole-long2016/`、`magnetic_sim/ANSYS/backup/hung/`、外部 `G:\my_workspace\report\...` 或 git root。
 
 ## 兩層結構：canonical 階段 + topic 子資料夾
 

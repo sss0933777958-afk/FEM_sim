@@ -7,8 +7,8 @@
 %  P1 axis: tilted 5.71° below horizontal, from tip (+0.408, 0, -0.289) mm
 %           extends outward along (0.995, 0, -0.0995) to end (+43.2, 0, -4.57) mm
 %
-%  Data source: magnetic_sim/hung/results/coil1/round_filleted_conv/
-%  Output:      magnetic_sim/hung/figures/coil1/Bvector_xz_P1_RoundFillet_l500.png
+%  Data source: magnetic_sim/ANSYS/backup/hung/results/coil1/round_filleted_conv/
+%  Output:      magnetic_sim/ANSYS/backup/hung/figures/coil1/Bvector_xz_P1_RoundFillet_l500.png
 
 addpath(fullfile(fileparts(mfilename('fullpath')), '..', 'core'));
 

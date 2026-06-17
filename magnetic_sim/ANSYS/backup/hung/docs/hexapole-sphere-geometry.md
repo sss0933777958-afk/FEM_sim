@@ -150,8 +150,8 @@ Tip-to-tip: 1.000 mm ✓
 
 ### APDL 模型
 
-腳本：`magnetic_sim/hung/apdl/variants/MT_Hung_SphereModel.txt`
-圖檔：`magnetic_sim/hung/figures/hexapole_sphere_6poles.png`
+腳本：`magnetic_sim/ANSYS/backup/hung/apdl/variants/MT_Hung_SphereModel.txt`
+圖檔：`magnetic_sim/ANSYS/backup/hung/figures/hexapole_sphere_6poles.png`
 
 ---
 

@@ -161,12 +161,12 @@ Coil6       0.38
 
 ## 檔案
 
-- 擬合腳本：`magnetic_sim/hung/analysis/fit/fit_J.m`
-- 出圖腳本：`magnetic_sim/hung/analysis/plot/plot_J_quiver.m`（% 誤差）、`magnetic_sim/hung/analysis/plot/plot_J_rmse.m`（RMSE）
+- 擬合腳本：`magnetic_sim/ANSYS/backup/hung/analysis/fit/fit_J.m`
+- 出圖腳本：`magnetic_sim/ANSYS/backup/hung/analysis/plot/plot_J_quiver.m`（% 誤差）、`magnetic_sim/ANSYS/backup/hung/analysis/plot/plot_J_rmse.m`（RMSE）
 - 依賴：
-  - `magnetic_sim/hung/analysis/core/mt_constants.m` — 幾何常數
-  - `magnetic_sim/hung/analysis/core/import_ansys_data.m` — FEM 數據讀取
-- FEM 數據：`magnetic_sim/hung/results/coil[1-6]/filleted/coilN_{coord,bfield}_wp.dat`
+  - `magnetic_sim/ANSYS/backup/hung/analysis/core/mt_constants.m` — 幾何常數
+  - `magnetic_sim/ANSYS/backup/hung/analysis/core/import_ansys_data.m` — FEM 數據讀取
+- FEM 數據：`magnetic_sim/ANSYS/backup/hung/results/coil[1-6]/filleted/coilN_{coord,bfield}_wp.dat`
 
 ## Hung 特有注意事項
 

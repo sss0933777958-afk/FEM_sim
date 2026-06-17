@@ -7,8 +7,8 @@
 %  Arrow length is proportional to |coefficient|; colour encodes magnitude (redundant).
 %
 %  Two figures produced (one per section):
-%    magnetic_sim/hung/figures/coil1/Bvector_P1_projections_RoundFillet_l500.png       (cylinder, s=25)
-%    magnetic_sim/hung/figures/coil1/Bvector_P1_projections_RoundFillet_l500_cone.png  (cone,     s=10)
+%    magnetic_sim/ANSYS/backup/hung/figures/coil1/Bvector_P1_projections_RoundFillet_l500.png       (cylinder, s=25)
+%    magnetic_sim/ANSYS/backup/hung/figures/coil1/Bvector_P1_projections_RoundFillet_l500_cone.png  (cone,     s=10)
 
 addpath(fullfile(fileparts(mfilename('fullpath')), '..', 'core'));
 

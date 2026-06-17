@@ -1,5 +1,5 @@
 ---
-globs: ["magnetic_sim/hexapole-long2016/apdl/*.txt"]
+globs: ["magnetic_sim/ANSYS/backup/hexapole-long2016/apdl/*.txt"]
 ---
 
 # APDL Script Editing Rules

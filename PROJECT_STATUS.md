@@ -40,12 +40,20 @@ FEM_sim/                         通用 FEM 容器（CLAUDE.md / README / .claud
 4. 回覆一律**繁體中文**（技術名詞用英文）。
 5. 大型二進位（`.mph` 等）gitignore、本地保留；不上 GitHub。
 
+## 4b. 本期工作（2026-06-17 後續：Hall-sensor 求 d + 視覺化）
+- `magnetic_sim/ANSYS/main/matlab/long2016_hexapole_halfcut/` 下，使用者把 `Calibration using FEM modeling/` 改名 **`Calibration_using_FEM_modeling/`**，並 `fix_l→fix_dir`、`no_fix_l→no_fix_dir`、`sensor_d→Hall_sensor_base_fix_dir`。
+- **新建 `Hall_sensor_base_no_fix_dir/`**：18-param bias 版求 Hall-sensor `d`（載 `calib_bias.mat`、actuator 框、`build_A`/`sensor_residual_bias`）；ℓ̂=0.857、sensor RMSE 8.39%、R_a 6.85e8；存 `calib_sensor_d_no_fix_dir.mat`。fix 版：ℓ̂=0.856、RMSE 15.52%、R_a 7.79e8。
+- results/ 去冗餘：只留 `d_final.tex`+`KH_final.tex`（`d_v2` 無增益版＝d_final×g_H 已不輸出），且 results/figures 不再多包子夾。
+- **sensor off-diag 對極微正號** 經查證＝對極近零耦合(~0.5%對角)非 bug（extract_Vmat≡既有 B_S 法 max|Δ|=2e-16）。
+- **磁路視覺化** `code/plot/plot_sensorBcircuit_P1exc(pole_i)`（通用）+ `plot_P2sensor_Braw_P1exc`：真實節點、all-source、world-up、cone 真輪廓+n+；圖 `figures/{P2,P4}sensor_Braw_P1exc.png`。
+- **reorg 失效路徑全 repo 補正**：`.m` 115 處/75 檔、`.md` 104 處/25 檔（`magnetic_sim\hexapole-long2016`→`\ANSYS\backup\...`、`\hung`→`\ANSYS\backup\hung`）。詳見 memory [[long2016-hall-sensor-base]]、[[fem-sim-github-status]]。
+
 ## 5. 未決 / 待辦（之後可處理）
 - **命名兩套**：同一 Long Fei 模型在 `IGES_converted/` 叫 `long_fei`，但 `IGES/`、`ANSYS_data/`、`apdl/` 叫 `long2016_hexapole_halfcut`。
-- backup 設計（hung、hexapole-long2016）內部仍有指向舊路徑的 stale 引用（非活躍，未清）。
 - 本機備份分支 `backup/old-history-magnetic-tweezers` + tag `pre-squash-2026-06-17` 保留舊歷史；確定不需要救回後可刪。
+- `.txt` APDL 內舊路徑指標未補（待定是否需要）；`Hall_sensor_base_fix_dir` P2 專用繪圖腳本與通用版並存（待定整併）。
 
-> 已解決：`settings.local.json` 殘留歷史、remote 命名（`gh`→`origin`）—— 皆隨 2026-06-17 歷史重置一併處理。
+> 已解決：`settings.local.json` 殘留歷史、remote 命名（`gh`→`origin`）、`.m`/`.md` 失效 addpath —— 皆已處理。
 
 ## 6. 驗證指紋（沿用）
 - fix_l 校正 R=150：`ell=0.856 mm / gB=8.43e-3 / NRMSE 1.23%`；no_fix_l：`ell=0.857 / gB=9.50e-3`。

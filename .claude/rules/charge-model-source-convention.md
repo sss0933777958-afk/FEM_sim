@@ -3,7 +3,7 @@
 **使用者拍板（2026-06-12）**：做電荷模型擬合 / 場圖時，**每顆磁極激發時，磁場一律從該極尖端「射出去」（field out，全部當 source）**。
 
 對應 memory：`feedback_charge_model_source_convention.md`
-相關文件：`magnetic_sim/hexapole-long2016/docs/coil-winding-sign-convention.md`（記載 raw FEM 的 sink/source 物理）
+相關文件：`magnetic_sim/ANSYS/backup/hexapole-long2016/docs/coil-winding-sign-convention.md`（記載 raw FEM 的 sink/source 物理）
 相關 memory：[[sensor-sign-convention-toward-wp]]、[[long2016-halfcut-KI-fit]]
 
 ---

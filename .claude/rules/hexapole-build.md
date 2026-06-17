@@ -4,7 +4,7 @@
 
 ## 流程文檔位置
 
-`magnetic_sim/hung/docs/hexapole-build-workflow.md`
+`magnetic_sim/ANSYS/backup/hung/docs/hexapole-build-workflow.md`
 
 ## 觸發條件
 
@@ -23,7 +23,7 @@ Claude 回答：
 > 3. 上層傾斜角（°）
 > 4. 下層傾斜角（°）
 >
-> 詳細流程文檔在 `magnetic_sim/hung/docs/hexapole-build-workflow.md`。
+> 詳細流程文檔在 `magnetic_sim/ANSYS/backup/hung/docs/hexapole-build-workflow.md`。
 
 **如果使用者沒有提供參數**，Claude 必須主動按順序提問：
 
@@ -39,4 +39,4 @@ Claude 回答：
 2. **嚴格按步驟順序執行**，不跳步
 3. **必須向使用者收集所有 `[USER]` 參數**才能開始，不自行假設值
 4. **使用 workflow 中已測試通過的程式碼**，不自行重寫
-5. **技術細節（APDL 陷阱、材料、coil 設定等）見 `magnetic_sim/hung/docs/` 和 `.claude/rules/hung-docs.md`**，此處不重複
+5. **技術細節（APDL 陷阱、材料、coil 設定等）見 `magnetic_sim/ANSYS/backup/hung/docs/` 和 `.claude/rules/hung-docs.md`**，此處不重複

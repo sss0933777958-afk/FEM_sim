@@ -1,6 +1,6 @@
 %% test_joint_6coil_fit_40um.m — [J] method on kuo halfcut V4 baseline (cube ±40 um)
 %
-%  Adapts magnetic_sim/hexapole-long2016/analysis/test_joint_6coil_fit.m to kuo halfcut
+%  Adapts magnetic_sim/ANSYS/backup/hexapole-long2016/analysis/test_joint_6coil_fit.m to kuo halfcut
 %  V4 baseline FEM (Long2016 verbatim, 6 coils × 0.6A).
 %
 %  Differences vs hexapole-long2016 version:
@@ -14,7 +14,7 @@
 clear; clc; close all;
 
 %% 0. Add path to hexapole-long2016 analysis helpers
-hl_analysis = 'G:\my_workspace\code\FEM_sim\magnetic_sim\hexapole-long2016\analysis';
+hl_analysis = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis';
 addpath(hl_analysis);
 
 %% 1. Load constants and FEM data from all 6 coils

@@ -76,7 +76,7 @@ Paths reflect the current post-reorg structure:
 
 ```bash
 # Step 1: Run ANSYS simulation (D-shape + fillet, coil1)
-cd magnetic_sim/hung/
+cd magnetic_sim/ANSYS/backup/hung/
 "C:\Program Files\ANSYS2025R2\v252\ansys\bin\winx64\MAPDL.exe" -b -np 4 -m 8000 \
   -dir "results/coil1/filleted" -j "coil1" \
   -i "apdl/sim/MT_Hung_Simulate_Coil1_filleted.txt" \

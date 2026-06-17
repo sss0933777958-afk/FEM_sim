@@ -5,8 +5,8 @@
 %
 %  Actuator frame: x_a -> P1, y_a -> P3, z_a -> P5
 %
-%  Data source: magnetic_sim/hung/results/coil1/baseline/  (368,686 nodes)
-%  Output:      magnetic_sim/hung/figures/coil1/Bcontour_xaza_Dshape_baseline.png
+%  Data source: magnetic_sim/ANSYS/backup/hung/results/coil1/baseline/  (368,686 nodes)
+%  Output:      magnetic_sim/ANSYS/backup/hung/figures/coil1/Bcontour_xaza_Dshape_baseline.png
 
 addpath(fullfile(fileparts(mfilename('fullpath')), '..', 'core'));
 

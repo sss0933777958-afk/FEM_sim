@@ -62,4 +62,4 @@
 ## 適用 topic
 
 所有 topic。**cone-fillet 極形必小心 r_max**;
-參考 `magnetic_sim/hung/figures/coil1/fit_J_validity_boundary_hung.png` 看 hung 邊界形狀。
+參考 `magnetic_sim/ANSYS/backup/hung/figures/coil1/fit_J_validity_boundary_hung.png` 看 hung 邊界形狀。

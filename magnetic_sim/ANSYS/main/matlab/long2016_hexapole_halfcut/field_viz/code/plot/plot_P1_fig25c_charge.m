@@ -38,8 +38,8 @@ function plot_P1_fig25c_charge(save_final)
     COL_ARROW  = [0.85 0.08 0.08];   % red annotation arrows
 
     %% --- Paths ---
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\hung\analysis\core');
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\hexapole-long2016\analysis');
+    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hung\analysis\core');
+    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');
 
     cnst = mt_constants();
 

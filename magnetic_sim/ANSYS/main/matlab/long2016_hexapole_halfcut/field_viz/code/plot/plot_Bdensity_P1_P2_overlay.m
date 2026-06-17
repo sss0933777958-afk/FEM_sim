@@ -12,8 +12,8 @@ function plot_Bdensity_P1_P2_overlay()
 % "x or s [mm]".
 
     %% --- Paths ---
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\hung\analysis\core');
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\hexapole-long2016\analysis');
+    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hung\analysis\core');
+    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');
     cnst = mt_constants();
 
     res_root = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut';

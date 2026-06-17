@@ -23,7 +23,7 @@ function plot_P1_topview_Bcontour()
 
     %% ---- Paths ----
     kuo_root  = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main';
-    hung_root = 'G:\my_workspace\code\FEM_sim\magnetic_sim\hung';
+    hung_root = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hung';
     addpath(fullfile(hung_root, 'analysis', 'core'));
 
     res_dir = fullfile(kuo_root, 'results', 'long2016_hexapole_halfcut', 'coil1');
