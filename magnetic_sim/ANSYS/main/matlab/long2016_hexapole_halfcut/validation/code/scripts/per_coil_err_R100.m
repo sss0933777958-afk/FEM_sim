@@ -1,7 +1,7 @@
 %% per_coil_err_R100.m -- mean per-point error of the K_I R=100um fit, per coil/pole
 clear; clc;
 addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');
-rr = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut';
+rr = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
 S = load('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\long2016_hexapole_halfcut\charge_fit\fit_KI_ball\fit_KI_R100.mat');
 cnst = mt_constants();
 tip = [cnst.pole_tip_x; cnst.pole_tip_y; cnst.pole_tip_z_wp];

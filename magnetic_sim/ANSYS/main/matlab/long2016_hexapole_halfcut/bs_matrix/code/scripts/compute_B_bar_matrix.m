@@ -36,7 +36,7 @@ cnst = mt_constants();
 % APDL coil index k -> paper pole P-index (verbatim from compute_D_matrix.m)
 apdl_to_paper_idx = [1, 3, 6, 5, 2, 4];
 
-res_base = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut';
+res_base = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
 
 %% --- Hall sensor geometry ---
 sensor_diam_mm   = 0.3;     % Hall sensor active area diameter (mm)

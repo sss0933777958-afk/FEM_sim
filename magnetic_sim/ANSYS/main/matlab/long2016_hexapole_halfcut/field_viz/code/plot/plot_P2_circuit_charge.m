@@ -9,7 +9,7 @@ function plot_P2_circuit_charge(showArrows, Rum)
     if nargin < 2, Rum = 50; end
     addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');
     cnst = mt_constants();
-    res_dir = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\coil5\standard';   % P2
+    res_dir = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil5\standard';   % P2
     out_dir = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\figures\long2016_hexapole_halfcut';
     matf    = sprintf('G:\\my_workspace\\code\\FEM_sim\\kuo\\data\\long2016_hexapole_halfcut\\fit_KI_ball\\fit_KI_R%03d.mat', Rum);
     if ~exist(out_dir,'dir'); mkdir(out_dir); end

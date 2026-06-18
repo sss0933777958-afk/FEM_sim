@@ -20,7 +20,7 @@ function plot_P2sensor_Braw_P1exc()
     addpath(['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
              'long2016_hexapole_halfcut\Calibration_using_FEM_modeling\Hall_sensor_base_no_fix_dir\code\function']);
     cnst = mt_constants();
-    rr   = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut';
+    rr   = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
 
     %% ---- P2 sensor 幾何（i=2）----
     [sensor_pos, sensor_n] = build_sensor_geometry(cnst);   % WP 框 [m]

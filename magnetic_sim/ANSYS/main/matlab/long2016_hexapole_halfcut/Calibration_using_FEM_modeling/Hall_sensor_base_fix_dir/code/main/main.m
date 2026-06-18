@@ -25,7 +25,7 @@ TREE = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
 % mt_constants / import_ansys_data / filter_iron_nodes 在 hexapole-long2016 的 analysis 夾
 addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');
 addpath(fullfile(TREE,'code','function'));                                       % 模型輔助函式
-results_root = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut';
+results_root = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
 mat_out      = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\' ...
                 'long2016_hexapole_halfcut\charge_fit\calib_sensor_d.mat'];
 tex_dir      = fullfile(TREE,'results');

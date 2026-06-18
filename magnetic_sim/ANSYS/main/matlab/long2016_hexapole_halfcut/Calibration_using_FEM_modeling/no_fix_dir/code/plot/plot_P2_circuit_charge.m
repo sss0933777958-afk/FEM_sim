@@ -10,7 +10,7 @@ function plot_P2_circuit_charge(showArrows, Rum)
     if nargin < 2, Rum = 150; end
     addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');
     cnst = mt_constants();
-    res_dir = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\coil5\standard';   % P2
+    res_dir = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil5\standard';   % P2
     out_dir = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
                'long2016_hexapole_halfcut\Calibration_using_FEM_modeling\no_fix_dir\figures'];
     calib_bias = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\' ...

@@ -25,7 +25,7 @@ function plot_P1P2_Bvector_with_flux()
     fig_dir  = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\figures\long2016_hexapole_halfcut';
 
     %% ===== P1 =====
-    res_dir_p1 = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\coil1\standard';
+    res_dir_p1 = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil1\standard';
     pole_axis_p1 = [1; 0; 0];
     up_hat_p1    = [0; 0; 1];
     p1_data = load(fullfile(data_dir, 'P1_flux_profile_smrt4.mat'));
@@ -36,7 +36,7 @@ function plot_P1P2_Bvector_with_flux()
              fullfile(fig_dir, 'P1_Bvector_with_flux.png'));
 
     %% ===== P2 (pole-local frame, drawn horizontal) =====
-    res_dir_p2 = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\coil5\standard';
+    res_dir_p2 = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil5\standard';
     inc      = cnst.upper_incline;
     theta2   = cnst.pole_angles(2) * pi/180;
     pole_axis_p2 = [cos(inc)*cos(theta2); cos(inc)*sin(theta2); sin(inc)];
@@ -63,7 +63,7 @@ function plot_P2_tilted(cnst, x_phi, phi_arr, POLE_R, POLE_TIP_R, POLE_LEN, ...
     R_norm_z  = cnst.R_norm_z  * 1e3;        % 0.289 mm
     SPH_OFST  = cnst.SPH_OFST  * 1e3;        % -12.71 mm
 
-    res_dir = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\coil5\standard';
+    res_dir = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil5\standard';
     fprintf('\n=== P2 (tilted +%.2f deg) ===\n', rad2deg(inc));
 
     d = import_ansys_data(res_dir, 'all', 'coil5');

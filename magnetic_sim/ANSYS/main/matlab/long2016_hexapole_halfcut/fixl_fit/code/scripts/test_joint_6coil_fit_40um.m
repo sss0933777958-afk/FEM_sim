@@ -24,7 +24,7 @@ apdl_to_paper_idx = [1, 3, 6, 5, 2, 4];
 cube_half = 40e-6;   % ±40 µm cube (USER REQUEST)
 I_actual  = 0.6;     % V4 baseline drives 0.6 A (per memory long-fei-b-bar-matrix-v4)
 
-results_root = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut';
+results_root = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
 out_dir      = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\long2016_hexapole_halfcut\charge_fit';
 if ~exist(out_dir, 'dir'); mkdir(out_dir); end
 

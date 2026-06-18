@@ -35,7 +35,7 @@ TREE = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
         'long2016_hexapole_halfcut\Calibration_using_FEM_modeling\fix_dir'];
 addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis'); % mt_constants/import_ansys_data/filter_iron_nodes
 addpath(fullfile(TREE,'code','function'));                                       % model helpers (added last -> takes precedence)
-results_root = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut';
+results_root = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
 tex_dir      = fullfile(TREE,'results');
 if ~exist(tex_dir,'dir'); mkdir(tex_dir); end
 
