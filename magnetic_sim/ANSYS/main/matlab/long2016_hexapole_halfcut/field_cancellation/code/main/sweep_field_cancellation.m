@@ -32,7 +32,7 @@ N_I    = 6;
 
 %% ---- load 6 coils; build score-sphere (R=50um) + plot-slice (500um) node sets ----
 fprintf('loading 6 coils (standard ''all'') ...\n');
-d1   = import_ansys_data(ansys_path(model,'coil1','standard'),'all','coil1');
+d1   = import_ansys_data(ansys_path(model,'data','coil1','standard'),'all','coil1');   % [MODIFIED] ANSYS_data reorg: coilN now under data/
 zwp  = d1.z - cnst.SPH_OFST;                                  % WP-frame z
 mSph = (d1.x.^2 + d1.y.^2 + zwp.^2) <= R_avg^2;              % R=50um sphere (score)
 mDsc = (abs(zwp) < zslab) & (d1.x.^2 + d1.y.^2 <= R_ws^2);   % 500um xy slice (plot)
@@ -41,7 +41,7 @@ Fs = cell(1,N_I); Fd = cell(1,N_I);
 Fs{1}=getf(d1,mSph); Fd{1}=getf(d1,mDsc);
 for j = 2:N_I
     cn = sprintf('coil%d',j);
-    dj = import_ansys_data(ansys_path(model,cn,'standard'),'all',cn);
+    dj = import_ansys_data(ansys_path(model,'data',cn,'standard'),'all',cn);   % [MODIFIED] data/ reorg
     Fs{j}=getf(dj,mSph); Fd{j}=getf(dj,mDsc);
 end
 BXs=cell2mat(cellfun(@(f)f(:,1),Fs,'uni',0)); BYs=cell2mat(cellfun(@(f)f(:,2),Fs,'uni',0)); BZs=cell2mat(cellfun(@(f)f(:,3),Fs,'uni',0));
