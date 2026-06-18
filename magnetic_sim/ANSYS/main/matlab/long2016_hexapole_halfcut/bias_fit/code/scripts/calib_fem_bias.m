@@ -61,7 +61,7 @@ fprintf('Step2: actuator 旋轉 R 建好(det=%.6f);R*dhat == [+u -u +v -v +w -w]
 %  載 coil1 'all' → 過濾鐵芯取 air → WP 為原點 → |p|<=R_select 近場球 → 旋進 actuator 框。
 %  6 顆 coil 共用同一 mesh(節點集/順序一致),故 air 遮罩與 insel 在 6 顆之間通用。
 %  ===========================================================================
-d1   = import_ansys_data(ansys_path(model,'coil1','standard'), dataset, 'coil1');     % coil1 全網格(x,y,z,bx,by,bz)
+d1   = import_ansys_data(ansys_path(model,'data','coil1','standard'), dataset, 'coil1');     % coil1 全網格(x,y,z,bx,by,bz)
 air1 = filter_iron_nodes(d1.x,d1.y,d1.z,cnst,struct('visualize',false));             % air 遮罩(排除鐵芯)
 zwp1 = d1.z - cnst.SPH_OFST;                                                         % ANSYS z → WP 為原點
 P_all = [d1.x(air1), d1.y(air1), zwp1(air1)];                                        % air 節點座標(measure/WP 框)[m]
@@ -91,7 +91,7 @@ for j = 1:N_I                                                % 逐一掃 6 個�
         dj = d1;  airj = air1;
     else
         cn = sprintf('coil%d', j);                          % 'coil2'..'coil6'
-        dj = import_ansys_data(ansys_path(model,cn,'standard'), dataset, cn);          % 載 coil j 全網格
+        dj = import_ansys_data(ansys_path(model,'data',cn,'standard'), dataset, cn);          % 載 coil j 全網格
         airj = filter_iron_nodes(dj.x,dj.y,dj.z,cnst,struct('visualize',false));      % air 遮罩(幾何相同→相同)
     end
     Bj_all = -[dj.bx(airj), dj.by(airj), dj.bz(airj)];      % (Nair x 3) coil j 場 [T];取負(all-source)

@@ -25,7 +25,7 @@ function D = load_coils_actuator(model, cnst, apdl_to_paper_idx, dataset)
     F = zeros(6, N_I);
     for j = 1:N_I, F(apdl_to_paper_idx(j), j) = 1; end
 
-    d1   = import_ansys_data(ansys_path(model,'coil1','standard'), dataset, 'coil1');
+    d1   = import_ansys_data(ansys_path(model,'data','coil1','standard'), dataset, 'coil1');
     air1 = filter_iron_nodes(d1.x,d1.y,d1.z,cnst,struct('visualize',false));
     zwp1 = d1.z - cnst.SPH_OFST;
     P_meas = [d1.x(air1), d1.y(air1), zwp1(air1)];
@@ -38,7 +38,7 @@ function D = load_coils_actuator(model, cnst, apdl_to_paper_idx, dataset)
         if k == 1, dk = d1; airk = air1;
         else
             cn = sprintf('coil%d', k);
-            dk = import_ansys_data(ansys_path(model,cn,'standard'), dataset, cn);
+            dk = import_ansys_data(ansys_path(model,'data',cn,'standard'), dataset, cn);
             airk = filter_iron_nodes(dk.x,dk.y,dk.z,cnst,struct('visualize',false));
         end
         Bk = -[dk.bx(airk), dk.by(airk), dk.bz(airk)];               % all-source

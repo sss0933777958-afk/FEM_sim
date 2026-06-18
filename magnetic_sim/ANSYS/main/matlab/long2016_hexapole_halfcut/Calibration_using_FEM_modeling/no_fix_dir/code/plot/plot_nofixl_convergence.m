@@ -30,7 +30,7 @@ Pc_base = [ 1 -1 0 0 0 0; 0 0 1 -1 0 0; 0 0 0 0 1 -1];
 % ---- 載 6 顆 coil 一次,旋進 actuator 框 ------------------------------------
 fprintf('loading 6 coils ...\n');
 N_I = 6;
-d1  = import_ansys_data(ansys_path(model,'coil1','standard'), dataset, 'coil1');
+d1  = import_ansys_data(ansys_path(model,'data','coil1','standard'), dataset, 'coil1');
 air1= filter_iron_nodes(d1.x,d1.y,d1.z,cnst,struct('visualize',false));
 P_meas = [d1.x(air1), d1.y(air1), d1.z(air1)-cnst.SPH_OFST];
 Pa  = (R_act * P_meas.').';
@@ -40,7 +40,7 @@ for k = 1:N_I
     if k==1, dk=d1; airk=air1;
     else
         cn=sprintf('coil%d',k);
-        dk=import_ansys_data(ansys_path(model,cn,'standard'), dataset, cn);
+        dk=import_ansys_data(ansys_path(model,'data',cn,'standard'), dataset, cn);
         airk=filter_iron_nodes(dk.x,dk.y,dk.z,cnst,struct('visualize',false));
     end
     Bk = -[dk.bx(airk), dk.by(airk), dk.bz(airk)];             % all-source
