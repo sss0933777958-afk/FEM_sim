@@ -6,7 +6,7 @@
 clear; clc;
 addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');
 results_root = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
-matf = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\long2016_hexapole_halfcut\charge_fit\calib_sensor_d_no_fix_dir.mat';
+matf = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\long2016_hexapole_halfcut\charge_fit\fitting_d\calib_sensor_d_no_fix_dir.mat';
 
 cnst = mt_constants();
 S = load(matf);                       % d(=d_final), gH, Vmat(all-source), ell_hat, Pc(=Pc_18), Rrot, R_select

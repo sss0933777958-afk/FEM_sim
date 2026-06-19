@@ -24,7 +24,7 @@ ellK = SW.ell_R(gi); gBK = SW.gB_R(gi); Khat = SW.Ksave(:,:,gi);
 fprintf('K_I (R=150): ell=%.4f mm, gB=%.4e, sweep NRMSE_R=%.3f%% (自洽目標)\n', ellK*1e3, gBK, SW.NRMSE_R(gi));
 
 % ---- sensor 模型參數 ----
-SD = load(fullfile(ddir,'calib_sensor_d.mat'));                    % d, gH, Vmat, ell_hat
+SD = load(fullfile(ddir,'fitting_d','calib_sensor_d.mat'));        % d, gH, Vmat, ell_hat（charge_fit/fitting_d/）
 d = SD.d; gH = SD.gH; Vmat = SD.Vmat; ellS = SD.ell_hat;
 exc_sign = ones(1,6); for j=1:6, if ismember(a2p(j),[1 3 6]), exc_sign(j)=-1; end, end
 fprintf('sensor   : ell_hat=%.4f mm, gH=%.4e\n\n', ellS*1e3, gH);

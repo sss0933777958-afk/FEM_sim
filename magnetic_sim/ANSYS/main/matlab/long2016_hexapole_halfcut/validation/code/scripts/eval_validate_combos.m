@@ -5,7 +5,8 @@ clear; clc; close all;
 addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');
 results_root = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
 data_dir = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\long2016_hexapole_halfcut\charge_fit\fitting_trend';
-out_dir  = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\long2016_hexapole_halfcut\charge_fit';
+out_dir  = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\long2016_hexapole_halfcut\charge_fit\validation';
+if ~exist(out_dir,'dir'); mkdir(out_dir); end
 fig_dir  = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\figures\long2016_hexapole_halfcut';
 
 cnst = mt_constants();
@@ -15,7 +16,7 @@ dhat = tip ./ vecnorm(tip);
 
 %% R*=170 calibration (AS-FITTED gauge, for prediction)
 % frozen final calibration (10-fit mean @ R*=250); use as-fitted Khat_raw for prediction
-F = load('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\long2016_hexapole_halfcut\charge_fit\calibration_final.mat');
+F = load('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\long2016_hexapole_halfcut\charge_fit\calibration\calibration_final.mat');
 R_star = F.R_star; ell = F.ell_hat; gB = F.gB_hat; Khat = F.Khat_raw;
 fprintf('R*=%d (frozen 10-fit mean): ell=%.4f mm, gB=%.4e, ||K||_F=%.3f\n', R_star, ell*1e3, gB, norm(Khat,'fro'));
 
@@ -67,4 +68,4 @@ title(sprintf('Closed-loop check: %d random currents @ $R^*{=}%d\\,\\mu$m calibr
       'Interpreter','latex','FontSize',12);
 exportgraphics(f, fullfile(fig_dir,sprintf('validate_combos_nrmse_R%d.png',R_star)),'Resolution',150);
 save(fullfile(out_dir,sprintf('validate_combos_R%d.mat',R_star)),'combos','normI','NRMSE','N','R_star');
-fprintf('\nwrote validate_combos_nrmse.png + validate_combos.mat\n');
+fprintf('\nwrote validate_combos_nrmse.png + validation/validate_combos_R*.mat\n');

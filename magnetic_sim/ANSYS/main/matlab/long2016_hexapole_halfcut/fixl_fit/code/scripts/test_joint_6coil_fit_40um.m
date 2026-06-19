@@ -7,7 +7,7 @@
 %   - Data path: magnetic_sim/ANSYS/main/ANSYS_data/long2016_hexapole_halfcut/coil1-6/
 %   - Cube: ±40 µm (user request, narrower than standard ±50 µm)
 %   - Current: 0.6 A (V4 baseline, NOT 1 A)
-%   - Output: magnetic_sim/ANSYS/main/MATLAB_data/long2016_hexapole_halfcut/charge_fit/joint_6coil_40um_fit.mat
+%   - Output: magnetic_sim/ANSYS/main/MATLAB_data/long2016_hexapole_halfcut/charge_fit/calibration/joint_6coil_40um_fit.mat
 %
 %  Run from magnetic_sim/ANSYS/main/matlab/long2016_hexapole_halfcut/fit/ directory.
 
@@ -25,7 +25,7 @@ cube_half = 40e-6;   % ±40 µm cube (USER REQUEST)
 I_actual  = 0.6;     % V4 baseline drives 0.6 A (per memory long-fei-b-bar-matrix-v4)
 
 results_root = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
-out_dir      = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\long2016_hexapole_halfcut\charge_fit';
+out_dir      = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\long2016_hexapole_halfcut\charge_fit\calibration';
 if ~exist(out_dir, 'dir'); mkdir(out_dir); end
 
 fprintf('===== [J] fit on kuo halfcut V4 baseline =====\n');

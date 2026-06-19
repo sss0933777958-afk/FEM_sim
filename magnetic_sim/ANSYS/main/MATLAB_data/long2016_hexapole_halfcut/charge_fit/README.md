@@ -2,13 +2,14 @@
 
 **用途**：存放下極半切六極的**點電荷（point-charge）模型**成果：擬合 actuator 矩陣 K̂_I、長度 ℓ̂、增益 ĝ_B，校正 Hall-sensor 常數 d，以及電流組合的閉環驗證。
 
-**內容**（代表檔）：
-- `fit_KI_full.mat`：document 版電荷模型擬合（K̂_I、ℓ̂、ĝ_B、R_a）。
-- `calibration_final.mat`：最終校正（選定 R*=150 µm，ℓ̂≈0.856 mm、gB≈8.43e-3、‖K̂‖≈2.436）。
-- `calib_sensor_d.mat` / `calib_bias.mat`：Hall-sensor per-pole 常數 d（含 g_H、殘差）/ bias 電荷版校正。
-- `joint_6coil_40um_fit.mat`：R=40 µm 球的 6-coil 聯合擬合。
-- `validate_combos.mat` / `validate_combos_R150.mat`：電流組合閉環驗證（R150 為選定半徑）。
-- 子夾 `fit_KI_ball/`（各取樣半徑擬合）、`fitting_trend/`（R 掃描趨勢與選取）—各自有 README。
+**內容**（全部歸進子夾，本層只有子夾 + 本 README，不放散檔）：
+- `calibration/` — 校正與全域/聯合擬合結果（`calib_bias`、`calibration_final`、`fit_KI_full`、`joint_6coil_40um_fit`）。
+- `fit_KI_ball/` — 各取樣半徑的 K_I 球擬合（`fit_KI_R040..R500` 等）。
+- `fitting_trend/` — R 掃描趨勢與最佳 R* 選取。
+- `fitting_d/` — Hall-sensor per-pole 常數 d（`calib_sensor_d`、`calib_sensor_d_no_fix_dir`）。
+- `validation/` — 電流組合閉環驗證（`validate_combos_R150`）。
+
+各子夾有自己的 README。
 
 **資料來源 / 流向**：由 `matlab/long2016_hexapole_halfcut/`（Calibration using FEM modeling 的 `fix_l`/`no_fix_l` main 程式 + charge-fit scripts）讀 6 顆 coil 的 **1A** FEM `.dat`（注意：擬合電流必須對齊 FEM 激發電流 1A，見 `fit-current-matches-sim` 規則）產生。resolver = `matlab_path('long2016_hexapole_halfcut','charge_fit')`。
 

@@ -21,12 +21,12 @@ main 設計所有 **MATLAB 分析輸出**（`.mat` / `.csv` / `.npz`）集中放
 
 ## 功能子資料夾（以 `long2016_hexapole_halfcut/` 為例）
 
-### `charge_fit/` — 點電荷 K_I 模型擬合 / 校正 / 驗證
-- `fit_KI_full.mat`：document 版電荷模型擬合（K̂_I、ℓ̂、ĝ_B、R_a）。
-- `calib_sensor_d.mat`：Hall-sensor 模型 per-pole 常數 d（含 g_H、Vmat、ℓ̂=0.856mm、殘差）。
-- `calibration_final.mat`：最終校正（R*=150µm，ℓ̂=0.856、gB=8.43e-3、‖K̂‖=2.436）。
-- `joint_6coil_40um_fit.mat`：R=40µm 球的 6-coil 聯合擬合。
-- `validate_combos.mat` / `validate_combos_R150.mat`：電流組合閉環驗證（R150 為選定半徑）。
+### `charge_fit/` — 點電荷 K_I 模型擬合 / 校正 / 驗證（全部歸子夾，無散檔）
+- `calibration/`：校正與全域/聯合擬合（`calib_bias`、`calibration_final`、`fit_KI_full`、`joint_6coil_40um_fit`）。
+- `fit_KI_ball/`：各半徑 K_I 球擬合（`fit_KI_R040..R500` 等）。
+- `fitting_trend/`：R 掃描趨勢與最佳 R* 選取。
+- `fitting_d/`：Hall-sensor 每極常數 d（`calib_sensor_d.mat`、`calib_sensor_d_no_fix_dir.mat`）。
+- `validation/`：電流組合閉環驗證（`validate_combos_R150.mat`）。
 - `fit_KI_ball/`：各取樣半徑的 K_I 擬合 + 收斂（`fit_KI_R{040,050,100,150,500}.mat`、
   `fit_KI_ball_sweep.mat`、`KI_convergence_gB50.mat`、`KI_perpoint_gB50_R040.mat`）。
   （個別半徑 R200–R450 已刪——可由 `fit_KI_ball_sweep` / `fitting_trend/` 重生。）

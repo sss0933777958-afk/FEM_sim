@@ -192,7 +192,8 @@ fprintf('=======================================================================
 %% ===========================================================================
 %  存檔(只寫 MATLAB_data/charge_fit;不動任何結構)
 %  ===========================================================================
-out_dir = matlab_path(model, 'charge_fit');                 % .../kuo/MATLAB_data/<model>/charge_fit
+out_dir = fullfile(matlab_path(model, 'charge_fit'), 'calibration');   % .../MATLAB_data/<model>/charge_fit/calibration
+if ~exist(out_dir,'dir'); mkdir(out_dir); end
 save(fullfile(out_dir, 'calib_bias.mat'), ...
      'R', 'Pc_base', 'R_select', 'Np', 'dataset', 'apdl_to_paper_idx', 'F', 'coil_sign', ...
      'ell_hat_1param', 'KbarI_1', 'gB_1', 'J1', 'nrmse_1', 'ev_1', ...

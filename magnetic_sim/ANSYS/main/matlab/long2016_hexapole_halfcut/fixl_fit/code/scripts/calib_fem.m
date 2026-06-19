@@ -295,10 +295,11 @@ fprintf('  sensor 模型在 R<=150um 的相對 RMSE = %.2f%%\n', nrmse_sensor); 
 fprintf('========================================================================\n');
 
 % ---- 存 page-2 結果(供 gen_d_latex.m 出 LaTeX)----
-out_dir = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\long2016_hexapole_halfcut\charge_fit';
+out_dir = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\long2016_hexapole_halfcut\charge_fit\fitting_d';
+if ~exist(out_dir,'dir'); mkdir(out_dir); end
 save(fullfile(out_dir,'calib_sensor_d.mat'), ...
      'd','gH','Vmat','ell_hat','nrmse_sensor','S_hall','sensor_pos','sensor_n','apdl_to_paper_idx','R_select');
-fprintf('已存 calib_sensor_d.mat\n');
+fprintf('已存 fitting_d/calib_sensor_d.mat\n');
 
 %% ===========================================================================
 %  本地函式

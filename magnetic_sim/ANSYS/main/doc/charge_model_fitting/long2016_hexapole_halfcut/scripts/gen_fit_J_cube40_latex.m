@@ -13,7 +13,7 @@
 clear; clc;
 
 %% ---- Paths ----
-mat_path = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\long2016_hexapole_halfcut\charge_fit\joint_6coil_40um_fit.mat';
+mat_path = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\long2016_hexapole_halfcut\charge_fit\calibration\joint_6coil_40um_fit.mat';
 tex_dir  = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\doc\fitting_charge\long2016_hexapole_halfcut\scripts';
 if ~exist(tex_dir, 'dir'); mkdir(tex_dir); end
 tex_path = fullfile(tex_dir, 'fit_J_cube40.tex');

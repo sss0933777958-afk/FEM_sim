@@ -1,14 +1,14 @@
-# …/sensor_d/code/main/ — 求 d 主程式
+# …/Hall_sensor_base_fix_dir/code/main/ — 求 d 主程式
 
-**用途**：`main.m` — Hall-sensor per-pole `d` 的一條龍 driver。config 在頂部（R_select=150 µm、I=1 A、S_hall=130 V/T）。
+**用途**：`main.m` — Hall-sensor 每極 `d` 的指定流程 driver。config 在頂部（R_select=150 µm、I=1 A、S_hall=130 V/T）。
 
-**流程**：
-1. 載 6-coil FEM 場（`wp` dataset）→ 取 R 球內節點 → `cost_J` + `fminbnd` 擬合 ℓ̂ → 在 ℓ̂ 建 M、c（page-1）。
-2. `build_sensor_geometry` → `extract_Vmat`（all-source）→ `solve_d` → `sensor_residual`（page-2）。
-3. 存 `calib_sensor_d.mat`（原 `MATLAB_data/.../charge_fit/` 路徑）。
-4. `write_d_tex`（d_v2/d_final）+ `compute_KH`+`write_KH_tex`（KH_v2/KH_final）→ `../../results/sensor_d/`。
+**流程（四步）**：
+1. **拿 ℓ̂**：載入 `MATLAB_data/.../charge_fit/fit_KI_ball/fit_KI_R<RRR>.mat` 的 `ell`（不再 fminbnd）。
+2. **抽電壓 V=S·B**：載 6-coil FEM（`wp` 建殘差場 B / `all` 抽 sensor 電壓）→ `build_sensor_geometry` → `extract_Vmat`（真實節點、沿 n 圓柱、all-source）。
+3. **建模型/殘差**：在 ℓ̂ 建 M、c → `solve_d` 解 d → `sensor_residual` 回 cost `J = Σ‖ε‖²`。
+4. **存解**：`calib_sensor_d.mat`（`MATLAB_data/.../charge_fit/fitting_d/`，含 d/gH/Vmat/exc_sign/ell_hat/J）。
 
-**預期數值**（R=150 µm）：ℓ̂≈0.856 mm、sensor 模型相對 RMSE ≈15.5%；與既有 `calib_sensor_d.mat` 一致。
+**預期數值（R=150 µm）**：ℓ̂≈0.852 mm、cost J≈0.142 T²。
 
 **命名 / 慣例**：單一主程式組 → `code/main/main.m`；模型數學一律在 `../function/`。
 

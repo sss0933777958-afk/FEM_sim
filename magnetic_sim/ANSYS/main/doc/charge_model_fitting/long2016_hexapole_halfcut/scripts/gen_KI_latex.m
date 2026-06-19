@@ -1,7 +1,7 @@
 %% gen_KI_latex.m — emit charge-model fit RESULTS as LaTeX (for Overleaf)
 %  Reads fit_KI_full.mat, writes fit_KI_cube40.tex (results only).
 clear; clc;
-matfile = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\long2016_hexapole_halfcut\charge_fit\fit_KI_full.mat';
+matfile = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\long2016_hexapole_halfcut\charge_fit\calibration\fit_KI_full.mat';
 S = load(matfile);
 texdir  = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\doc\charge_model_fitting\long2016_hexapole_halfcut\scripts';
 texfile = fullfile(texdir, sprintf('fit_KI_cube%.0f.tex', S.cube_half*1e6));

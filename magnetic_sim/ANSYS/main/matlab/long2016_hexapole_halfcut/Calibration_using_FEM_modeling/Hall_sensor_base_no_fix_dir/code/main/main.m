@@ -7,7 +7,7 @@
 %            → 重載 6-coil FEM 場 → R_select 近場球 → 旋進 actuator 框 → build_A → M, c
 %    page-2  build_sensor_geometry → extract_Vmat(all-source) → solve_d(含增益 g_H)
 %            → sensor_residual_bias(actuator 框殘差)
-%    存     calib_sensor_d_no_fix_dir.mat(不蓋 fix_dir 版的 calib_sensor_d.mat)
+%    存     fitting_d/calib_sensor_d_no_fix_dir.mat(不蓋 fix_dir 版的 calib_sensor_d.mat)
 %    LaTeX  d_v2 / d_final（write_d_tex）、KH_v2 / KH_final（compute_KH+write_KH_tex）→ results/
 %
 %  Model    : b_ij = g_H · S_i V_j d ;  g_H = 1/(4πℓ̂²);  charges at actuator-frame Pc_18.
@@ -31,8 +31,9 @@ addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long201
 addpath(fullfile(TREE,'code','function'));                                                      % 模型輔助函式
 results_root  = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
 charge_dir    = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\long2016_hexapole_halfcut\charge_fit';
-calib_bias_in = fullfile(charge_dir, 'calib_bias.mat');
-mat_out       = fullfile(charge_dir, 'calib_sensor_d_no_fix_dir.mat');
+calib_bias_in = fullfile(charge_dir, 'calibration', 'calib_bias.mat');
+mat_out       = fullfile(charge_dir, 'fitting_d', 'calib_sensor_d_no_fix_dir.mat');  % 歸到 charge_fit/fitting_d/
+if ~exist(fileparts(mat_out),'dir'); mkdir(fileparts(mat_out)); end
 tex_dir       = fullfile(TREE,'results');
 if ~exist(tex_dir,'dir'); mkdir(tex_dir); end
 
@@ -96,7 +97,7 @@ fprintf('  d (6x1, P1..P6, 含增益 d_final):\n'); fprintf('   % .4e\n', d);
 fprintf('  sensor 模型在 R<=%dum 的相對 RMSE = %.2f%%\n', round(R_select*1e6), nrmse_sensor);
 fprintf('========================================================================\n');
 
-%% ---- 存 calib_sensor_d_no_fix_dir.mat(新檔名,不蓋 fix_dir 版)----
+%% ---- 存 fitting_d/calib_sensor_d_no_fix_dir.mat(新檔名,不蓋 fix_dir 版)----
 save(mat_out, 'd','gH','Vmat','ell_hat','Pc','Rrot','nrmse_sensor','S_hall', ...
               'sensor_pos','sensor_n','apdl_to_paper_idx','R_select');
 fprintf('已存 %s\n', mat_out);

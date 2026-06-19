@@ -5,7 +5,7 @@
 clear; clc; close all;
 addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');
 
-S = load('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\long2016_hexapole_halfcut\charge_fit\fit_KI_full.mat');
+S = load('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\long2016_hexapole_halfcut\charge_fit\calibration\fit_KI_full.mat');
 cnst = S.cnst; Khat = S.Khat; ell = S.ell; gB = S.gB; I = S.I_actual;
 apdl_to_paper_idx = S.apdl_to_paper_idx;
 results_root = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';

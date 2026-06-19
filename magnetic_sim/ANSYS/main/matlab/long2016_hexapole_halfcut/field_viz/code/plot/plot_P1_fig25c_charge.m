@@ -12,7 +12,7 @@ function plot_P1_fig25c_charge(save_final)
 %
 %   Color: paper style blue -> red (weak air field = blue, strong pole flux = red).
 %
-%   Charge: magnetic_sim/ANSYS/main/MATLAB_data/long2016_hexapole_halfcut/charge_fit/joint_6coil_40um_fit.mat
+%   Charge: magnetic_sim/ANSYS/main/MATLAB_data/long2016_hexapole_halfcut/charge_fit/calibration/joint_6coil_40um_fit.mat
 %           best.pos(:,1) in WP frame -> APDL frame via z + SPH_OFST.
 %
 %   Usage:
@@ -61,7 +61,7 @@ function plot_P1_fig25c_charge(save_final)
     x_base  = x_tip + POLE_LEN;                 % 15.408 (cone base)
 
     %% --- [J] fit charge position (WP frame -> APDL frame) ---
-    fit_mat = fullfile(data_dir, 'charge_fit', 'joint_6coil_40um_fit.mat');
+    fit_mat = fullfile(data_dir, 'charge_fit', 'calibration', 'joint_6coil_40um_fit.mat');
     S = load(fit_mat, 'best', 'cube_half');
     chg_wp = S.best.pos(:, 1);                            % P1, metres, WP frame
     chg_x  = chg_wp(1) * 1e3;                             % mm

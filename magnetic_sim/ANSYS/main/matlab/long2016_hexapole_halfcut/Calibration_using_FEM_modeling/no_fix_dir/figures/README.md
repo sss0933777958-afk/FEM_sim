@@ -9,6 +9,6 @@
 **與 fix_dir 差別**：charge 位置為 18-param **離軸** bias（`ℓ̂·Pc_18` 在 actuator 框→旋回 measure），非 fix_dir 的在軸 `ℓ·d̂`；P1 偏移較明顯、P2 較小。
 
 **產生**：`../code/plot/plot_P1_circuit_charge.m('zoom',true,150)`、`plot_P2_circuit_charge.m(true,150)`；
-讀 `ANSYS_data/.../coil1|coil5/standard` 場 + `MATLAB_data/.../charge_fit/calib_bias.mat`（R、Pc_18、ell_hat）。
+讀 `ANSYS_data/.../coil1|coil5/standard` 場 + `MATLAB_data/.../charge_fit/calibration/calib_bias.mat`（R、Pc_18、ell_hat）。
 
 **相關**：見上層 `../README.md`、`../code/plot/README.md`。
