@@ -1,53 +1,47 @@
 function [sensor_pos, sensor_n] = build_sensor_geometry(cnst)
-% BUILD_SENSOR_GEOMETRY  算出 6 顆 Hall sensor 的「中心位置 + 法線 n+」。
+% BUILD_SENSOR_GEOMETRY  6 顆 Hall sensor 的「中心位置 + 法線 n+」，全域(WP 中心)座標。
 % -------------------------------------------------------------------------
 % 用途：
-%   電壓抽取(extract_Vmat, real-node 版)只需要每顆 sensor 的中心點與法線：
-%   以中心、沿 n+ 開一個圓柱去挑真實 FEM 節點、對 B·n+ 平均得 sensor 電壓。
-%   （舊版還會回傳 disc 取樣格點 disc_u/v/local/Ndisc 給「內插盤面平均」用，
-%     real-node 圓柱選點不需要，故已移除。）
+%   電壓抽取(extract_Vmat)只需每顆 sensor 的中心點與法線 n+：沿 n+ 開圓柱挑真實 FEM
+%   節點、對 B·n+ 平均得 sensor 電壓。本檔把 6 顆 sensor 直接用全域座標算出（無 local frame）。
 %
-% 擺放慣例（沿用 B_bar 矩陣設定）：
-%   - 下極(P1/P3/P6)：尖端磨平(milled flat)，sensor 貼平面、n+ ⊥平面朝外(出鋼)。
-%   - 上極(P2/P4/P5)：保留錐面(natural cone)，sensor 貼錐面、n+ ⊥錐面朝外。
-%   - sensor 中心 = 距極尖 4.572mm（沿極軸/錐斜邊）、再離面 0.41mm(air-gap)。
-%   - n+ 一律「出鋼」方向（決定 B·n+ 的正負號慣例，見 extract_Vmat）。
+% 兩種極（皆全域座標、共用單位向量 dir(e,a)=[cos(e)cos(a); cos(e)sin(a); sin(e)]）：
+%   - 下極(P1/P3/P6，halfcut 磨平極)：磨平面在頂，sensor 沿水平徑向偏移 + 垂直抬升：
+%       tip        = [R_norm_xy cosθ; R_norm_xy sinθ; −R_norm_z]
+%       sensor_pos = tip + SOFF·[cosθ; sinθ; 0] + AIR·[0;0;1]
+%       sensor_n   = [0;0;1]（n+ = +z，⊥磨平面、出鋼朝 WP）
+%   - 上極(P2/P4/P5，自然錐面)：軸用 CAD 實際傾角 inc_up = cnst.upper_incline ≈ 36.59°（極尖→底端連線，非理想魔術角）：
+%       tip        = [R_norm_xy cosθ; R_norm_xy sinθ; +R_norm_z]
+%       沿錐面斜邊 slant = dir(inc_up+β, θ)；錐面外法線 nrm = dir(inc_up+β+90°, θ)（β=半錐角≈11.31°）
+%       sensor_pos = tip + SOFF·slant + AIR·nrm ;  sensor_n = nrm（n+ 出鋼、指向 sensor）
+%   SOFF = 4.572mm（沿表面距極尖）、AIR = 0.41mm（離面 air-gap）。
 %
 % 輸入：
-%   cnst        幾何常數（pole_angles / pole_is_lower / upper_incline / R_norm_xy / R_norm_z）
+%   cnst        幾何常數（R_norm_xy/R_norm_z、POLE_R、POLE_CONE_LEN、pole_angles、pole_is_lower）
 % 輸出：
 %   sensor_pos  3×6  各極 sensor 中心的全域座標 [m]（WP 框）
-%   sensor_n    3×6  各極 sensor 法線 n+（單位向量，出鋼）
-%
-%   (改寫自 calib_fem.m PAGE 2：保留 pose 計算、移除 disc 取樣)
+%   sensor_n    3×6  各極 sensor 法線 n+（單位向量，出鋼、指向 sensor）
 % -------------------------------------------------------------------------
+    beta   = atan2(cnst.POLE_R, cnst.POLE_CONE_LEN);         % 半錐角 β = atan(3/15) ≈ 11.31° [rad]（上極用）
+    inc_up = cnst.upper_incline;                             % 上極軸傾角 = CAD 實際值 ≈ 36.59°（極尖→底端連線，非理想魔術角）[rad]
+    SOFF  = 4.572e-3;                                        % sensor 沿表面距極尖的距離 [m]
+    AIR   = 0.41e-3;                                         % sensor 離面 air-gap [m]
+    dir = @(e,a) [cos(e)*cos(a); cos(e)*sin(a); sin(e)];     % 仰角 e、方位 a 的單位向量（球→直角）
 
-    % ---- sensor pole-local 偏移與法線（下極=milled flat；上極=natural cone）----
-    beta = atan2(3.0, 15.0);                                     % 錐半角 β = atan(POLE_R/CONE_LEN) = atan(3.0/15.0) ≈ 11.31°
-    sensor_pl_lower = [4.572e-3; 0.41e-3; 0];                    % 下極 pole-local 偏移：沿軸 4.572mm、垂直磨平面 0.41mm
-    n_pl_lower      = [0; 1; 0];                                 % 下極 pole-local 法線 n+ = +「up」（⊥磨平面、出鋼）
-    sensor_pl_upper = [4.572e-3*cos(beta) - 0.41e-3*sin(beta); ...% 上極 pole-local 偏移：4.572 沿錐斜邊 …
-                       4.572e-3*sin(beta) + 0.41e-3*cos(beta); ...%   … + 0.41 沿錐面外法線（把(沿軸,離面)旋轉 β 到錐座標）
-                       0];
-    n_pl_upper      = [-sin(beta); cos(beta); 0];               % 上極 pole-local 法線 n+（⊥錐面、出鋼）
-
-    sensor_pos = zeros(3,6); sensor_n = zeros(3,6);            % 預配置：全域 sensor 位置 / 法線
-    for i = 1:6                                                % 逐極 P1..P6 建立 pole-local→global 座標
-        th = cnst.pole_angles(i)*pi/180;                      % 該極方位角 θ [rad]
-        if cnst.pole_is_lower(i)                              % ===== 下極 =====
-            pole_axis = [cos(th); sin(th); 0];               % 極軸 = 水平徑向（xy 平面內）
-            up_hat = [0;0;1]; tip_z = -cnst.R_norm_z;        % 「up」取 +z；下極尖端 z = −R_norm_z
-            s_pl = sensor_pl_lower; n_pl = n_pl_lower;        % 採用下極本地偏移 / 法線
-        else                                                 % ===== 上極 =====
-            inc = cnst.upper_incline;                        % 上極傾角（~36.6°，由 mt_constants 提供）
-            pole_axis = [cos(inc)*cos(th); cos(inc)*sin(th); sin(inc)];  % 傾斜極軸（含 +z 分量）
-            up_un = [0;0;1] - sin(inc)*pole_axis; up_hat = up_un/norm(up_un);  % 「up」= ẑ 去掉沿軸分量後正規化（⊥極軸）
-            tip_z = +cnst.R_norm_z; s_pl = sensor_pl_upper; n_pl = n_pl_upper; % 上極尖端 z = +R_norm_z；採上極偏移/法線
+    sensor_pos = zeros(3,6); sensor_n = zeros(3,6);          % 預配置：全域 sensor 位置 / 法線（3 座標 × 6 極）
+    for i = 1:6                                              % 逐極 P1..P6
+        th = cnst.pole_angles(i)*pi/180;                    % 該極方位角 θ [rad]
+        cz = cos(th); sz = sin(th);                         % 方位 cos/sin
+        if cnst.pole_is_lower(i)                            % ===== 下極：磨平面（n+ = +z）=====
+            tip = [cnst.R_norm_xy*cz; cnst.R_norm_xy*sz; -cnst.R_norm_z];  % 下極尖端（z = −R_norm_z）
+            sensor_n(:,i)   = [0;0;1];                                     % 法線 n+ = +z（⊥磨平面、出鋼朝 WP）
+            sensor_pos(:,i) = tip + SOFF*[cz;sz;0] + AIR*[0;0;1];          % 沿水平徑向 SOFF + 垂直抬 AIR
+        else                                               % ===== 上極：魔術角錐面 =====
+            tip = [cnst.R_norm_xy*cz; cnst.R_norm_xy*sz; +cnst.R_norm_z];  % 上極尖端（z = +R_norm_z）
+            slant = dir(inc_up+beta,        th);                           % 沿錐面斜邊（仰角 inc_up+β，朝 base/離 WP）
+            nrm   = dir(inc_up+beta+pi/2,   th);                           % 錐面外法線（再轉 90°，出鋼、指向 sensor）
+            sensor_n(:,i)   = nrm;
+            sensor_pos(:,i) = tip + SOFF*slant + AIR*nrm;                  % 沿錐面 SOFF + 沿法線 AIR
         end
-        tip  = [cnst.R_norm_xy*cos(th); cnst.R_norm_xy*sin(th); tip_z];  % 極尖全域座標（WP 框）
-        side = cross(pole_axis, up_hat); side = side/norm(side);         % 第三軸 side = axis×up（⊥兩者），組右手系
-        Rg   = [pole_axis, up_hat, side];                    % pole-local→global 旋轉矩陣（欄 = [軸, up, side]）
-        sensor_pos(:,i) = tip + Rg*s_pl;                     % sensor 全域中心 = 極尖 + 旋轉後的本地偏移
-        sensor_n(:,i)   = Rg*n_pl;                           % sensor 全域法線 n+ = 旋轉後的本地法線
     end
 end

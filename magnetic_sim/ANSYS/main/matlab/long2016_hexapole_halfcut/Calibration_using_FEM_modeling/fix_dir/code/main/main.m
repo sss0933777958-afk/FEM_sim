@@ -38,6 +38,9 @@ addpath(fullfile(TREE,'code','function'));                                      
 results_root = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
 tex_dir      = fullfile(TREE,'results');
 if ~exist(tex_dir,'dir'); mkdir(tex_dir); end
+cal_dir      = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\' ...
+                'long2016_hexapole_halfcut\charge_fit\calibration'];   % 存 fit_KI_fixl 解 .mat（供 Hall_sensor_base_fix_dir 載 ℓ̂）
+if ~exist(cal_dir,'dir'); mkdir(cal_dir); end
 
 %% ---- constants + pole-tip directions ---------------------------------------
 cnst = mt_constants();
@@ -63,7 +66,10 @@ for R_um = R_um_list
     errpct             = region_field_err(coil, J);
     fname = fullfile(tex_dir, sprintf('fit_%s_R%03dum_%gA.tex', SHAPE, R_um, I_actual));
     write_KI_tex(fname, SHAPE, R_um, I_actual, Khat, ell, gB, errpct);
-    fprintf('R=%3d um | nmin/coil=%6d | ell=%.3f mm | gB=%.4e | err=%.2f%%\n', ...
-            R_um, nmin, ell*1e3, gB, errpct);
+    % 存 fit_KI_fixl 解成 .mat（供 Hall_sensor_base_fix_dir 載入 ℓ̂；ell 為 [m]）
+    save(fullfile(cal_dir, sprintf('fit_fixl_R%03dum.mat', R_um)), ...
+         'ell','gB','Khat','J','errpct','R_um','I_actual','SHAPE');
+    fprintf('R=%3d um | nmin/coil=%6d | ell=%.3f mm | gB=%.4e | err=%.2f%%  -> fit_fixl_R%03dum.mat\n', ...
+            R_um, nmin, ell*1e3, gB, errpct, R_um);
 end
 fprintf('done (%s mode): %d .tex file(s) in %s\n', MODE, numel(R_um_list), tex_dir);

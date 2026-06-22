@@ -1,0 +1,99 @@
+! ============================================================================
+! MT_Resolve_P2toP6_sensor_spheres.txt — re-solve coil2..6 by REUSING coil1.db
+!   The sensor_spheres mesh is identical for all 6 poles (only coil current
+!   differs) → RESUME the master coil1.db (mesh + coils + NUMMRG conformal iron),
+!   change the SOURC36 real-constant current per coil, re-solve, dump .dat.
+!   SKIPS re-meshing.
+!
+!   Current = RAW +1 per excited coil (R,api,1,+TURNS): extract_Vmat does the
+!   all-source flip (exc_sign on lower poles {1,3,6}) in post → FEM stores raw,
+!   same convention as P1 (CURR_ARRAY(1)=1) and baseline standard.
+!
+!   [NOTE] coil1.db was SAVEd BEFORE the MAG BC → must re-apply D,ALL,MAG,0 here
+!   (once; same boundary for all 6 coils).
+!
+!   Output: runs in a THROWAWAY _scratch dir (so data/ never sees ANSYS scratch).
+!   Writes ALL coilN_*.dat there; a Bash step then MOVES each coilN_*.dat to its
+!   own data/coilN/sensor_spheres/ and DELETES _scratch entirely.
+!   Exports BOTH _all (extract_Vmat: sensors at r~5mm need full domain) and _wp.
+! ============================================================================
+
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\_scratch'
+FINISH
+/CLEAR,NOSTART
+
+! ---- restore master mesh from db/ (coil1.db = mesh + coils + NUMMRG conformal iron) ----
+RESUME,'coil1','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\sensor_spheres\'
+
+! ---- constants (RESUME restores most; redefine the ones BC/WP/coil need) ----
+*afun,DEG
+PROT_H     = 7.0e-3
+Z0_LOW     = -PROT_H
+R_norm     = 500e-6
+R_norm_z   = R_norm/sqrt(3.0)
+SPH_OFST   = Z0_LOW - 6e-3 + R_norm_z
+YOKE_H     = 2.0e-3
+AIR_CYL_R  = 80e-3
+AIR_CYL_H  = 70e-3
+COIL_OUT_R = 8e-3
+COIL_IN_R  = 5e-3
+COIL_THK   = COIL_OUT_R - COIL_IN_R
+COIL_H     = PROT_H
+TURNS      = 70
+
+! ---- re-apply MAG=0 far-field BC once (coil1.db saved before BC) ----
+AIR_CYL_Z_CTR = YOKE_H/2
+AIR_CYL_Z_BOT = AIR_CYL_Z_CTR - AIR_CYL_H/2
+AIR_CYL_Z_TOP = AIR_CYL_Z_CTR + AIR_CYL_H/2
+/PREP7
+LOCAL,11,1,0,0,0
+CSYS,11
+NSEL,S,LOC,X, AIR_CYL_R - 0.5e-3, AIR_CYL_R + 0.5e-3
+CSYS,0
+NSEL,A,LOC,Z, AIR_CYL_Z_TOP - 0.5e-3, AIR_CYL_Z_TOP + 0.5e-3
+NSEL,A,LOC,Z, AIR_CYL_Z_BOT - 0.5e-3, AIR_CYL_Z_BOT + 0.5e-3
+D,ALL,MAG,0
+ALLSEL,ALL
+FINISH
+
+! ---- loop coil 2..6: raw +1 current → solve → dump all+wp ----
+*do,api,2,6,1
+    /PREP7
+    *do,j,1,6,1
+        R,j,1,0,COIL_THK,COIL_H              ! zero every coil
+    *enddo
+    R,api,1,TURNS,COIL_THK,COIL_H            ! energise coil api with RAW +1 (+TURNS)
+    FINISH
+
+    /SOLU
+    magsolv,3,,,,,1
+    FINISH
+
+    /POST1
+    SET,LAST
+    ALLSEL,ALL
+    /HEADER,OFF,OFF,OFF,OFF,OFF,OFF
+    /FORMAT,10,,20,12,,
+    /PAGE,1000000,,1000000
+
+    /OUTPUT,'coil%api%_coord_all','dat'
+    NLIST,ALL, , ,COORD
+    /OUTPUT
+    /OUTPUT,'coil%api%_bfield_all','dat'
+    PRNSOL,B,COMP
+    /OUTPUT
+
+    LOCAL,12,2, 0, 0, SPH_OFST
+    CSYS,12
+    NSEL,S,LOC,X, 0, 2e-3
+    CSYS,0
+    /OUTPUT,'coil%api%_coord_wp','dat'
+    NLIST,ALL, , ,COORD
+    /OUTPUT
+    /OUTPUT,'coil%api%_bfield_wp','dat'
+    PRNSOL,B,COMP
+    /OUTPUT
+
+    ALLSEL,ALL
+    FINISH
+*enddo

@@ -1,0 +1,23 @@
+\documentclass[12pt]{article}
+\usepackage[a4paper,margin=2cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{bm}
+
+\begin{document}
+\thispagestyle{empty}
+
+\noindent
+\textbf{Cost function (Hall-sensor-based, after eliminating $\bm{d}$):}
+
+\begin{equation*}
+\mathrm{cost} \;\Rightarrow\; J(\hat{\ell}) \;=\;
+\sum_{j=1}^{N_I}\left[\,
+\sum_{i=1}^{N_p}\mathbf{b}_{ij}^{T}\mathbf{b}_{ij}
+\;-\;
+\left(\sum_{i=1}^{N_p}\mathbf{V}_{j}^{T}\mathbf{S}_{i}^{T}\mathbf{b}_{ij}\right)^{\!T}
+\left(\sum_{i=1}^{N_p}\mathbf{V}_{j}^{T}\mathbf{S}_{i}^{T}\mathbf{S}_{i}\mathbf{V}_{j}\right)^{\!-1}
+\left(\sum_{i=1}^{N_p}\mathbf{V}_{j}^{T}\mathbf{S}_{i}^{T}\mathbf{b}_{ij}\right)
+\right]
+\end{equation*}
+
+\end{document}

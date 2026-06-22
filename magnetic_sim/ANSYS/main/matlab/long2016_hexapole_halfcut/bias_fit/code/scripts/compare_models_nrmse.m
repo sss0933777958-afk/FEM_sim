@@ -1,7 +1,7 @@
 %% compare_models_nrmse.m
 %  用同一把 canonical NRMSE 尺，比較兩個場模型：
 %    (A) K̂_I 自由擬合（36 DOF，R=150 那組 ell/gB/K̂）
-%    (B) Hall-sensor d-model（6 DOF，d/Vmat/gH，ell_hat=0.856）
+%    (B) Hall-sensor d-model（6 DOF，d/Vmat，no-gain：b=S·V·d，ell_hat=0.856）
 %  NRMSE 定義照搬 sweep_alln_vs_R.m:60-66：
 %    每 coil  NRMSE_kc = sqrt(mean_i ‖B_mod−B_FEM‖²)/max_i‖B_FEM‖×100
 %    整體     = worst-coil = max over 6
@@ -23,11 +23,11 @@ gi = find(SW.R_um==150,1);
 ellK = SW.ell_R(gi); gBK = SW.gB_R(gi); Khat = SW.Ksave(:,:,gi);
 fprintf('K_I (R=150): ell=%.4f mm, gB=%.4e, sweep NRMSE_R=%.3f%% (自洽目標)\n', ellK*1e3, gBK, SW.NRMSE_R(gi));
 
-% ---- sensor 模型參數 ----
-SD = load(fullfile(ddir,'fitting_d','calib_sensor_d.mat'));        % d, gH, Vmat, ell_hat（charge_fit/fitting_d/）
-d = SD.d; gH = SD.gH; Vmat = SD.Vmat; ellS = SD.ell_hat;
+% ---- sensor 模型參數（no-gain：模型 b = S·V·d，無 g_H）----
+SD = load(fullfile(ddir,'fitting_d','calib_sensor_d.mat'));        % d, Vmat, ell_hat（charge_fit/fitting_d/）
+d = SD.d; Vmat = SD.Vmat; ellS = SD.ell_hat;
 exc_sign = ones(1,6); for j=1:6, if ismember(a2p(j),[1 3 6]), exc_sign(j)=-1; end, end
-fprintf('sensor   : ell_hat=%.4f mm, gH=%.4e\n\n', ellS*1e3, gH);
+fprintf('sensor   : ell_hat=%.4f mm (no-gain d)\n\n', ellS*1e3);
 
 % ---- 載 6 coils 'wp' ----
 fprintf('loading 6 coils ...\n');
@@ -57,8 +57,8 @@ for rr = 1:2
         for i=1:6, Dm=PNk-dhat(:,i).'; r3=(sum(Dm.^2,2)).^1.5; Bm=Bm+w(i)*(Dm./r3); end
         evK(kc) = sqrt(mean(sum((Bm-Bf).^2,2)))/denom*100;
 
-        % (B) sensor d-model:  bm = gH*S*diag(Vmat(:,kc))*d ;  bf = -exc_sign*Bn
-        wS = gH*(Vmat(:,kc).*d);              % 6x1 等效權重 = gH * V_kc ⊙ d
+        % (B) sensor d-model:  bm = S*diag(Vmat(:,kc))*d ;  bf = -exc_sign*Bn （no-gain，無 g_H）
+        wS = Vmat(:,kc).*d;                   % 6x1 等效權重 = V_kc ⊙ d
         Bm2 = zeros(Nt,3);
         for i=1:6, Dm=PNs-dhat(:,i).'; r3=(sum(Dm.^2,2)).^1.5; Bm2=Bm2+wS(i)*(Dm./r3); end
         bf2 = -exc_sign(kc)*Bf;               % calib_fem 的 all-source target（norm 與 Bf 同）

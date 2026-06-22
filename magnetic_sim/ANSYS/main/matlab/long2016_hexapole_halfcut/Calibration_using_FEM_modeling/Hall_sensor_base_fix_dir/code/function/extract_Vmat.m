@@ -1,5 +1,5 @@
 function [Vmat, exc_sign] = extract_Vmat(results_root, cnst, apdl_to_paper_idx, ...
-                                         sensor_pos, sensor_n, S_hall, sensor_r, axial_tol)
+                                         sensor_pos, sensor_n, S_hall, variant, sensor_r, axial_tol)
 % EXTRACT_VMAT  從 6 顆線圈的 FEM 場抽 sensor 電壓矩陣 Vmat（真實節點，含 all-source 翻號）。
 % -------------------------------------------------------------------------
 % 用途（電壓轉換 V = S_hall·⟨B·n+⟩）：
@@ -7,13 +7,13 @@ function [Vmat, exc_sign] = extract_Vmat(results_root, cnst, apdl_to_paper_idx, 
 %       Vmat(i,j) = S_hall · mean_over_selected_nodes( B·n_i )
 %   B 直接取「真實 FEM 節點」的場（不做 scatteredInterpolant 內插）。
 %
-% 真實節點選點規則（使用者拍板：沿 n 圓柱選點）：
-%   以 sensor 中心 sensor_pos(:,i)、沿法線 n_i 開一個圓柱：
+% 真實節點選點規則（使用者拍板：圓柱底面=sensor 面、往 n+ 長高 0.1mm，半徑 0.15mm）：
+%   圓柱「底面」= sensor 中心 sensor_pos(:,i)（離鐵 0.41mm 的 air-gap 面），沿 n+ 往外(WP)長：
 %     - 半徑   rho ≤ sensor_r（= Ø0.3mm 感測盤半徑 0.15mm）：in-plane 落在盤內
-%     - 軸向 |axial| ≤ axial_tol：沿 n 的厚度範圍內
+%     - 軸向 0 ≤ axial ≤ axial_tol（= 0.1mm 高，只往 n+）：全程離鐵 ≥0.41mm，不往鐵側下探
 %   圓柱內的真實節點 → 對 (B·n_i) 平均，當作該 sensor 的面積平均近似。
-%   若圓柱內「沒有」節點 → 在 rho ≤ sensor_r 的節點中，取 |axial| 最小者
-%   （沿 n 放寬軸向距離、但 in-plane 投影仍落在盤內的最近節點）。
+%   若圓柱內「沒有」節點 → 在 rho ≤ sensor_r 且 axial ≥ 0 的節點中，取 axial 最小者
+%   （n+ 側、沿 n 最近的節點）；連 n+ 側盤內都沒有才退回整體最近節點。
 %   每顆 sensor 都 fprintf 命中節點數，避免靜默取到 0 點。
 %
 % 符號慣例：
@@ -30,35 +30,37 @@ function [Vmat, exc_sign] = extract_Vmat(results_root, cnst, apdl_to_paper_idx, 
 %   sensor_pos          3×6，sensor 中心（build_sensor_geometry）
 %   sensor_n            3×6，sensor 法線 n+
 %   S_hall              霍爾靈敏度 [V/T]（EQ-730L = 130）
+%   variant    (選填)   FEM 結果變體子夾名，預設 'standard'（baseline）；sensor 加密用 'sensref'
 %   sensor_r   (選填)   感測盤半徑 [m]，預設 0.15e-3（Ø0.3mm）
-%   axial_tol  (選填)   圓柱軸向半厚 [m]，預設 = sensor_r（找不到才放寬）
+%   axial_tol  (選填)   圓柱高度 [m]（只往 n+，底面=sensor 面），預設 0.1e-3
 % 輸出：
 %   Vmat      6×6 sensor 電壓 [V]（列=sensor 極 P1..P6，欄=激發 coil1..6，已翻號）
 %   exc_sign  1×6 各欄(激發極)的 all-source 翻號（下極激發 = −1，上極 = +1）
 %
 %   需 import_ansys_data 在 path。
 % -------------------------------------------------------------------------
-    if nargin < 7 || isempty(sensor_r),  sensor_r  = 0.15e-3; end   % 感測盤半徑預設 0.15mm
-    if nargin < 8 || isempty(axial_tol), axial_tol = sensor_r;  end % 圓柱軸向半厚預設 = 半徑
+    if nargin < 7 || isempty(variant),   variant   = 'standard'; end % 讀哪個 FEM 變體子夾（預設 baseline）
+    if nargin < 8 || isempty(sensor_r),  sensor_r  = 0.15e-3; end   % 感測盤半徑預設 0.15mm
+    if nargin < 9 || isempty(axial_tol), axial_tol = 0.1e-3;   end  % 圓柱高度預設 0.1mm（只往 n+，底面=sensor 面，全程離鐵≥0.41mm）
 
     Vmat = zeros(6,6);                                         % sensor 電壓矩陣 [V]（先填未翻號的）
     for kc = 1:6                                               % 逐線圈 kc（= 第 j=kc 次模擬）
         cn = sprintf('coil%d', kc);                           % 該線圈結果資料夾名 coil<kc>
-        da = import_ansys_data(fullfile(results_root, cn, 'standard'),'all',cn);  % 載 'all' 全域真實節點
+        da = import_ansys_data(fullfile(results_root, cn, variant),'all',cn);  % 載 'all' 全域真實節點（variant 子夾）
         X  = [da.x, da.y, da.z - cnst.SPH_OFST];             % 節點座標(WP 框)：ANSYS z 扣球心偏移 → Nn×3
         Bn = [da.bx, da.by, da.bz];                          % 節點場 B（raw FEM）→ Nn×3
         for i = 1:6                                           % 逐 sensor 極 i
             ni = sensor_n(:,i);                              % 該 sensor 法線 n+（3×1）
             r  = X - sensor_pos(:,i).';                      % 各節點相對 sensor 中心的位移（Nn×3，廣播相減）
-            axial = r * ni;                                  % 沿 n+ 的軸向分量（Nn×1）
+            axial = r * ni;                                  % 沿 n+ 的軸向分量（Nn×1；>0 = n+ 側、離鐵更遠）
             rho   = vecnorm(r - axial*ni.', 2, 2);          % in-plane 徑向距離 ‖r − axial·n‖（Nn×1）
-            sel = (rho <= sensor_r) & (abs(axial) <= axial_tol);  % 圓柱內節點：盤內 + 軸向厚度內
-            if ~any(sel)                                     % 圓柱內無節點 → 放寬軸向
-                cand = find(rho <= sensor_r);               %   先限定 in-plane 落在盤內的節點
-                if isempty(cand)                            %   連盤內都沒有 → 取整體最近節點兜底
+            sel = (rho <= sensor_r) & (axial >= 0) & (axial <= axial_tol);  % 圓柱：盤內 + 從 sensor 面往 n+ 0~axial_tol
+            if ~any(sel)                                     % 圓柱內無節點 → 放寬軸向（仍只 n+ 側）
+                cand = find((rho <= sensor_r) & (axial >= 0)); %   盤內且在 n+ 側的節點
+                if isempty(cand)                            %   連 n+ 側盤內都沒有 → 取整體最近節點兜底
                     [~, j0] = min(rho); sel = j0;
                 else
-                    [~, k0] = min(abs(axial(cand))); sel = cand(k0);  % 盤內、沿 n 軸向最近的那顆
+                    [~, k0] = min(axial(cand)); sel = cand(k0);  % 盤內、n+ 側沿 n 最近的那顆
                 end
             end
             Bdotn = Bn(sel,:) * ni;                         % 選中節點的 B·n+（朝出鋼正負；列向量）

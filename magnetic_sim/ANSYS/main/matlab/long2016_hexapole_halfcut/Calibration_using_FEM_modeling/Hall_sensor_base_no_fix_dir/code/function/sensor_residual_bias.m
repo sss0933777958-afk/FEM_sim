@@ -1,15 +1,18 @@
-function nrmse_sensor = sensor_residual_bias(A, Bstack, Vmat, exc_sign, d, gH, N_I)
-% SENSOR_RESIDUAL_BIAS  sensor 模型殘差(actuator 框,build_A 堆疊版)。
-%   模型:bm_j = g_H · A · (V_j .* d)  (= 各點 g_H S_i V_j d 的堆疊,含增益,all-source)
-%   目標:bf_j = exc_sign(j)·(−Bstack_j)  (all-source 物理場;Bstack = −FEM, actuator 框)
-%   回傳全域相對 RMSE [%](對 R_select 球內所有點 × 6 sim)。
-%   與 solve_d 的法方程一致:d 最小化 Σ‖g_H A diag(V_j) d − bf_j‖²。
-    num = 0; den = 0;                                        % 相對 RMSE 的分子/分母
-    for j = 1:N_I                                            % 逐模擬
-        bm = gH * (A * (Vmat(:,j) .* d));                   % 3Np x 1 sensor 模型場
-        bf = exc_sign(j) * (-Bstack(:,j));                  % 3Np x 1 all-source FEM 場
-        num = num + sum((bm - bf).^2);
-        den = den + sum(bf.^2);
+function J = sensor_residual_bias(P, B, Vmat, exc_sign, ell_hat, Pc, d, N_I)
+% SENSOR_RESIDUAL_BIAS  sensor 模型成本 J（actuator 框,build_S 逐點版,no-gain）。
+%   模型:bm_ij = S_i V_j d            (V_j = diag(Vmat(:,j))；無 g_H)
+%   目標:bf_ij = exc_sign(j)·(−B(i,:,j)) (all-source 物理場;B = 頁1 負號版 −FEM、actuator 框)
+%   回傳 cost J = Σ_ij‖bm_ij − bf_ij‖²  [T²]（與 Hall_sensor_base_fix_dir 對齊:只回 cost,無 RMSE/g_H）。
+%   唯一與 fix_dir 不同 = 點/電荷在 actuator 框、Pc = Pc_18(18-param bias)。 (calls build_S)
+    Np = size(P,1);                                         % 工作點數
+    J  = 0;                                                 % 成本累加器
+    for j = 1:N_I                                           % 逐模擬
+        Vj = diag(Vmat(:,j));                              % V_j = diag(該 sim 的 6 個 all-source sensor 電壓)
+        for i = 1:Np                                       % 逐工作點
+            Si = build_S(P(i,:), ell_hat, Pc);            % 3×6 空間核（actuator 框、Pc_18）
+            bm = Si * Vj * d;                             % sensor 模型場 b_model = S_i V_j d（no-gain）
+            bf = exc_sign(j) * (-squeeze(B(i,:,j)).');    % all-source 物理場 b_FEM
+            J  = J + sum((bm - bf).^2);                   % 累加殘差平方
+        end
     end
-    nrmse_sensor = sqrt(num/den) * 100;                     % 全域相對 RMSE [%]
 end

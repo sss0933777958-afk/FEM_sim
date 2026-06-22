@@ -4,13 +4,13 @@
 %
 %  Pipeline:
 %    page-1  載入既有 calib_bias.mat(no_fix_dir 校正結果:ell_hat, Pc_18, R, F)
-%            → 重載 6-coil FEM 場 → R_select 近場球 → 旋進 actuator 框 → build_A → M, c
-%    page-2  build_sensor_geometry → extract_Vmat(all-source) → solve_d(含增益 g_H)
-%            → sensor_residual_bias(actuator 框殘差)
+%            → 重載 6-coil FEM 場 → R_select 近場球 → 旋進 actuator 框 → build_S 逐點 → M, c
+%    page-2  build_sensor_geometry → extract_Vmat(all-source,真實節點) → solve_d(no-gain)
+%            → sensor_residual_bias(actuator 框 cost J)
 %    存     fitting_d/calib_sensor_d_no_fix_dir.mat(不蓋 fix_dir 版的 calib_sensor_d.mat)
-%    LaTeX  d_v2 / d_final（write_d_tex）、KH_v2 / KH_final（compute_KH+write_KH_tex）→ results/
 %
-%  Model    : b_ij = g_H · S_i V_j d ;  g_H = 1/(4πℓ̂²);  charges at actuator-frame Pc_18.
+%  Model    : b_ij = S_i V_j d  (no-gain,無 g_H / K_H);  charges at actuator-frame Pc_18.
+%  Output   : 與 Hall_sensor_base_fix_dir 對齊 —— 只回 d、Vmat、cost J = Σ‖ε‖²(無 RMSE)。
 %  Current  : I = 1 A = FEM excitation (per fit-current-matches-sim rule).
 %  Sign     : 物理 signed B·n+,all-source(翻下極激發 P1/P3/P6).
 %  All model math lives in code\function\ ; this file is just the driver.
@@ -22,6 +22,7 @@ R_select = 150e-6;             % 近場取點半徑 [m](= calib_bias.mat 的 R_s
 I_actual = 1;                  % drive current [A] = FEM excitation (1 A)
 S_hall   = 130;               % Hall 靈敏度 [V/T](EQ-730L)
 N_I      = 6;                  % FEM 模擬次數 = 6 個單線圈解
+VARIANT  = 'standard';        % 讀哪個 FEM 變體子夾：'standard'(baseline) | 'sensref'(sensor 加密)；與 fix_dir 對齊
 dataset  = 'wp';              % page-1 建 M,c 用近場 'wp'(=R_select 球內,與 calib_bias 一致)
 
 %% ---- paths -----------------------------------------------------------------
@@ -34,8 +35,6 @@ charge_dir    = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_dat
 calib_bias_in = fullfile(charge_dir, 'calibration', 'calib_bias.mat');
 mat_out       = fullfile(charge_dir, 'fitting_d', 'calib_sensor_d_no_fix_dir.mat');  % 歸到 charge_fit/fitting_d/
 if ~exist(fileparts(mat_out),'dir'); mkdir(fileparts(mat_out)); end
-tex_dir       = fullfile(TREE,'results');
-if ~exist(tex_dir,'dir'); mkdir(tex_dir); end
 
 %% ---- 載入 18-param 校正結果(no_fix_dir) ------------------------------------
 assert(exist(calib_bias_in,'file')==2, 'calib_bias.mat 不存在,請先跑 no_fix_dir 校正');
@@ -73,51 +72,35 @@ for j = 1:N_I
     Bj_all = -[dj.bx(airj), dj.by(airj), dj.bz(airj)]; % all-source 整體變號
     B(:,:,j) = (Rrot * Bj_all(insel,:).').';          % 旋進 actuator 框
 end
-Bstack = zeros(3*Np, N_I);                            % 堆疊(點-major、xyz 交錯)
-for j = 1:N_I, Bstack(:,j) = reshape(B(:,:,j).', 3*Np, 1); end
-
-A = build_A(ell_hat, Pc, P);                          % 3Np x 6 空間函數矩陣(actuator)
-M = A.' * A;                                          % 6x6
-c = A.' * Bstack;                                     % 6xN_I(各欄 c_j = A^T b_j)
-fprintf('PAGE1: 已建 A(%dx6)、M(6x6)、c(6x%d)\n', 3*Np, N_I);
+% 建 M、c（用 build_S 逐點，取代 build_A 堆疊版；M=Σ S_iᵀS_i、c_j=Σ S_iᵀ·頁1 負號版場）
+M = zeros(6,6); c = zeros(6, N_I);
+for i = 1:Np
+    Si = build_S(P(i,:), ell_hat, Pc);                % 3×6 空間核（actuator 框、Pc_18）
+    M  = M + Si.' * Si;                               % Σ_i S_iᵀ S_i
+    for j = 1:N_I
+        c(:,j) = c(:,j) + Si.' * squeeze(B(i,:,j)).'; % c_j += S_iᵀ·B(i,:,j)（B = −FEM）
+    end
+end
+fprintf('PAGE1: 已建 M(6x6)、c(6x%d)（build_S 逐點）\n', N_I);
 
 %% ===========================================================================
 %  PAGE 2 - Hall-sensor 模型 + 求 d
 %  ===========================================================================
-[sensor_pos, sensor_n, disc_u, disc_v, disc_local, Ndisc] = build_sensor_geometry(cnst);
+[sensor_pos, sensor_n] = build_sensor_geometry(cnst);
 [Vmat, exc_sign] = extract_Vmat(results_root, cnst, apdl_to_paper_idx, ...
-                                sensor_pos, sensor_n, disc_u, disc_v, disc_local, Ndisc, S_hall);
-[d, gH]      = solve_d(Vmat, exc_sign, M, c, ell_hat, cnst, N_I);
-nrmse_sensor = sensor_residual_bias(A, Bstack, Vmat, exc_sign, d, gH, N_I);
+                                sensor_pos, sensor_n, S_hall, VARIANT);
+d = solve_d(Vmat, exc_sign, M, c, N_I);
+J = sensor_residual_bias(P, B, Vmat, exc_sign, ell_hat, Pc, d, N_I);
 
 fprintf('\n=============== PAGE 2: Hall-sensor 模型 (18-param bias, ell_hat=%.3f mm) ===============\n', ell_hat*1e3);
 fprintf('  sensor 電壓 Vmat [V](列=sensor 極 P1..P6,欄=激發 coil1..6):\n');
 for i=1:6, fprintf('   % .3e % .3e % .3e % .3e % .3e % .3e\n', Vmat(i,:)); end
-fprintf('  d (6x1, P1..P6, 含增益 d_final):\n'); fprintf('   % .4e\n', d);
-fprintf('  sensor 模型在 R<=%dum 的相對 RMSE = %.2f%%\n', round(R_select*1e6), nrmse_sensor);
+fprintf('  d (6x1, P1..P6, no-gain):\n'); fprintf('   % .4e\n', d);
+fprintf('  cost J = %.6e  [T^2]\n', J);
 fprintf('========================================================================\n');
 
 %% ---- 存 fitting_d/calib_sensor_d_no_fix_dir.mat(新檔名,不蓋 fix_dir 版)----
-save(mat_out, 'd','gH','Vmat','ell_hat','Pc','Rrot','nrmse_sensor','S_hall', ...
+%  輸出對齊 Hall_sensor_base_fix_dir：只存 d / Vmat / cost J（+ bias 專屬 Pc/Rrot）；無 g_H / K_H / RMSE。
+save(mat_out, 'd','Vmat','exc_sign','ell_hat','Pc','Rrot','J','S_hall', ...
               'sensor_pos','sensor_n','apdl_to_paper_idx','R_select');
 fprintf('已存 %s\n', mat_out);
-
-%% ===========================================================================
-%  後處理 + LaTeX:最終解 d_final + KH_final
-%  ===========================================================================
-SS = struct('ell_hat',ell_hat,'R_select',R_select,'S_hall',S_hall, ...
-            'nrmse_sensor',nrmse_sensor,'gH',gH,'Vmat',Vmat, ...
-            'apdl_to_paper_idx',apdl_to_paper_idx);
-
-d_final = d;                                                 % 最終解(含增益 g_H)
-Vp = zeros(6,6);                                              % 欄重排:激發 coil → 激發 paper pole
-for kc = 1:6, Vp(:, apdl_to_paper_idx(kc)) = Vmat(:, kc); end
-
-write_d_tex(fullfile(tex_dir,'d_final.tex'), 'final', d_final, Vp, gH, SS);
-
-mu0 = cnst.mu_0;  Nc = cnst.N_c;
-[gF, KH, Ra] = compute_KH(d_final, Vmat, F, mu0, Nc);
-fprintf('[final] g_F = %.4e,  R_a = %.4e,  K_H(1,1) = %.4f\n', gF, Ra, KH(1,1));
-write_KH_tex(fullfile(tex_dir,'KH_final.tex'), 'final', 'hw.pdf (gain $d$, $b=g_H S V d$, 18-param bias)', d_final, gF, KH, Ra, SS);
-
-fprintf('done: 2 .tex (d_final, KH_final) in %s\n', tex_dir);

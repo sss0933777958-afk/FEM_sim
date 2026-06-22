@@ -1,0 +1,259 @@
+! ====================================================================
+! Long Fei HEXAPOLE (HALFCUT) + WP air sphere — geometry export, MILLIMETRE
+! ====================================================================
+! Derived from MT_Geom_Export_mm.txt (IDENTICAL mm iron build), with the
+! WP fine air sphere (V7, R = 7 mm) added as a RAW overlapping volume
+! (no boolean against the iron), then IGESOUT. Use for SolidWorks/CAD
+! viewing of "iron assembly + sphere enclosing the working point".
+!
+! Units: built in millimetres (length x1000 vs MKS source). ANSYS IGESOUT
+! writes global unit flag 6 (m); a post-step patches it 6->2 (mm) so
+! SolidWorks measures correct dimensions (same convention as long_fei/).
+!
+! [ADDED] WP air sphere block (after the iron VOVLAP, so sphere stays raw).
+! [REMOVED] PNG render block from MT_Geom_Export_mm.txt.
+! [MODIFIED] /CWD scratch + IGESOUT target -> IGES_converted/long_fei/.
+! ====================================================================
+
+/CWD,'G:\my_workspace\tmp_iges_wpsphere'
+
+Finish
+/cle
+/PREP7
+
+POLE_NUM = 6
+*afun, DEG
+BTOL, 1e-4
+/UNITS, MKS
+
+R_norm    = 0.5          ! 500 µm in mm units
+R_norm_xy = R_norm*sqrt(2.0/3.0)
+R_norm_z  = R_norm/sqrt(3.0)
+
+YOKE_IN_R  = 84/2.0
+YOKE_OUT_R = 106/2.0
+YOKE_MID_R = (YOKE_IN_R + YOKE_OUT_R)/2.0
+YOKE_H     = 2.0
+PROT_R     = 10.0/2.0
+PROT_H     = 7.0
+
+POLE_R        = 6.0/2
+POLE_TIP_R    = 40.0e-3
+POLE_CONE_LEN = 15
+POLE_CONE_HYP = sqrt(POLE_CONE_LEN**2 + POLE_R**2)
+ANG1 = acos(POLE_R/POLE_CONE_HYP)
+ANG2 = 90 - ANG1
+L = POLE_CONE_LEN*POLE_TIP_R/POLE_R
+POLE_TIP_CENTER = L/cos(ANG2)
+POLE_CONE2_LEN  = L*cos(ANG2)
+POLE_TIP_R2     = POLE_TIP_R*cos(ANG2)
+POLE_TIP_FILLET_DROP = POLE_TIP_CENTER - POLE_TIP_R
+POLE_TIP_FILLET_PROT = (POLE_CONE2_LEN - POLE_TIP_FILLET_DROP)
+
+! ===== Yoke ring + 6 protrusions =====
+WPLANE, 1,0,0,0,,,,,,
+WPcsys,-1,0
+
+CYL4,0,0,YOKE_IN_R,0,YOKE_OUT_R,360,YOKE_H
+
+*do, prot_ind, 1, POLE_NUM,1
+    WPLANE,1,0,0,0,,,,,,
+    WPcsys,-1,0
+    *if, prot_ind,LE,3, then
+        temp_prot_h = -PROT_H
+        temp_prot_ang = 120*(prot_ind - 1)
+    *else
+        WPOFFS,0,0,YOKE_H
+        temp_prot_h = PROT_H
+        temp_prot_ang = 120*(prot_ind - 4) + 60
+    *endif
+    CYL4,YOKE_MID_R*cos(temp_prot_ang),YOKE_MID_R*sin(temp_prot_ang),PROT_R, ,,,temp_prot_h
+*enddo
+
+! [MODIFIED] Skip yoke+protrusions VADD — let final VOVLAP handle all topology
+
+! ===== 3 lower poles (4 BLOCKs + filled cone) at azimuth 0°, 120°, 240° =====
+X0_LOW = YOKE_MID_R*cos(0)
+Y0_LOW = YOKE_MID_R*sin(0)
+Z0_LOW = -PROT_H
+
+*do, pole_ind,1,3,1
+    WPLANE, 1,0,0,0,,,,,,
+    WPcsys,-1,0
+    ROTA_ANG = 120*(pole_ind-1)
+    WPROTA, ROTA_ANG
+
+    *get, VL_NUM, VOLU, ,NUM, MAX
+    VL_START = VL_NUM + 1
+    numstr, VOLU, VL_START
+
+    BLOCK, X0_LOW - 5,  X0_LOW + 11, Y0_LOW - 5,  Y0_LOW + 5,  Z0_LOW - 10, Z0_LOW
+    BLOCK, X0_LOW - 5,  X0_LOW - 2,  Y0_LOW - 10, Y0_LOW + 10, Z0_LOW - 10, Z0_LOW - 5
+    BLOCK, X0_LOW - 10, X0_LOW - 2,  Y0_LOW - 5,  Y0_LOW + 5,  Z0_LOW - 10, Z0_LOW - 2
+    BLOCK, X0_LOW - 10, X0_LOW - 5,  Y0_LOW - 10, Y0_LOW + 10, Z0_LOW - 10, Z0_LOW - 5
+
+    *get, KP_NUM, KP  , ,NUM, MAX
+    *get, LI_NUM, LINE, ,NUM, MAX
+    KP_START = KP_NUM + 1
+    LI_START = LI_NUM + 1
+    numstr, KP,   KP_START
+    numstr, LINE, LI_START
+
+    l1 = R_norm_xy
+    l1_ang = atan2( 0 , R_norm_xy )
+    l2 = sqrt( (R_norm_xy + POLE_TIP_FILLET_PROT)**2 + POLE_TIP_R2**2 )
+    l2_ang = atan2( POLE_TIP_R2 , (R_norm_xy + POLE_TIP_FILLET_PROT) )
+    POLE_CONE_LEN_SHIFT = POLE_CONE_LEN + (R_norm_xy - POLE_TIP_FILLET_DROP)
+    l3 = sqrt( POLE_CONE_LEN_SHIFT**2 + POLE_R**2 )
+    l3_ang = atan2( POLE_R , POLE_CONE_LEN )
+    l4 = sqrt( (X0_LOW - 10)**2 + POLE_R**2 )
+    l4_ang = atan2( POLE_R , (X0_LOW - 10) )
+    l5 = abs( X0_LOW - 10 )
+    l5_ang = atan2( 0 , (X0_LOW - 10) )
+    l6 = abs( R_norm_xy + POLE_TIP_R )
+    l6_ang = atan2( 0, R_norm_xy + POLE_TIP_R )
+
+    K , , l1*cos(ROTA_ANG + l1_ang) , l1*sin(ROTA_ANG + l1_ang), Z0_LOW - 6
+    K , , l2*cos(ROTA_ANG + l2_ang) , l2*sin(ROTA_ANG + l2_ang), Z0_LOW - 6
+    K , , l3*cos(ROTA_ANG + l3_ang) , l3*sin(ROTA_ANG + l3_ang), Z0_LOW - 6
+    K , , l4*cos(ROTA_ANG + l4_ang) , l4*sin(ROTA_ANG + l4_ang), Z0_LOW - 6
+    K , , l5*cos(ROTA_ANG + l5_ang) , l5*sin(ROTA_ANG + l5_ang), Z0_LOW - 6
+    K , , l6*cos(ROTA_ANG + l6_ang) , l6*sin(ROTA_ANG + l6_ang), Z0_LOW - 6
+
+    LARC , KP_START , KP_START + 1 , KP_START + 5 , POLE_TIP_R
+    L , KP_START + 1 , KP_START + 2,,,,,,,,
+    L , KP_START + 2 , KP_START + 3,,,,,,,,
+    L , KP_START + 3 , KP_START + 4,,,,,,,,
+    L , KP_START + 4 , KP_START,,,,,,,,
+
+    *get, AR_NUM, AREA, ,NUM, MAX
+    AR_START = AR_NUM + 1
+    numstr, AREA, AR_START
+
+    AL, LI_START, LI_START + 1, LI_START + 2, LI_START + 3, LI_START + 4
+    VROTAT, AR_START, ,,,,,KP_START,KP_START + 4,,4
+
+    ! Half-cut lower pole: subtract upper-half block from the 4 cone segments.
+    vl_cone_first = VL_START + 4
+    *get, vl_cone_max, VOLU, , NUM, MAX
+    vl_cut = vl_cone_max + 1
+    numstr, VOLU, vl_cut
+    BLOCK, 0, X0_LOW - 10, Y0_LOW - 10, Y0_LOW + 10, Z0_LOW - 6, Z0_LOW
+    FLST, 2, (vl_cone_max - vl_cone_first + 1), 6, ORDE, 2
+    FITEM, 2, vl_cone_first
+    FITEM, 2, -vl_cone_max
+    VSBV, P51X, vl_cut
+*enddo
+
+ALLSEL
+
+! ===== 3 upper poles (3 BLOCKs + tilted cone) at azimuth 60°, 180°, 300° =====
+X0_HIGH = YOKE_MID_R*cos(0)
+Y0_HIGH = YOKE_MID_R*sin(0)
+Z0_HIGH = YOKE_H + PROT_H
+
+*do, pole_ind,4,6,1
+    WPLANE, 1,0,0,0,,,,,,
+    WPcsys,-1,0
+    ROTA_ANG = 120*(pole_ind-4) + 60
+    WPROTA, ROTA_ANG
+
+    *get, VL_NUM, VOLU, ,NUM, MAX
+    VL_START = VL_NUM + 1
+    numstr, VOLU, VL_START
+
+    BLOCK, X0_HIGH - 3.5,  X0_HIGH + 8.5, Y0_HIGH - 5,  Y0_HIGH + 5,  Z0_HIGH, Z0_HIGH + 10
+    BLOCK, X0_HIGH - 6.5,  X0_HIGH - 3.5, Y0_HIGH - 11, Y0_HIGH + 11, Z0_HIGH, Z0_HIGH + 10
+    BLOCK, X0_HIGH - 16.5, X0_HIGH - 6.5, Y0_HIGH - 11, Y0_HIGH + 11, Z0_HIGH, Z0_HIGH + 10
+
+    tip_upper_x = R_norm_xy*cos(ROTA_ANG)
+    tip_upper_y = R_norm_xy*sin(ROTA_ANG)
+    tip_upper_z = Z0_LOW - 6 + R_norm_z*2
+
+    end_upper_x0 = X0_HIGH - 11.5
+    end_upper_y0 = Y0_HIGH
+    end_upper_z0 = Z0_HIGH + 5
+    end_upper_x = sqrt( end_upper_x0**2 + end_upper_y0**2 )*cos(ROTA_ANG)
+    end_upper_y = sqrt( end_upper_x0**2 + end_upper_y0**2 )*sin(ROTA_ANG)
+    end_upper_z = end_upper_z0
+
+    INCLINE_VECTORx = end_upper_x - tip_upper_x
+    INCLINE_VECTORy = end_upper_y - tip_upper_y
+    INCLINE_VECTORz = end_upper_z - tip_upper_z
+    INCLINE_ANG = atan2( INCLINE_VECTORz, sqrt(INCLINE_VECTORx**2+INCLINE_VECTORy**2) )
+
+    *get, KP_NUM, KP  , ,NUM, MAX
+    *get, LI_NUM, LINE, ,NUM, MAX
+    KP_START = KP_NUM + 1
+    LI_START = LI_NUM + 1
+    numstr, KP,   KP_START
+    numstr, LINE, LI_START
+
+    p1x = tip_upper_x
+    p1y = tip_upper_y
+    p1z = tip_upper_z
+
+    p2x = p1x + POLE_TIP_FILLET_PROT*cos(INCLINE_ANG)*cos(ROTA_ANG) - POLE_TIP_R2*sin(ROTA_ANG)
+    p2y = p1y + POLE_TIP_FILLET_PROT*cos(INCLINE_ANG)*sin(ROTA_ANG) + POLE_TIP_R2*cos(ROTA_ANG)
+    p2z = p1z + POLE_TIP_FILLET_PROT*sin(INCLINE_ANG)
+
+    POLE_CONE_LEN_SHIFT = POLE_CONE_LEN + (R_norm_xy - POLE_TIP_FILLET_DROP)
+    p3x = p1x + POLE_CONE_LEN_SHIFT*cos(INCLINE_ANG)*cos(ROTA_ANG) - POLE_R*sin(ROTA_ANG)
+    p3y = p1y + POLE_CONE_LEN_SHIFT*cos(INCLINE_ANG)*sin(ROTA_ANG) + POLE_R*cos(ROTA_ANG)
+    p3z = p1z + POLE_CONE_LEN_SHIFT*sin(INCLINE_ANG)
+
+    p4x = end_upper_x - POLE_R*sin(ROTA_ANG)
+    p4y = end_upper_y + POLE_R*cos(ROTA_ANG)
+    p4z = end_upper_z
+
+    p5x = end_upper_x
+    p5y = end_upper_y
+    p5z = end_upper_z
+
+    p6x = p1x + POLE_CONE_LEN*cos(INCLINE_ANG)*cos(ROTA_ANG)
+    p6y = p1y + POLE_CONE_LEN*cos(INCLINE_ANG)*sin(ROTA_ANG)
+    p6z = p1z + POLE_CONE_LEN*sin(INCLINE_ANG)
+
+    K,, p1x , p1y , p1z
+    K,, p2x , p2y , p2z
+    K,, p3x , p3y , p3z
+    K,, p4x , p4y , p4z
+    K,, p5x , p5y , p5z
+    K,, p6x , p6y , p6z
+
+    LARC , KP_START , KP_START + 1 , KP_START + 5 , POLE_TIP_R
+    L , KP_START + 1 , KP_START + 2,,,,,,,,
+    L , KP_START + 2 , KP_START + 3,,,,,,,,
+    L , KP_START + 3 , KP_START + 4,,,,,,,,
+    L , KP_START + 4 , KP_START,,,,,,,,
+
+    *get, AR_NUM, AREA, ,NUM, MAX
+    AR_START = AR_NUM + 1
+    numstr, AREA, AR_START
+
+    AL, LI_START, LI_START + 1, LI_START + 2, LI_START + 3, LI_START + 4
+    VROTAT, AR_START, ,,,,,KP_START, KP_START + 4,,4
+*enddo
+
+ALLSEL
+
+! ===== VOVLAP (clean iron topology only — sphere added AFTER) =====
+ALLSEL, ALL
+VOVLAP, ALL
+NUMCMP, VOLU
+ALLSEL, ALL
+
+! ===== [ADDED] WP fine air sphere (V7, R = 7 mm), RAW overlap (no boolean) =====
+SPH_FINE_R = 7                      ! mm
+SPH_OFST   = Z0_LOW - 6 + R_norm_z  ! = -12.71 mm, same WP offset as FEM
+WPLANE, 1,0,0,0,,,,,,
+WPcsys,-1,0
+WPOFFS,0,0,SPH_OFST
+SPHERE, 0, SPH_FINE_R, 0,360
+
+! ===== IGES export (iron assembly + WP sphere) =====
+ALLSEL, ALL
+VPLOT
+IGESOUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\IGES_converted\long_fei\Long2016_HexapoleHalfcut_Geom_WPsphere', 'iges'
+
+FINISH
