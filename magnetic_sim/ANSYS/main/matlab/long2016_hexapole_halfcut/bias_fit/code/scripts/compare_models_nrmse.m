@@ -10,7 +10,7 @@
 clear; clc;
 addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');
 results_root = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
-ddir = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\long2016_hexapole_halfcut\charge_fit';
+ddir = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\bias_fit\data';   % 規則#2：sweep_alln 已移至 bias_fit/data
 
 cnst = mt_constants();
 a2p  = [1,3,6,5,2,4];
@@ -18,13 +18,14 @@ tip  = [cnst.pole_tip_x; cnst.pole_tip_y; cnst.pole_tip_z_wp];
 dhat = tip ./ vecnorm(tip);
 
 % ---- K̂_I 模型參數（R=150）----
-SW = load(fullfile(ddir,'fitting_trend','sweep_alln_vs_R.mat'));   % R_um, ell_R, gB_R, Ksave, NRMSE_R
+SW = load(fullfile(ddir,'sweep_alln_vs_R.mat'));   % R_um, ell_R, gB_R, Ksave, NRMSE_R
 gi = find(SW.R_um==150,1);
 ellK = SW.ell_R(gi); gBK = SW.gB_R(gi); Khat = SW.Ksave(:,:,gi);
 fprintf('K_I (R=150): ell=%.4f mm, gB=%.4e, sweep NRMSE_R=%.3f%% (自洽目標)\n', ellK*1e3, gBK, SW.NRMSE_R(gi));
 
 % ---- sensor 模型參數（no-gain：模型 b = S·V·d，無 g_H）----
-SD = load(fullfile(ddir,'fitting_d','calib_sensor_d.mat'));        % d, Vmat, ell_hat（charge_fit/fitting_d/）
+SD = load(['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\' ...
+           'Calibration_using_FEM_modeling\Hall_sensor_base_fix_dir\data\calib_sensor_d.mat']);  % 規則#2：Hall_sensor_base_fix_dir/data/
 d = SD.d; Vmat = SD.Vmat; ellS = SD.ell_hat;
 exc_sign = ones(1,6); for j=1:6, if ismember(a2p(j),[1 3 6]), exc_sign(j)=-1; end, end
 fprintf('sensor   : ell_hat=%.4f mm (no-gain d)\n\n', ellS*1e3);

@@ -1,0 +1,3 @@
+鋼件 + 內球一起看（看極尖在球內）：
+CMSEL,S,COMP_MT $ CMSEL,A,COMP_AIR1
+EPLOT

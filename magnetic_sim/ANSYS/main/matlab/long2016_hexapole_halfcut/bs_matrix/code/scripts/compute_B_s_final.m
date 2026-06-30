@@ -9,7 +9,7 @@
 
 clear; clc;
 
-S = load('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\long2016_hexapole_halfcut\bs_matrix\B_bar.mat');
+S = load('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\bs_matrix\data\B_bar.mat');
 B = S.B_matrix_at_Iin;          % Tesla
 I_in   = S.I_in_A;              % 0.6 A
 S_hall = S.S_hall;              % 0.13 V/T
@@ -52,7 +52,7 @@ for i = 1:6
 end
 
 %% Save
-save('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\long2016_hexapole_halfcut\bs_matrix\B_s_final.mat', ...
+save('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\bs_matrix\data\B_s_final.mat', ...
      'B_S', 'B_corr', 'I_in', 'S_hall', 'upper_cols', 'lower');
 
 %% Write LaTeX (follow style of B_s_matrix_0p6A.tex)
@@ -151,7 +151,7 @@ fprintf(fid2, '\\end{table}\n\n');
 fprintf(fid2, '\\end{document}\n');
 
 % Save mat too
-save('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\long2016_hexapole_halfcut\bs_matrix\B_s_kA_final.mat', ...
+save('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\bs_matrix\data\B_s_kA_final.mat', ...
      'B_S_kA', 'B_S', 'B_corr', 'I_in', 'S_hall', 'k_A', 'upper_cols', 'lower');
 
 fprintf('\nSaved LaTeX (×k_A): %s\n', tex_file2);

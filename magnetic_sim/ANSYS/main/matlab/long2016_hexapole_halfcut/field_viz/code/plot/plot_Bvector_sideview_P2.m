@@ -48,7 +48,7 @@ function plot_Bvector_sideview_P2()
     %% --- Per-pole sign correction (read from Bbar_S mat) ---
     %  P2 is an upper pole; raw FEM has B_bar_S(2,2) < 0 (per memory).
     %  Sign-correction flips the entire coil5 B field so flux flows yoke→tip→WP.
-    bbar_mat = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\long2016_hexapole_halfcut\bs_matrix\Bbar_S_4p572.mat';
+    bbar_mat = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\bs_matrix\data\Bbar_S_4p572.mat';
     if exist(bbar_mat, 'file')
         Bs = load(bbar_mat, 'col_sign');
         sign_p2 = Bs.col_sign(2);   % P2 is paper index 2

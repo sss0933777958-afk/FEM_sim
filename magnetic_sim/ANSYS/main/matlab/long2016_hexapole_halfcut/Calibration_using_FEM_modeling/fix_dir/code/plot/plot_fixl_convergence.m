@@ -18,7 +18,7 @@ R_list  = 50:50:500;                         % 同 no_fix_l
 NIT     = 25;
 dataset = 'all';
 fig_dir  = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\figures\long2016_hexapole_halfcut';
-data_dir = matlab_path(model, 'charge_fit', 'fitting_trend');
+data_dir = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\bias_fit\data';
 
 % ---- actuator 旋轉 + 理想格點 ----------------------------------------------
 tip   = [cnst.pole_tip_x; cnst.pole_tip_y; cnst.pole_tip_z_wp];

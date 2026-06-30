@@ -14,14 +14,14 @@
 %  which has B_matrix_at_Iin_T (Tesla); we convert to mT for display.
 %
 %  Outputs:
-%    magnetic_sim/ANSYS/main/MATLAB_data/long2016_hexapole_halfcut/bs_matrix/Bbar_S_4p572.mat
+%    magnetic_sim/ANSYS/main/matlab/long2016_hexapole_halfcut/bs_matrix/data/Bbar_S_4p572.mat
 %    magnetic_sim/ANSYS/main/doc/Solve_B_matrix/long2016_hexapole_halfcut/scripts/Bbar_S_4p572.tex
 %  ------------------------------------------------------------------
 
 clear; clc;
 
 %% --- Load baseline FEM data ---
-src_mat = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\long2016_hexapole_halfcut\bs_matrix\Vout_Vin_4p572.mat';
+src_mat = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\bs_matrix\data\Vout_Vin_4p572.mat';
 if ~exist(src_mat, 'file')
     error('Source mat not found: %s\nRun gen_Vout_Vin_4p572.m first.', src_mat);
 end
@@ -70,7 +70,7 @@ end
 Bbar_S_mT_disp = Bbar_S_mT;     % already sign-corrected above
 
 %% --- Save .mat ---
-data_dir = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\long2016_hexapole_halfcut\bs_matrix';
+data_dir = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\bs_matrix\data';
 if ~exist(data_dir, 'dir'); mkdir(data_dir); end
 mat_out = fullfile(data_dir, 'Bbar_S_4p572.mat');
 sensor_along_mm  = S.sensor_along_mm;

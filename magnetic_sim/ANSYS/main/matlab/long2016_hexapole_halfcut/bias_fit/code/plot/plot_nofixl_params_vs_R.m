@@ -8,7 +8,7 @@ clear; clc; close all;
 addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\common');
 model = 'long2016_hexapole_halfcut';
 
-data_dir = matlab_path(model, 'charge_fit', 'fitting_trend');
+data_dir = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\bias_fit\data';
 fig_dir  = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\figures\long2016_hexapole_halfcut';
 S = load(fullfile(data_dir,'sweep_nofixl_vs_R.mat'));        % R_um, ell_R, gB_R, ...
 

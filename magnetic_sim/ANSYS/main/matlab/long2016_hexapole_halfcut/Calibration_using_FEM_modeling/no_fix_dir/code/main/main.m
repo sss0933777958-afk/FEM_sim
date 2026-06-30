@@ -33,6 +33,7 @@ I_actual    = 1;               % drive current [A] = FEM excitation (1 A)
 SHAPE       = 'ball';          % sampling region: ball ||p|| <= R about WP
 ell0        = 0.5e-3;          % ell initial guess [m] (= ell_design)
 dataset     = 'all';           % standard-mesh dataset
+VARIANT     = 'gap200um_mueq'; % [MODIFIED] FEM 變體子夾（'standard' = baseline；'gap200um_mueq' = gap200 2 段式 μ_eff）
 
 %% ---- paths -----------------------------------------------------------------
 TREE = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
@@ -50,8 +51,10 @@ apdl_to_paper_idx = [1, 3, 6, 5, 2, 4];                 % coil k excites this pa
 coil_sign = [1 -1 1 -1 -1 1];                           % all-source display flip (upper P2/P4/P5)
 
 %% ---- load FEM once (all 6 coils, actuator frame) ---------------------------
-fprintf('loading 6 coils (standard ''%s'') ...\n', dataset);
-D = load_coils_actuator(model, cnst, apdl_to_paper_idx, dataset);
+fprintf('loading 6 coils (variant ''%s'', dataset ''%s'') ...\n', VARIANT, dataset);   % [MODIFIED]
+D = load_coils_actuator(model, cnst, apdl_to_paper_idx, dataset, VARIANT);              % [MODIFIED] variant
+vtag = '';                                                                              % [ADDED] output suffix
+if ~strcmp(VARIANT,'standard'), vtag = ['_' VARIANT]; end
 
 %% ---- radius list by mode ---------------------------------------------------
 switch lower(MODE)
@@ -67,9 +70,25 @@ for R_um = R_um_list
     Pc                = make_Pc(e_hat, D.Pc_base);
     [KbarI, gB]       = gauge_KI(ell, Pc, P, Bstack, D.F);
     errpct            = region_field_err(Bstack, J);
-    fname = fullfile(tex_dir, sprintf('fit_%s_R%03dum_%gA.tex', SHAPE, R_um, I_actual));
+    fname = fullfile(tex_dir, sprintf('fit_%s_R%03dum_%gA%s.tex', SHAPE, R_um, I_actual, vtag));  % [MODIFIED] vtag
     write_KbarI_tex(fname, SHAPE, R_um, I_actual, KbarI, ell, gB, e_hat, coil_sign, errpct);
+    compile_tex_pdf(fname);                                          % [ADDED] 編成可看的 PDF（清 aux/log）
     fprintf('R=%3d um | npts=%6d | ell=%.3f mm | gB=%.4e | err=%.2f%%\n', ...
             R_um, npts, ell*1e3, gB, errpct);
 end
-fprintf('done (%s mode): %d .tex file(s) in %s\n', MODE, numel(R_um_list), tex_dir);
+fprintf('done (%s mode, variant=%s): %d result PDF(s) in %s\n', MODE, VARIANT, numel(R_um_list), tex_dir);
+
+%% ---- local: 編 standalone .tex -> PDF（同夾，清中間檔；results/ 留 .pdf + .tex）----
+function compile_tex_pdf(texfile)
+    xelatex = 'C:\Users\Kuo\AppData\Local\Programs\MiKTeX\miktex\bin\x64\xelatex.exe';
+    [d,b]   = fileparts(texfile);
+    old = cd(d);
+    [st,out] = system(sprintf('"%s" -interaction=nonstopmode -halt-on-error "%s"', xelatex, texfile));
+    cd(old);
+    if st ~= 0 || ~exist(fullfile(d,[b '.pdf']),'file')
+        fprintf('%s\n', out); error('xelatex 編譯失敗：%s', texfile);
+    end
+    for ext = {'.tex','.aux','.log','.out'}    % results 只留 .pdf（連 .tex 一起清）
+        f = fullfile(d,[b ext{1}]); if exist(f,'file'); delete(f); end
+    end
+end

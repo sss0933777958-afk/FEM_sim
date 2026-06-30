@@ -2,10 +2,11 @@
 
 **用途**：建 Long Fei 半切 hexapole 的幾何（1 yoke ring + 6 protrusion + 3 下極半錐 + 3 上極完整錐），匯出 IGES，以及純 mesh 檢視（不求解）。這層是「先有幾何」的階段，不含物理/求解。
 
-**內容**：本層只放三個子資料夾：
+**內容**：本層只放兩個子資料夾：
 - `export/` — `MT_Geom_Export*.txt`：幾何 only → IGESOUT + 3 張 PNG 視圖（含 mm/metre、gap200um、sphtip、HollowProt、WithCoil 等變體）。
-- `mesh/` — `MT_Mesh_{Dense,Graded,IGES}.txt`：對既有幾何/IGES 做 free-tet mesh 存 .db 供 GUI 檢視，無 coil/無 MAG BC/無 solve。
 - `scripts/` — `_generate_geom_export_gap.py`：產生 export APDL 的輔助 .py。
+
+> mesh 檢視 deck 已不放這裡：往後 mesh 產生統一用 `../mesh/MT_Mesh_Graded.txt`（canonical mesh-only deck）。
 
 **資料來源 / 流向**：源幾何邏輯抄自 `long2016_hexapole_full` + `hexapole-long2016` verbatim；`export/` 寫 IGES 到 `IGES/`（metre）+ `IGES_converted/`（mm，flag 6→2）；mesh `.db` 與 PNG 存到 `ANSYS_data/long2016_hexapole_halfcut/{geom_export_*,mesh/*}`。
 

@@ -31,14 +31,14 @@ TREE = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
 addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');  % mt_constants/import_ansys_data/filter_iron_nodes
 addpath(fullfile(TREE,'code','function'));                                       % build_S / build_sensor_geometry / extract_Vmat（重用）
 results_root = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
-charge_dir   = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\' ...
-                'long2016_hexapole_halfcut\charge_fit'];
-mat_out      = fullfile(charge_dir, 'fitting_d', 'calib_DH_full.mat');            % 輸出（與 calib_sensor_d.mat 並列）
+data_dir     = fullfile(TREE,'data');                         % 規則#2：本組 .mat
+fixdir_data  = fullfile(fileparts(TREE),'fix_dir','data');    % fit_fixl ℓ̂ 來源（fix_dir/data）
+mat_out      = fullfile(data_dir, 'calib_DH_full.mat');                          % 輸出（與 calib_sensor_d.mat 並列於 data/）
 if ~exist(fileparts(mat_out),'dir'); mkdir(fileparts(mat_out)); end
 
 %% ---- 載 ℓ̂（同 main：fix_dir fit_KI_fixl 在 R=150 的解）---------------------
 RRR  = round(R_select*1e6);
-ellf = fullfile(charge_dir, 'calibration', sprintf('fit_fixl_R%03dum.mat', RRR));
+ellf = fullfile(fixdir_data, sprintf('fit_fixl_R%03dum.mat', RRR));
 assert(exist(ellf,'file')==2, 'ℓ̂ 來源不存在：%s（請先跑 fix_dir main）', ellf);
 SL = load(ellf, 'ell','J');  ell_hat = SL.ell;  J_fixdir = SL.J;                 % ℓ̂ [m]、fix_dir 自由電荷 cost（對照）
 fprintf('載入 ℓ̂ = %.4f mm（fix_dir fit_KI_fixl）；fix_dir cost J = %.6e\n', ell_hat*1e3, J_fixdir);

@@ -1,10 +1,11 @@
 # apdl/long2016_hexapole_halfcut/ — Long Fei 六極下極半切 hexapole 的 APDL 腳本根
 
-**用途**：這個 model（Long Fei 6 極 hexapole，下極 P1/P3/P6 磨平半錐、上極 P2/P4/P5 完整錐）所有 ANSYS MAPDL 腳本的 topic 根。涵蓋幾何建模 + IGES 匯出（`geom/`）、求解（`sim/`）、後處理抽場（`postproc/`）、GUI 檢視（`gui/`，非求解）四類。是重跑 sim 的 input。
+**用途**：這個 model（Long Fei 6 極 hexapole，下極 P1/P3/P6 磨平半錐、上極 P2/P4/P5 完整錐）所有 ANSYS MAPDL 腳本的 topic 根。涵蓋幾何建模 + IGES 匯出（`geom/`）、網格產生（`mesh/`）、求解（`sim/`）、後處理抽場（`postproc/`）、GUI 檢視（`gui/`，非求解）五類。是重跑 sim 的 input。
 
 **內容**：本層只放子資料夾，無散落 .txt：
 - `geom/` — 幾何建模：`export/`（IGES 匯出）、`mesh/`（mesh-only 檢視）、`scripts/`（產生 APDL 的 .py）。
-- `sim/` — 求解：`baseline/`（Long Fei verbatim 基準）、`gap200um_mueq/`（μ_r 等效氣隙）、`graded/`（漸變 mesh）、`mesh/`（mesh 抽取）、`resolve/`（重解）、`scripts/`（.py 產生器）。
+- `mesh/` — **純 mesh（網格產生）腳本 + 尺寸表**：mesh deck 建幾何＋劃網格＋`SAVE .db`，給 `sim/` 的 solve deck `RESUME`（mesh／solve 分離起點）。目前有 region-graded 尺寸表 `mesh_size_table.pdf`。
+- `sim/` — 求解：`baseline/`（Long Fei verbatim 基準）、`gap*_mueq/`（μ_r 等效氣隙）、`graded/`（漸變 mesh）、`mesh/`（既有 smrt5 mesh-only/抽取）、`resolve/`（RESUME 重解）、`scripts/`（.py 產生器）。
 - `postproc/` — 後處理：`dump/`（從存好的 .db 重抽場）。
 - `gui/` — **GUI 檢視用（非求解）**：build-only（不 mesh、不解）建模存 `.db` 供 MAPDL GUI 開來檢視。`MT_AllSource.txt`＝6 極 all-source 電流方向（下極 CURR=−1、上極 +1），存 `ANSYS_data/.../db/allsource/allsource.db`。
 

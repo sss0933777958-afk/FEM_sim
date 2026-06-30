@@ -1,0 +1,119 @@
+! ============================================================================
+! MT_Sim_P1_gap200.txt - Long2016 halfcut, GRADED mesh, gap200um mu_eff on SUPPORT BASE
+!   RESUME graded mesh (mesh_graded.db) -> apply gap200 2-seg mu_eff to the SUPPORT-BASE
+!   blocks ONLY (NOT the coil pillar/protrusion; corrected 2026-06-26 per user):
+!     lower support base  z in [-17,-7] mm, cyl radius r in [37,62] mm -> MAT_PROT_LO (mu=71.0145)
+!     upper support base  z in [+9,+19] mm, cyl radius r in [30,62] mm -> MAT_PROT_UP (mu=59.2672)
+!   cone (probe, r<16mm) + connecting rod + coil pillar (z[-7,0]/[2,9]) + yoke stay mu=280.
+!   mu_eff values from doc/effective_permeability/effective_permeability.pdf (2-segment, gap=200um).
+!   coil2 = +1 RAW (P1; all-source negate done in MATLAB post, same as baseline coil2/standard).
+!   Output -> data/coil2/gap200um_mueq/ (OVERWRITES old coil-pillar/baseline gap200, user confirmed).
+! ============================================================================
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\gap200_sb_graded'
+/CLEAR,NOSTART
+/TITLE, Long2016 halfcut graded gap200 mu_eff on support base (coil2)
+RESUME,'mesh_graded','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\mesh_graded'
+
+/PREP7
+*afun,DEG
+! ---- redefine geom consts (APDL scalars not stored in .db) ----
+PROT_H     = 7.0e-3
+YOKE_H     = 2.0e-3
+R_norm     = 500e-6
+R_norm_z   = R_norm/sqrt(3.0)
+SPH_OFST   = -PROT_H - 6e-3 + R_norm_z
+AIR_CYL_R  = 80e-3
+AIR_CYL_H  = 70e-3
+COIL_OUT_R = 8e-3
+COIL_IN_R  = 5e-3
+COIL_THK   = COIL_OUT_R - COIL_IN_R
+COIL_H     = PROT_H
+TURNS      = 70
+
+! ---- materials: support-base mu_eff (2-seg gap200) ----
+MAT_MT      = 2
+MAT_PROT_UP = 5
+MAT_PROT_LO = 6
+mp,murx,MAT_PROT_UP,59.267241    ! upper poles P2/P4/P5 support base
+mp,murx,MAT_PROT_LO,71.014493    ! lower poles P1/P3/P6 support base
+
+! ---- EMODIF: reassign SUPPORT-BASE steel by z + cylindrical radius ----
+!   LOCAL,13 cylindrical @ origin: CENT,X = radius r ; CENT,Z = axial = global z
+!   lower support base z[-17,-7] r[37,62] ; upper support base z[9,19] r[30,62]
+!   cone (r<16) + rod excluded by radius ; coil pillar/yoke excluded by z.
+LOCAL,13,1,0,0,0
+CSYS,13
+ESEL,S,CENT,Z,-17e-3,-7e-3
+ESEL,R,CENT,X, 37e-3, 62e-3
+CSYS,0
+ESEL,R,MAT,,MAT_MT
+EMODIF,ALL,MAT,MAT_PROT_LO
+ALLSEL,ALL
+CSYS,13
+ESEL,S,CENT,Z, 9e-3, 19e-3
+ESEL,R,CENT,X, 30e-3, 62e-3
+CSYS,0
+ESEL,R,MAT,,MAT_MT
+EMODIF,ALL,MAT,MAT_PROT_UP
+ALLSEL,ALL
+CSYS,0
+ESEL,S,MAT,,MAT_PROT_LO $ *GET,NLO,ELEM,0,COUNT $ ALLSEL,ALL
+ESEL,S,MAT,,MAT_PROT_UP $ *GET,NUP,ELEM,0,COUNT $ ALLSEL,ALL
+/com, SUPPORT-BASE reassigned: lower(MAT_PROT_LO)=%NLO% elems, upper(MAT_PROT_UP)=%NUP% elems
+
+! ---- coil2 = +1A raw (P1 source via MATLAB all-source negate); coils 2-6 = 0 ----
+R,1,1,TURNS*0,COIL_THK,COIL_H
+R,2,1,TURNS*1,COIL_THK,COIL_H
+R,3,1,TURNS*0,COIL_THK,COIL_H
+R,4,1,TURNS*0,COIL_THK,COIL_H
+R,5,1,TURNS*0,COIL_THK,COIL_H
+R,6,1,TURNS*0,COIL_THK,COIL_H
+
+! ---- far-field BC: MAG=0 on outer cyl lateral + caps ----
+AIR_CYL_Z_CTR = YOKE_H/2
+AIR_CYL_Z_BOT = AIR_CYL_Z_CTR - AIR_CYL_H/2
+AIR_CYL_Z_TOP = AIR_CYL_Z_CTR + AIR_CYL_H/2
+LOCAL,11,1,0,0,0
+CSYS,11
+NSEL,S,LOC,X, AIR_CYL_R-0.5e-3, AIR_CYL_R+0.5e-3
+CSYS,0
+NSEL,A,LOC,Z, AIR_CYL_Z_TOP-0.5e-3, AIR_CYL_Z_TOP+0.5e-3
+NSEL,A,LOC,Z, AIR_CYL_Z_BOT-0.5e-3, AIR_CYL_Z_BOT+0.5e-3
+D,ALL,MAG,0
+ALLSEL,ALL
+FINISH
+
+! ---- solve (DSP scalar potential) ----
+/SOLU
+magsolv,3,,,,,1
+SAVE
+FINISH
+
+! ====================================================================
+! POST1: export 4 .dat -> data/coil2/gap200um_mueq (all + WP region)
+! ====================================================================
+/POST1
+SET,LAST
+ALLSEL,ALL
+/HEADER,OFF,OFF,OFF,OFF,OFF,OFF
+/FORMAT,10,,20,12,,
+/PAGE,1000000,,1000000
+/OUTPUT,'coil2_coord_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil2\gap200um_mueq'
+NLIST,ALL, , ,COORD
+/OUTPUT
+/OUTPUT,'coil2_bfield_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil2\gap200um_mueq'
+PRNSOL,B,COMP
+/OUTPUT
+LOCAL,12,2, 0, 0, SPH_OFST
+CSYS,12
+NSEL,S,LOC,X, 0, 2e-3
+CSYS,0
+/OUTPUT,'coil2_coord_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil2\gap200um_mueq'
+NLIST,ALL, , ,COORD
+/OUTPUT
+/OUTPUT,'coil2_bfield_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil2\gap200um_mueq'
+PRNSOL,B,COMP
+/OUTPUT
+ALLSEL,ALL
+CSYS,0
+FINISH

@@ -4,14 +4,16 @@
 %  sensor placement + its positive normal n+.  Prep for the B_S matrix.
 %
 %  6 poles = 2 geometric types (notation-glossary.md):
-%    lower (milled half-cone): P1(0deg) P3(120deg) P6(240deg)  n+ = +z, out of milled flat
+%    lower (milled half-cone): P1(0deg) P3(120deg) P6(240deg)  sensor on the BOTTOM natural
+%        cone face (mirror of upper); n+ = outward cone normal, down-and-out of steel
 %    upper (natural cone, tilted): P2(180deg) P4(300deg) P5(60deg)  n+ = outward normal to cone face
 %
 %  Output: magnetic_sim/ANSYS/main/figures/long2016_hexapole_halfcut/Bsurf_placement_P#.png
 
 clear; close all;
 
-out_dir = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\figures\long2016_hexapole_halfcut';
+out_dir = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
+           'long2016_hexapole_halfcut\sensor_placement\figures'];
 if ~exist(out_dir,'dir'); mkdir(out_dir); end
 
 poles = struct( ...
@@ -34,13 +36,21 @@ for k = 1:numel(poles)
     close(fig);
 end
 
-%% ===== lower pole (milled half-cone) =====
+%% ===== lower pole (milled half-cone) — sensor on BOTTOM cone face (mirror of upper) =====
 function draw_lower(fig, p)
     POLE_R = 3.175;  POLE_CONE_LEN = 15.876;  cyl_end = 30.0;
-    half_angle_deg = atan2d(POLE_R, POLE_CONE_LEN);
-    s_along = 4.572;  s_offset = 0.41;
-    sx = s_along;  sy = s_offset;
+    half_angle_deg = atan2d(POLE_R, POLE_CONE_LEN);     % 11.31 deg bottom cone half-angle
+    beta = deg2rad(half_angle_deg);
 
+    % bottom cone face: tangent (apex->base, down-right) + outward normal (out of steel, down-left)
+    tang = [ cos(beta); -sin(beta)];
+    nrm  = [-sin(beta); -cos(beta)];
+    s_slant = 4.572;  s_offset = 0.41;
+    foot = s_slant*tang;                                % sensor foot on the bottom cone face
+    Sxy  = foot + s_offset*nrm;                         % sensor centre (in air, below the cone face)
+    sx = Sxy(1);  sy = Sxy(2);
+
+    % steel half-cone body: milled flat top (y=0), bottom = cone slant then half-cylinder
     pole_x = [0, POLE_CONE_LEN, cyl_end, cyl_end, 0];
     pole_y = [0, -POLE_R,       -POLE_R, 0,       0];
 
@@ -49,45 +59,52 @@ function draw_lower(fig, p)
     plot(ax, [POLE_CONE_LEN POLE_CONE_LEN], [-POLE_R 0], ':','Color',[0.55 0.55 0.60],'LineWidth',0.8);
     plot(ax, [0 cyl_end], [0 0], '-.','Color',[0.75 0.75 0.80],'LineWidth',0.4);
 
-    % sensor
+    % sensor on the bottom cone face
     plot(ax, sx, sy, 'o','MarkerSize',9,'MarkerFaceColor',[0.85 0.10 0.10],'MarkerEdgeColor',[0.55 0.05 0.05]);
-    % n+ arrow (out of milled flat, +y == +z global)
-    quiver(ax, sx, sy, 0, 1.6, 0, 'Color',[0 0.5 0],'LineWidth',2.4,'MaxHeadSize',1.0);
-    text(ax, sx+0.25, sy+1.75, 'n_+  (\perp milled flat, out of steel)', ...
-         'FontSize',10,'FontWeight','bold','Color',[0 0.45 0]);
+    % n+ arrow (outward normal to the bottom cone face, out of steel, down-left)
+    Ln = 1.5;
+    quiver(ax, sx, sy, Ln*nrm(1), Ln*nrm(2), 0, 'Color',[0 0.5 0],'LineWidth',2.4,'MaxHeadSize',1.0);
+    ntip = [sx + Ln*nrm(1), sy + Ln*nrm(2)];
+    text(ax, ntip(1)+0.30, ntip(2)+0.10, 'n_+  (out of steel)', ...
+         'FontSize',10,'FontWeight','bold','Color',[0 0.45 0], ...
+         'HorizontalAlignment','left','VerticalAlignment','middle');
 
-    % dim 4.572
-    dy = 1.35;
-    plot(ax,[0 s_along],[dy dy],'-','Color',[0.80 0.10 0.10],'LineWidth',1.4);
-    plot(ax,[0 0],dy+[-0.1 0.1],'-','Color',[0.80 0.10 0.10],'LineWidth',1.4);
-    plot(ax,[s_along s_along],dy+[-0.1 0.1],'-','Color',[0.80 0.10 0.10],'LineWidth',1.4);
-    text(ax,s_along/2,dy+0.15,'4.572 mm','HorizontalAlignment','center', ...
-         'VerticalAlignment','bottom','Color',[0.65 0.05 0.05],'FontSize',12,'FontWeight','bold');
-    % dim 0.41
-    dxr = s_along + 1.8;
-    plot(ax,[dxr dxr],[0 s_offset],'-','Color',[0.80 0.10 0.10],'LineWidth',1.4);
-    plot(ax,dxr+[-0.12 0.12],[0 0],'-','Color',[0.80 0.10 0.10],'LineWidth',1.4);
-    plot(ax,dxr+[-0.12 0.12],[s_offset s_offset],'-','Color',[0.80 0.10 0.10],'LineWidth',1.4);
-    plot(ax,[sx dxr],[sy sy],'--','Color',[0.85 0.55 0.55],'LineWidth',0.6);
-    plot(ax,[sx dxr],[0 0],'--','Color',[0.85 0.55 0.55],'LineWidth',0.6);
-    text(ax,dxr+0.25,s_offset/2,'0.41 mm','HorizontalAlignment','left', ...
-         'VerticalAlignment','middle','Color',[0.65 0.05 0.05],'FontSize',12,'FontWeight','bold');
+    % dim 4.572 along the bottom cone slant (offset outward along nrm)
+    tl = 0.18;  doff = 2.55;
+    A0 = doff*nrm;          B0 = foot + doff*nrm;
+    plot(ax,[A0(1) B0(1)],[A0(2) B0(2)],'-','Color',[0.80 0.10 0.10],'LineWidth',1.4);
+    plot(ax,A0(1)+tl*[-tang(1) tang(1)],A0(2)+tl*[-tang(2) tang(2)],'-','Color',[0.80 0.10 0.10],'LineWidth',1.4);
+    plot(ax,B0(1)+tl*[-tang(1) tang(1)],B0(2)+tl*[-tang(2) tang(2)],'-','Color',[0.80 0.10 0.10],'LineWidth',1.4);
+    plot(ax,[0 A0(1)],[0 A0(2)],'--','Color',[0.85 0.55 0.55],'LineWidth',0.6);
+    plot(ax,[foot(1) B0(1)],[foot(2) B0(2)],'--','Color',[0.85 0.55 0.55],'LineWidth',0.6);
+    mid = (A0+B0)/2 + 0.30*nrm;
+    text(ax,mid(1),mid(2),'4.572 mm','HorizontalAlignment','center','VerticalAlignment','top', ...
+         'Color',[0.65 0.05 0.05],'FontSize',12,'FontWeight','bold','Rotation',-half_angle_deg);
+
+    % dim 0.41 perpendicular to cone face (foot -> sensor along nrm)
+    plot(ax,foot(1)+tl*[-tang(1) tang(1)],foot(2)+tl*[-tang(2) tang(2)],'-','Color',[0.80 0.10 0.10],'LineWidth',1.4);
+    plot(ax,sx+tl*[-tang(1) tang(1)],sy+tl*[-tang(2) tang(2)],'-','Color',[0.80 0.10 0.10],'LineWidth',1.4);
+    plot(ax,[foot(1) sx],[foot(2) sy],'-','Color',[0.80 0.10 0.10],'LineWidth',1.4);
+    l2 = Sxy + 0.55*tang;
+    text(ax,l2(1),l2(2),'0.41 mm','HorizontalAlignment','left','VerticalAlignment','middle', ...
+         'Color',[0.65 0.05 0.05],'FontSize',12,'FontWeight','bold');
 
     % annotations
     plot(ax,0,0,'k.','MarkerSize',14);
-    text(ax,-0.3,-0.35,'Apex (0, 0)','HorizontalAlignment','right', ...
-         'VerticalAlignment','top','FontSize',10,'Color',[0.2 0.2 0.2]);
-    text(ax,sx+0.35,sy+0.05,'B_{surface}  (Hall sensor, in air)','HorizontalAlignment','left', ...
+    text(ax,-0.3,0.28,'Apex (0, 0)','HorizontalAlignment','right', ...
+         'VerticalAlignment','bottom','FontSize',10,'Color',[0.2 0.2 0.2]);
+    bs_lbl = [6.8, 0.66];
+    plot(ax,[bs_lbl(1) sx],[bs_lbl(2)-0.05 sy+0.15],'-','Color',[0.85 0.55 0.55],'LineWidth',0.6);
+    text(ax,bs_lbl(1),bs_lbl(2),'B_{surface}  (Hall sensor, in air)','HorizontalAlignment','left', ...
          'VerticalAlignment','bottom','FontSize',10,'Color',[0.65 0.05 0.05]);
-    text(ax,22,0.55,'Sensing surface — milled flat (y = 0, through pole axis)', ...
+    text(ax,22,0.18,'Milled flat (y = 0, through pole axis)', ...
          'HorizontalAlignment','center','VerticalAlignment','bottom','FontSize',9.5,'Color',[0.20 0.20 0.30]);
-    plot(ax,[22 22],[0.50 0.05],'-','Color',[0.45 0.45 0.50],'LineWidth',0.5);
-    text(ax,7.5,-2.4,sprintf('Lower cone face (%.2f\\circ)',half_angle_deg), ...
-         'HorizontalAlignment','center','FontSize',9,'Color',[0.25 0.25 0.30],'Rotation',-half_angle_deg);
+    text(ax,14.6,-2.78,sprintf('bottom cone face (%.2f\\circ)',half_angle_deg), ...
+         'HorizontalAlignment','center','VerticalAlignment','top','FontSize',9,'Color',[0.25 0.25 0.30],'Rotation',-half_angle_deg);
     text(ax,(POLE_CONE_LEN+cyl_end)/2,-1.55,'Half-cylinder body (R = 3.175 mm)', ...
          'HorizontalAlignment','center','FontSize',9,'Color',[0.25 0.25 0.30]);
 
-    axis(ax,'equal'); xlim(ax,[-2,cyl_end+2]); ylim(ax,[-POLE_R-1.3,3.7]);
+    axis(ax,'equal'); xlim(ax,[-2,cyl_end+2]); ylim(ax,[-POLE_R-2.2,1.5]);
     xlabel(ax,'x [mm]  (along pole axis from apex)'); ylabel(ax,'y [mm]');
     title(ax,sprintf('%s — Lower pole (azimuth %d\\circ) — B_{surface} placement', p.name, p.az));
     set(ax,'FontSize',10,'Box','on','Layer','top'); grid(ax,'off');

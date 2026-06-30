@@ -31,9 +31,9 @@ TREE = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
 addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');  % mt_constants/import_ansys_data/filter_iron_nodes
 addpath(fullfile(TREE,'code','function'));                                                      % 模型輔助函式
 results_root  = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
-charge_dir    = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\long2016_hexapole_halfcut\charge_fit';
-calib_bias_in = fullfile(charge_dir, 'calibration', 'calib_bias.mat');
-mat_out       = fullfile(charge_dir, 'fitting_d', 'calib_sensor_d_no_fix_dir.mat');  % 歸到 charge_fit/fitting_d/
+charge_dir    = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\bias_fit\data';  % 規則#2：calib_bias 移至 bias_fit/data（外部 bias_fit 產）
+calib_bias_in = fullfile(charge_dir, 'calib_bias.mat');
+mat_out       = fullfile(TREE, 'data', 'calib_sensor_d_no_fix_dir.mat');             % 規則#2：本組 data/
 if ~exist(fileparts(mat_out),'dir'); mkdir(fileparts(mat_out)); end
 
 %% ---- 載入 18-param 校正結果(no_fix_dir) ------------------------------------

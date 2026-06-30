@@ -16,7 +16,7 @@
 
 clear; clc;
 
-S = load('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\long2016_hexapole_halfcut\bs_matrix\B_bar.mat');
+S = load('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\bs_matrix\data\B_bar.mat');
 Bbar_S = S.B_matrix_at_Iin;        % Tesla @ I_in  (raw)
 I_in   = S.I_in_A;                 % 0.6 A
 
@@ -49,7 +49,7 @@ end
 fprintf('\ndiagonal (V/A): %s\n', mat2str(diag(B_S).',5));
 
 %% --- save .mat ---
-mat_out = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\long2016_hexapole_halfcut\bs_matrix\Bs.mat';
+mat_out = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\bs_matrix\data\Bs.mat';
 save(mat_out, 'B_S', 'S_hall', 'I_in', 'coef');
 fprintf('\nSaved .mat: %s\n', mat_out);
 

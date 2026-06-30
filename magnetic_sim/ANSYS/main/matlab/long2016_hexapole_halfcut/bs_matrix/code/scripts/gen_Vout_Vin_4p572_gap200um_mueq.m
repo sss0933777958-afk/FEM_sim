@@ -5,7 +5,7 @@
 %  gap geometry. Both halfcut + gap200um_mueq effects baked in via FEM sim.
 %
 %  Outputs:
-%    magnetic_sim/ANSYS/main/MATLAB_data/long2016_hexapole_halfcut/bs_matrix/Vout_Vin_4p572_gap200um_mueq.mat
+%    magnetic_sim/ANSYS/main/matlab/long2016_hexapole_halfcut/bs_matrix/data/Vout_Vin_4p572_gap200um_mueq.mat
 %    magnetic_sim/ANSYS/main/doc/Solve_B_matrix/long2016_hexapole_halfcut/scripts/Vout_Vin_4p572_gap200um_mueq.tex
 %  ------------------------------------------------------------------
 
@@ -158,7 +158,7 @@ for i = 1:6
 end
 
 %% --- Save .mat ---
-data_dir = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\long2016_hexapole_halfcut\bs_matrix';
+data_dir = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\bs_matrix\data';
 if ~exist(data_dir, 'dir'); mkdir(data_dir); end
 mat_path = fullfile(data_dir, 'Vout_Vin_4p572_gap200um_mueq.mat');
 sensor_along_mm  = S_ALONG * 1e3;

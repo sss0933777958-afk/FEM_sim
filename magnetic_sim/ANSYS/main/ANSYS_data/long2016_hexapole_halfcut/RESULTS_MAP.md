@@ -42,9 +42,14 @@
 
 | dir | 物理意義 | matched 節點 | \|B\| max 指紋（判別關鍵） | 用途 |
 |---|---|---|---|---|
-| `coil1_gap200um_mueq` … `coil6_gap200um_mueq` | **μ_r 等效 200µm 氣隙**（不切幾何，protrusion 改 μ_r=31）| 與 baseline **相同**（~390579/494873）| **比 baseline 低約 30%**（coil1 ~0.71 / coil2 ~0.83 / coil5 ~0.25 T）| B̄ matrix v4 的 gap 對照 |
+| `coil2_gap200um_mueq` … `coil6_gap200um_mueq` | **舊 7mm 公式 μ_r 等效 200µm 氣隙**（protrusion 改 μ_r=31，單一材料）| 與 baseline **相同**（~390579/494873）| **比 baseline 低約 30%**（coil2 ~0.83 / coil5 ~0.25 T）| B̄ matrix v4 的 gap 對照（coil2–6 仍舊公式）|
+| `coil1/gap{0,50,100,150,200}um_mueq` | **新 2 段式 μ_eff gap sweep（2026-06-26）**：coil1(P1, +1 raw) 激發，effective_permeability.pdf 兩段式公式，**上極/下極分開**施加在 6 protrusion 支撐座（upper3 μ_up / lower3 μ_lo；EMODIF 2882 lower + 3147 upper）。⚠ **覆寫了 coil1 的舊 gap100/gap200**（舊 7mm 公式作廢）| 與 baseline **相同**（494871/all，490579/wp）| \|B\|max 隨 gap **遞減**：gap0 **1.1259**（=baseline 驗證）/ 50 **1.0833** / 100 **1.0448** / 150 **1.0102** / 200 **0.9785** T。μ_eff: 50→137/165, 100→95/114, 150→73/88, 200→59/71（up/lo）。比舊公式溫和（舊 200µm ~0.71 vs 新 0.978）| gap 對 WP 場衰減研究 |
 | `P1_graded` | graded 密 mesh，**P1 only**，charge-fit 用 | 與 baseline **不同**（graded mesh）| ~1.20 T | KI 電荷擬合密網格 |
 | `P2toP6_graded` | graded 密 mesh，P2–P6 | graded（不同）| ~1.21 T | KI 電荷擬合密網格 |
+| `data/singlepole` | **單極模型**（下極填回完整圓錐+支撐座+鐵柱、無 yoke/上極；**均勻鐵件 0.3mm**）1A 自激 | `all`=704744 行（704747 節點−3 coil）/ `tip`=2741 | ~0.147 T（|B|max @ 極尖）| 單極場研究；**非 hexapole** |
+| `coil1/lower_filled` | **下極填圓 hexapole**（完整 6 極 hexapole，但 3 下極填回完整圓錐、無 half-cut；coil1=−1 → P1 SOURCE）。**2026-06-26 改用 baseline smrt5 重 mesh + 重解**（取代舊 graded 1.39M）| `all`=845581（mesh 845599 節點）；節點數**與所有 halfcut 結果都不同**、易辨 | **0.8413 T**（與舊 graded 版一致 → mesh 無關、互validates）| 下極填圓場研究；y=0 場圖 `field_viz/figures/lowerfilled_P1_raw.png`。mesh `db/lower_filled/mesh_lowerfilled_smrt5.db`，deck `mesh/MT_Mesh_LowerFilled_smrt5.txt` + `sim/lower_filled/MT_Sim_LowerFilled_smrt5_coil1.txt` |
+
+> ⚠ `data/singlepole` 命名異於 coilN：檔名 `singlepole_{coord,bfield}_{all,tip}.dat`（prefix=`singlepole`、dataset∈{all,tip}）。是**獨立單極幾何**（非 6 極 hexapole），節點數 704744 與所有 hexapole 結果都不同、易辨。mesh/solve 分離：`apdl/.../mesh/MT_Mesh_SinglePole.txt` + `sim/singlepole/MT_Sim_SinglePole.txt`，db `db/singlepole/{mesh,sim}_singlepole.db`。
 
 ⚠ **最易混點**：`coilN` vs `coilN_gap200um_mueq` 節點數一模一樣，**只有 \|B\| 能分**。要 baseline 卻載到 gap 版 → \|B\| 會低 ~30%，層②必須在此攔下。
 

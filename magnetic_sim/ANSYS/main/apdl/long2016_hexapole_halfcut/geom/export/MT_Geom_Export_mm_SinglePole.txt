@@ -1,0 +1,152 @@
+! ====================================================================
+! Long Fei — SINGLE POLE (lower, FILLED full cone), geometry-only export, MILLIMETRE units
+! ====================================================================
+! 1 lower pole (azimuth 0deg) restored to a FULL CONE (half-cut VSBV deliberately
+!   SKIPPED) + its 4 support-base BLOCKs + 1 protrusion (coil pillar).
+! NO yoke ring, NO upper poles, NO coil geometry (coil is SOURC36 = no solid body).
+! Derived from MT_Geom_Export_mm.txt (mm units); [ADDED]/[MODIFIED] mark changes.
+! mm units -> IGES_converted/long_fei/ ; the IGES unit flag is patched 6->2
+!   (PowerShell, AFTER this run) so SolidWorks measures correct mm (per
+!   memory kuo-iges-export-workflow). No metre version produced (user: mm only).
+! ====================================================================
+
+! [MODIFIED] /CWD points to neutral scratch dir; ANSYS .db/.out/.png stay there
+! [MODIFIED] IGESOUT at end writes .iges directly into IGES_converted/long_fei/
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\geom_export_mm'
+
+Finish
+/cle
+/PREP7
+
+POLE_NUM = 6
+*afun, DEG
+BTOL, 1e-4
+/UNITS, MKS
+
+R_norm    = 0.5          ! 500 um in mm units
+R_norm_xy = R_norm*sqrt(2.0/3.0)
+R_norm_z  = R_norm/sqrt(3.0)
+
+YOKE_IN_R  = 84/2.0
+YOKE_OUT_R = 106/2.0
+YOKE_MID_R = (YOKE_IN_R + YOKE_OUT_R)/2.0
+YOKE_H     = 2.0
+PROT_R     = 10.0/2.0
+PROT_H     = 7.0
+
+POLE_R        = 6.0/2
+POLE_TIP_R    = 40.0e-3
+POLE_CONE_LEN = 15
+POLE_CONE_HYP = sqrt(POLE_CONE_LEN**2 + POLE_R**2)
+ANG1 = acos(POLE_R/POLE_CONE_HYP)
+ANG2 = 90 - ANG1
+L = POLE_CONE_LEN*POLE_TIP_R/POLE_R
+POLE_TIP_CENTER = L/cos(ANG2)
+POLE_CONE2_LEN  = L*cos(ANG2)
+POLE_TIP_R2     = POLE_TIP_R*cos(ANG2)
+POLE_TIP_FILLET_DROP = POLE_TIP_CENTER - POLE_TIP_R
+POLE_TIP_FILLET_PROT = (POLE_CONE2_LEN - POLE_TIP_FILLET_DROP)
+
+! ===== [MODIFIED] single lower protrusion (coil pillar) at azimuth 0deg =====
+! (no yoke ring, no other 5 protrusions)
+WPLANE, 1,0,0,0,,,,,,
+WPcsys,-1,0
+CYL4, YOKE_MID_R*cos(0), YOKE_MID_R*sin(0), PROT_R, ,,, -PROT_H
+
+! ===== [MODIFIED] single lower pole (azimuth 0deg) — FILLED full cone =====
+X0_LOW = YOKE_MID_R*cos(0)
+Y0_LOW = YOKE_MID_R*sin(0)
+Z0_LOW = -PROT_H
+
+WPLANE, 1,0,0,0,,,,,,
+WPcsys,-1,0
+ROTA_ANG = 0
+WPROTA, ROTA_ANG
+
+*get, VL_NUM, VOLU, ,NUM, MAX
+VL_START = VL_NUM + 1
+numstr, VOLU, VL_START
+
+BLOCK, X0_LOW - 5,  X0_LOW + 11, Y0_LOW - 5,  Y0_LOW + 5,  Z0_LOW - 10, Z0_LOW
+BLOCK, X0_LOW - 5,  X0_LOW - 2,  Y0_LOW - 10, Y0_LOW + 10, Z0_LOW - 10, Z0_LOW - 5
+BLOCK, X0_LOW - 10, X0_LOW - 2,  Y0_LOW - 5,  Y0_LOW + 5,  Z0_LOW - 10, Z0_LOW - 2
+BLOCK, X0_LOW - 10, X0_LOW - 5,  Y0_LOW - 10, Y0_LOW + 10, Z0_LOW - 10, Z0_LOW - 5
+
+*get, KP_NUM, KP  , ,NUM, MAX
+*get, LI_NUM, LINE, ,NUM, MAX
+KP_START = KP_NUM + 1
+LI_START = LI_NUM + 1
+numstr, KP,   KP_START
+numstr, LINE, LI_START
+
+l1 = R_norm_xy
+l1_ang = atan2( 0 , R_norm_xy )
+l2 = sqrt( (R_norm_xy + POLE_TIP_FILLET_PROT)**2 + POLE_TIP_R2**2 )
+l2_ang = atan2( POLE_TIP_R2 , (R_norm_xy + POLE_TIP_FILLET_PROT) )
+POLE_CONE_LEN_SHIFT = POLE_CONE_LEN + (R_norm_xy - POLE_TIP_FILLET_DROP)
+l3 = sqrt( POLE_CONE_LEN_SHIFT**2 + POLE_R**2 )
+l3_ang = atan2( POLE_R , POLE_CONE_LEN )
+l4 = sqrt( (X0_LOW - 10)**2 + POLE_R**2 )
+l4_ang = atan2( POLE_R , (X0_LOW - 10) )
+l5 = abs( X0_LOW - 10 )
+l5_ang = atan2( 0 , (X0_LOW - 10) )
+l6 = abs( R_norm_xy + POLE_TIP_R )
+l6_ang = atan2( 0, R_norm_xy + POLE_TIP_R )
+
+K , , l1*cos(ROTA_ANG + l1_ang) , l1*sin(ROTA_ANG + l1_ang), Z0_LOW - 6
+K , , l2*cos(ROTA_ANG + l2_ang) , l2*sin(ROTA_ANG + l2_ang), Z0_LOW - 6
+K , , l3*cos(ROTA_ANG + l3_ang) , l3*sin(ROTA_ANG + l3_ang), Z0_LOW - 6
+K , , l4*cos(ROTA_ANG + l4_ang) , l4*sin(ROTA_ANG + l4_ang), Z0_LOW - 6
+K , , l5*cos(ROTA_ANG + l5_ang) , l5*sin(ROTA_ANG + l5_ang), Z0_LOW - 6
+K , , l6*cos(ROTA_ANG + l6_ang) , l6*sin(ROTA_ANG + l6_ang), Z0_LOW - 6
+
+LARC , KP_START , KP_START + 1 , KP_START + 5 , POLE_TIP_R
+L , KP_START + 1 , KP_START + 2,,,,,,,,
+L , KP_START + 2 , KP_START + 3,,,,,,,,
+L , KP_START + 3 , KP_START + 4,,,,,,,,
+L , KP_START + 4 , KP_START,,,,,,,,
+
+*get, AR_NUM, AREA, ,NUM, MAX
+AR_START = AR_NUM + 1
+numstr, AREA, AR_START
+
+AL, LI_START, LI_START + 1, LI_START + 2, LI_START + 3, LI_START + 4
+VROTAT, AR_START, ,,,,,KP_START,KP_START + 4,,4
+
+! [MODIFIED] FILLED pole: the half-cut BLOCK + VSBV (that removes the cone's
+!   upper half, z > Z0_LOW-6) is DELIBERATELY OMITTED here -> full cone retained.
+
+ALLSEL
+
+! ===== VOVLAP (clean topology: 4 cone segments + 4 support blocks + protrusion) =====
+ALLSEL, ALL
+VOVLAP, ALL
+NUMCMP, VOLU
+ALLSEL, ALL
+
+! ===== Render PNG views (visual verification) =====
+/SHOW, PNG
+/COLOR, VOLU, MRED
+
+/VIEW, 1, 1, 1, 1
+/ANG, 1
+/AUTO, 1
+VPLOT
+
+/VIEW, 1, 0, -1, 0
+/ANG, 1
+/AUTO, 1
+VPLOT
+
+/VIEW, 1, 0, 0, 1
+/ANG, 1
+/AUTO, 1
+VPLOT
+
+/SHOW, CLOSE
+
+! ===== IGES export (mm magnitudes; flag patched 6->2 by PowerShell AFTER run) =====
+ALLSEL, ALL
+IGESOUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\IGES_converted\long_fei\SinglePoleFilled', 'iges'
+
+FINISH

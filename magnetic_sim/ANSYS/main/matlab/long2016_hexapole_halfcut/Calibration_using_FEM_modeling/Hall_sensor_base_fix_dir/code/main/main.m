@@ -35,7 +35,7 @@ R_select   = 150e-6;           % 取點半徑 [m]：(a) 決定載入哪個 R 的
 I_actual   = 1;                % 驅動電流 [A] = FEM 激發電流（1 A）
 S_hall     = 130;              % Hall 靈敏度 [V/T]（EQ-730L：130 V/T）
 N_I        = 6;                % FEM 模擬次數 = 6 個單線圈解
-VARIANT    = 'standard';       % 讀哪個 FEM 變體子夾：'standard'(baseline) | 'sensor_spheres'(sensor 加密)
+VARIANT    = 'sensor_spheres';       % 讀哪個 FEM 變體子夾：'standard'(baseline) | 'sensor_spheres'(sensor 加密)
 ELL_LO     = 0.2e-3;           % ℓ̂ 一維搜尋下界 [m]（fit ℓ̂ 用）
 ELL_HI     = 3.0e-3;           % ℓ̂ 一維搜尋上界 [m]
 
@@ -45,10 +45,9 @@ TREE = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
 addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');  % mt_constants/import_ansys_data/filter_iron_nodes
 addpath(fullfile(TREE,'code','function'));                                       % 本包模型輔助函式
 results_root = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';  % FEM 結果根目錄
-charge_dir   = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\' ...
-                'long2016_hexapole_halfcut\charge_fit'];                          % 校正結果資料夾（ℓ̂ 來源 + 存解）
+data_dir     = fullfile(TREE,'data');                                             % 規則#2：.mat 放本組 data/
 if strcmp(VARIANT,'standard'); dsuf=''; else; dsuf=['_' VARIANT]; end              % baseline 保原檔名；變體加後綴
-mat_out      = fullfile(charge_dir, 'fitting_d', sprintf('calib_sensor_d%s.mat',dsuf)); % 本流程的解輸出（歸到 charge_fit/fitting_d/）
+mat_out      = fullfile(data_dir, sprintf('calib_sensor_d%s.mat',dsuf));           % 本流程的解輸出（本組 data/）
 if ~exist(fileparts(mat_out),'dir'); mkdir(fileparts(mat_out)); end
 
 %  注意：ℓ̂ 不再從 fix_dir fit_KI_fixl 載入；改成本檔步驟3 自己 fit（需先有 P,B,Vmat）。

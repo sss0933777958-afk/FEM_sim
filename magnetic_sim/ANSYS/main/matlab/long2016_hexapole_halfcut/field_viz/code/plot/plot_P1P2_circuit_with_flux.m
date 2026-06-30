@@ -21,7 +21,7 @@ function plot_P1P2_circuit_with_flux()
     s_block_end  = s_base + 8;                   % cone end + ~8 mm block
     s_xlim       = [-2, 25];
 
-    data_dir = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\long2016_hexapole_halfcut\flux_profile';
+    data_dir = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\field_viz\data';
     fig_dir  = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\figures\long2016_hexapole_halfcut';
 
     %% ===============================================================

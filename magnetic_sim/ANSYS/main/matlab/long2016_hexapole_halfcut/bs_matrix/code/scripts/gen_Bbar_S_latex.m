@@ -4,7 +4,7 @@
 %    entry (i,j) = B measured by the B_surface Hall sensor on pole i when
 %    pole j is the excited pole, in Tesla at test current I_in.
 %
-%  Data: magnetic_sim/ANSYS/main/MATLAB_data/long2016_hexapole_halfcut/bs_matrix/B_bar.mat
+%  Data: magnetic_sim/ANSYS/main/matlab/long2016_hexapole_halfcut/bs_matrix/data/B_bar.mat
 %    -> variable B_matrix_at_Iin  IS  B_bar_S (raw FEM, halfcut, 37-pt disc).
 %    (the variable named 'B_bar' in that .mat is an OLD V_out/V_in result
 %     = 0.0783 * B_matrix_at_Iin, 0.0783 = k_A*S_hall/I_in; NOT B_bar_S.)
@@ -14,7 +14,7 @@
 
 clear; clc;
 
-S = load('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\long2016_hexapole_halfcut\bs_matrix\B_bar.mat');
+S = load('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\bs_matrix\data\B_bar.mat');
 
 % --- report what's in the .mat ---
 fprintf('B_bar.mat variables: %s\n', strjoin(fieldnames(S),', '));
@@ -46,7 +46,7 @@ for i = 1:6
 end
 
 %% --- save .mat ---
-mat_out = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\long2016_hexapole_halfcut\bs_matrix\Bbar_S.mat';
+mat_out = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\bs_matrix\data\Bbar_S.mat';
 save(mat_out, 'Bbar_S', 'I_in');
 fprintf('\nSaved .mat: %s\n', mat_out);
 

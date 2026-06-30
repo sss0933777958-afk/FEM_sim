@@ -11,7 +11,7 @@
 
 **註**：`build_S / build_sensor_geometry / extract_Vmat` 與 `../../Hall_sensor_base_fix_dir/code/function/` **完全相同**；`sensor_residual_bias` = fix-ℓ 版 `sensor_residual` 的 build_S 逐點 cost（只差檔名），`solve_d` 為 no-gain（吃 `main` 以 build_S 建好的 M、c，與 fix-ℓ 版數學等價）。**bias 唯一差異已收斂到 `main.m`**（載 calib_bias、旋進 actuator 框、用 Pc_18）。已移除 `build_A / compute_KH / write_*_tex`（堆疊 / g_H / K_H / LaTeX）。
 
-**資料來源 / 流向**：`main.m` 載 `calib_bias.mat` + 讀 `ANSYS_data/.dat` → 這些函式建 M,c / 求 d → 存 `MATLAB_data/.../fitting_d/calib_sensor_d_no_fix_dir.mat`（`d`、`Vmat`、cost `J`）。
+**資料來源 / 流向**：`main.m` 載 `calib_bias.mat`（legacy MATLAB_data）+ 讀 `ANSYS_data/.dat` → 這些函式建 M,c / 求 d → 存 `../../data/calib_sensor_d_no_fix_dir.mat`（規則#2；`d`、`Vmat`、cost `J`）。
 
 **命名 / 慣例**：純函式（一檔一函式）；I=1 A 對齊 FEM；actuator 框、Pc_18 離軸；all-source 翻下極。
 

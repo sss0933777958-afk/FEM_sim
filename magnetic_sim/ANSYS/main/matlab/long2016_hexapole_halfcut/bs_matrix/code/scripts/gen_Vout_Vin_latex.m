@@ -10,7 +10,7 @@
 
 clear; clc;
 
-S = load('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\long2016_hexapole_halfcut\bs_matrix\Bs.mat');
+S = load('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\bs_matrix\data\Bs.mat');
 B_S = S.B_S;                       % V/A
 
 k_A = 0.36;                        % A/V
@@ -29,7 +29,7 @@ end
 fprintf('\ndiagonal (V/V): %s\n', mat2str(diag(V_VV).',5));
 
 %% --- save .mat ---
-mat_out = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\long2016_hexapole_halfcut\bs_matrix\Vout_Vin_kA0p36.mat';
+mat_out = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\bs_matrix\data\Vout_Vin_kA0p36.mat';
 save(mat_out, 'V_VV', 'k_A', 'B_S');
 fprintf('\nSaved .mat: %s\n', mat_out);
 

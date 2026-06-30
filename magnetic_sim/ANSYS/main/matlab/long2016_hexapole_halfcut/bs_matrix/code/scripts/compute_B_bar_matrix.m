@@ -23,7 +23,7 @@
 %  matches the experimental excitation directly — no linear scaling).
 %
 %  Outputs:
-%    magnetic_sim/ANSYS/main/MATLAB_data/long2016_hexapole_halfcut/bs_matrix/B_bar.mat
+%    magnetic_sim/ANSYS/main/matlab/long2016_hexapole_halfcut/bs_matrix/data/B_bar.mat
 %    magnetic_sim/ANSYS/main/doc/Solve B_matrix/scripts/B_bar_matrix_0p6A.tex
 %  ------------------------------------------------------------------
 
@@ -198,7 +198,7 @@ fprintf('  |diag(B_bar)| mean = %.4e   (off-diag mean = %.4e)\n', ...
     mean(abs(diag(B_bar))), mean(abs(B_bar - diag(diag(B_bar))), 'all'));
 
 %% --- Save .mat ---
-data_dir = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\long2016_hexapole_halfcut\bs_matrix';
+data_dir = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\bs_matrix\data';
 if ~exist(data_dir, 'dir'); mkdir(data_dir); end
 save(fullfile(data_dir, 'B_bar.mat'), ...
     'B_matrix_at_Iin', 'B_bar', ...

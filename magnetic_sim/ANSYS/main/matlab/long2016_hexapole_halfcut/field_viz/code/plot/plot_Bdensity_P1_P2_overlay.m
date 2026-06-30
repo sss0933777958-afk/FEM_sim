@@ -78,7 +78,7 @@ function plot_Bdensity_P1_P2_overlay()
     fprintf('--- P2 (coil5) ---\n');
     d2 = import_ansys_data(fullfile(res_root, 'coil5', 'standard'), 'all', 'coil5');
 
-    bbar_mat = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\long2016_hexapole_halfcut\bs_matrix\Bbar_S_4p572.mat';
+    bbar_mat = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\bs_matrix\data\Bbar_S_4p572.mat';
     sign_p2 = +1;
     if exist(bbar_mat, 'file')
         Bs = load(bbar_mat, 'col_sign');

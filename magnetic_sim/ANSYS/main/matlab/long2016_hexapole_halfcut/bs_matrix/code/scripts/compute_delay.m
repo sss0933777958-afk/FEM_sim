@@ -13,7 +13,7 @@
 %      Generate V(t) over multiple periods, find peak of x-corr.
 
 clear; clc;
-S = load('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\long2016_hexapole_halfcut\freq_response\fig44_P1_v2.mat');
+S = load('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\bs_matrix\data\fig44_P1_v2.mat');
 freqs = S.freqs;
 Bs = S.Bn_surf;          % complex phasor, sign convention: n_surf = +z
 Bt = S.Bn_tip;           % complex phasor, sign convention: n_tip = +x_pole (toward apex)

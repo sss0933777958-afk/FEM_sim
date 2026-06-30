@@ -29,6 +29,7 @@ R_step_um   = 5;               % sweep step  [um]
 R_end_um    = 500;             % sweep end   [um]
 I_actual    = 1;               % drive current [A] = FEM excitation (1 A)
 SHAPE       = 'ball';          % sampling region: ball ||p|| <= R about WP
+VARIANT     = 'gap200um_mueq'; % [MODIFIED] FEM 變體子夾（'standard' = baseline；'gap200um_mueq' = gap200 2 段式 μ_eff）
 
 %% ---- paths -----------------------------------------------------------------
 TREE = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
@@ -38,8 +39,7 @@ addpath(fullfile(TREE,'code','function'));                                      
 results_root = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
 tex_dir      = fullfile(TREE,'results');
 if ~exist(tex_dir,'dir'); mkdir(tex_dir); end
-cal_dir      = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\' ...
-                'long2016_hexapole_halfcut\charge_fit\calibration'];   % 存 fit_KI_fixl 解 .mat（供 Hall_sensor_base_fix_dir 載 ℓ̂）
+cal_dir      = fullfile(TREE,'data');   % 規則#2：.mat 放本組 data/（fit_fixl 解；Hall_sensor_base_fix_dir/decouple 由此載 ℓ̂）
 if ~exist(cal_dir,'dir'); mkdir(cal_dir); end
 
 %% ---- constants + pole-tip directions ---------------------------------------
@@ -49,8 +49,10 @@ tip  = [cnst.pole_tip_x; cnst.pole_tip_y; cnst.pole_tip_z_wp];
 dhat = tip ./ vecnorm(tip);                             % 3x6 unit directions
 
 %% ---- load FEM once (all 6 coils) -------------------------------------------
-fprintf('loading 6 coils ...\n');
-C = load_coils(results_root, cnst, apdl_to_paper_idx);
+fprintf('loading 6 coils (variant ''%s'') ...\n', VARIANT);     % [MODIFIED]
+C = load_coils(results_root, cnst, apdl_to_paper_idx, VARIANT);  % [MODIFIED] variant subfolder
+vtag = '';                                                       % [ADDED] output suffix (non-standard variant only)
+if ~strcmp(VARIANT,'standard'), vtag = ['_' VARIANT]; end
 
 %% ---- radius list by mode ---------------------------------------------------
 switch lower(MODE)
@@ -64,12 +66,28 @@ for R_um = R_um_list
     [coil, nmin]       = select_ball(C, R_um*1e-6);
     [ell, gB, Khat, J] = fit_KI_fixl(coil, dhat, I_actual);
     errpct             = region_field_err(coil, J);
-    fname = fullfile(tex_dir, sprintf('fit_%s_R%03dum_%gA.tex', SHAPE, R_um, I_actual));
+    fname = fullfile(tex_dir, sprintf('fit_%s_R%03dum_%gA%s.tex', SHAPE, R_um, I_actual, vtag));  % [MODIFIED] vtag
     write_KI_tex(fname, SHAPE, R_um, I_actual, Khat, ell, gB, errpct);
+    compile_tex_pdf(fname);                                          % [ADDED] 編成可看的 PDF（清 aux/log）
     % 存 fit_KI_fixl 解成 .mat（供 Hall_sensor_base_fix_dir 載入 ℓ̂；ell 為 [m]）
-    save(fullfile(cal_dir, sprintf('fit_fixl_R%03dum.mat', R_um)), ...
-         'ell','gB','Khat','J','errpct','R_um','I_actual','SHAPE');
-    fprintf('R=%3d um | nmin/coil=%6d | ell=%.3f mm | gB=%.4e | err=%.2f%%  -> fit_fixl_R%03dum.mat\n', ...
-            R_um, nmin, ell*1e3, gB, errpct, R_um);
+    save(fullfile(cal_dir, sprintf('fit_fixl_R%03dum%s.mat', R_um, vtag)), ...     % [MODIFIED] vtag
+         'ell','gB','Khat','J','errpct','R_um','I_actual','SHAPE','VARIANT');
+    fprintf('R=%3d um | nmin/coil=%6d | ell=%.3f mm | gB=%.4e | err=%.2f%%  -> fit_fixl_R%03dum%s.mat\n', ...
+            R_um, nmin, ell*1e3, gB, errpct, R_um, vtag);
 end
-fprintf('done (%s mode): %d .tex file(s) in %s\n', MODE, numel(R_um_list), tex_dir);
+fprintf('done (%s mode, variant=%s): %d result PDF(s) in %s\n', MODE, VARIANT, numel(R_um_list), tex_dir);
+
+%% ---- local: 編 standalone .tex -> PDF（同夾，清中間檔；results/ 留 .pdf + .tex）----
+function compile_tex_pdf(texfile)
+    xelatex = 'C:\Users\Kuo\AppData\Local\Programs\MiKTeX\miktex\bin\x64\xelatex.exe';
+    [d,b]   = fileparts(texfile);
+    old = cd(d);
+    [st,out] = system(sprintf('"%s" -interaction=nonstopmode -halt-on-error "%s"', xelatex, texfile));
+    cd(old);
+    if st ~= 0 || ~exist(fullfile(d,[b '.pdf']),'file')
+        fprintf('%s\n', out); error('xelatex 編譯失敗：%s', texfile);
+    end
+    for ext = {'.tex','.aux','.log','.out'}    % results 只留 .pdf（連 .tex 一起清）
+        f = fullfile(d,[b ext{1}]); if exist(f,'file'); delete(f); end
+    end
+end

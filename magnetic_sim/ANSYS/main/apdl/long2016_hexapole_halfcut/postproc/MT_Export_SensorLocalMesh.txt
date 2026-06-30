@@ -1,0 +1,86 @@
+! ============================================================================
+! MT_Export_SensorLocalMesh.txt
+!   RESUME standard mesh (mesh_baseline.db, mesh-only, NO solve) and dump the
+!   LOCAL air mesh connectivity around the 6 Hall-sensor centres so MATLAB can
+!   do true-FEM-tet barycentric interpolation of the (already-exported) standard
+!   nodal B (.dat) at sample points inside each sensor cylinder.
+!
+!   Output (CSV) -> ANSYS_data/.../data/mesh/standard/csv/ :
+!     sensor_local_nodes.csv : nodeID, x, y, z         [m, ANSYS frame]
+!     sensor_local_elems.csv : elemID, n1..n8          (SOLID96 8-node slots; tet
+!                                                        = 4 distinct, rest repeat)
+!   Consumed by extract_Vmat_interp.m / main_interp.m for true-FEM-tet barycentric
+!   interpolation of standard B at sensor sample points.
+!   No solve, no geometry change — pure mesh export.
+! ============================================================================
+
+FINISH
+/CLEAR,NOSTART
+RESUME,'mesh_baseline','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\mesh_baseline\'
+/PREP7
+
+! ---- 6 sensor centres (ANSYS frame [m]) ----
+*DIM,SCX,ARRAY,6
+*DIM,SCY,ARRAY,6
+*DIM,SCZ,ARRAY,6
+SCX(1)= 4.980248e-3, -3.169265e-3, -2.490124e-3,  1.584632e-3,  1.584632e-3, -2.490124e-3
+SCY(1)= 0.0,          0.0,          4.313022e-3, -2.744664e-3,  2.744664e-3, -4.313022e-3
+SCZ(1)=-12.590000e-3, -8.755489e-3,-12.590000e-3, -8.755489e-3, -8.755489e-3,-12.590000e-3
+HB = 1.0e-3                       ! half-box [m] around each sensor
+
+! ---- union of 6 node boxes ----
+*do,i,1,6
+    ALLSEL,ALL
+    NSEL,S,LOC,X,SCX(i)-HB,SCX(i)+HB
+    NSEL,R,LOC,Y,SCY(i)-HB,SCY(i)+HB
+    NSEL,R,LOC,Z,SCZ(i)-HB,SCZ(i)+HB
+    CM,SB%i%,NODE
+*enddo
+CMSEL,S,SB1
+*do,i,2,6
+    CMSEL,A,SB%i%
+*enddo
+
+! ---- elements touching those nodes, keep SOLID96, then full node set ----
+ESLN,S,0                          ! any selected node -> element selected
+ESEL,R,ENAME,,96                  ! SOLID96 only (drop any non-volume)
+NSLE,S,ALL                        ! re-select ALL nodes of those elements (full tets)
+
+! ---- dump nodes ----
+*GET,NN,NODE,0,COUNT
+*DIM,NID,ARRAY,NN
+*DIM,NCX,ARRAY,NN
+*DIM,NCY,ARRAY,NN
+*DIM,NCZ,ARRAY,NN
+ndd=0
+*do,ii,1,NN
+    ndd=NDNEXT(ndd)
+    NID(ii)=ndd
+    NCX(ii)=NX(ndd)
+    NCY(ii)=NY(ndd)
+    NCZ(ii)=NZ(ndd)
+*enddo
+/OUTPUT,'sensor_local_nodes','csv','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\mesh\standard\csv\'
+*VWRITE,NID(1),NCX(1),NCY(1),NCZ(1)
+(F12.0,',',ES23.14,',',ES23.14,',',ES23.14)
+/OUTPUT
+
+! ---- dump elements (8 node slots) ----
+*GET,NE,ELEM,0,COUNT
+*DIM,EID,ARRAY,NE
+*DIM,EN,ARRAY,NE,8
+edd=0
+*do,ii,1,NE
+    edd=ELNEXT(edd)
+    EID(ii)=edd
+    *do,k,1,8
+        EN(ii,k)=NELEM(edd,k)
+    *enddo
+*enddo
+/OUTPUT,'sensor_local_elems','csv','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\mesh\standard\csv\'
+*VWRITE,EID(1),EN(1,1),EN(1,2),EN(1,3),EN(1,4),EN(1,5),EN(1,6),EN(1,7),EN(1,8)
+(F12.0,8(',',F12.0))
+/OUTPUT
+
+/COM === SENSOR LOCAL MESH EXPORT DONE: NN=%NN% nodes, NE=%NE% SOLID96 elems ===
+FINISH

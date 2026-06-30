@@ -18,7 +18,7 @@
 %  資料來源(使用者拍板):standard mesh 的 'all' dataset(README 記載全網格 ~494,873 節點);
 %  Step 1 仍在 work space 用近場球 R_select 選點(點電荷是近場模型,遠場無法被 6 顆電荷表示)。
 %
-%  只讀 magnetic_sim/ANSYS/main/ANSYS_data、只寫 magnetic_sim/ANSYS/main/MATLAB_data/charge_fit;不搬不改任何資料夾結構。
+%  只讀 ANSYS_data；calib_bias 寫到 bias_fit/data（規則#2）。
 %  ============================================================================
 clear; clc;                                                  % 清空工作區與命令視窗
 
@@ -190,9 +190,9 @@ for i=1:6, fprintf('    % .4f % .4f % .4f % .4f % .4f % .4f\n', KbarI_18_disp(i,
 fprintf('==================================================================================================\n');
 
 %% ===========================================================================
-%  存檔(只寫 MATLAB_data/charge_fit;不動任何結構)
+%  存檔(寫 bias_fit/data；規則#2)
 %  ===========================================================================
-out_dir = fullfile(matlab_path(model, 'charge_fit'), 'calibration');   % .../MATLAB_data/<model>/charge_fit/calibration
+out_dir = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\bias_fit\data';   % calib_bias -> bias_fit/data（規則#2）
 if ~exist(out_dir,'dir'); mkdir(out_dir); end
 save(fullfile(out_dir, 'calib_bias.mat'), ...
      'R', 'Pc_base', 'R_select', 'Np', 'dataset', 'apdl_to_paper_idx', 'F', 'coil_sign', ...

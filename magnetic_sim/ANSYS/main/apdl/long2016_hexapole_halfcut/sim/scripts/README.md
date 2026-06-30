@@ -4,10 +4,10 @@
 
 **內容**：
 - `_build_from_long2016_verbatim.py` — 直接從 Long2016 source（`hexapole-long2016/apdl/MT_..._Coil1.txt`，已含 VADD 合併的正確 topology）verbatim 寫出 6 支 baseline，每支 3 處最小改動（CWD、CURR_ARRAY、…）。修掉 full 版被 strip VADD 造成的 30-70% 弱磁通。
-- `_build_gap200um_mu_eq.py` — 幾何不動，加 `MAT_PROT` μ_r=31、mesh 後把 protrusion 元素 reassign，產生 gap200um_mueq 6 支。
+- `_build_gap100um_mu_eq.py` — 幾何不動，加 `MAT_PROT` μ_r=56、mesh 後把 protrusion 元素 reassign，產生 gap100um_mueq 6 支。⚠ 以「複製 `gap200um_mueq` decks」為模板，但該 deck 已退場 → 此產生器**不可重跑**，僅留歷史（gap100 decks 已產；μ_eq sweep 改用 `mueq_sweep` 兩段式）。
 - `_generate_halfcut_sims.py` — 從 full-hexapole 樣板產生 halfcut（每下極 VROTAT 後加 VSBV 切半錐）。
 
-**資料來源 / 流向**：讀 `hexapole-long2016` / `long2016_hexapole_full` 樣板 → 寫出 `sim/{baseline,gap200um_mueq}/MT_Sim_P*.txt`；CWD 指向 `ANSYS_data/long2016_hexapole_halfcut/coilN/`。
+**資料來源 / 流向**：讀 `hexapole-long2016` / `long2016_hexapole_full` 樣板 → 寫出 `sim/{baseline,gap100um_mueq}/MT_Sim_P*.txt`；CWD 指向 `ANSYS_data/long2016_hexapole_halfcut/coilN/`。
 
 **命名 / 慣例**：產生器以底線 `_` 開頭標示輔助；產物 .txt 才是 FEM input；6 支只差 `CURR_ARRAY`；改 .py 後重跑產生 .txt，勿手改產物與產生器脫鉤。
 

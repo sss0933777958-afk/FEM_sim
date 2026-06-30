@@ -15,8 +15,8 @@ function plot_P1_circuit_charge(mode, showArrows, Rum)
     res_dir = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil1\standard';
     out_dir = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
                'long2016_hexapole_halfcut\Calibration_using_FEM_modeling\no_fix_dir\figures'];
-    calib_bias = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\' ...
-                  'long2016_hexapole_halfcut\charge_fit\calibration\calib_bias.mat'];
+    calib_bias = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
+                  'long2016_hexapole_halfcut\bias_fit\data\calib_bias.mat'];
     if ~exist(out_dir,'dir'); mkdir(out_dir); end
 
     %% geometry (mm)

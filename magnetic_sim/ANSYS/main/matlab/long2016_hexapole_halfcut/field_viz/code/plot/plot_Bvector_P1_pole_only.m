@@ -67,7 +67,7 @@ function plot_Bvector_P1_pole_only()
     d = import_ansys_data(res_dir, 'all', 'coil1');
 
     %% --- Per-pole sign correction ---
-    bbar_mat = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\long2016_hexapole_halfcut\bs_matrix\Bbar_S_4p572.mat';
+    bbar_mat = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\bs_matrix\data\Bbar_S_4p572.mat';
     sign_p1 = +1;
     if exist(bbar_mat, 'file')
         Bs = load(bbar_mat, 'col_sign');

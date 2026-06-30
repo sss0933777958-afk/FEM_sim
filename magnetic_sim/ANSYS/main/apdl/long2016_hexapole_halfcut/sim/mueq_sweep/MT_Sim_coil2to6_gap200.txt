@@ -1,0 +1,181 @@
+! ============================================================================
+! MT_Sim_coil2to6_gap200.txt - gap200um 2-seg mu_eff, COILS 2..6 (consistency with coil1)
+!   RESUME baseline smrt5 mesh -> EMODIF 6 protrusions (upper3->MAT_PROT_UP mu=59.2672,
+!   lower3->MAT_PROT_LO mu=71.0145) -> BC -> loop coil k=2..6 (k=+1 raw, rest 0) -> magsolv ->
+!   export 4 .dat to data/coilK/gap200um_mueq/ (OVERWRITES old 7mm-formula coil2..6).
+!   coilK = +1 RAW (same as baseline/coil1); all-source via MATLAB post-negate.
+!   mu_eff (effective_permeability.pdf 2-seg, gap=200um): upper 59.267241 / lower 71.014493
+! ============================================================================
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\mueq_sweep'
+/CLEAR,NOSTART
+/TITLE, gap200 2-seg coils 2..6
+RESUME,'mesh_baseline','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\mesh_baseline'
+
+/PREP7
+*afun,DEG
+POLE_NUM=6
+YOKE_IN_R=84e-3/2.0 $ YOKE_OUT_R=106e-3/2.0 $ YOKE_MID_R=(YOKE_IN_R+YOKE_OUT_R)/2.0
+YOKE_H=2.0e-3 $ PROT_R=10.0e-3/2.0 $ PROT_H=7.0e-3
+AIR_CYL_R=80e-3 $ AIR_CYL_H=70e-3
+R_norm=500e-6 $ R_norm_z=R_norm/sqrt(3.0) $ SPH_OFST=-PROT_H-6e-3+R_norm_z
+MAT_MT=2 $ MAT_PROT_UP=5 $ MAT_PROT_LO=6
+mp,murx,MAT_PROT_UP,59.267241
+mp,murx,MAT_PROT_LO,71.014493
+! EMODIF: lower3(prot1-3,z<0)->MAT_PROT_LO ; upper3(prot4-6,z>0)->MAT_PROT_UP
+*do, prot_ind, 1, POLE_NUM, 1
+  *if, prot_ind, LE, 3, then
+    ang_prot=120*(prot_ind-1) $ zlo=-PROT_H $ zhi=0 $ mt_tgt=MAT_PROT_LO
+  *else
+    ang_prot=120*(prot_ind-4)+60 $ zlo=YOKE_H $ zhi=YOKE_H+PROT_H $ mt_tgt=MAT_PROT_UP
+  *endif
+  xc_prot=YOKE_MID_R*cos(ang_prot) $ yc_prot=YOKE_MID_R*sin(ang_prot) $ tol_xy=PROT_R*1.1
+  ESEL,S,CENT,X, xc_prot-tol_xy, xc_prot+tol_xy
+  ESEL,R,CENT,Y, yc_prot-tol_xy, yc_prot+tol_xy
+  ESEL,R,CENT,Z, zlo, zhi
+  ESEL,R,MAT,,MAT_MT
+  EMODIF,ALL,MAT,mt_tgt
+  ALLSEL,ALL
+*enddo
+! coil real-const params
+COIL_OUT_R=8e-3 $ COIL_IN_R=5e-3 $ COIL_THK=COIL_OUT_R-COIL_IN_R $ COIL_H=PROT_H $ TURNS=70
+! BC: MAG=0 on outer cyl lateral + caps
+AIR_CYL_Z_CTR=YOKE_H/2 $ AIR_CYL_Z_BOT=AIR_CYL_Z_CTR-AIR_CYL_H/2 $ AIR_CYL_Z_TOP=AIR_CYL_Z_CTR+AIR_CYL_H/2
+LOCAL,11,1,0,0,0 $ CSYS,11
+NSEL,S,LOC,X, AIR_CYL_R-0.5e-3, AIR_CYL_R+0.5e-3
+CSYS,0
+NSEL,A,LOC,Z, AIR_CYL_Z_TOP-0.5e-3, AIR_CYL_Z_TOP+0.5e-3
+NSEL,A,LOC,Z, AIR_CYL_Z_BOT-0.5e-3, AIR_CYL_Z_BOT+0.5e-3
+D,ALL,MAG,0
+ALLSEL,ALL
+FINISH
+
+! ===================== coil2 (gap200, 2-seg) =====================
+/PREP7
+R,1,1,TURNS*0,COIL_THK,COIL_H
+R,2,1,TURNS*1,COIL_THK,COIL_H
+R,3,1,TURNS*0,COIL_THK,COIL_H
+R,4,1,TURNS*0,COIL_THK,COIL_H
+R,5,1,TURNS*0,COIL_THK,COIL_H
+R,6,1,TURNS*0,COIL_THK,COIL_H
+FINISH
+/SOLU $ magsolv,3,,,,,1 $ FINISH
+/POST1
+SET,LAST $ ALLSEL,ALL
+/HEADER,OFF,OFF,OFF,OFF,OFF,OFF
+/FORMAT,10,,20,12,,
+/PAGE,1000000,,1000000
+/OUTPUT,'coil2_coord_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil2\gap200um_mueq'
+NLIST,ALL, , ,COORD $ /OUTPUT
+/OUTPUT,'coil2_bfield_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil2\gap200um_mueq'
+PRNSOL,B,COMP $ /OUTPUT
+LOCAL,12,2, 0, 0, SPH_OFST $ CSYS,12 $ NSEL,S,LOC,X, 0, 2e-3 $ CSYS,0
+/OUTPUT,'coil2_coord_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil2\gap200um_mueq'
+NLIST,ALL, , ,COORD $ /OUTPUT
+/OUTPUT,'coil2_bfield_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil2\gap200um_mueq'
+PRNSOL,B,COMP $ /OUTPUT
+ALLSEL,ALL $ CSYS,0 $ FINISH
+
+! ===================== coil3 (gap200, 2-seg) =====================
+/PREP7
+R,1,1,TURNS*0,COIL_THK,COIL_H
+R,2,1,TURNS*0,COIL_THK,COIL_H
+R,3,1,TURNS*1,COIL_THK,COIL_H
+R,4,1,TURNS*0,COIL_THK,COIL_H
+R,5,1,TURNS*0,COIL_THK,COIL_H
+R,6,1,TURNS*0,COIL_THK,COIL_H
+FINISH
+/SOLU $ magsolv,3,,,,,1 $ FINISH
+/POST1
+SET,LAST $ ALLSEL,ALL
+/HEADER,OFF,OFF,OFF,OFF,OFF,OFF
+/FORMAT,10,,20,12,,
+/PAGE,1000000,,1000000
+/OUTPUT,'coil3_coord_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil3\gap200um_mueq'
+NLIST,ALL, , ,COORD $ /OUTPUT
+/OUTPUT,'coil3_bfield_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil3\gap200um_mueq'
+PRNSOL,B,COMP $ /OUTPUT
+LOCAL,12,2, 0, 0, SPH_OFST $ CSYS,12 $ NSEL,S,LOC,X, 0, 2e-3 $ CSYS,0
+/OUTPUT,'coil3_coord_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil3\gap200um_mueq'
+NLIST,ALL, , ,COORD $ /OUTPUT
+/OUTPUT,'coil3_bfield_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil3\gap200um_mueq'
+PRNSOL,B,COMP $ /OUTPUT
+ALLSEL,ALL $ CSYS,0 $ FINISH
+
+! ===================== coil4 (gap200, 2-seg) =====================
+/PREP7
+R,1,1,TURNS*0,COIL_THK,COIL_H
+R,2,1,TURNS*0,COIL_THK,COIL_H
+R,3,1,TURNS*0,COIL_THK,COIL_H
+R,4,1,TURNS*1,COIL_THK,COIL_H
+R,5,1,TURNS*0,COIL_THK,COIL_H
+R,6,1,TURNS*0,COIL_THK,COIL_H
+FINISH
+/SOLU $ magsolv,3,,,,,1 $ FINISH
+/POST1
+SET,LAST $ ALLSEL,ALL
+/HEADER,OFF,OFF,OFF,OFF,OFF,OFF
+/FORMAT,10,,20,12,,
+/PAGE,1000000,,1000000
+/OUTPUT,'coil4_coord_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil4\gap200um_mueq'
+NLIST,ALL, , ,COORD $ /OUTPUT
+/OUTPUT,'coil4_bfield_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil4\gap200um_mueq'
+PRNSOL,B,COMP $ /OUTPUT
+LOCAL,12,2, 0, 0, SPH_OFST $ CSYS,12 $ NSEL,S,LOC,X, 0, 2e-3 $ CSYS,0
+/OUTPUT,'coil4_coord_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil4\gap200um_mueq'
+NLIST,ALL, , ,COORD $ /OUTPUT
+/OUTPUT,'coil4_bfield_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil4\gap200um_mueq'
+PRNSOL,B,COMP $ /OUTPUT
+ALLSEL,ALL $ CSYS,0 $ FINISH
+
+! ===================== coil5 (gap200, 2-seg) =====================
+/PREP7
+R,1,1,TURNS*0,COIL_THK,COIL_H
+R,2,1,TURNS*0,COIL_THK,COIL_H
+R,3,1,TURNS*0,COIL_THK,COIL_H
+R,4,1,TURNS*0,COIL_THK,COIL_H
+R,5,1,TURNS*1,COIL_THK,COIL_H
+R,6,1,TURNS*0,COIL_THK,COIL_H
+FINISH
+/SOLU $ magsolv,3,,,,,1 $ FINISH
+/POST1
+SET,LAST $ ALLSEL,ALL
+/HEADER,OFF,OFF,OFF,OFF,OFF,OFF
+/FORMAT,10,,20,12,,
+/PAGE,1000000,,1000000
+/OUTPUT,'coil5_coord_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil5\gap200um_mueq'
+NLIST,ALL, , ,COORD $ /OUTPUT
+/OUTPUT,'coil5_bfield_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil5\gap200um_mueq'
+PRNSOL,B,COMP $ /OUTPUT
+LOCAL,12,2, 0, 0, SPH_OFST $ CSYS,12 $ NSEL,S,LOC,X, 0, 2e-3 $ CSYS,0
+/OUTPUT,'coil5_coord_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil5\gap200um_mueq'
+NLIST,ALL, , ,COORD $ /OUTPUT
+/OUTPUT,'coil5_bfield_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil5\gap200um_mueq'
+PRNSOL,B,COMP $ /OUTPUT
+ALLSEL,ALL $ CSYS,0 $ FINISH
+
+! ===================== coil6 (gap200, 2-seg) =====================
+/PREP7
+R,1,1,TURNS*0,COIL_THK,COIL_H
+R,2,1,TURNS*0,COIL_THK,COIL_H
+R,3,1,TURNS*0,COIL_THK,COIL_H
+R,4,1,TURNS*0,COIL_THK,COIL_H
+R,5,1,TURNS*0,COIL_THK,COIL_H
+R,6,1,TURNS*1,COIL_THK,COIL_H
+FINISH
+/SOLU $ magsolv,3,,,,,1 $ FINISH
+/POST1
+SET,LAST $ ALLSEL,ALL
+/HEADER,OFF,OFF,OFF,OFF,OFF,OFF
+/FORMAT,10,,20,12,,
+/PAGE,1000000,,1000000
+/OUTPUT,'coil6_coord_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil6\gap200um_mueq'
+NLIST,ALL, , ,COORD $ /OUTPUT
+/OUTPUT,'coil6_bfield_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil6\gap200um_mueq'
+PRNSOL,B,COMP $ /OUTPUT
+LOCAL,12,2, 0, 0, SPH_OFST $ CSYS,12 $ NSEL,S,LOC,X, 0, 2e-3 $ CSYS,0
+/OUTPUT,'coil6_coord_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil6\gap200um_mueq'
+NLIST,ALL, , ,COORD $ /OUTPUT
+/OUTPUT,'coil6_bfield_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil6\gap200um_mueq'
+PRNSOL,B,COMP $ /OUTPUT
+ALLSEL,ALL $ CSYS,0 $ FINISH
+

@@ -1,9 +1,10 @@
-function D = load_coils_actuator(model, cnst, apdl_to_paper_idx, dataset)
+function D = load_coils_actuator(model, cnst, apdl_to_paper_idx, dataset, variant)
 %LOAD_COILS_ACTUATOR  Load the 6-coil FEM field once and rotate into the actuator frame.
-%   D = LOAD_COILS_ACTUATOR(model, cnst, apdl_to_paper_idx, dataset)
-%   Reads coilN/standard <dataset> via ansys_path, removes iron nodes, shifts z to the
+%   D = LOAD_COILS_ACTUATOR(model, cnst, apdl_to_paper_idx, dataset, variant)
+%   Reads coilN/<variant> <dataset> via ansys_path, removes iron nodes, shifts z to the
 %   WP frame, NEGATES B (all-source convention), and rotates points + fields by the
 %   actuator rotation R_act = [uhat vhat what]' (uhat=P1, vhat=P3, what=P5 tip dirs).
+%   variant (optional, default 'standard'): FEM variant subfolder, e.g. 'gap200um_mueq'.
 %   Returns struct D with:
 %     .Pa      Nair x 3       sample points (actuator frame, shared across coils)
 %     .r2      Nair x 1       |p|^2 (rotation-invariant) for ball selection
@@ -12,6 +13,7 @@ function D = load_coils_actuator(model, cnst, apdl_to_paper_idx, dataset)
 %     .Pc_base 3 x 6          ideal charge lattice [+u -u +v -v +w -w]
 %     .F       6 x N_I        current matrix (permutation, rank 6)
 %   Requires ansys_path + import_ansys_data + filter_iron_nodes on the path.
+    if nargin < 5 || isempty(variant), variant = 'standard'; end
     N_I = 6;
     tip   = [cnst.pole_tip_x; cnst.pole_tip_y; cnst.pole_tip_z_wp];   % 3x6 (measure)
     dhat  = tip ./ vecnorm(tip);
@@ -25,7 +27,7 @@ function D = load_coils_actuator(model, cnst, apdl_to_paper_idx, dataset)
     F = zeros(6, N_I);
     for j = 1:N_I, F(apdl_to_paper_idx(j), j) = 1; end
 
-    d1   = import_ansys_data(ansys_path(model,'data','coil1','standard'), dataset, 'coil1');
+    d1   = import_ansys_data(ansys_path(model,'data','coil1',variant), dataset, 'coil1');
     air1 = filter_iron_nodes(d1.x,d1.y,d1.z,cnst,struct('visualize',false));
     zwp1 = d1.z - cnst.SPH_OFST;
     P_meas = [d1.x(air1), d1.y(air1), zwp1(air1)];
@@ -38,7 +40,7 @@ function D = load_coils_actuator(model, cnst, apdl_to_paper_idx, dataset)
         if k == 1, dk = d1; airk = air1;
         else
             cn = sprintf('coil%d', k);
-            dk = import_ansys_data(ansys_path(model,'data',cn,'standard'), dataset, cn);
+            dk = import_ansys_data(ansys_path(model,'data',cn,variant), dataset, cn);
             airk = filter_iron_nodes(dk.x,dk.y,dk.z,cnst,struct('visualize',false));
         end
         Bk = -[dk.bx(airk), dk.by(airk), dk.bz(airk)];               % all-source

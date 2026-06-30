@@ -1,0 +1,146 @@
+! ============================================================================
+! MT_Sim_P1_gap200_elemB.txt - Long2016 halfcut, GRADED mesh, gap200 mu_eff on SUPPORT BASE
+!   = MT_Sim_P1_gap200.txt 的 solve 段 + 新 POST1：匯出「元素級未平滑 B」(element-constant)
+!     在 6 個 sensor 中心(修正後位置)各 R=5mm 球的聯集區內。
+!   coil4 = +1 RAW。輸出 3 檔 -> data/coil4/gap200um_mueq/：
+!     coil4_elemB_R05.dat    : 元素 ID + Bx,By,Bz   (ETABLE/PRETAB，元素常數 B)
+!     coil4_elemconn_R05.dat : 元素 ID + 8 node 槽  (SOLID96 退化 tet=4 相異)
+!     coil4_nodes_R05.dat    : node ID + x,y,z [m]  (被選元素的節點)
+!   保 .rmg/.db（不 clean）。scratch = db/gap200_elemB。
+! ============================================================================
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\gap200_elemB'
+/CLEAR,NOSTART
+/TITLE, Long2016 halfcut graded gap200 support-base (coil4) - element-B export
+RESUME,'mesh_graded','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\mesh_graded'
+
+/PREP7
+*afun,DEG
+PROT_H     = 7.0e-3
+YOKE_H     = 2.0e-3
+R_norm     = 500e-6
+R_norm_z   = R_norm/sqrt(3.0)
+SPH_OFST   = -PROT_H - 6e-3 + R_norm_z
+AIR_CYL_R  = 80e-3
+AIR_CYL_H  = 70e-3
+COIL_OUT_R = 8e-3
+COIL_IN_R  = 5e-3
+COIL_THK   = COIL_OUT_R - COIL_IN_R
+COIL_H     = PROT_H
+TURNS      = 70
+
+! ---- materials: support-base mu_eff (2-seg gap200) ----
+MAT_MT      = 2
+MAT_PROT_UP = 5
+MAT_PROT_LO = 6
+mp,murx,MAT_PROT_UP,59.267241
+mp,murx,MAT_PROT_LO,71.014493
+
+! ---- EMODIF: support-base steel by z + cylindrical radius ----
+LOCAL,13,1,0,0,0
+CSYS,13
+ESEL,S,CENT,Z,-17e-3,-7e-3
+ESEL,R,CENT,X, 37e-3, 62e-3
+CSYS,0
+ESEL,R,MAT,,MAT_MT
+EMODIF,ALL,MAT,MAT_PROT_LO
+ALLSEL,ALL
+CSYS,13
+ESEL,S,CENT,Z, 9e-3, 19e-3
+ESEL,R,CENT,X, 30e-3, 62e-3
+CSYS,0
+ESEL,R,MAT,,MAT_MT
+EMODIF,ALL,MAT,MAT_PROT_UP
+ALLSEL,ALL
+CSYS,0
+
+! ---- coil4 = +1A raw ; coils 2-6 = 0 ----
+R,1,1,TURNS*0,COIL_THK,COIL_H
+R,2,1,TURNS*0,COIL_THK,COIL_H
+R,3,1,TURNS*0,COIL_THK,COIL_H
+R,4,1,TURNS*1,COIL_THK,COIL_H
+R,5,1,TURNS*0,COIL_THK,COIL_H
+R,6,1,TURNS*0,COIL_THK,COIL_H
+
+! ---- far-field BC: MAG=0 ----
+AIR_CYL_Z_CTR = YOKE_H/2
+AIR_CYL_Z_BOT = AIR_CYL_Z_CTR - AIR_CYL_H/2
+AIR_CYL_Z_TOP = AIR_CYL_Z_CTR + AIR_CYL_H/2
+LOCAL,11,1,0,0,0
+CSYS,11
+NSEL,S,LOC,X, AIR_CYL_R-0.5e-3, AIR_CYL_R+0.5e-3
+CSYS,0
+NSEL,A,LOC,Z, AIR_CYL_Z_TOP-0.5e-3, AIR_CYL_Z_TOP+0.5e-3
+NSEL,A,LOC,Z, AIR_CYL_Z_BOT-0.5e-3, AIR_CYL_Z_BOT+0.5e-3
+D,ALL,MAG,0
+ALLSEL,ALL
+FINISH
+
+! ---- solve ----
+/SOLU
+magsolv,3,,,,,1
+SAVE
+FINISH
+
+! ====================================================================
+! POST1: element-constant B (unsmoothed) in 6 R=5mm spheres at sensors
+! ====================================================================
+/POST1
+SET,LAST
+ALLSEL,ALL
+*afun,RAD
+ETABLE,EBX,B,X
+ETABLE,EBY,B,Y
+ETABLE,EBZ,B,Z
+
+! 6 sensor centres (ANSYS frame [m], corrected positions)
+*DIM,SCX,ARRAY,6
+*DIM,SCY,ARRAY,6
+*DIM,SCZ,ARRAY,6
+SCX(1)=  4.811056e-3, -3.253331e-3, -2.405528e-3,  1.626666e-3,  1.626666e-3, -2.405528e-3
+SCY(1)=  0.000000e-3,  0.000000e-3,  4.166496e-3, -2.817468e-3,  2.817468e-3, -4.166496e-3
+SCZ(1)= -14.298681e-3, -8.820319e-3,-14.298681e-3, -8.820319e-3, -8.820319e-3,-14.298681e-3
+RBALL = 0.5e-3
+
+ESEL,NONE
+*do,s,1,6
+    LOCAL,30,2, SCX(s),SCY(s),SCZ(s)
+    CSYS,30
+    ESEL,A,CENT,X,0,RBALL
+    CSYS,0
+*enddo
+NSLE,S,ALL
+*GET,NESEL,ELEM,0,COUNT
+*GET,NNSEL,NODE,0,COUNT
+/com, ===== ELEMB EXPORT: selected elems=%NESEL% , nodes=%NNSEL% =====
+
+/HEADER,OFF,OFF,OFF,OFF,OFF,OFF
+/PAGE,1000000,,1000000
+/FORMAT,10,,20,12,,
+
+! ---- (1) element B: ID + Bx,By,Bz ----
+/OUTPUT,'coil4_elemB_R05','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil4\gap200um_mueq'
+PRETAB,EBX,EBY,EBZ
+/OUTPUT
+
+! ---- (2) connectivity: ID + 8 node slots ----
+*DIM,EID,ARRAY,NESEL
+*DIM,EN,ARRAY,NESEL,8
+edd=0
+*do,ii,1,NESEL
+    edd=ELNEXT(edd)
+    EID(ii)=edd
+    *do,k,1,8
+        EN(ii,k)=NELEM(edd,k)
+    *enddo
+*enddo
+/OUTPUT,'coil4_elemconn_R05','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil4\gap200um_mueq'
+*VWRITE,EID(1),EN(1,1),EN(1,2),EN(1,3),EN(1,4),EN(1,5),EN(1,6),EN(1,7),EN(1,8)
+(F12.0,8(',',F12.0))
+/OUTPUT
+
+! ---- (3) node coords: ID + x,y,z [m] ----
+/OUTPUT,'coil4_nodes_R05','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil4\gap200um_mueq'
+NLIST,ALL, , ,COORD
+/OUTPUT
+ALLSEL,ALL
+FINISH

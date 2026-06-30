@@ -7,8 +7,9 @@
 - `code/plot/` — 收斂圖、參數-R 趨勢圖、電荷側視動畫腳本（畫圖前須讀繪圖規則）。
 - `figures/` — 已定案 `.png` / `.gif`（收斂、參數 vs R、P1/P2 電荷動畫幀）。
 - `results/per_radius/` — auto-gen 的每半徑 `fit_KI_*.tex`（R050…R500）。
+- `data/` — 本組 `.mat` 成果（規則 #2，2026-06-26 由 `MATLAB_data/.../charge_fit` 遷入）：`calib_bias` + 整個 fitting_trend 群（`sweep_nofixl_vs_R`、`nofixl_convergence`、`sweep_alln_vs_R`、`fixl_convergence`、`KI_trend_sweep*` …）。本組為 trend/sweep `.mat` 集中地；`fix_dir`/`no_fix_dir` 的收斂圖跨夾讀此 `data/`。
 
-**資料來源 / 流向**：腳本經 `common/ansys_path('long2016_hexapole_halfcut','coilN','standard')` 讀 6 顆 coil 的 FEM `.dat`（`'all'` dataset，全 in-ball 節點）→ 旋進 actuator 框做 bias fit → 成果 `.mat` 寫 `matlab_path(model,'charge_fit',...)`（`MATLAB_data`）→ 圖進 `figures/` 與 `main/figures/long2016_hexapole_halfcut/` → 每半徑 `.tex` 進 `results/per_radius/`。
+**資料來源 / 流向**：腳本經 `common/ansys_path('long2016_hexapole_halfcut','coilN','standard')` 讀 6 顆 coil 的 FEM `.dat`（`'all'` dataset，全 in-ball 節點）→ 旋進 actuator 框做 bias fit → 成果 `.mat` 寫本組 `data/`（規則 #2）→ 圖進 `figures/` 與 `main/figures/long2016_hexapole_halfcut/` → 每半徑 `.tex` 進 `results/per_radius/`。
 - 模型電流 `I_actual = 1`（對齊 FEM 1A 激發，per `fit-current-matches-sim` 規則）。
 - 顯示符號全 source（翻上極 P2/P4/P5），per charge-model-source-convention。
 

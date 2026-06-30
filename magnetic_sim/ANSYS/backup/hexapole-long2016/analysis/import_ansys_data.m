@@ -12,8 +12,12 @@ function data = import_ansys_data(results_dir, dataset, coil_name)
     bfield_file = fullfile(results_dir, [coil_name '_bfield_' dataset '.dat']);
 
     % --- Read coordinate file (space-separated, readmatrix handles it) ---
+    %   [FIX] On large files readmatrix can mis-detect extra columns (banner line)
+    %   -> trailing NaN cols. Check NaN only in the data cols (node,x,y,z) so valid
+    %   rows are not wrongly dropped (was: coord -> 0 rows for >1M-node files).
     coord = readmatrix(coord_file, 'FileType', 'text');
-    coord = coord(~any(isnan(coord), 2), :);
+    nc = min(4, size(coord,2));
+    coord = coord(~any(isnan(coord(:,1:nc)), 2), :);
 
     % --- Read B-field file (fixed-width format, negatives may concatenate) ---
     % ANSYS PRNSOL uses fixed-width columns; consecutive negative values
@@ -25,7 +29,8 @@ function data = import_ansys_data(results_dir, dataset, coil_name)
     fid = fopen(tmpfile, 'w'); fprintf(fid, '%s', txt); fclose(fid);
     bfield = readmatrix(tmpfile, 'FileType', 'text');
     delete(tmpfile);
-    bfield = bfield(~any(isnan(bfield), 2), :);
+    nb = min(5, size(bfield,2));
+    bfield = bfield(~any(isnan(bfield(:,1:nb)), 2), :);
 
     % --- Merge on node ID (PRNSOL skips SOURC36 coil nodes) ---
     [node_ids, ic, ib] = intersect(coord(:,1), bfield(:,1));

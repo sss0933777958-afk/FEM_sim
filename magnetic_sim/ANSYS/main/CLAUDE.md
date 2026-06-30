@@ -9,6 +9,20 @@
 
 ---
 
+## 🔁 鐵則：每次在 main/ 工作前，先讀 `rules/` 全部規則
+
+**任何在 `main/` 下動手的工作（跑 sim / 寫分析 / 搬檔 / 畫圖 / 改腳本…）開始前，先讀 `rules/` 內全部規則檔再動手**（規則 #4 `rules/read-rules-first.md`）。
+
+## 📁 本地資料夾佈局規則（main/ 專屬，動到對應路徑前先讀 `rules/`）
+
+使用者 2026-06-26 拍板，全文見 `rules/`（索引 `rules/README.md`）：
+1. **`db-folder-retention.md`** — `ANSYS_data/<model>/db/` 子夾只留 `.db` + 主 `.rmg`（無 digit），殘留禁留。
+2. **`matlab-output-layout.md`** — MATLAB `.mat` 放**產生它的程式旁 `data/`**（`matlab/<model>/<activity>[/<sub>]/data/`）。`MATLAB_data/` 已於 2026-06-26 全量遷移並**移除**。
+3. **`results-pdf-only.md`** — `…/Hall_sensor_base_fix_dir/results/` 只放 `.pdf`。
+4. **`read-rules-first.md`** — 每次在 main/ 工作前先讀本資料夾全部規則。
+
+---
+
 ## 🔒 鐵則：不擅自更動檔案架構
 
 **未經使用者明確指示，不得更動檔案／資料夾架構** —— 包含**移動、改名、刪除、新建資料夾、重組目錄、搬移檔案**。
@@ -39,8 +53,8 @@
 | `IGES_converted/` | 單位轉換後給 ANSYS `IGESIN` 的 IGES | 建 mesh 前匯入用 |
 | `apdl/` | APDL 腳本：`<model>/{geom,sim,postproc}/`（+ sweep） | 改幾何/參數/重跑 sim 的 input |
 | `ANSYS_data/` | FEM 輸出 `<model>/<case>/`（`.dat` 場 / `.db` 模型 / `.cdb`） | **讀 FEM 結果**（.dat） |
-| `matlab/` | MATLAB 分析碼 `<model>/<功能組>/code/...` + `figures/` + `results/` | 跑分析、畫圖、resolver |
-| `MATLAB_data/` | 分析成果 `<model>/<功能>/`（`.mat`/`.csv`/`.npz`） | **讀/寫分析結果**（.mat） |
+| `matlab/` | MATLAB 分析碼 `<model>/<功能組>/code/...` + `figures/` + `results/` + **`data/`（`.mat` 成果，規則 #2）** | 跑分析、畫圖、**讀/寫 `.mat`** |
+| ~~`MATLAB_data/`~~ | **已移除（2026-06-26）**：全量遷移到各活動 `matlab/<model>/<activity>/data/`（規則 `rules/matlab-output-layout.md`）；`matlab_path()` 已 deprecated | `.mat` 改去 `matlab/.../data/` |
 | `doc/` | LaTeX 原稿 + 編譯 PDF + `workflows/`(SOP) | 推導、報告、流程 SOP |
 | `.claude/` | Claude Code 本地設定（`settings.local.json`） | 非工作產物，通常不動 |
 
@@ -53,7 +67,7 @@ CAD_model (SLDPRT/STEP)
    → [ANSYS MAPDL 求解]
    → ANSYS_data/<model>/<case>/*.dat (場) + *.db (模型)
    → matlab/<model>/<功能組>/code (讀 .dat 做 fit/矩陣/校正/畫圖)
-   → MATLAB_data/<model>/<功能>/*.mat (成果)  +  matlab/.../<功能組>/figures/*.png (圖)
+   → matlab/<model>/<功能組>/data/*.mat (成果)  +  .../figures/*.png (圖)  +  .../results/*.pdf
    → doc/<主題>/ (LaTeX/PDF 報告)
 ```
 
@@ -61,7 +75,7 @@ CAD_model (SLDPRT/STEP)
 
 都在 `matlab/<model>/common/`，相對自身定位（資料夾改名/搬移自動沿用）：
 - `ansys_path('<model>'[, 'coilN', ...])` → `ANSYS_data/<model>/...`（讀 FEM `.dat/.db`）
-- `matlab_path('<model>', '<功能>'[, file])` → `MATLAB_data/<model>/<功能>/...`（讀寫 `.mat`）
+- ~~`matlab_path(...)`~~ **已 deprecated**（`MATLAB_data/` 已移除）：`.mat` 一律放各活動 `matlab/<model>/<activity>/data/`，用腳本自身 root 變數算 `fullfile(<本組夾>,'data')`、不硬寫絕對路徑。
 
 ## matlab/ 功能組 schema
 
@@ -69,7 +83,8 @@ CAD_model (SLDPRT/STEP)
 - 單一主程式組 → `code/main/main.m`（如 `Calibration using FEM modeling/{fix_l,no_fix_l}`）
 - 多腳本組 → `code/scripts/`（如 `fixl_fit, bias_fit, bs_matrix, sensor_d, validation`）
 - 純繪圖組 → `code/plot/`（如 `field_viz, sensor_placement`）
-- 每組另有 `figures/`（圖）與 `results/`（auto-gen `.tex`）。
+- 每組另有 `figures/`（圖）、`results/`（PDF / auto-gen `.tex`）、**`data/`（該組 `.mat` 成果，規則 #2 `rules/matlab-output-layout.md`）**。
+  - `Calibration_using_FEM_modeling` 4 子夾一律有 `data/`；其他組有產 `.mat` 才有。
 
 ---
 
@@ -79,7 +94,8 @@ CAD_model (SLDPRT/STEP)
 2. **不屬於任何現有功能組** → 要**新增一個功能組資料夾**（`matlab/<model>/<新組>/code/plot/` + `figures/`）；**開新組前也要先問使用者**。
 3. **每個圖 / 每個繪圖任務只維護「一支」腳本**：在同一支腳本上**原地反覆修改**到使用者定案；**定案前不可另開新腳本**。
 4. **使用者沒明講「新增（另一支）」就不開第二支腳本**（一個功能組底下可有多支，但各自對應一張已定案的圖）。
-5. **圖檔要等使用者把腳本定案後，才存最終版到該組 `figures/`**；定案前一律用 MATLAB MCP **preview** 討論，不落地最終檔。
+5. **圖一律實際輸出到該組 `figures/`**（使用者要直接開檔）；**要改就原地改腳本→重跑→覆蓋同一個檔**，反覆覆寫到使用者定案（**不要**只丟 temp preview 等定案才落地）。詳見 `rules/figure-output.md`。
 6. 沿用 repo 既有 Figure Production 慣例：**場圖一律畫真實 FEM 節點原值，不用 scatteredInterpolant / 格點內插**（除非使用者明確要求，且須在圖說標示為內插）。
+7. **動手畫圖前（與確認功能組同時），先問使用者「要用哪個風格選項？」**——風格 preset 目錄見 `rules/figure-style.md`（目前：①粗體框圖）。不可自己預設風格、不可憑記憶猜。
 
-> 一句話：**先問功能組 → 一任務一腳本、原地改 → 定案後才存圖**。
+> 一句話：**先問功能組 + 風格選項 → 一任務一腳本、原地改 → 每輪輸出實檔、覆蓋迭代到定案**。

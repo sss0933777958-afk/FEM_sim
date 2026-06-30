@@ -1,0 +1,99 @@
+! ============================================================================
+! MT_Sim_LowerFilled_coil1.txt — LOWER-FILLED hexapole solve, coil1 (P1) excited
+!   mesh/solve SEPARATED: RESUME the graded mesh built by mesh/MT_Mesh_LowerFilled.txt
+!   (3 lower poles = FULL cones), set coil1 current, apply D,ALL,MAG,0, solve
+!   (magsolv,3 DSP), export B-field .dat to data/coil1/lower_filled/.  MKS metre.
+!
+!   ★ P1 = SOURCE (user requirement): P1 is a LOWER pole; the standard winding
+!     (CURR=+1) gives a SINK (B into tip). To make P1 a SOURCE (B OUT of tip) the
+!     coil1 current is FLIPPED -> CURR_ARRAY(1) = -1 (per charge-model-source-
+!     convention: lower poles s=-1). |I| = 1 A, reversed. Coils 2-6 OFF.
+! ============================================================================
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\lower_filled'
+Finish
+/cle
+/CLEAR,NOSTART
+/TITLE, Long2016 lower-filled - solve coil1 (P1 SOURCE) RESUME mesh_lowerfilled.db
+/FILNAME,sim_lf_coil1,1
+
+! ----- restore the lower-filled graded mesh (geometry + mesh + materials + coils) -----
+RESUME,'mesh_lowerfilled','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\lower_filled\'
+
+/PREP7
+*afun, DEG
+
+! ----- redefine constants the BC / coil / output need (RESUME-safe) -----
+R_norm    = 500e-6
+R_norm_z  = R_norm/sqrt(3.0)
+YOKE_H    = 2.0e-3
+PROT_H    = 7.0e-3
+Z0_LOW    = -PROT_H
+SPH_OFST  = Z0_LOW - 6e-3 + R_norm_z
+AIR_CYL_R = 80e-3
+AIR_CYL_H = 70e-3
+COIL_OUT_R = 8e-3
+COIL_IN_R  = 5e-3
+TURNS    = 70
+COIL_THK = COIL_OUT_R - COIL_IN_R
+COIL_H   = PROT_H
+
+! ----- [MODIFIED] coil currents: P1 (coil1) = SOURCE -> CURR = -1 (1 A reversed); rest OFF -----
+R,1,1,TURNS*(-1),COIL_THK,COIL_H     ! coil1 = P1 SOURCE (B out of tip)
+R,2,1,0,COIL_THK,COIL_H
+R,3,1,0,COIL_THK,COIL_H
+R,4,1,0,COIL_THK,COIL_H
+R,5,1,0,COIL_THK,COIL_H
+R,6,1,0,COIL_THK,COIL_H
+
+! ----- [ADDED] far-field BC: MAG=0 on outer cylinder lateral surface + caps -----
+AIR_CYL_Z_CTR = YOKE_H/2
+AIR_CYL_Z_BOT = AIR_CYL_Z_CTR - AIR_CYL_H/2
+AIR_CYL_Z_TOP = AIR_CYL_Z_CTR + AIR_CYL_H/2
+LOCAL,11,1,0,0,0
+CSYS,11
+NSEL,S,LOC,X, AIR_CYL_R - 0.5e-3, AIR_CYL_R + 0.5e-3
+CSYS,0
+NSEL,A,LOC,Z, AIR_CYL_Z_TOP - 0.5e-3, AIR_CYL_Z_TOP + 0.5e-3
+NSEL,A,LOC,Z, AIR_CYL_Z_BOT - 0.5e-3, AIR_CYL_Z_BOT + 0.5e-3
+D,ALL,MAG,0
+ALLSEL,ALL
+FINISH
+
+! ----- solve -----
+/SOLU
+magsolv,3,,,,,1
+FINISH
+
+! ====================================================================
+! POST1: export B-field .dat to data/coil1/lower_filled/ (scratch stays in db/)
+! ====================================================================
+/POST1
+SET,LAST
+ALLSEL,ALL
+/HEADER,OFF,OFF,OFF,OFF,OFF,OFF
+/FORMAT,10,,20,12,,
+/PAGE,1000000,,1000000
+
+! ---- all nodes ----
+/OUTPUT,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil1\lower_filled\coil1_coord_all','dat'
+NLIST,ALL, , ,COORD
+/OUTPUT
+/OUTPUT,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil1\lower_filled\coil1_bfield_all','dat'
+PRNSOL,B,COMP
+/OUTPUT
+
+! ---- WP region (inner sphere R<=2mm @ working point) ----
+LOCAL,12,2, 0, 0, SPH_OFST
+CSYS,12
+NSEL,S,LOC,X, 0, 2e-3
+CSYS,0
+/OUTPUT,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil1\lower_filled\coil1_coord_wp','dat'
+NLIST,ALL, , ,COORD
+/OUTPUT
+/OUTPUT,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil1\lower_filled\coil1_bfield_wp','dat'
+PRNSOL,B,COMP
+/OUTPUT
+
+ALLSEL,ALL
+SAVE
+FINISH

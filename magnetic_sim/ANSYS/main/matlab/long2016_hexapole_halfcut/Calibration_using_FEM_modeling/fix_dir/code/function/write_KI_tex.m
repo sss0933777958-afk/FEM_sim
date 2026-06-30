@@ -2,10 +2,8 @@ function write_KI_tex(fname, shape, R_um, I_A, Khat, ell, gB, errpct)
 %WRITE_KI_TEX  Write a minimal, results-only LaTeX script for one fit.
 %   WRITE_KI_TEX(fname, shape, R_um, I_A, Khat, ell, gB, errpct)
 %   Emits ONLY the results: Khat_I^FEM matrix, ell, gB, and the relative RMS error.
-%   Applies the all-source presentation flip (upper poles P2,P4,P5 = columns 2,4,5)
-%   so the diagonal is all-positive, per the project sign convention. No prose.
-    Khat(:, [2 4 5]) = -Khat(:, [2 4 5]);            % all-source presentation flip
-
+%   [MODIFIED] load_coils is now flip-sink (field already all-source) -> Khat diagonal is
+%   already all-positive; NO presentation flip needed (was Khat(:,[2 4 5])=-...). No prose.
     ge = floor(log10(abs(gB)));  gm = gB/10^ge;       % gB -> mantissa x 10^exp
 
     fid = fopen(fname, 'w');

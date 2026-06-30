@@ -15,7 +15,7 @@
 
 clear; close all;
 
-data_dir = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\long2016_hexapole_halfcut\bs_matrix';
+data_dir = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\bs_matrix\data';
 
 % 4 new variants (loadable from .mat — V_VV stored in true V/V dimensionless)
 new_variants = struct( ...

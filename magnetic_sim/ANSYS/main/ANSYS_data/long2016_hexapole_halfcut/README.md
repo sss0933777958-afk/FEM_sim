@@ -38,11 +38,14 @@ Long Fei 2016「下極半切」六極 hexapole 的 **FEM 模擬輸出**（`.dat`
 ## `mesh/` — 純網格資料庫（只 `.db`/`.cdb`，無場）
 | 子夾 | 內容 | .db 檔 | 生成腳本 |
 |---|---|---|---|
-| `standard/` | **標準求解網格**（494,889 節點，baseline 6-coil sim 用的就是這個）| `mesh_baseline.db` | `MT_Mesh_P1.txt` |
-| `standard_iron/` | 上面的**鋼鐵-only 子集**（極+body，去空氣）| `mesh_baseline_iron.db/.cdb` | `MT_Mesh_Iron.txt` |
-| `dense_wp/` | **WP 核心加密**網格（R<40 µm ≥130 節點）| `mesh_dense.db` | `MT_Mesh_Dense.txt` |
-| `graded/` | **分區 graded** 網格（zoned ESIZE + WP NREFINE）| `mesh_graded.db` + `mesh_graded_iron.db` | `MT_Mesh_Graded.txt` |
-| `from_iges/` | 從 **IGES 匯入幾何**建的網格（對照 primitive 建模）| `halfcut_iges_mesh.db` | `MT_Mesh_IGES.txt` |
+| `standard/` | **標準求解網格**（494,889 節點，baseline 6-coil sim 用的就是這個）| `mesh_baseline.db` | _(來源 deck 已移除)_ |
+| `standard_iron/` | 上面的**鋼鐵-only 子集**（極+body，去空氣）| `mesh_baseline_iron.db/.cdb` | _(來源 deck 已移除)_ |
+| `dense_wp/` | **WP 核心加密**網格（R<40 µm ≥130 節點）| `mesh_dense.db` | _(來源 deck 已移除)_ |
+| `graded/` | **分區 graded** 網格（zoned ESIZE + WP NREFINE）| `mesh_graded.db` + `mesh_graded_iron.db` | _(舊 NREFINE deck 已移除)_ |
+| `from_iges/` | 從 **IGES 匯入幾何**建的網格（對照 primitive 建模）| `halfcut_iges_mesh.db` | _(來源 deck 已移除)_ |
+
+> **mesh 腳本已收斂**：往後產生網格一律用 `apdl/long2016_hexapole_halfcut/mesh/MT_Mesh_Graded.txt`（canonical，輸出到 `../db/mesh_graded/`）。
+> 上表既有 `.db/.cdb` 仍保留可用，但其原始生成 deck（`sim/mesh/`、`geom/mesh/`）已刪除、不再可重新產生。
 
 ---
 

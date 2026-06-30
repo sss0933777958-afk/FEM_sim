@@ -13,8 +13,8 @@
 - 原理：`M\C` = 自由電荷最佳解（= fix_dir 找的），`D_H=(自由電荷)·Vmat⁻¹` = 物理解耦器 `G⁻¹`；
   `q_j=D_H·Vmat(:,j)` 還原自由電荷 → cost 落在點電荷模型下界。**非對角 = cross-talk 反解權重**。
 
-**重用**（不複製）：`../function/{build_S, build_sensor_geometry, extract_Vmat}`；ℓ̂ 來源 `charge_fit/calibration/fit_fixl_R150um.mat`。
-**輸出**：`MATLAB_data/.../charge_fit/fitting_d/calib_DH_full.mat`（`D_H`/`cost_J`/`ell_hat`/`Vmat`/`exc_sign`）。
+**重用**（不複製）：`../function/{build_S, build_sensor_geometry, extract_Vmat}`；ℓ̂ 來源 `../../../fix_dir/data/fit_fixl_R150um.mat`（規則#2）。
+**輸出**：`../../data/calib_DH_full.mat`（本組 `data/`，規則#2；`D_H`/`cost_J`/`ell_hat`/`Vmat`/`exc_sign`）。
 
 **與 main 的關係**：對照用，**不動** main（對角 d = LAB406 per-pole 模型）。差別純粹是「校正矩陣對角 vs 滿」。
 

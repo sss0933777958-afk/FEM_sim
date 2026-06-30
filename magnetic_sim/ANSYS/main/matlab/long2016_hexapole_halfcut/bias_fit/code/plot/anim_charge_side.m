@@ -17,7 +17,7 @@ addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long201
 model = 'long2016_hexapole_halfcut';
 
 cnst = mt_constants();
-S = load(fullfile(matlab_path(model,'charge_fit','fitting_trend'),'sweep_nofixl_vs_R.mat'));
+S = load(fullfile('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\bias_fit\data','sweep_nofixl_vs_R.mat'));
 fig_dir = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\figures\long2016_hexapole_halfcut';
 mm = 1e3;  nR = numel(S.R_um);  Rrot = S.R_act;  Pc_base = S.Pc_base;
 

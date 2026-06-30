@@ -4,6 +4,8 @@
 **內容**：
 - `plot_nofixl_convergence.m`（fit 收斂）。
 - `plot_P1_circuit_charge.m` / `plot_P2_circuit_charge.m`（單極側視磁路 + **離軸** 等效電荷，吃 `Rum`；本批 R=150）。charge 由 `calib_bias.mat` 的 `ℓ̂·(R'·Pc_18(:,k))` 算（18-param bias，actuator→measure），有別於 fix_dir 的在軸 `ℓ·d̂`。P1 'zoom' 裁到尖端/WP 強場區。
+- `plot_bias_field_err_hist.m`（18-param bias 模型 vs FEM 場向量差誤差直方圖，gap200，選項①；沿用 load_coils_actuator/select_ball/fit_bias/make_Pc/build_A。場模型 = main_Dmatrix 的 A·g_j，故誤差與其一致；存 err 到 ../../data/field_err_hist_gap200um_mueq.mat）。
+- `plot_fix_vs_nofix_err_hist.m`（fix-l vs 18-param bias 疊圖比較，純載兩個 err .mat、不 addpath code/function 以避同名函式撞 path，輸出本 dir figures/）。
 
 **資料來源 / 流向**：讀 FEM 場（`ANSYS_data/.../coil1|coil5/standard`）+ `MATLAB_data/.../charge_fit/calibration/calib_bias.mat`（R、Pc_18、ell_hat）→ 圖存 `../../figures/`。場圖一律畫真實 FEM 節點原值，不內插。all-source：P1（下極）`B=−B_FEM`、P2（上極）keep `B=+B_FEM`，兩極尖端皆射出。
 

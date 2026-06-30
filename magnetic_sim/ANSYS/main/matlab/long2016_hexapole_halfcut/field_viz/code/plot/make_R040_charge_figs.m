@@ -12,12 +12,12 @@ clear; clc; close all;
 plotdir = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\plot';
 addpath(plotdir);
 
-S  = load('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\long2016_hexapole_halfcut\charge_fit\fit_KI_ball\KI_convergence_gB50.mat');
+S  = load('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\Calibration_using_FEM_modeling\fix_dir\data\KI_convergence_gB50.mat');
 ri = find(round(S.R_list*1e6)==40,1);
 f  = S.fitP(ri);
 ell = f.ell; gB = f.gB; Khat = f.Khat; I_actual = S.I_actual;     %#ok<NASGU>
 R = 40e-6; Nmax = S.Neq; apdl_to_paper_idx = [1 3 6 5 2 4];         %#ok<NASGU>
-matf = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\MATLAB_data\long2016_hexapole_halfcut\charge_fit\fit_KI_ball\fit_KI_R040.mat';
+matf = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\Calibration_using_FEM_modeling\fix_dir\data\fit_KI_R040.mat';
 save(matf, 'ell','gB','Khat','I_actual','R','Nmax','apdl_to_paper_idx');
 fprintf('wrote %s  (ell = %.3f mm)\n', matf, ell*1e3);
 

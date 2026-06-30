@@ -1,0 +1,257 @@
+! ============================================================================
+! MT_Mesh_SinglePole.txt — Long Fei SINGLE POLE (filled full cone) MESH-ONLY deck
+!   1 lower pole (azimuth 0deg, half-cut BLOCK+VSBV SKIPPED -> FULL cone) + 4
+!   support-base BLOCKs + 1 protrusion (coil pillar) + air domain
+!   (R7 inner sphere @ pole tip + R80 x H70 outer cylinder).
+!   UNIFORM iron mesh: ESIZE 0.3mm on all iron; air graded (inner 0.4mm / outer 4mm).
+!   SOURC36 coil built (placeholder current; the SOLVE deck overwrites with 1A).
+!   Materials assigned by location+size (VOVLAP renumbers -> no hardcoded volume IDs).
+!   SAVE -> db/singlepole/mesh_singlepole.db (NO /SOLU, NO MAG BC). MKS metre.
+!   mesh/solve SEPARATED: solve deck MT_Sim_SinglePole.txt RESUMEs this .db.
+! ============================================================================
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\singlepole'
+Finish
+/cle
+/CLEAR,NOSTART
+/TITLE, Long2016 single pole - uniform mesh-only (SAVE mesh_singlepole.db)
+/FILNAME,mesh_singlepole,1
+/PREP7
+
+! ----- parameters (MKS metre, from baseline) -----
+POLE_NUM = 6
+*afun, DEG
+BTOL, 1e-6
+/UNITS, MKS
+
+R_norm    = 500e-6
+R_norm_xy = R_norm*sqrt(2.0/3.0)
+R_norm_z  = R_norm/sqrt(3.0)
+
+YOKE_IN_R  = 84e-3/2.0
+YOKE_OUT_R = 106e-3/2.0
+YOKE_MID_R = (YOKE_IN_R + YOKE_OUT_R)/2.0
+YOKE_H     = 2.0e-3
+PROT_R     = 10.0e-3/2.0
+PROT_H     = 7.0e-3
+
+POLE_R        = 6.0e-3/2
+POLE_TIP_R    = 40.0e-6
+POLE_CONE_LEN = 15e-3
+POLE_CONE_HYP = sqrt(POLE_CONE_LEN**2 + POLE_R**2)
+ANG1 = acos(POLE_R/POLE_CONE_HYP)
+ANG2 = 90 - ANG1
+L = POLE_CONE_LEN*POLE_TIP_R/POLE_R
+POLE_TIP_CENTER = L/cos(ANG2)
+POLE_CONE2_LEN  = L*cos(ANG2)
+POLE_TIP_R2     = POLE_TIP_R*cos(ANG2)
+POLE_TIP_FILLET_DROP = POLE_TIP_CENTER - POLE_TIP_R
+POLE_TIP_FILLET_PROT = (POLE_CONE2_LEN - POLE_TIP_FILLET_DROP)
+
+ESIZE_IRON  = 0.3e-3     ! [ADDED] uniform iron element size
+ESIZE_SPH   = 0.4e-3     ! [ADDED] inner air sphere
+ESIZE_OUTER = 4.0e-3     ! [ADDED] outer air cylinder
+
+! ===== [MODIFIED] single lower protrusion (coil pillar) at azimuth 0deg =====
+WPLANE, 1,0,0,0,,,,,,
+WPcsys,-1,0
+CYL4, YOKE_MID_R*cos(0), YOKE_MID_R*sin(0), PROT_R, ,,, -PROT_H
+
+! ===== [MODIFIED] single lower pole (azimuth 0deg) — FILLED full cone =====
+X0_LOW = YOKE_MID_R*cos(0)
+Y0_LOW = YOKE_MID_R*sin(0)
+Z0_LOW = -PROT_H
+
+WPLANE, 1,0,0,0,,,,,,
+WPcsys,-1,0
+ROTA_ANG = 0
+WPROTA, ROTA_ANG
+
+BLOCK, X0_LOW - 5e-3,  X0_LOW + 11e-3, Y0_LOW - 5e-3,  Y0_LOW + 5e-3,  Z0_LOW - 10e-3, Z0_LOW
+BLOCK, X0_LOW - 5e-3,  X0_LOW - 2e-3,  Y0_LOW - 10e-3, Y0_LOW + 10e-3, Z0_LOW - 10e-3, Z0_LOW - 5e-3
+BLOCK, X0_LOW - 10e-3, X0_LOW - 2e-3,  Y0_LOW - 5e-3,  Y0_LOW + 5e-3,  Z0_LOW - 10e-3, Z0_LOW - 2e-3
+BLOCK, X0_LOW - 10e-3, X0_LOW - 5e-3,  Y0_LOW - 10e-3, Y0_LOW + 10e-3, Z0_LOW - 10e-3, Z0_LOW - 5e-3
+
+*get, KP_NUM, KP  , ,NUM, MAX
+*get, LI_NUM, LINE, ,NUM, MAX
+KP_START = KP_NUM + 1
+LI_START = LI_NUM + 1
+numstr, KP,   KP_START
+numstr, LINE, LI_START
+
+l1 = R_norm_xy
+l1_ang = atan2( 0 , R_norm_xy )
+l2 = sqrt( (R_norm_xy + POLE_TIP_FILLET_PROT)**2 + POLE_TIP_R2**2 )
+l2_ang = atan2( POLE_TIP_R2 , (R_norm_xy + POLE_TIP_FILLET_PROT) )
+POLE_CONE_LEN_SHIFT = POLE_CONE_LEN + (R_norm_xy - POLE_TIP_FILLET_DROP)
+l3 = sqrt( POLE_CONE_LEN_SHIFT**2 + POLE_R**2 )
+l3_ang = atan2( POLE_R , POLE_CONE_LEN )
+l4 = sqrt( (X0_LOW - 10e-3)**2 + POLE_R**2 )
+l4_ang = atan2( POLE_R , (X0_LOW - 10e-3) )
+l5 = abs( X0_LOW - 10e-3 )
+l5_ang = atan2( 0 , (X0_LOW - 10e-3) )
+l6 = abs( R_norm_xy + POLE_TIP_R )
+l6_ang = atan2( 0, R_norm_xy + POLE_TIP_R )
+
+K , , l1*cos(ROTA_ANG + l1_ang) , l1*sin(ROTA_ANG + l1_ang), Z0_LOW - 6e-3
+K , , l2*cos(ROTA_ANG + l2_ang) , l2*sin(ROTA_ANG + l2_ang), Z0_LOW - 6e-3
+K , , l3*cos(ROTA_ANG + l3_ang) , l3*sin(ROTA_ANG + l3_ang), Z0_LOW - 6e-3
+K , , l4*cos(ROTA_ANG + l4_ang) , l4*sin(ROTA_ANG + l4_ang), Z0_LOW - 6e-3
+K , , l5*cos(ROTA_ANG + l5_ang) , l5*sin(ROTA_ANG + l5_ang), Z0_LOW - 6e-3
+K , , l6*cos(ROTA_ANG + l6_ang) , l6*sin(ROTA_ANG + l6_ang), Z0_LOW - 6e-3
+
+LARC , KP_START , KP_START + 1 , KP_START + 5 , POLE_TIP_R
+L , KP_START + 1 , KP_START + 2,,,,,,,,
+L , KP_START + 2 , KP_START + 3,,,,,,,,
+L , KP_START + 3 , KP_START + 4,,,,,,,,
+L , KP_START + 4 , KP_START,,,,,,,,
+
+*get, AR_NUM, AREA, ,NUM, MAX
+AR_START = AR_NUM + 1
+numstr, AREA, AR_START
+
+AL, LI_START, LI_START + 1, LI_START + 2, LI_START + 3, LI_START + 4
+VROTAT, AR_START, ,,,,,KP_START,KP_START + 4,,4
+
+! [MODIFIED] FILLED pole: half-cut BLOCK+VSBV OMITTED -> full cone retained.
+ALLSEL
+
+! ===== air domain (inner sphere @ pole tip + outer cylinder) =====
+SPH_FINE_R = 7e-3
+SPH_OFST = Z0_LOW - 6e-3 + R_norm_z
+AIR_CYL_R = 80e-3
+AIR_CYL_H = 70e-3
+WPLANE, 1,0,0,0,,,,,,
+WPcsys,-1,0
+WPOFFS,0,0,SPH_OFST
+SPHERE, 0, SPH_FINE_R, 0,360
+WPOFFS,0,0, -SPH_OFST + YOKE_H/2 - AIR_CYL_H/2
+CYL4,0,0,AIR_CYL_R, ,,,AIR_CYL_H
+
+ALLSEL,ALL
+VOVLAP,ALL
+NUMCMP,VOLU
+
+! ===== materials + element types =====
+MAT_AIR1 = 1   ! inner air sphere
+MAT_MT   = 2   ! 1018 steel (pole + support + protrusion)
+MAT_AIR2 = 3   ! outer air cylinder
+mp , murx , MAT_AIR1 , 1
+mp , murx , MAT_MT   , 280
+mp , murx , MAT_AIR2 , 1
+ET_nocurr = 1
+ET_curr   = 2
+ET , ET_nocurr , SOLID96
+ET , ET_curr   , SOURC36
+
+! ===== [ADDED] VATT by location+size (VOVLAP cleared attrs -> classify, not hardcode) =====
+!   1) vsz>1e-4   -> outer cylinder air MAT_AIR2 (~1.4e-3)
+!   2) dwp>10mm   -> iron pole-body/support/protrusion MAT_MT (centroid radius ~47mm)
+!   3) vsz>5e-7   -> inner air sphere MAT_AIR1 (~1.4e-6, centroid @ WP dwp~0)
+!   4) else       -> iron tip segment inside sphere MAT_MT (tiny vsz, dwp<10mm)
+ALLSEL,ALL
+*get, VMAX, VOLU,, NUM, MAX
+*do, vi, 1, VMAX
+	VSEL,S,VOLU,,vi
+	VSUM
+	*get, vsz, VOLU, vi, VOLU
+	*if, vsz, GT, 0, then
+		*get, cx, VOLU, vi, CENT, X
+		*get, cy, VOLU, vi, CENT, Y
+		*get, cz, VOLU, vi, CENT, Z
+		dwp = sqrt( cx*cx + cy*cy + (cz-SPH_OFST)*(cz-SPH_OFST) )
+		*if, vsz, GT, 1e-4, then
+			VATT, MAT_AIR2, 1, ET_nocurr
+		*elseif, dwp, GT, 10e-3, then
+			VATT, MAT_MT, 1, ET_nocurr
+		*elseif, vsz, GT, 5e-7, then
+			VATT, MAT_AIR1, 1, ET_nocurr
+		*else
+			VATT, MAT_MT, 1, ET_nocurr
+		*endif
+	*endif
+*enddo
+ALLSEL,ALL
+
+! [DIAG] per-volume vsz/dwp/mat (first-run classification check; delete once verified)
+/com, ======= SINGLEPOLE VOLUME CLASSIFICATION DIAG (vi / vsz / dwp / mat) =======
+*do, vi, 1, VMAX
+	VSEL,S,VOLU,,vi
+	VSUM
+	*get, vsz, VOLU, vi, VOLU
+	*if, vsz, GT, 0, then
+		*get, cx, VOLU, vi, CENT, X
+		*get, cy, VOLU, vi, CENT, Y
+		*get, cz, VOLU, vi, CENT, Z
+		dwp = sqrt( cx*cx + cy*cy + (cz-SPH_OFST)*(cz-SPH_OFST) )
+		*get, vm, VOLU, vi, ATTR, MAT
+		*VWRITE, vi, vsz, dwp, vm
+('DIAG VOL ',F6.0,'   vsz=',E13.5,'   dwp[mm]=',F10.4,'   mat=',F4.0)
+	*endif
+*enddo
+/com, ============================================================================
+ALLSEL,ALL
+
+! ===== SOURC36 coil (single lower coil @ 0deg; placeholder current, solve deck sets 1A) =====
+COIL_OUT_R = 8e-3
+COIL_IN_R  = 5e-3
+TURNS = 70
+COIL_THK = COIL_OUT_R - COIL_IN_R
+COIL_R = (COIL_IN_R + COIL_OUT_R)/2
+COIL_H = PROT_H
+R,1,1,TURNS*1,COIL_THK,COIL_H        ! placeholder 1A; solve deck re-issues R,1,...
+WPLANE, 1,0,0,0,,,,,,
+WPcsys,-1,0
+NUMCMP,NODE
+*get, NODE_NUM,NODE,,NUM,MAX
+NODE_START = NODE_NUM + 1
+X0_LOW = YOKE_MID_R*cos(0)
+Y0_LOW = YOKE_MID_R*sin(0)
+Z0_LOW = -PROT_H
+N , NODE_START   , X0_LOW + COIL_R , Y0_LOW          , Z0_LOW + COIL_H/2
+N , NODE_START+1 , X0_LOW          , Y0_LOW + COIL_R , Z0_LOW + COIL_H/2
+N , NODE_START+2 , X0_LOW          , Y0_LOW          , Z0_LOW + COIL_H/2
+TYPE,ET_curr
+REAL,1
+E, NODE_START, NODE_START+1, NODE_START+2
+/ESHAPE,1
+
+! ===== UNIFORM iron mesh + graded air =====
+MSHAPE,1,3D
+MSHKEY,0
+! iron uniform 0.3mm (pole + support + protrusion)
+VSEL,S,MAT,,MAT_MT
+ESIZE,ESIZE_IRON
+VMESH,ALL
+ALLSEL,ALL
+! inner air sphere 0.4mm
+VSEL,S,MAT,,MAT_AIR1
+ESIZE,ESIZE_SPH
+VMESH,ALL
+ALLSEL,ALL
+! outer air cylinder 4mm
+VSEL,S,MAT,,MAT_AIR2
+ESIZE,ESIZE_OUTER
+VMESH,ALL
+ALLSEL,ALL
+
+! ===== element components (by material; for solve/inspection) =====
+ESEL,S,MAT,,MAT_MT   $ CM,COMP_MT,ELEM   $ ALLSEL,ALL
+ESEL,S,MAT,,MAT_AIR1 $ CM,COMP_AIR1,ELEM $ ALLSEL,ALL
+ESEL,S,MAT,,MAT_AIR2 $ CM,COMP_AIR2,ELEM $ ALLSEL,ALL
+
+! ===== summary + SAVE =====
+ALLSEL,ALL
+*GET, NN_TOT, NODE, 0, COUNT
+*GET, NE_TOT, ELEM, 0, COUNT
+ESEL,S,MAT,,MAT_MT   $ *GET, NE_MT, ELEM, 0, COUNT $ ALLSEL,ALL
+ESEL,S,MAT,,MAT_AIR1 $ *GET, NE_A1, ELEM, 0, COUNT $ ALLSEL,ALL
+ESEL,S,MAT,,MAT_AIR2 $ *GET, NE_A2, ELEM, 0, COUNT $ ALLSEL,ALL
+/com, ================= SINGLEPOLE MESH SUMMARY =================
+*VWRITE, NN_TOT, NE_TOT
+('TOTAL  nodes = ',F12.0,'   elements = ',F12.0)
+*VWRITE, NE_MT, NE_A1, NE_A2
+('ELEM   IRON = ',F12.0,'   AIR_SPH = ',F12.0,'   AIR_OUT = ',F12.0)
+/com, ==========================================================
+
+SAVE
+FINISH

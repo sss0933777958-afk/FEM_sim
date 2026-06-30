@@ -39,7 +39,7 @@ function [Vmat, exc_sign] = extract_Vmat(results_root, cnst, apdl_to_paper_idx, 
 %
 %   需 import_ansys_data 在 path。
 % -------------------------------------------------------------------------
-    if nargin < 7 || isempty(variant),   variant   = 'standard'; end % 讀哪個 FEM 變體子夾（預設 baseline）
+    if nargin < 7 || isempty(variant),   variant   = 'sensref'; end % 讀哪個 FEM 變體子夾（預設 baseline）
     if nargin < 8 || isempty(sensor_r),  sensor_r  = 0.15e-3; end   % 感測盤半徑預設 0.15mm
     if nargin < 9 || isempty(axial_tol), axial_tol = 0.1e-3;   end  % 圓柱高度預設 0.1mm（只往 n+，底面=sensor 面，全程離鐵≥0.41mm）
 
