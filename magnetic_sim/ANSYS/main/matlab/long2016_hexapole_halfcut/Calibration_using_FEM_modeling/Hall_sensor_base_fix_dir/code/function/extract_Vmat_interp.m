@@ -18,7 +18,7 @@ function [Vmat, exc_sign] = extract_Vmat_interp(results_root, cnst, apdl_to_pape
 %   mesh_csv_dir   局部網格 CSV 資料夾
 %   n_uniform      (選填) 每 sensor 均勻取樣點數，預設 1000
 %   sensor_r/axial_tol (選填) 圓柱半徑/高，預設 0.15e-3 / 0.10e-3（同 extract_Vmat）
-% 輸出：Vmat(6×6, [V])、exc_sign(1×6)。
+% 輸出：Vmat(6×6, [mV]；B 於函式內 ×1e3 轉 mT、S_hall=130 mV/mT)、exc_sign(1×6)。
 %   需 import_ansys_data 在 path；用 triangulation/pointLocation（base MATLAB）。
 % -------------------------------------------------------------------------
     if nargin < 8 || isempty(n_uniform), n_uniform = 1000;    end
@@ -64,7 +64,7 @@ function [Vmat, exc_sign] = extract_Vmat_interp(results_root, cnst, apdl_to_pape
         if any(li == 0)
             error('extract_Vmat_interp: 局部節點 ID 對不上 standard .dat（網格不一致）。');
         end
-        Bnode = [ds.bx(li), ds.by(li), ds.bz(li)];                    % 每局部節點的 standard B
+        Bnode = 1e3*[ds.bx(li), ds.by(li), ds.bz(li)];                % 每局部節點 B：Tesla → ×1e3 原生 mT（Unit Sheet）
         for i = 1:6
             pts = samp{i}; ni = sensor_n(:,i);
             ti = pointLocation(TR, pts); good = ~isnan(ti);
@@ -72,7 +72,7 @@ function [Vmat, exc_sign] = extract_Vmat_interp(results_root, cnst, apdl_to_pape
             conn = TR.ConnectivityList(ti(good),:);
             Bp = zeros(nnz(good),3);
             for c = 1:4, Bp = Bp + bc(:,c).*Bnode(conn(:,c),:); end    % B(p)=Σλ_iB_i
-            Vmat(i,kc) = S_hall * mean(Bp*ni);                        % 內插 B·n+ 平均
+            Vmat(i,kc) = S_hall * mean(Bp*ni);                        % ⟨B·n+⟩[mT]×S_hall[mV/mT] = sensor 電壓 [mV]
             if kc == 1
                 fprintf('  [interp] sensor P%d: %d/%d 點找到包含 tet\n', i, nnz(good), numel(good));
             end

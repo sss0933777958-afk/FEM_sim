@@ -1,117 +1,207 @@
-%% main.m -- Hall-sensor-based hexapole model: 求每極常數 d（指定流程 driver）
+%% main.m -- Hall-sensor 統一校正 driver（single-parameter, on-axis）：輸出 V, D̄, ^Bĝ_V, Ĥ_V
 % =========================================================================
-%  這支是「Hall_sensor_base_fix_dir」包的主程式(driver)。本檔只串流程＋印結果＋存檔，
-%  所有模型數學都在 code\function\ 裡。流程嚴格照使用者指定的四步：
+%  本包 = Hall_sensor_base_fix_dir = **single-parameter（電荷在軸 d̂、無 bias）** 模型。
+%  這支是兩包統一後的「唯一 main」（取代舊 main_Dmatrix / main_Vmat / main_interp）。
+%  記號統一論文《Lumped-Parameter…》step 9（見 doc/charge_model_fitting/Current&Hall_sensor）。
 %
-%  ── 概念 ────────────────────────────────────────────────────────────────
-%  把每顆磁極等效成一顆磁荷(放在極尖方向、距 WP 中心 ℓ̂)。Hall-sensor 模型主張：
-%  「第 j 次激發、第 k 極的電荷強度 ∝ 該極 sensor 量到的電壓 v_jk × 一個每極常數 d_k」，
-%  於是 WP 附近的場可寫成（no-gain，無 g_H）
-%        b_ij = S_i · V_j · d                    (V_j = diag(Vmat(:,j)))
-%  只有 6 個 d_k 是自由參數(V_j 由 FEM 固定)。本檔把 d 求出來。
-%  ("fix_dir" = 電荷鎖在極軸方向 d̂ 上、不離軸。)
+%  Model (single-parameter, on-axis): point charges at p_ck = ℓ̂·Pc_base（actuator 框，無 ê bias）。
+%     b_ij = S(p_i/ℓ̂)·G_j,  G_j profiled per excitation: G_j=(ΣSᵀS)⁻¹(ΣSᵀb_ij)（code 變數 Dv，= G = D^v）。
+%     只有 1 個自由幾何參數 ℓ̂：minimize J(ℓ̂)=‖A(ℓ̂)·Dv − Bstack‖²（Dv 已 profile 掉）。
+%     Recover（論文 step 9）：Ĥ_V = G·Vᵀ(VVᵀ)⁻¹（code 變數 H_V）→ ^Bĝ_V=(6/5)h₁₁、D̄=(5/(6h₁₁))Ĥ_V。
 %
-%  ── 流程（兩階段：先 fit ℓ̂、再求 shared d）────────────────────────────────
-%    步驟1  載 6-coil FEM 場（R≤R_select 球內 air 節點）→ 工作點 P、場 B。
-%    步驟2  抽電壓 V=S·B（真實 FEM 節點）：build_sensor_geometry 給 sensor 位置/法線；
-%                 extract_Vmat 沿法線 n 開圓柱選真實節點、對 B·n 平均 → Vmat（含 all-source 翻號）。
-%    步驟3  【先找 ℓ̂】minimize profiled cost J(ℓ̂)（消去 d、per-j；sensor_cost_lhat + fminbnd），
-%                 不再從 fix_dir fit_KI_fixl 載 ℓ̂。
-%    步驟4  【再找 d】用該 ℓ̂ 閉式解 shared 6×1 d（solve_d；反矩陣在 Σ_j 外）、cost J = Σ‖ε‖²。
+%  sensor（使用者定案）：
+%     位置 = build_sensor_geometry 預設（下極 −β 底錐面修正版）。
+%     取值 = extract_Vmat_interp，Ø0.3mm × 0.1mm 圓柱（sensor_r=0.15e-3、axial_tol=0.10e-3 = 函式預設）、
+%            均勻內插 n_uniform=10000 點平均。
 %
-%  ── 關鍵變數 ────────────────────────────────────────────────────────────
-%    P(Np×3)   擬合區(R≤R_select 球)內工作點；B(Np×3×6) 對應場(負號版 −B^FEM)
-%    ell_hat   特徵長度 ℓ̂（載入，給 build_S）
-%    Vmat(6×6) sensor 電壓(all-source)；d(6×1) 每極常數(no-gain)；J 成本 [T²]
+%  主輸出（V, D̄, ^Bĝ_V, Ĥ_V；兩包同一組）：
+%     ^Bĝ_V (ghat_V_B) = (6/5)·Ĥ_V(1,1) = 電壓側增益（T/V；Ĥ_V = ^Bĝ_V·D̄）。
 %
-%  Current : I = 1 A = FEM 激發電流(per fit-current-matches-sim rule)。
-%  Sign    : 物理 signed B·n+，all-source(翻下極激發 P1/P3/P6)(per charge-model-source-convention)。
+%  論文↔code 變數：G=Dv（profiled charges=D^v）、Ĥ_V=H_V（舊 Dmat）、^Bĝ_V=ghat_V_B（舊 g_V）、D̄=D_bar。
+%  REUSES（不重寫 helper）：
+%     no_fix_dir/code/function : load_coils_actuator(+variant), select_ball, build_A
+%     this pkg  /code/function : build_sensor_geometry, extract_Vmat_interp
+%
+%  DATA   : variant 'gap200um_mueq'（GRADED mesh + support-base μ_eff），coil1..6（all-source）。
+%  Sign   : all-source（literal flip-sink：只翻下極 sink P1/P3/P6；上極 source 不翻）→ D^v 對角全正。
+%  Order  : 所有矩陣 paper P1..P6（激發欄重排 APDL coil1..6 → P1..P6，對角=自激發）。
+%  Output : xelatex PDF（V, D̄, ^Bĝ_V, Ĥ_V）-> results/D_<variant>.pdf；.mat -> 本包 data/（field 名不變）。
+%  Current: I = 1 A = FEM excitation (per fit-current-matches-sim rule)。
 % =========================================================================
 
 clear; clc;
 
 %% ---- config ----------------------------------------------------------------
-R_select   = 150e-6;           % 取點半徑 [m]：(a) 決定載入哪個 R 的 ℓ̂、(b) 擬合/殘差只用此球內 air 節點
-I_actual   = 1;                % 驅動電流 [A] = FEM 激發電流（1 A）
-S_hall     = 130;              % Hall 靈敏度 [V/T]（EQ-730L：130 V/T）
+VARIANT    = 'gap200um_mueq';  % FEM 變體：coil1..6 場來源（gap200 2 段式 μ_eff）
 N_I        = 6;                % FEM 模擬次數 = 6 個單線圈解
-VARIANT    = 'sensor_spheres';       % 讀哪個 FEM 變體子夾：'standard'(baseline) | 'sensor_spheres'(sensor 加密)
-ELL_LO     = 0.2e-3;           % ℓ̂ 一維搜尋下界 [m]（fit ℓ̂ 用）
+R_select   = 150e-6;           % 取點半徑 [m]：擬合只用此球內 air 節點
+I_actual   = 1;                % 驅動電流 [A] = FEM 激發電流（1 A）
+S_hall     = 130;              % Hall 靈敏度 [mV/mT]（EQ-730L；數值同 V/T，配 B[mT]→V[mV]）
+ELL_LO     = 0.2e-3;           % ℓ̂ 一維搜尋下界 [m]（fit 在 SI）
 ELL_HI     = 3.0e-3;           % ℓ̂ 一維搜尋上界 [m]
+n_uniform  = 10000;            % sensor 圓柱內均勻取樣點數（內插平均；定案 10k）
+AXIAL_TOL  = 1e-6;             % [ADDED] sensor 圓柱厚度 [m]：canonical 0.10e-3；設 1e-6 = 1µm 薄片 what-if（檔名加 _h1um、不蓋 canonical；sensor_r 維持 Ø0.3mm）
+htag       = '';  if abs(AXIAL_TOL-0.10e-3)>1e-12, htag = sprintf('_h%gum', AXIAL_TOL*1e6); end  % ≠canonical → 檔名後綴、不蓋原版
+dataset    = 'all';            % 取全 air 節點，再用 R_select 選球
 
-%% ---- paths -----------------------------------------------------------------
-TREE = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
-        'long2016_hexapole_halfcut\Calibration_using_FEM_modeling\Hall_sensor_base_fix_dir'];
-addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');  % mt_constants/import_ansys_data/filter_iron_nodes
-addpath(fullfile(TREE,'code','function'));                                       % 本包模型輔助函式
-results_root = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';  % FEM 結果根目錄
-data_dir     = fullfile(TREE,'data');                                             % 規則#2：.mat 放本組 data/
-if strcmp(VARIANT,'standard'); dsuf=''; else; dsuf=['_' VARIANT]; end              % baseline 保原檔名；變體加後綴
-mat_out      = fullfile(data_dir, sprintf('calib_sensor_d%s.mat',dsuf));           % 本流程的解輸出（本組 data/）
-if ~exist(fileparts(mat_out),'dir'); mkdir(fileparts(mat_out)); end
+%% ---- paths（沿用既有函式，不另寫）-----------------------------------------
+CAL  = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
+        'long2016_hexapole_halfcut\Calibration_using_FEM_modeling'];
+addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');     % mt_constants/import_ansys_data/filter_iron_nodes
+addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\common');  % ansys_path
+addpath(fullfile(CAL,'no_fix_dir','code','function'));          % 沿用：load_coils_actuator/select_ball/build_A
+addpath(fullfile(CAL,'Hall_sensor_base_fix_dir','code','function'));  % 沿用：build_sensor_geometry/extract_Vmat_interp（最後 addpath→優先）
+model        = 'long2016_hexapole_halfcut';
+results_root = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
+mesh_csv_dir = fullfile(results_root,'mesh','graded','csv');   % gap200=graded → graded sensor-local tet CSV（csv/ 子夾）
+out_dir      = fullfile(CAL,'Hall_sensor_base_fix_dir','results');
+if ~exist(out_dir,'dir'); mkdir(out_dir); end
 
-%  注意：ℓ̂ 不再從 fix_dir fit_KI_fixl 載入；改成本檔步驟3 自己 fit（需先有 P,B,Vmat）。
+%% ---- 常數 + 慣例 -----------------------------------------------------------
+cnst = mt_constants();
+apdl_to_paper_idx = [1,3,6,5,2,4];
 
-%% ---- 常數 + 電荷位置（極尖單位方向）---------------------------------------
-cnst = mt_constants();                                 % 幾何常數（R_norm、極尖、SPH_OFST、k_m、mu_0 ...）
-apdl_to_paper_idx = [1,3,6,5,2,4];                     % APDL coil j → paper pole 索引（判下極用）
-tip  = [cnst.pole_tip_x; cnst.pole_tip_y; cnst.pole_tip_z_wp];  % 3×6 極尖位置（WP 框）
-dhat = tip ./ vecnorm(tip);                            % 3×6 極尖單位方向
-Pc   = dhat;                                           % 電荷(極)位置：放單位距離（build_S 用）
+%% ---- 步驟1：載 6-coil FEM（gap200, actuator 框, all-source）→ 選 R 球 ------
+fprintf('載 6 coils（variant ''%s'', dataset ''%s''）...\n', VARIANT, dataset);
+D = load_coils_actuator(model, cnst, apdl_to_paper_idx, dataset, VARIANT);   % [沿用，+variant]
+[P, Bstack, npts] = select_ball(D, R_select);                                % [沿用]
+fprintf('選出 N_p = %d 個 air 節點（R ≤ %g µm 球內）\n', npts, R_select*1e6);
 
-%% ---- 載 6-coil FEM 場、選 R 球內 air 節點、組殘差用的場 B -------------------
-% 取 coil1 air 節點當工作點 p_i，限 R_select 球內（6 顆 coil 共用同一 mesh/順序）
-d1   = import_ansys_data(fullfile(results_root, 'coil1', VARIANT),'wp','coil1');  % 載 'wp' 近場（variant 子夾）
-air1 = filter_iron_nodes(d1.x,d1.y,d1.z,cnst,struct('visualize',false));             % 只留 air 節點（排除鐵內）
-zwp1 = d1.z - cnst.SPH_OFST;                                                          % ANSYS z → WP 框 z
-P_all = [d1.x(air1), d1.y(air1), zwp1(air1)];                                         % air 節點座標
-insel = sum(P_all.^2,2) <= R_select^2;                                                % 取 R≤R_select 球內
-P     = P_all(insel,:);  Np = size(P,1);                                              % 擬合區工作點
-fprintf('選出 N_p = %d 個 air 節點（R ≤ %g µm 球內）\n', Np, R_select*1e6);
+% ---- all-source（只翻 sink）：對 raw FEM B 直接「只翻下極 sink(P1/P3/P6)」、上極 source 不動 ----
+%  load_coils_actuator 回傳的是「全域 −B_FEM」→ 先還原 raw（×−1），再套 s_sink（下極=−1、上極=+1）。
+%  與 extract_Vmat_interp 的 exc_sign 同一條 literal flip-sink 邏輯（V 與 D^v 慣例一致）。
+%  ℓ̂/field error 不受符號影響，只讓 D^v/D 全 source（對角全正）。
+s_sink = ones(1,6);
+for j = 1:6, if ismember(apdl_to_paper_idx(j), [1 3 6]), s_sink(j) = -1; end; end   % 只翻下極 sink
+Bstack = (-Bstack) .* s_sink;            % 還原 raw（−(−B_FEM)=B_FEM）後只翻下極 → all-source（Bstack 已 mT）
 
-% 記錄 b_ij = −B^FEM（all-source 慣例的負號版；存 B(Np,3,N_I)）
-B = zeros(Np,3,N_I);
-for j = 1:N_I                                          % 逐線圈 j 載入
-    if j == 1, dj = d1; airj = air1;                  % coil1 已載，重用
-    else
-        cn = sprintf('coil%d', j);
-        dj = import_ansys_data(fullfile(results_root, cn, VARIANT),'wp',cn);
-        airj = filter_iron_nodes(dj.x,dj.y,dj.z,cnst,struct('visualize',false));
-    end
-    Bj_all = -[dj.bx(airj), dj.by(airj), dj.bz(airj)];% 負號版場（與 PAGE1 慣例一致）
-    B(:,:,j) = Bj_all(insel,:);                       % 只取 R 球內節點
-end
-
-%% ---- 步驟2：建 sensor 幾何 → 真實節點抽 sensor 電壓 Vmat（all-source）------
-[sensor_pos, sensor_n] = build_sensor_geometry(cnst);                              % 6 顆 sensor 中心 + 法線 n+
-[Vmat, exc_sign]       = extract_Vmat(results_root, cnst, apdl_to_paper_idx, ...    % 沿 n 圓柱選真實節點、V=S·B（含翻號）
-                                      sensor_pos, sensor_n, S_hall, VARIANT);
-
-%% ---- 步驟3：自己 fit ℓ̂（minimize profiled cost；不拿 fix_dir 的值）---------
-%  J(ℓ̂)=Σ_j[‖b_j‖²−c_jᵀM_j⁻¹c_j]（消去 d、per-j profile；見 sensor_cost_lhat / cost_function.pdf）
-costfun       = @(l) sensor_cost_lhat(l, P, B, Vmat, exc_sign, Pc, N_I);
+%% ---- 步驟2：擬合 ℓ̂（single-parameter，在軸 Pc_base，無 bias；在 SI 公尺）--
+Pc            = D.Pc_base;                                                    % 在軸電荷位置（actuator 框理想格，無因次單位方向）
 opt           = optimset('TolX',1e-9,'Display','off');
-[ell_hat, Jl] = fminbnd(costfun, ELL_LO, ELL_HI, opt);                              % 一維搜尋 ℓ̂
-fprintf('步驟3：fit ℓ̂ = %.4f mm（min profiled cost = %.6e；搜尋 [%.2f, %.2f] mm）\n', ...
-        ell_hat*1e3, Jl, ELL_LO*1e3, ELL_HI*1e3);
+[ell_hat, J]  = fminbnd(@(l) onaxis_cost(l, P, Bstack, Pc), ELL_LO, ELL_HI, opt);  % P/ell 均公尺
+fprintf('擬合：ℓ̂ = %.2f µm（single-parameter, on-axis）| J = %.6e\n', ell_hat*1e6, J);
 if abs(ell_hat-ELL_LO)<1e-9 || abs(ell_hat-ELL_HI)<1e-9
-    warning('ℓ̂ 落在搜尋邊界 → 放寬 ELL_LO/ELL_HI 再確認（可能非內部極小）。');
+    warning('ℓ̂ 落在搜尋邊界 → 放寬 ELL_LO/ELL_HI 再確認。');
 end
 
-%% ---- 步驟4：閉式解 shared d（6×1，無 g_H，照 V2 p2）+ cost J = Σ‖ε‖² --------
-% solve_d 反矩陣在 Σ_j 外（對 i,j 加總）= shared d：d = (Σ_j V_j (Σ_i S_iᵀS_i) V_j)⁻¹ (Σ_j V_j (Σ_i S_iᵀ b_ij))
-d = solve_d(P, B, Pc, ell_hat, Vmat, exc_sign, N_I);                       % 每極常數 d（no-gain，模型 b = S·V·d）
-J = sensor_residual(P, B, Vmat, exc_sign, ell_hat, Pc, d, N_I);            % 殘差成本 cost J = Σ‖ε‖² [T²]
+%% ---- 步驟3：profile 每次激發電荷 Dv_j → D^v（6×N_I）-----------------------
+A   = build_A(ell_hat, Pc, P);          % [沿用] 3Np×6 stacked kernel（在軸 Pc；ell/P 均公尺）
+M   = A.' * A;                           % = Σ_i Sᵀ S
+Dv  = M \ (A.' * Bstack);                % Dv_j=(ΣSᵀS)⁻¹(ΣSᵀb_ij)，逐欄 j 一次解 (6×N_I)
+ell_hat = ell_hat * 1e6;                 % m → µm（此後 print/save/PDF 用 µm；build_A 已用完）
 
-%% ---- 印結果 ----------------------------------------------------------------
-fprintf('\n=============== Hall-sensor 模型結果（ℓ̂ = %.3f mm）===============\n', ell_hat*1e3);
-fprintf('  sensor 電壓 Vmat [V]（列=sensor 極 P1..P6，欄=激發 coil1..6）：\n');
-for i=1:6, fprintf('   % .3e % .3e % .3e % .3e % .3e % .3e\n', Vmat(i,:)); end
-fprintf('  d（6×1，P1..P6，no-gain）：\n'); fprintf('   % .4e\n', d);
-fprintf('  cost J = %.6e  [T^2]\n', J);
+%% ---- 步驟4：Hall sensor 電壓 Vmat（gap200、Ø0.3mm 圓柱 × AXIAL_TOL 厚、內插 10k、all-source）---
+[sensor_pos, sensor_n] = build_sensor_geometry(cnst);                         % [沿用，下極 −β 修正位置]
+[Vmat, exc_sign] = extract_Vmat_interp(results_root, cnst, apdl_to_paper_idx, ... % [沿用，graded CSV]
+                       sensor_pos, sensor_n, S_hall, mesh_csv_dir, n_uniform, [], AXIAL_TOL, VARIANT);  % sensor_r=[]→Ø0.3mm；axial_tol=AXIAL_TOL
+
+%% ---- 步驟5：解 Ĥ_V = G·Vᵀ(VVᵀ)⁻¹、gauge D̄、增益 ^Bĝ_V（論文 step 9）------
+%  論文 notation：G = Dv（profiled charges = D^v）；Ĥ_V = G·Vᵀ(VVᵀ)⁻¹（code 變數 H_V）；
+%  ^Bĝ_V = (6/5)·h₁₁、D̄ = (5/(6·h₁₁))·Ĥ_V（h₁₁ = Ĥ_V(1,1)）。
+H_V      = (Dv * Vmat.') / (Vmat * Vmat.');   % Ĥ_V = G Vᵀ(VVᵀ)⁻¹（= 舊 Dmat，單位 T/V）
+D_bar    = H_V * (5 / (6 * H_V(1,1)));         % gauge：D̄(1,1)=5/6
+ghat_V_B = (6/5) * H_V(1,1);                   % ^Bĝ_V：電壓側增益（T/V；H_V = ^Bĝ_V·D̄）
+
+%% ---- 區域場誤差 + 重建檢查 -------------------------------------------------
+errpct = 100 * sqrt(J / sum(Bstack(:).^2));
+recon  = norm(H_V*Vmat - Dv,'fro') / norm(Dv,'fro');   % ‖Ĥ_V·V − G‖/‖G‖
+
+%% ---- 激發欄重排成 paper P1..P6（sensor 列、電荷列本就 P1..P6）---------------
+[~, paper_to_apdl] = sort(apdl_to_paper_idx);   % = [1 5 2 6 4 3]：欄 k = paper Pk 對應的 APDL coil
+Vmat_p = Vmat(:, paper_to_apdl);                % 列=sensor P1..P6；欄重排→激發 P1..P6（對角=自激發）
+Dv_p   = Dv(:,   paper_to_apdl);                % 列=電荷 P1..P6；欄重排→激發 P1..P6（存檔/下游用）
+
+%% ---- 印結果（主輸出 V, D̄, ^Bĝ_V, Ĥ_V；V 先印供驗證）-----------------------
+fprintf('\n========= Hall-sensor single-parameter（variant=%s, l_hat=%.2f µm）=========\n', VARIANT, ell_hat);
+fprintf('  N_p=%d | J=%.4e | region err=%.3f%% | recon ||H_V*V-G||/||G||=%.2e\n', npts, J, errpct, recon);
+fprintf('  V [mV]（列=sensor P1..P6，欄=激發 P1..P6，對角=自激發）：\n');
+for i=1:6, fprintf('   % .3e % .3e % .3e % .3e % .3e % .3e\n', Vmat_p(i,:)); end
+fprintf('  D_bar（gauge D_bar(1,1)=5/6；列=電荷 P1..P6，欄=sensor P1..P6）：\n');
+for i=1:6, fprintf('   % .4f % .4f % .4f % .4f % .4f % .4f\n', D_bar(i,:)); end
+fprintf('  ghat_V_B (^B g_V) = %.4f x10^-3 mT/mV（電壓側增益，H_V = ghat_V_B·D_bar）\n', ghat_V_B*1e3);
+fprintf('  H_V (Hhat_V) [mT/mV] 矩陣（列=電荷極 P1..P6，欄=sensor P1..P6；G[mT] = H_V·V[mV]）：\n');
+for i=1:6, fprintf('   % .4e % .4e % .4e % .4e % .4e % .4e\n', H_V(i,:)); end
 fprintf('===================================================================\n');
 
-%% ---- 存解（交付物）--------------------------------------------------------
-save(mat_out, 'd','Vmat','exc_sign','ell_hat','J', ...
-              'S_hall','sensor_pos','sensor_n','apdl_to_paper_idx','R_select');
+%% ---- 存 .mat 到本組 data/（results/ 只留 PDF）------------------
+mat_dir = fullfile(CAL,'Hall_sensor_base_fix_dir','data');   % 規則#2：.mat 放本組 data/
+if ~exist(mat_dir,'dir'); mkdir(mat_dir); end
+mat_out = fullfile(mat_dir, sprintf('calib_D_%s%s.mat', VARIANT, htag));   % htag=_h1um → 不蓋 canonical
+Dmat = H_V;  g_V = ghat_V_B;     % alias：維持 .mat field 名 'Dmat'/'g_V' 與下游 loader 相容（範圍：不改 .mat field 名）
+save(mat_out, 'Dmat','D_bar','g_V','Dv_p','Vmat_p','exc_sign','ell_hat','Pc', ...
+              'J','errpct','recon','S_hall','R_select','npts','VARIANT', ...
+              'apdl_to_paper_idx','paper_to_apdl','sensor_pos','sensor_n','n_uniform');
 fprintf('已存 %s\n', mat_out);
+
+%% ---- 產生 xelatex 矩陣 PDF（V、D̄、g_V、D，皆 P1..P6 標列/欄）-------------
+pole     = {'P1','P2','P3','P4','P5','P6'};
+tex_path = fullfile(out_dir, sprintf('D_%s%s.tex', VARIANT, htag));
+pdf_path = fullfile(out_dir, sprintf('D_%s%s.pdf', VARIANT, htag));
+fid = fopen(tex_path,'w');
+fprintf(fid,'%% Auto-generated by main.m — Hall-sensor single-parameter V / Dbar / ^Bg_V / Hhat_V (P1..P6)\n');
+fprintf(fid,'\\documentclass[11pt]{article}\n\\usepackage[margin=1in]{geometry}\n\\usepackage{amsmath}\n\\usepackage{amssymb}\n');
+fprintf(fid,'\\begin{document}\n');
+fprintf(fid,'\\begin{center}\\large Hall-sensor single-parameter (on-axis) calibration\\quad(variant: %s)\\end{center}\n\n', ...
+        strrep(VARIANT,'_','\_'));
+emit_labeled_matrix(fid, 'V', Vmat_p, pole, pole, 'auto', ...
+    'row $i$ = sensor pole P$i$;\ column $j$ = excited pole P$j$ (diagonal = self-excitation);\ units mV.');
+emit_labeled_matrix(fid, '\bar{D}', D_bar, pole, pole, '', ...
+    'row $i$ = charge pole P$i$;\ column $j$ = sensor pole P$j$;\ gauge $\bar{D}_{11}=5/6$.');
+fprintf(fid,'\\[\n {}^{B}\\hat{g}_{V} = %.4f\\times10^{-3}~\\mathrm{mT/mV}\n\\]\n', ghat_V_B*1e3);
+fprintf(fid,'\\noindent\\small voltage-side gain ${}^{B}\\hat{g}_{V}=\\tfrac{6}{5}\\hat{H}_{V,11}$ (mT/mV; $\\hat{H}_{V}={}^{B}\\hat{g}_{V}\\bar{D}$).\n\n');
+emit_labeled_matrix(fid, '\hat{H}_{V}', H_V, pole, pole, 'auto', ...
+    'row $i$ = charge pole P$i$;\ column $j$ = sensor pole P$j$;\ $\hat{H}_{V}=G\,V^{\top}(VV^{\top})^{-1}$,\ $G=\hat{H}_{V}V$ ($G=D^{v}$);\ units mT/mV.');
+fprintf(fid,['\\noindent\\small Single-parameter (on-axis) model;\\ order P1--P6;\\ $I=1$\\,A (= FEM excitation);\\ ' ...
+             'all-source (flip-sink: lower P1/P3/P6; $V$ same convention);\\ ' ...
+             'sensor $\\varnothing0.3$\\,mm$\\times%.4g$\\,mm cylinder,\\ %d-pt interp;\\ ' ...
+             '$\\hat{\\ell}=%.1f$\\,$\\mu$m,\\ region err $=%.3f\\%%$,\\ recon $=%.2e$.\n'], ...
+        AXIAL_TOL*1e3, n_uniform, ell_hat, errpct, recon);
+fprintf(fid,'\\end{document}\n');
+fclose(fid);
+
+xelatex = 'C:\Users\Kuo\AppData\Local\Programs\MiKTeX\miktex\bin\x64\xelatex.exe';
+old = cd(out_dir);
+[st, sysout] = system(sprintf('"%s" -interaction=nonstopmode -halt-on-error "%s"', xelatex, tex_path));
+cd(old);
+if st ~= 0 || ~exist(pdf_path,'file')
+    fprintf('%s\n', sysout);
+    error('xelatex 編譯失敗（見上方輸出）。');
+end
+% 清中間檔（results/ 只留 PDF）
+for ext = {'.tex','.aux','.log','.out'}
+    f = fullfile(out_dir, sprintf('D_%s%s%s', VARIANT, htag, ext{1}));
+    if exist(f,'file'); delete(f); end
+end
+fprintf('已存 %s\n', pdf_path);
+
+%% ---- local：在軸 single-parameter profiled field cost（Dv profile 掉）------
+function J = onaxis_cost(l, P, Bstack, Pc)
+    A  = build_A(l, Pc, P);                 % 3Np×6 在軸 kernel
+    Dv = (A.'*A) \ (A.'*Bstack);            % 逐激發 profile 電荷
+    R  = A*Dv - Bstack;                     % 殘差
+    J  = sum(R(:).^2);                      % ‖A·Dv − Bstack‖²
+end
+
+%% ---- local function：渲染帶 P1..P6 表頭的矩陣（含自動 10^n 因子）----------
+function emit_labeled_matrix(fid, name_tex, M, rowlab, collab, factor_mode, caption)
+    if strcmp(factor_mode,'auto')
+        mx = max(abs(M(:)));
+        if mx > 0, e = floor(log10(mx)); else, e = 0; end
+        if e ~= 0, Ms = M / 10^e; fac = sprintf('10^{%d}\\,', e);
+        else,      Ms = M;        fac = '';
+        end
+    else
+        Ms = M; fac = '';
+    end
+    fprintf(fid,'\\[\n%s = %s\\begin{array}{c|cccccc}\n', name_tex, fac);
+    fprintf(fid,' ');
+    for j = 1:6, fprintf(fid,'& %s ', collab{j}); end
+    fprintf(fid,'\\\\\\hline\n');
+    for i = 1:6
+        fprintf(fid,'%s ', rowlab{i});
+        for j = 1:6, fprintf(fid,'& %+9.4f ', Ms(i,j)); end
+        fprintf(fid,'\\\\\n');
+    end
+    fprintf(fid,'\\end{array}\n\\]\n');
+    fprintf(fid,'\\noindent\\small %s\n\n', caption);
+end

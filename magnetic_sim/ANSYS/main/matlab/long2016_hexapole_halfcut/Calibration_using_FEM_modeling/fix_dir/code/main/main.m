@@ -1,8 +1,9 @@
 %% main.m -- hexapole point-charge model (fix-l) calibration driver
 %  Document : "Magnetic hexapole model.pdf"
-%  Model    : B(p) = gB * sum_i ( sum_j Khat_ij I_j ) * (p/ell - dhat_i)/||p/ell - dhat_i||^3
+%  Model    : B(p) = ^Bg_I * sum_i ( sum_j K_bar_ij I_j ) * (p/ell - dhat_i)/||p/ell - dhat_i||^3
 %             charges fixed on the pole axes at pc_i = ell*dhat_i (no bias).
-%  Fit vars : Khat_I^FEM (6x6, Khat(1,1) fixed = 5/6), ell, gB   (lsqnonlin)
+%  Fit vars : K_bar (6x6, K_bar(1,1) fixed = 5/6), ell, ^Bg_I (ghat_I_B)   (lsqnonlin)
+%  Notation : paper «Lumped-Parameter…» — ^Bg_I=ghat_I_B (current gain, T/A), K_bar (1,1)=5/6.
 %  Current  : I = 1 A = FEM excitation current (per fit-current-matches-sim rule).
 %
 %  MODE switch:
@@ -15,7 +16,7 @@
 %  Pipeline (top-to-bottom call order):
 %    1) load_coils      -- load the 6-coil FEM field once          (load data)
 %    2) select_ball     -- keep nodes inside the sampling ball R   (pick region)
-%    3) fit_KI_fixl      -- lsqnonlin fit {Khat, ell, gB}           (fit)
+%    3) fit_KI_fixl      -- lsqnonlin fit {K_bar, ell, ^Bg_I}       (fit)
 %    4) region_field_err -- relative RMS field error over region    (accuracy)
 %    5) write_KI_tex     -- emit results-only LaTeX script           (output)
 
@@ -63,17 +64,19 @@ end
 
 %% ---- fit + emit LaTeX result per R -----------------------------------------
 for R_um = R_um_list
-    [coil, nmin]       = select_ball(C, R_um*1e-6);
-    [ell, gB, Khat, J] = fit_KI_fixl(coil, dhat, I_actual);
-    errpct             = region_field_err(coil, J);
+    [coil, nmin]              = select_ball(C, R_um*1e-6);            % coil.p [m]、bfem [mT]
+    [ell, ghat_I_B, K_bar, J] = fit_KI_fixl(coil, dhat, I_actual);   % 在 SI 公尺擬合；^Bg_I [mT/A]、ell [m]
+    ell                       = ell * 1e6;                           % m → µm（此後 write/save 用 µm）
+    errpct                    = region_field_err(coil, J);
     fname = fullfile(tex_dir, sprintf('fit_%s_R%03dum_%gA%s.tex', SHAPE, R_um, I_actual, vtag));  % [MODIFIED] vtag
-    write_KI_tex(fname, SHAPE, R_um, I_actual, Khat, ell, gB, errpct);
+    write_KI_tex(fname, SHAPE, R_um, I_actual, K_bar, ell, ghat_I_B, errpct);
     compile_tex_pdf(fname);                                          % [ADDED] 編成可看的 PDF（清 aux/log）
-    % 存 fit_KI_fixl 解成 .mat（供 Hall_sensor_base_fix_dir 載入 ℓ̂；ell 為 [m]）
+    % 存 fit_KI_fixl 解成 .mat（供 Hall_sensor_base_fix_dir 載入 ℓ̂；ell 為 [µm]）
+    gB = ghat_I_B;  Khat = K_bar;   % alias：維持 .mat field 名 'gB'/'Khat' 與下游 loader 相容（範圍：不改 .mat field 名）
     save(fullfile(cal_dir, sprintf('fit_fixl_R%03dum%s.mat', R_um, vtag)), ...     % [MODIFIED] vtag
          'ell','gB','Khat','J','errpct','R_um','I_actual','SHAPE','VARIANT');
-    fprintf('R=%3d um | nmin/coil=%6d | ell=%.3f mm | gB=%.4e | err=%.2f%%  -> fit_fixl_R%03dum%s.mat\n', ...
-            R_um, nmin, ell*1e3, gB, errpct, R_um, vtag);
+    fprintf('R=%3d um | nmin/coil=%6d | ell=%.2f µm | ^Bg_I=%.4e mT/A | err=%.2f%%  -> fit_fixl_R%03dum%s.mat\n', ...
+            R_um, nmin, ell, ghat_I_B, errpct, R_um, vtag);
 end
 fprintf('done (%s mode, variant=%s): %d result PDF(s) in %s\n', MODE, VARIANT, numel(R_um_list), tex_dir);
 

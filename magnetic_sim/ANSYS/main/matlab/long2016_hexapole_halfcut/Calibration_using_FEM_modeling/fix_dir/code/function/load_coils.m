@@ -9,7 +9,7 @@ function C = load_coils(results_root, cnst, apdl_to_paper_idx, variant)
 %   variant (optional, default 'standard'): FEM variant subfolder, e.g. 'gap200um_mueq'.
 %   Returns struct array C(k):
 %     .P  Nx3 [m]  air-node positions (WP frame)
-%     .Bn Nx3 [T]  FEM B at those nodes, all-source (flip-sink: lower P1/P3/P6 negated)
+%     .Bn Nx3 [mT] FEM B at those nodes (ANSYS Tesla ×1e3 → 原生 mT), all-source (flip-sink: lower P1/P3/P6 negated)
 %     .pj scalar   paper pole index excited by coil k
 %   Requires import_ansys_data + filter_iron_nodes on the path (hexapole-long2016\analysis).
     if nargin < 4 || isempty(variant), variant = 'standard'; end     % [MODIFIED] optional variant (back-compat)
@@ -21,7 +21,7 @@ function C = load_coils(results_root, cnst, apdl_to_paper_idx, variant)
         zwp = d.z - cnst.SPH_OFST;
         C(k).P  =  [d.x(air),  d.y(air),  zwp(air)];
         sgn = 1; if ismember(apdl_to_paper_idx(k), [1 3 6]), sgn = -1; end   % [MODIFIED] flip-sink：只翻下極 sink
-        C(k).Bn = sgn*[d.bx(air), d.by(air), d.bz(air)];
+        C(k).Bn = sgn*1e3*[d.bx(air), d.by(air), d.bz(air)];   % ANSYS Tesla → ×1e3 原生 mT（Unit Sheet）
         C(k).pj =  apdl_to_paper_idx(k);
     end
 end

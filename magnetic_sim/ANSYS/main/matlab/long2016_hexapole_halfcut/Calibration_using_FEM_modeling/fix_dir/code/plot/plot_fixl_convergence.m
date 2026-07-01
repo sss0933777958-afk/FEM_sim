@@ -6,7 +6,7 @@
 %  → 兩張圖直接對比,差異 = 加 bias 的效益(no_fix_l 的 cost floor 更低)。
 %
 %  說明:fix_l 把 6 顆電荷固定在 ±ell·軸,自由度只剩 ell + 各 coil 的電荷量 g_j(profile 掉)。
-%  這等同於既有「自由 6x6 K̂」模型的 cost(g_j = gB·K̂ 的欄),只是用 profiled 公式表達。
+%  這等同於既有「自由 6x6 K̄」模型的 cost(g_j = ^Bg_I·K̄ 的欄,= G=D^v 的欄),只是用 profiled 公式表達。
 %  ============================================================================
 clear; clc; close all;
 addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\common');

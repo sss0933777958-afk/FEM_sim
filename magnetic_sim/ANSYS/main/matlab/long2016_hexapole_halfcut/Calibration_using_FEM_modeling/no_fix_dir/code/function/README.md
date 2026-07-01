@@ -6,7 +6,7 @@
 - `select_ball.m` — 取 WP 半徑 R 內節點。
 - `fit_bias.m` — `lsqnonlin` fit `{ℓ, ê(17)}`（呼叫 `bias_resid`、`make_Pc`、`build_A`）。
 - `bias_resid.m` — 殘差；`make_Pc.m` — 由 ê + Pc_base 組電荷座標；`build_A.m` — 建設計矩陣。
-- `gauge_KI.m` — profile g_j 並 gauge 出 gB、K̄_I。
+- `gauge_KI.m` — profile g_j（→G=D^v）並 gauge 出 `^Bĝ_I`(=ghat_I_B)、`K̄`(=K_bar)；中間 Ĥ_I = G·Fᵀ(FFᵀ)⁻¹（論文 step 8）。
 - `region_field_err.m` — 區域相對 RMS 場誤差；`write_KbarI_tex.m` — 輸出純結果 `.tex`。
 
 **資料來源 / 流向**：`load_coils_actuator` 讀 `ANSYS_data/.dat` → fit/gauge/誤差 → `write_KbarI_tex` 寫 `../../results/no_fix_l/*.tex`。

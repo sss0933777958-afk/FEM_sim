@@ -1,6 +1,6 @@
 # …/Calibration using FEM modeling/fix_l/ — 固定-ℓ 點電荷模型校正（fix-ℓ）
 
-**用途**：document「固定-ℓ 點電荷模型」的乾淨單一主程式交付。電荷固定在磁極軸 `pc_i = ℓ·d̂_i`（無 bias），用 `lsqnonlin` fit `{K̂_I^FEM (6×6，K̂(1,1)=5/6 固定), ℓ, gB}`。R=150 µm → ℓ≈0.856 mm, gB≈8.43e-3, 相對 RMS 場誤差 ≈3.18%。
+**用途**：document「固定-ℓ 點電荷模型」的乾淨單一主程式交付。電荷固定在磁極軸 `pc_i = ℓ·d̂_i`（無 bias），用 `lsqnonlin` fit `{K̄ (6×6，K̄(1,1)=5/6 固定), ℓ, ^Bĝ_I}`（論文 notation；code/.mat field 名沿用 `Khat`/`gB`）。**單位 Unit Sheet**（b=mT、V=mV、ℓ̂=µm、^Bĝ_I=mT/A；擬合在 SI 公尺、ℓ̂ 輸出 ×1e6）：R=150 µm → ℓ̂≈**867 µm**, ^Bĝ_I≈**7.33 mT/A**, 相對 RMS 場誤差 ≈3.19%。
 
 **內容**：`code/main/main.m`（主程式，config 在頂部）、`code/function/`（模型數學輔助函式）、`code/plot/`（該主程式繪圖）、`results/`（auto-gen `.tex`）、`data/`（`.mat` 成果，規則#2）、`figures/`（圖）。
 

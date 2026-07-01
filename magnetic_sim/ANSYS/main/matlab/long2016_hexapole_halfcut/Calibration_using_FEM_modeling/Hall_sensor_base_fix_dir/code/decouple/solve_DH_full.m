@@ -22,7 +22,7 @@ clear; clc;
 
 %% ---- config ----------------------------------------------------------------
 R_select = 150e-6;             % 取點/載 ℓ̂ 半徑 [m]
-S_hall   = 130;                % Hall 靈敏度 [V/T]（EQ-730L）
+S_hall   = 130;                % Hall 靈敏度 [mV/mT]（EQ-730L；配 B[mT]→V[mV]）
 N_I      = 6;                  % 6 個單線圈解
 
 %% ---- paths -----------------------------------------------------------------
@@ -40,8 +40,8 @@ if ~exist(fileparts(mat_out),'dir'); mkdir(fileparts(mat_out)); end
 RRR  = round(R_select*1e6);
 ellf = fullfile(fixdir_data, sprintf('fit_fixl_R%03dum.mat', RRR));
 assert(exist(ellf,'file')==2, 'ℓ̂ 來源不存在：%s（請先跑 fix_dir main）', ellf);
-SL = load(ellf, 'ell','J');  ell_hat = SL.ell;  J_fixdir = SL.J;                 % ℓ̂ [m]、fix_dir 自由電荷 cost（對照）
-fprintf('載入 ℓ̂ = %.4f mm（fix_dir fit_KI_fixl）；fix_dir cost J = %.6e\n', ell_hat*1e3, J_fixdir);
+SL = load(ellf, 'ell','J');  ell_hat = SL.ell;  J_fixdir = SL.J;                 % ℓ̂ [µm]、fix_dir 自由電荷 cost（對照，mT²）
+fprintf('載入 ℓ̂ = %.2f µm（fix_dir fit_KI_fixl）；fix_dir cost J = %.6e\n', ell_hat, J_fixdir);
 
 %% ---- 常數 + 電荷位置 -------------------------------------------------------
 cnst = mt_constants();
@@ -54,8 +54,8 @@ d1   = import_ansys_data(fullfile(results_root, 'coil1', 'standard'),'wp','coil1
 air1 = filter_iron_nodes(d1.x,d1.y,d1.z,cnst,struct('visualize',false));
 zwp1 = d1.z - cnst.SPH_OFST;
 P_all = [d1.x(air1), d1.y(air1), zwp1(air1)];
-insel = sum(P_all.^2,2) <= R_select^2;
-P     = P_all(insel,:);  Np = size(P,1);
+insel = sum(P_all.^2,2) <= R_select^2;                % 選球用公尺（配 R_select[m]）
+P     = P_all(insel,:) * 1e6;  Np = size(P,1);        % m → µm（配 ell_hat[µm]、build_S 比值）
 B = zeros(Np,3,N_I);
 for j = 1:N_I
     if j == 1, dj = d1; airj = air1;
@@ -64,7 +64,7 @@ for j = 1:N_I
         dj = import_ansys_data(fullfile(results_root, cn, 'standard'),'wp',cn);
         airj = filter_iron_nodes(dj.x,dj.y,dj.z,cnst,struct('visualize',false));
     end
-    Bj = -[dj.bx(airj), dj.by(airj), dj.bz(airj)];   % 負號版場
+    Bj = -1e3*[dj.bx(airj), dj.by(airj), dj.bz(airj)];   % 負號版場；ANSYS Tesla → ×1e3 原生 mT
     B(:,:,j) = Bj(insel,:);
 end
 fprintf('R≤%g µm 球內 air 節點 Np = %d\n', R_select*1e6, Np);
@@ -102,15 +102,14 @@ end
 offmask = ~eye(6);
 diagn   = norm(diag(D_H));
 offn    = norm(D_H(offmask));
-fprintf('\n=============== 滿 D_H 解耦結果（ℓ̂=%.3f mm, R=%d µm）===============\n', ell_hat*1e3, RRR);
-fprintf('  D_H (6×6, 列=電荷極 P1..P6, 欄=sensor P1..P6)：\n');
+fprintf('\n=============== 滿 D_H 解耦結果（ℓ̂=%.2f µm, R=%d µm）===============\n', ell_hat, RRR);
+fprintf('  D_H (6×6, 列=電荷極 P1..P6, 欄=sensor P1..P6；單位 mT/mV)：\n');
 for i=1:6, fprintf('   % .3e % .3e % .3e % .3e % .3e % .3e\n', D_H(i,:)); end
 fprintf('  ‖diag(D_H)‖ = %.3e ; ‖off-diag(D_H)‖ = %.3e ; off/diag = %.2f ; max|off| = %.3e\n', ...
         diagn, offn, offn/diagn, max(abs(D_H(offmask))));
 fprintf('  --------------------------------------------------------------\n');
-fprintf('  cost_J (滿 D_H 解耦)      = %.6e  [T^2]\n', cost_J);
-fprintf('  cost_J (對角 d, main.m)   = 1.418698e-01  [T^2]（對照）\n');
-fprintf('  cost_J (fix_dir 自由電荷) = %.6e  [T^2]（對照，= 下界）\n', J_fixdir);
+fprintf('  cost_J (滿 D_H 解耦)      = %.6e  [mT^2]\n', cost_J);
+fprintf('  cost_J (fix_dir 自由電荷) = %.6e  [mT^2]（對照，= 下界）\n', J_fixdir);
 fprintf('==================================================================\n');
 
 %% ---- 存解 ------------------------------------------------------------------

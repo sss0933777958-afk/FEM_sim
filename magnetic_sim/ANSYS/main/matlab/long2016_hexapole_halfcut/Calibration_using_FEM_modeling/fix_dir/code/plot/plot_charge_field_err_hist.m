@@ -31,26 +31,26 @@ dhat = tip ./ vecnorm(tip);
 
 %% ---- 讀結果防呆 + 載 6 coil（gap200, 'wp'）-------------------------------
 fprintf('讀結果：coil{1..6}/%s（dataset=wp）；期望 gap200 |B| 較 baseline 低 ~30%%。\n', VARIANT);
-C = load_coils(results_root, cnst, apdl_to_paper_idx, VARIANT);   % [沿用，+variant]
-[coil, nmin] = select_ball(C, R_select);                          % [沿用] coil(k).p, .bfem（區塊 [Bx;By;Bz]）
+C = load_coils(results_root, cnst, apdl_to_paper_idx, VARIANT);   % [沿用，+variant]（bfem 已 mT）
+[coil, nmin] = select_ball(C, R_select);                          % [沿用] coil(k).p [m], .bfem [mT]
 
 %% ---- 擬合 fix-l 模型 → 殘差 → 逐點逐激發向量差大小 -------------------------
-[ell, gB, Khat, J] = fit_KI_fixl(coil, dhat, I_actual);           % [沿用]
-freemask = true(6); freemask(1,1) = false;                        % Khat(1,1) 固定 5/6
-x = [ell*1e3; gB; Khat(freemask)];                                % 重組 packed 參數（同 fit_KI_fixl 順序）
-r = charge_residual(x, coil, dhat, I_actual, freemask);           % [沿用] 殘差（逐 coil 區塊串接）
+[ell, ghat_I_B, K_bar, J] = fit_KI_fixl(coil, dhat, I_actual);    % 在 SI 公尺擬合；^Bg_I [mT/A]、ell [m]
+freemask = true(6); freemask(1,1) = false;                        % K_bar(1,1) 固定 5/6
+x = [ell*1e3; ghat_I_B; K_bar(freemask)];                        % 重組 packed 參數（ell 打包成 mm，同 fit_KI_fixl 順序）
+r = charge_residual(x, coil, dhat, I_actual, freemask);           % [沿用] 殘差（逐 coil 區塊串接；mT）
 
 err = []; off = 0; sumB2 = 0;
 for k = 1:numel(coil)
     Mk  = size(coil(k).p, 1);                                     % 該 coil 取點數（各異）
     blk = r(off + (1:3*Mk));  off = off + 3*Mk;                   % 該 coil 區塊 [Bx;By;Bz]
-    ek  = vecnorm(reshape(blk, Mk, 3), 2, 2);                     % 逐點向量差大小 [T]
+    ek  = vecnorm(reshape(blk, Mk, 3), 2, 2);                     % 逐點向量差大小 [mT]
     err = [err; ek]; %#ok<AGROW>
     sumB2 = sumB2 + sum(coil(k).bfem.^2);
 end
 errpct = 100 * sqrt(sum(err.^2) / sumB2);
-fprintf('ell=%.4f mm | gB=%.4e | numel(err)=%d | region err=%.3f%% | median=%.4f mT | max=%.4f mT\n', ...
-        ell*1e3, gB, numel(err), errpct, median(err)*1e3, max(err)*1e3);
+fprintf('ell=%.2f µm | ^Bg_I=%.4e mT/A | numel(err)=%d | region err=%.3f%% | median=%.4f mT | max=%.4f mT\n', ...
+        ell*1e6, ghat_I_B, numel(err), errpct, median(err), max(err));
 
 %% ---- 存 err 供疊圖腳本載入（避免 fix/no_fix 同名函式撞 path）-----------------
 model_label = 'fix-\ell';                                          %#ok<NASGU>
@@ -62,7 +62,7 @@ save(fullfile(datadir, sprintf('field_err_hist_%s.mat', VARIANT)), ...
 XMAX = 0.8; edges = 0:0.005:XMAX;                                      % 統一尺度 + 0.005 mT/格（更細→更 smooth）
 fig = figure('Color','w','Position',[100 100 760 560]);
 ax  = axes(fig);
-histogram(ax, err*1e3, edges, 'FaceColor',[0.20 0.40 0.70], 'EdgeColor','w');  % mT
+histogram(ax, err, edges, 'FaceColor',[0.20 0.40 0.70], 'EdgeColor','w');  % err 已 mT
 
 set(ax,'FontSize',16,'FontWeight','bold','LineWidth',2,'TickLength',[.018 .018]);
 box(ax,'on'); grid(ax,'off');
@@ -72,7 +72,7 @@ yt = get(ax,'YTick'); set(ax,'YTick',yt(1:2:end));
 xlabel(ax,'|B_{model} - B_{FEM}| (mT)','FontWeight','bold');
 ylabel(ax,'Count','FontWeight','bold');
 
-txt = sprintf('N = %d (6 exc.)\nmedian = %.3f mT', numel(err), median(err)*1e3);
+txt = sprintf('N = %d (6 exc.)\nmedian = %.3f mT', numel(err), median(err));
 text(ax, 0.97, 0.95, txt, 'Units','normalized', 'HorizontalAlignment','right', ...
      'VerticalAlignment','top', 'FontSize',14, 'FontWeight','bold', ...
      'BackgroundColor','w', 'EdgeColor','k', 'LineWidth',1.5, 'Margin',5);

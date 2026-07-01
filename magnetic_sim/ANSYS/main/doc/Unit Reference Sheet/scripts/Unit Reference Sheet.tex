@@ -1,0 +1,60 @@
+\documentclass[12pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage{mathptmx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{array}
+\usepackage[a4paper,margin=2.3cm]{geometry}
+\setlength{\parindent}{0pt}
+
+\begin{document}
+
+\begin{center}
+\large\textbf{Lumped-Parameter Modeling and Calibration of Hexapole\\
+Electromagnetic Actuators for Magnetic Flux Generation}
+\end{center}
+
+\vspace{6pt}
+
+\textbf{Current Base Model}
+\[
+b_{ij} = \underbrace{\left(\tfrac{6}{5}k_{11}\right)\left(\frac{N_c}{4\pi\,\widehat{\ell}^{\,2}\,R_a}\right)}_{\textstyle {}^{B}\widehat{g}_{I}}\; S_i\,\overline{K}_{I}\,I
+= S_i\Big(\underbrace{{}^{B}\widehat{g}_{I}\,\overline{K}_{I}\,I}_{\textstyle G}\Big)
+\]
+
+\vspace{10pt}
+
+\textbf{Voltage Base Model}
+\[
+b_{ij} = S_i\cdot D\cdot V
+= S_i\cdot\Big[\underbrace{\left(\tfrac{6\,d_{11}}{5}\right)}_{\textstyle {}^{B}\widehat{g}_{V}}\overline{D}\,V\Big]
+= S_i\Big(\underbrace{{}^{B}\widehat{g}_{V}\,\overline{D}\,V}_{\textstyle G}\Big)
+\]
+
+\vspace{14pt}
+
+\begin{center}
+\renewcommand{\arraystretch}{3.0}
+\begin{tabular}{>{\centering\arraybackslash}m{6.0cm} | >{\centering\arraybackslash}m{4.5cm}}
+\multicolumn{1}{c|}{\textbf{Symbol}} & \multicolumn{1}{c}{\textbf{Unit}} \\[2pt]
+\hline
+$R_a$ & $\dfrac{A}{Wb}$ \\
+\hline
+$I$ & $A$ \\
+\hline
+${}^{B}\widehat{g}_{I}$ & $\dfrac{mT}{A}$ \\
+\hline
+${}^{B}\widehat{g}_{V}$ & $\dfrac{mT}{mV}$ \\
+\hline
+$V$ & $mV$ \\
+\hline
+$\widehat{\ell}$ & $\mu m$ \\
+\hline
+$b_{ij}$ & $mT$ \\
+\hline
+$\begin{cases} k_m = \dfrac{\mu_0}{4\pi} = 10^{-7} \\[6pt] \mu_0 = 4\pi\cdot 10^{-7} = 0.0013\cdot 10^{-3} \end{cases}$ & $\dfrac{N}{A^{2}}$ \\
+\hline
+\end{tabular}
+\end{center}
+
+\end{document}

@@ -15,9 +15,10 @@ addpath(plotdir);
 S  = load('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\Calibration_using_FEM_modeling\fix_dir\data\KI_convergence_gB50.mat');
 ri = find(round(S.R_list*1e6)==40,1);
 f  = S.fitP(ri);
-ell = f.ell; gB = f.gB; Khat = f.Khat; I_actual = S.I_actual;     %#ok<NASGU>
+ell = f.ell; ghat_I_B = f.gB; K_bar = f.Khat; I_actual = S.I_actual;   % ^Bg_I=gB, K_bar=Khat (.mat field 名沿用)
 R = 40e-6; Nmax = S.Neq; apdl_to_paper_idx = [1 3 6 5 2 4];         %#ok<NASGU>
 matf = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\Calibration_using_FEM_modeling\fix_dir\data\fit_KI_R040.mat';
+gB = ghat_I_B; Khat = K_bar;   % alias：維持 .mat field 名 'gB'/'Khat'
 save(matf, 'ell','gB','Khat','I_actual','R','Nmax','apdl_to_paper_idx');
 fprintf('wrote %s  (ell = %.3f mm)\n', matf, ell*1e3);
 

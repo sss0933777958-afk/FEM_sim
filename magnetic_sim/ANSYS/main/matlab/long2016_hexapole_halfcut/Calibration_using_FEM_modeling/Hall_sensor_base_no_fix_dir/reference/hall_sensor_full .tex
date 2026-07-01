@@ -1,0 +1,95 @@
+\documentclass[12pt]{article}
+\usepackage{fontspec}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\setmainfont{Noto Sans CJK TC}[
+  Path = /usr/share/fonts/opentype/noto/ ,
+  Extension = .ttc ,
+  UprightFont = NotoSansCJK-Regular ,
+  BoldFont = NotoSansCJK-Bold
+]
+\setlength{\parindent}{0pt}
+
+\begin{document}
+
+\section*{霍爾感測器安裝位置}
+
+\textbf{(1) WP 到極尖}
+\[
+\mathbf{e} =
+\begin{bmatrix}
+\cos\psi\cos\theta \\[2pt]
+\cos\psi\sin\theta \\[2pt]
+\sin\psi
+\end{bmatrix}
+\]
+
+\vspace{6pt}
+\textbf{(2) 極尖往霍爾感測器之單位向量}
+
+\vspace{6pt}
+\textbf{\textcircled{1} 上極}
+\[
+\mathbf{e}_{1u} =
+\begin{bmatrix}
+\cos(\psi+\beta)\cos\theta \\[2pt]
+\cos(\psi+\beta)\sin\theta \\[2pt]
+\sin(\psi+\beta)
+\end{bmatrix}
+\qquad
+\mathbf{e}_{2u} =
+\begin{bmatrix}
+\cos\!\big[90^\circ+(\psi+\beta)\big]\cos\theta \\[2pt]
+\cos\!\big[90^\circ+(\psi+\beta)\big]\sin\theta \\[2pt]
+\sin\!\big[90^\circ+(\psi+\beta)\big]
+\end{bmatrix}
+\]
+
+\vspace{6pt}
+\textbf{\textcircled{2} 下極}
+\[
+\mathbf{e}_{1\ell} =
+\begin{bmatrix}
+\cos(-\beta)\cos\theta \\[2pt]
+\cos(-\beta)\sin\theta \\[2pt]
+\sin(-\beta)
+\end{bmatrix}
+\qquad
+\mathbf{e}_{2\ell} =
+\begin{bmatrix}
+\cos\!\big[-90^\circ-\beta\big]\cos\theta \\[2pt]
+\cos\!\big[-90^\circ-\beta\big]\sin\theta \\[2pt]
+\sin\!\big[-90^\circ-\beta\big]
+\end{bmatrix}
+\]
+
+\vspace{6pt}
+\textbf{(3) 最終安裝位置}
+
+\vspace{6pt}
+\textbf{\textcircled{1} 上極} $\Rightarrow$
+\[
+\begin{bmatrix} x \\ y \\ z \end{bmatrix}
+= \hat{\ell}\,\mathbf{e} + \lambda_1\,\mathbf{e}_{1u} + \lambda_2\,\mathbf{e}_{2u}
+\quad (\mathrm{mm})
+\]
+
+\textbf{\textcircled{2} 下極} $\Rightarrow$
+\[
+\begin{bmatrix} x \\ y \\ z \end{bmatrix}
+= \hat{\ell}\,\mathbf{e} + \lambda_3\,\mathbf{e}_{1\ell} + \lambda_4\,\mathbf{e}_{2\ell}
+\quad (\mathrm{mm})
+\]
+
+\vspace{6pt}
+其中：
+\begin{itemize}
+\item $\hat{\ell} = $ 工作空間半徑
+\item $\psi = $ 仰角
+\item $\beta = $ 磁極半錐角
+\item $\theta = $ 方位角
+\item $\lambda_1,\lambda_2,\lambda_3,\lambda_4 = $ 常數
+\end{itemize}
+
+\end{document}

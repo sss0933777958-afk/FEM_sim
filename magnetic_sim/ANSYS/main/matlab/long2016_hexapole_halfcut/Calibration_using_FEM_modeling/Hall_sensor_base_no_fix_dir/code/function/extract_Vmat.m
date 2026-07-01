@@ -29,7 +29,7 @@ function [Vmat, exc_sign] = extract_Vmat(results_root, cnst, apdl_to_paper_idx, 
 %   apdl_to_paper_idx   1×6，APDL coil j → paper pole 索引（判是否下極）
 %   sensor_pos          3×6，sensor 中心（build_sensor_geometry）
 %   sensor_n            3×6，sensor 法線 n+
-%   S_hall              霍爾靈敏度 [V/T]（EQ-730L = 130）
+%   S_hall              霍爾靈敏度 [mV/mT]（EQ-730L = 130；數值同 V/T，配 B[mT]→V[mV]）
 %   variant    (選填)   FEM 結果變體子夾名，預設 'standard'（baseline）；sensor 加密用 'sensref'
 %   sensor_r   (選填)   感測盤半徑 [m]，預設 0.15e-3（Ø0.3mm）
 %   axial_tol  (選填)   圓柱高度 [m]（只往 n+，底面=sensor 面），預設 0.1e-3
@@ -43,12 +43,12 @@ function [Vmat, exc_sign] = extract_Vmat(results_root, cnst, apdl_to_paper_idx, 
     if nargin < 8 || isempty(sensor_r),  sensor_r  = 0.15e-3; end   % 感測盤半徑預設 0.15mm
     if nargin < 9 || isempty(axial_tol), axial_tol = 0.1e-3;   end  % 圓柱高度預設 0.1mm（只往 n+，底面=sensor 面，全程離鐵≥0.41mm）
 
-    Vmat = zeros(6,6);                                         % sensor 電壓矩陣 [V]（先填未翻號的）
+    Vmat = zeros(6,6);                                         % sensor 電壓矩陣 [mV]（先填未翻號的）
     for kc = 1:6                                               % 逐線圈 kc（= 第 j=kc 次模擬）
         cn = sprintf('coil%d', kc);                           % 該線圈結果資料夾名 coil<kc>
         da = import_ansys_data(fullfile(results_root, cn, variant),'all',cn);  % 載 'all' 全域真實節點（variant 子夾）
         X  = [da.x, da.y, da.z - cnst.SPH_OFST];             % 節點座標(WP 框)：ANSYS z 扣球心偏移 → Nn×3
-        Bn = [da.bx, da.by, da.bz];                          % 節點場 B（raw FEM）→ Nn×3
+        Bn = 1e3*[da.bx, da.by, da.bz];                      % 節點場 B：ANSYS 出 Tesla → ×1e3 原生 mT（Unit Sheet）
         for i = 1:6                                           % 逐 sensor 極 i
             ni = sensor_n(:,i);                              % 該 sensor 法線 n+（3×1）
             r  = X - sensor_pos(:,i).';                      % 各節點相對 sensor 中心的位移（Nn×3，廣播相減）
@@ -63,8 +63,8 @@ function [Vmat, exc_sign] = extract_Vmat(results_root, cnst, apdl_to_paper_idx, 
                     [~, k0] = min(axial(cand)); sel = cand(k0);  % 盤內、n+ 側沿 n 最近的那顆
                 end
             end
-            Bdotn = Bn(sel,:) * ni;                         % 選中節點的 B·n+（朝出鋼正負；列向量）
-            Vmat(i,kc) = S_hall * mean(Bdotn);              % 真實節點平均 × 靈敏度 = sensor 電壓 [V]
+            Bdotn = Bn(sel,:) * ni;                         % 選中節點的 B·n+ [mT]（朝出鋼正負；列向量）
+            Vmat(i,kc) = S_hall * mean(Bdotn);              % ⟨B·n+⟩[mT] × S_hall[mV/mT] = sensor 電壓 [mV]（原生）
             fprintf('  coil%d sensor P%d: 命中 %d 個真實節點\n', kc, i, numel(Bdotn));  % 透明回報命中數
         end
         fprintf('Page2: coil%d sensor 電壓抽取完成\n', kc);   % 進度訊息

@@ -1,26 +1,27 @@
-# …/Hall_sensor_base_fix_dir/code/main/ — 求 d 主程式
+# …/Hall_sensor_base_fix_dir/code/main/ — 統一校正主程式
 
-**用途**：`main.m` — Hall-sensor 每極 `d` 的指定流程 driver。config 在頂部（R_select=150 µm、I=1 A、S_hall=130 V/T）。
+**用途**：`main.m` — 本包**唯一** driver（已統一，取代舊 `main_Dmatrix`/`main_Vmat`/`main_interp`）。
+single-parameter（電荷在軸 d̂、無 bias）模型，求 6×6 Hall-sensor 校正並輸出 **V、D̄、^Bĝ_V、Ĥ_V**（論文 notation）。
+config 在頂部（`VARIANT='gap200um_mueq'`、`R_select=150 µm`、`I=1 A`、`S_hall=130 V/T`、`n_uniform=10000`）。
 
-**流程（四步）**：
-1. **拿 ℓ̂**：載入 fix_dir fit_KI_fixl 解出的 `../../../fix_dir/data/fit_fixl_R<RRR>um.mat` 的 `ell`（規則#2；≈0.856；不再 fminbnd、不用 fit_KI_ball sweep 版）。
-2. **抽電壓 V=S·B**：載 6-coil FEM（`wp` 建殘差場 B / `all` 抽 sensor 電壓）→ `build_sensor_geometry` → `extract_Vmat`（真實節點、沿 n 圓柱、all-source）。
-3. **解 d / 殘差**：`solve_d`（內外層雙重加總、閉式解 d，**無 g_H**：`d = (Σ_j V_j(Σ_i SᵀS)V_j)⁻¹(Σ_j V_j Σ_i Sᵀb)`）→ `sensor_residual` 回 cost `J = Σ‖ε‖²`（模型 b=S·V·d）。
-4. **存解**：`calib_sensor_d.mat`（本組 `../../data/`，規則#2；含 d/Vmat/exc_sign/ell_hat/J，**無 gH**）。
+> 論文↔code 變數：`G=Dv`（profiled charges=D^v）、`Ĥ_V=H_V`（舊 `Dmat`）、`^Bĝ_V=ghat_V_B`（舊 `g_V`）、`D̄=D_bar`。
+> **單位（Unit Reference Sheet，原生）**：b=**mT**、V=**mV**、ℓ̂=**µm**、^Bĝ_V=**mT/mV**、Ĥ_V=**mT/mV**、G=**mT**。
+> ⚠ 實作：擬合在 **SI 公尺**（well-scaled 最佳化）→ ℓ̂ 存/印前 ×1e6 成 µm；B 於 .dat 匯入即 ×1e3 成 mT；V=S_hall·B 直接 mV。
 
-**預期數值（R=150 µm）**：ℓ̂≈0.856 mm（fix_dir fit_KI_fixl）、cost J≈0.142 T²（全域座標、上極 CAD 傾角 36.59° 錐面 + 下極磨平面）、d 為 no-gain（~1e-2）。
+**流程（五步）**：
+1. **載 6-coil FEM**（`load_coils_actuator`，`gap200um_mueq`、actuator 框）→ `select_ball` 選 R≤150 µm 球內 air 節點 → all-source（literal flip-sink：只翻下極 P1/P3/P6）。
+2. **fit ℓ̂**（single-parameter 在軸 profiled field cost，`fminbnd`；Dv 已 profile 掉）。
+3. **profile 電荷** `G = D^v = M⁻¹(Aᵀ·Bstack)`（每激發一欄）。
+4. **抽 sensor 電壓 V**：`build_sensor_geometry`（**下極 −β 底錐面修正位置**）→ `extract_Vmat_interp`（**Ø0.3 mm × 0.1 mm 圓柱、均勻內插 10k 點平均**、graded sensor-local CSV、all-source）。
+5. **解（論文 step 9）**：`Ĥ_V = G·Vᵀ(VVᵀ)⁻¹` → `D̄ = Ĥ_V·5/(6·h₁₁)`（gauge D̄₁₁=5/6）→ **`^Bĝ_V = (6/5)·Ĥ_V(1,1)`**（電壓側增益 T/V，Ĥ_V = ^Bĝ_V·D̄）。
 
-**`main_interp.m`（內插版）**：同流程，但 step2 改用 `extract_Vmat_interp`（standard 粗網格、sensor 圓柱內
-均勻 1000 點真·FEM tet 重心內插）抽 Vmat → 解對角 d；存 `../../data/calib_sensor_d_interp.mat`（規則#2）。用來處理 standard
-粗網格「sensor 圓柱內 0 真實節點」的情況（baseline 沒 sensor 加密時）。
+**輸出**：
+- console：先印 **V**（驗證）再印 D̄ / ^Bĝ_V / Ĥ_V + 摘要（ℓ̂、region err、recon）。
+- PDF `../../results/D_gap200um_mueq.pdf`：V、D̄、^Bĝ_V、Ĥ_V（results/ 只留 PDF）。
+- `.mat` `../../data/calib_D_gap200um_mueq.mat`（**.mat field 名沿用** `Dmat/D_bar/g_V/Dv_p/Vmat_p/ell_hat/...`，與下游 plot 腳本相容）。
 
-**`calib_gap100um.m`（gap100um 校正 driver）**：與 main.m 同流程，差別：(1) 讀 `gap100um_mueq` 變體
-（μ_eff=56 氣隙，P2←P1 應翻負）；(2) sensor 讀值用 `extract_Vmat_interp` **圓柱內均勻插 100 點平均、六顆統一**
-（網格拓樸用 standard CSV、場用 gap100um）；(3) 解寫到本組 `../../data/`（`.mat`+`.txt`，規則#2/#3；
-排版成 `results/calib_gap100um.pdf`，`results/` 只留 PDF）。sensor 位置維持現狀（下極仍在磨平面；錐面搬移待後續）。
-預期：ℓ̂≈0.860 mm、cost J≈0.071 T²、V(感測 P2,激發 P1) 為**負**（−1.88e-3 V，μ56<翻負臨界 ~72）。
-> PDF 排版：用一次性 xelatex（`results/` 只留最終 PDF，`.tex/.mat/.txt` 編完即清；Vmat 欄重排成 paper P1--P6、對角=self）。
+**預期數值（gap200um_mueq, R=150 µm；原生單位）**：ℓ̂≈**867.45 µm**（on-axis）、recon `‖Ĥ_V·V−G‖/‖G‖`~1e-16、^Bĝ_V≈**6.14e-3 mT/mV**、V 對角≈**1000 mV**、region err 3.19%、G 對角全正。
 
-**命名 / 慣例**：主程式組 → `code/main/{main.m, main_interp.m, calib_gap100um.m}`；模型數學一律在 `../function/`。
+**命名 / 慣例**：單一主程式 → `code/main/main.m`；模型數學一律在 `../function/`。
 
 **相關**：見上層 `../README.md`、`../function/README.md`。

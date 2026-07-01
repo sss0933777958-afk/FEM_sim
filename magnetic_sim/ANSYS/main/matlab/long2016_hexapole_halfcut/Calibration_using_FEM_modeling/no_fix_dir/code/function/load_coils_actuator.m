@@ -8,7 +8,7 @@ function D = load_coils_actuator(model, cnst, apdl_to_paper_idx, dataset, varian
 %   Returns struct D with:
 %     .Pa      Nair x 3       sample points (actuator frame, shared across coils)
 %     .r2      Nair x 1       |p|^2 (rotation-invariant) for ball selection
-%     .Ba      Nair x 3 x N_I all-source B per simulation (actuator frame)
+%     .Ba      Nair x 3 x N_I all-source B per simulation (actuator frame), [mT] (ANSYS Tesla ×1e3)
 %     .R_act   3 x 3          measure->actuator rotation
 %     .Pc_base 3 x 6          ideal charge lattice [+u -u +v -v +w -w]
 %     .F       6 x N_I        current matrix (permutation, rank 6)
@@ -43,7 +43,7 @@ function D = load_coils_actuator(model, cnst, apdl_to_paper_idx, dataset, varian
             dk = import_ansys_data(ansys_path(model,'data',cn,variant), dataset, cn);
             airk = filter_iron_nodes(dk.x,dk.y,dk.z,cnst,struct('visualize',false));
         end
-        Bk = -[dk.bx(airk), dk.by(airk), dk.bz(airk)];               % all-source
+        Bk = -1e3*[dk.bx(airk), dk.by(airk), dk.bz(airk)];           % all-source；ANSYS Tesla → ×1e3 原生 mT（Unit Sheet）
         Ba(:,:,k) = (R_act * Bk.').';
     end
 

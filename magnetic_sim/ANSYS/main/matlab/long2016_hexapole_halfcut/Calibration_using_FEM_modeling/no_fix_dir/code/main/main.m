@@ -2,8 +2,8 @@
 %  Document : "no_fix_l.pdf"
 %  Model    : charges at pc = ell*(Pc_base + E(e_hat)), actuator frame; 18 params
 %             = characteristic length ell + 1x17 bias e (e6z constrained).
-%             Per simulation the 6 charge magnitudes g_j are profiled out (LS);
-%             gauge with k-bar_I(1,1)=5/6 -> gB = (6/5)h11, K-bar_I = (5/(6 g11))H.
+%             Per simulation the 6 charge magnitudes g_j are profiled out (LS) -> G=D^v;
+%             gauge with K_bar(1,1)=5/6 -> ^Bg_I = (6/5)h11, K_bar = (5/(6 g11))H_I  (paper step 8).
 %  Current  : I = 1 A = FEM excitation current (per fit-current-matches-sim rule).
 %
 %  MODE switch:
@@ -17,7 +17,7 @@
 %    1) load_coils_actuator -- load 6-coil FEM, rotate to actuator frame  (load data)
 %    2) select_ball         -- keep nodes inside the sampling ball R       (pick region)
 %    3) fit_bias            -- lsqnonlin fit {ell, e_hat(17)}              (fit)
-%    4) gauge_KI            -- profile g_j, gauge -> gB, K-bar_I           (gauge)
+%    4) gauge_KI            -- profile g_j, gauge -> ^Bg_I, K_bar          (gauge)
 %    5) region_field_err    -- relative RMS field error over region        (accuracy)
 %    6) write_KbarI_tex     -- emit results-only LaTeX script               (output)
 
@@ -31,7 +31,7 @@ R_step_um   = 5;               % sweep step  [um]
 R_end_um    = 500;             % sweep end   [um]
 I_actual    = 1;               % drive current [A] = FEM excitation (1 A)
 SHAPE       = 'ball';          % sampling region: ball ||p|| <= R about WP
-ell0        = 0.5e-3;          % ell initial guess [m] (= ell_design)
+ell0        = 0.5e-3;         % ell initial guess [m] (= ell_design; fit_bias 在 SI、well-scaled)
 dataset     = 'all';           % standard-mesh dataset
 VARIANT     = 'gap200um_mueq'; % [MODIFIED] FEM 變體子夾（'standard' = baseline；'gap200um_mueq' = gap200 2 段式 μ_eff）
 
@@ -65,16 +65,17 @@ end
 
 %% ---- fit + emit LaTeX result per R -----------------------------------------
 for R_um = R_um_list
-    [P, Bstack, npts] = select_ball(D, R_um*1e-6);
-    [ell, e_hat, J]   = fit_bias(P, Bstack, D.Pc_base, ell0);
+    [P, Bstack, npts] = select_ball(D, R_um*1e-6);                  % P [m]、Bstack [mT]
+    [ell, e_hat, J]   = fit_bias(P, Bstack, D.Pc_base, ell0);       % 在 SI 公尺擬合（well-scaled）→ ell [m]
     Pc                = make_Pc(e_hat, D.Pc_base);
-    [KbarI, gB]       = gauge_KI(ell, Pc, P, Bstack, D.F);
+    [K_bar, ghat_I_B] = gauge_KI(ell, Pc, P, Bstack, D.F);          % K_bar、^Bg_I=ghat_I_B [mT/A]（ell/P 均公尺）
+    ell               = ell * 1e6;                                 % m → µm（此後 write/print 用 µm）
     errpct            = region_field_err(Bstack, J);
     fname = fullfile(tex_dir, sprintf('fit_%s_R%03dum_%gA%s.tex', SHAPE, R_um, I_actual, vtag));  % [MODIFIED] vtag
-    write_KbarI_tex(fname, SHAPE, R_um, I_actual, KbarI, ell, gB, e_hat, coil_sign, errpct);
+    write_KbarI_tex(fname, SHAPE, R_um, I_actual, K_bar, ell, ghat_I_B, e_hat, coil_sign, errpct);
     compile_tex_pdf(fname);                                          % [ADDED] 編成可看的 PDF（清 aux/log）
-    fprintf('R=%3d um | npts=%6d | ell=%.3f mm | gB=%.4e | err=%.2f%%\n', ...
-            R_um, npts, ell*1e3, gB, errpct);
+    fprintf('R=%3d um | npts=%6d | ell=%.2f µm | ^Bg_I=%.4e mT/A | err=%.2f%%\n', ...
+            R_um, npts, ell, ghat_I_B, errpct);
 end
 fprintf('done (%s mode, variant=%s): %d result PDF(s) in %s\n', MODE, VARIANT, numel(R_um_list), tex_dir);
 

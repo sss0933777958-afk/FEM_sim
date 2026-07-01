@@ -18,8 +18,8 @@ NOFIX_MAT = fullfile(CAL,'no_fix_dir','data', sprintf('field_err_hist_%s.mat', V
 OUT_PNG   = fullfile(CAL,'fix_dir','figures', 'fix_vs_nofix_err_hist.png');   % <== 本副本輸出位置
 
 %% ---- 載兩個 err（mT）------------------------------------------------------
-F = load(FIX_MAT);   ef = F.err*1e3;   lf = sprintf('single-parameter  (median %.3f mT)', median(ef));
-G = load(NOFIX_MAT); en = G.err*1e3;   ln = sprintf('18-param bias  (median %.3f mT)',     median(en));
+F = load(FIX_MAT);   ef = F.err;   lf = sprintf('single-parameter  (median %.3f mT)', median(ef));   % err 已 mT
+G = load(NOFIX_MAT); en = G.err;   ln = sprintf('18-param bias  (median %.3f mT)',     median(en));   % err 已 mT
 fprintf('fix:   N=%d median=%.4f max=%.4f mT\n', numel(ef), median(ef), max(ef));
 fprintf('nofix: N=%d median=%.4f max=%.4f mT\n', numel(en), median(en), max(en));
 
