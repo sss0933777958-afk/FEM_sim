@@ -71,9 +71,11 @@ for R_um = R_um_list
     [K_bar, ghat_I_B] = gauge_KI(ell, Pc, P, Bstack, D.F);          % K_bar、^Bg_I=ghat_I_B [mT/A]（ell/P 均公尺）
     ell               = ell * 1e6;                                 % m → µm（此後 write/print 用 µm）
     errpct            = region_field_err(Bstack, J);
-    fname = fullfile(tex_dir, sprintf('fit_%s_R%03dum_%gA%s.tex', SHAPE, R_um, I_actual, vtag));  % [MODIFIED] vtag
-    write_KbarI_tex(fname, SHAPE, R_um, I_actual, K_bar, ell, ghat_I_B, e_hat, coil_sign, errpct);
-    compile_tex_pdf(fname);                                          % [ADDED] 編成可看的 PDF（清 aux/log）
+    % PDF 輸出已分離到 code/function/emit_model_results.m（功能分開：main 只算+存 .mat + console）
+    gB = ghat_I_B;  Khat = K_bar;                                   % alias（.mat field 名沿用 gB/Khat）
+    cal_dir = fullfile(TREE,'data'); if ~exist(cal_dir,'dir'); mkdir(cal_dir); end
+    save(fullfile(cal_dir, sprintf('fit_bias_R%03dum%s.mat', R_um, vtag)), ...
+         'ell','gB','Khat','e_hat','J','errpct','R_um','I_actual','SHAPE','VARIANT');
     fprintf('R=%3d um | npts=%6d | ell=%.2f µm | ^Bg_I=%.4e mT/A | err=%.2f%%\n', ...
             R_um, npts, ell, ghat_I_B, errpct);
 end

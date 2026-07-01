@@ -14,7 +14,7 @@
 | `matlab-output-layout.md`（#2） | 寫/搬 MATLAB `.mat`（一律放 `matlab/<model>/<activity>/data/`） |
 | `results-pdf-only.md`（#3） | 動到 `Hall_sensor_base_fix_dir/results/` |
 | `read-rules-first.md`（#4，本檔） | 每次開工 |
-| `figure-style.md`（繪圖風格） | 畫任何圖之前（**先問使用者要哪個風格選項**） |
+| `figure-style.md`（繪圖風格） | 畫任何圖之前（**先問使用者要哪個風格選項**；3D 框體＝手動 `draw_box_edges` 省略最遠角 3 邊 + box off + `daspect` + 三軸同刻度；數值標註 10^0/無單位不標） |
 | `figure-output.md`（繪圖輸出） | 畫任何圖（**輸出實檔→覆蓋迭代到定案**） |
 
 ## 觸發片語

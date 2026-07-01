@@ -68,9 +68,7 @@ for R_um = R_um_list
     [ell, ghat_I_B, K_bar, J] = fit_KI_fixl(coil, dhat, I_actual);   % 在 SI 公尺擬合；^Bg_I [mT/A]、ell [m]
     ell                       = ell * 1e6;                           % m → µm（此後 write/save 用 µm）
     errpct                    = region_field_err(coil, J);
-    fname = fullfile(tex_dir, sprintf('fit_%s_R%03dum_%gA%s.tex', SHAPE, R_um, I_actual, vtag));  % [MODIFIED] vtag
-    write_KI_tex(fname, SHAPE, R_um, I_actual, K_bar, ell, ghat_I_B, errpct);
-    compile_tex_pdf(fname);                                          % [ADDED] 編成可看的 PDF（清 aux/log）
+    % PDF 輸出已分離到 code/function/emit_model_results.m（功能分開：main 只算+存 .mat + console）
     % 存 fit_KI_fixl 解成 .mat（供 Hall_sensor_base_fix_dir 載入 ℓ̂；ell 為 [µm]）
     gB = ghat_I_B;  Khat = K_bar;   % alias：維持 .mat field 名 'gB'/'Khat' 與下游 loader 相容（範圍：不改 .mat field 名）
     save(fullfile(cal_dir, sprintf('fit_fixl_R%03dum%s.mat', R_um, vtag)), ...     % [MODIFIED] vtag

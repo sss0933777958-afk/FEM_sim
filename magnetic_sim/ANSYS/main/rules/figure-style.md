@@ -59,7 +59,44 @@ cbar.set_label('|B| (T)', fontweight='bold', fontsize=16)
 
 匯出建議：DPI 150、figure ~1180px 寬（PNG < 2000px 才能被 Read 目視）。
 
+### 3D 版（統一 3D 框體）
+
+使用者 2026-07-01 拍板（多輪來回定案）：**main/ 所有 3D 圖框體＝手動畫框邊、box off、daspect、三軸同刻度**。
+canonical 實作 = `…/fix_dir/code/plot/plot_charge_positions_3d.m` 的 `draw_box_edges` local function + 框體區塊。
+
+**source of truth 配方**：
+```matlab
+grid off; box off; daspect([1 1 1]);                 % box off（不用 MATLAB 自動框）；daspect（不是 axis equal）保住 limits
+xlim([-bh bh]); ylim([-bh bh]); zlim([-bh bh]);      % 立方體範圍；view/limits 各圖自訂
+view(az,el);
+set(gca,'FontSize',13,'FontWeight','bold','LineWidth',1.5);
+set(gca,'XTick',-2:1:2,'YTick',-2:1:2,'ZTick',-2:1:2);   % 三軸「同刻度」（z 跟 x/y 一致）
+draw_box_edges(bh, 1.5);                             % ← 手動畫框邊（見下），必須在 view 設好之後（要 campos）
+xlabel('x (mm)','FontWeight','bold'); ylabel('y (mm)','FontWeight','bold'); zlabel('z (mm)','FontWeight','bold');
+```
+`draw_box_edges`：畫立方體 12 邊黑色 `LineWidth 1.5`，但**省略「離相機最遠那個角」相連的 3 條邊**（那 3 條會從頂部橫穿內部變雜線）→ 剩 9 邊 = 乾淨外框 + 後方框邊，全黑等粗。用 `campos` 找最遠角（故 view 要先設）。
+
+🔴 **踩過的坑（別重犯）**：
+- **不要 `axis equal`**——會重算/撐開 limits；用 **`daspect([1 1 1])`**。
+- **不要 `set(gca,'BoxStyle','full')`**——多畫細內邊，使用者 X 掉。
+- **不要單純 `box on`**——此視角下 MATLAB 前粗後細不均、且會留最遠角的橫穿雜線；使用者要**全邊等粗黑、且移除最遠角那 3 條**→ 只能手動 `draw_box_edges`。
+- **三軸刻度要一致**（z 常被 MATLAB 自動設成 0.5 間距）→ 明設 `ZTick` 跟 x/y 同。
+
+沿用①：`grid off`、單位 `()`、`x/y/z (mm)` 粗體。
+
+範例圖：`…/fix_dir/figures/charge_positions_P1P2_3d.png`、`…/no_fix_dir/figures/charge_positions_P1P2_3d.png`
+（腳本各自 `code/plot/plot_charge_positions_3d.m`，view −30/−20；no_fix 版另標相對 fix 的總偏移 Δ）。
+
 ---
+
+## 通用數值標註慣例（圖 + 結果 PDF）
+
+使用者 2026-07-01 拍板，**圖與 emit_mat/emit_labeled_matrix 產的結果 PDF 都適用**：
+
+1. **10^0 因子不標**：指數為 0 就不寫 `×10^0`（矩陣 auto 因子本就 e==0 不加；**純量也一樣**，`ge==0` 直接印值，如 `^Bĝ_I = 7.327 mT/A` 不是 `7.327×10^0`）。
+2. **無單位 / 無因次不標**：dimensionless 的量（如 K̄_I）**不加**單位標記——不要 `[--]`、`[-]`、`[\text{--}]`；有單位才標（`[mT]`/`[A]`/`µm`/`mT/A`…，圖沿用①的 `()`）。
+
+範例實作：`…/fix_dir/code/function/emit_model_results.m`（K̄_I 無單位、^Bĝ_I 的 `ge==0` 分支）。
 
 ## 觸發片語
 - 「畫場圖 / 畫 contour / 畫 quiver / 出圖」——啟動本規則 → **先問要哪個風格選項**。
