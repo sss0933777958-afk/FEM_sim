@@ -61,7 +61,8 @@ function render_hill(X, Y, Z, zlab, outpng, flipcmap)
     set(gca,'FontSize',16,'FontWeight','bold','LineWidth',2,'TickLength',[.018 .018]);   % 粗體黑框
     set(gca,'XTick',-150:75:150,'YTick',-150:75:150);
     zt = get(gca,'ZTick');                                       % MATLAB 自動 z 刻度
-    zt = unique([zmn, zt(zt>zmn & zt<zmx), zmx]);                % 保留自動刻度 + 多加 min/max
+    tol = 0.055*(zmx - zmn);                                     % 丟掉太靠近端點的自動刻度，避免與 min/max 標籤重疊
+    zt = unique([zmn, zt(zt>zmn+tol & zt<zmx-tol), zmx]);       % 保留內部自動刻度 + 多加 min/max
     set(gca,'ZTick', zt, 'ZTickLabel', arrayfun(@(v) sprintf('%.4g',v), zt, 'UniformOutput',false));
     xlabel('x (\mum)','FontWeight','bold');
     ylabel('y (\mum)','FontWeight','bold');

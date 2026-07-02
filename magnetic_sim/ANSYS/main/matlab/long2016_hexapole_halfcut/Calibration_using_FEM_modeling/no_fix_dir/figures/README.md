@@ -12,6 +12,11 @@
 - `bias_field_err_hist_gap200um_mueq.png` — 18-param bias 模型 vs FEM（gap200）逐點逐激發向量差 |B_model−B_FEM|（6 激發合併，R=150 µm 球內 8774 點×6）。橫軸 mT、縱軸 count；median≈0.028 mT（參考 region err 0.46%，不顯示於圖；場模型同 Hall_sensor 的 main_Dmatrix，故數值一致）。由 `../code/plot/plot_bias_field_err_hist.m` 產生（同時存 `../data/field_err_hist_gap200um_mueq.mat` 供疊圖用）。
 - `fix_vs_nofix_err_hist.png` — **single-parameter（= fix-l）vs 18-param bias 疊圖比較**（半透明 + 各自 median 虛線線段）：single-parameter median 0.183 mT、18-param bias median 0.028 mT；顯示 bias 模型誤差明顯更集中近 0。圖標 legend 標 `single-parameter` / `18-param bias`。由 `../code/plot/plot_fix_vs_nofix_err_hist.m` 產生（純載兩個 err .mat、不重算）。同檔亦存於 fix_dir/figures/。
 
+**SVD 致動山丘 + 幾何示意（model-derived、非 raw FEM；bias 版）**：
+- `svd_gain_3d.png` / `svd_iso_3d.png` — z=0 平面山丘，逐點 `T=S_i·Ĥ_I` SVD；gain(‖T‖_F,z 標籤 Gain)/iso(σ₁/σ₃,翻色)、z 軸自動刻度+min/max。電荷用 bias（`dhat_bias=R_act'·make_Pc(ê)`）。中心 gain≈18.21 mT/A、iso≈1.059。由 `../code/plot/plot_svd_gain_iso_3d.m`。
+- `frames_lattice_bias_3d.png` / `frames_lattice_bias_R150_3d.png` — measure+actuator 兩框 + 固定 ℓ̂≈857µm 球殼 + 上下三角面 + **6 顆 bias 離殼磁荷**（下極 P1/P3/P6 偏移~140µm≈9°、上極 P2/P4/P5~19µm；R150 版多綠 R=150µm 校正球）。由 `../code/plot/plot_frames_lattice_bias_3d.m`。
+- 結果 PDF `../results/model_results_gap200um_mueq.pdf` 含 K̄_I/ℓ̂/G/F/ĝ_I/ê + **σ_tot=18.612 mT/A、iso_tot=1.144**（R≤150µm 8774 節點 mean）；K̄/G 已套 all-source 顯示翻號（對角全正）。
+
 **產生**：`../code/plot/plot_P1_circuit_charge.m('zoom',true,150)`、`plot_P2_circuit_charge.m(true,150)`；
 讀 `ANSYS_data/.../coil1|coil5/standard` 場 + `MATLAB_data/.../charge_fit/calibration/calib_bias.mat`（R、Pc_18、ell_hat）。
 

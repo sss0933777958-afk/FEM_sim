@@ -73,11 +73,16 @@ for R_um = R_um_list
     errpct            = region_field_err(Bstack, J);
     % PDF 輸出已分離到 code/function/emit_model_results.m（功能分開：main 只算+存 .mat + console）
     gB = ghat_I_B;  Khat = K_bar;                                   % alias（.mat field 名沿用 gB/Khat）
+    % [ADDED] 控制範圍（R≤R_um 球）總代表值：σ_tot=mean ‖T‖_F、iso_tot=mean σ_max/σ_min
+    %   P=actuator 節點、Pc=actuator bias 電荷（同框直接配對，不需 R_act）；gain/iso 框無關。
+    rm = calc_range_metrics(P, gB*Khat, ell*1e-6, Pc);
+    sigma_tot = rm.sigma_tot;  iso_tot = rm.iso_tot;  sigma_min = rm.sigma_min;  iso_worst = rm.iso_worst;  Np_range = rm.Np;
     cal_dir = fullfile(TREE,'data'); if ~exist(cal_dir,'dir'); mkdir(cal_dir); end
     save(fullfile(cal_dir, sprintf('fit_bias_R%03dum%s.mat', R_um, vtag)), ...
-         'ell','gB','Khat','e_hat','J','errpct','R_um','I_actual','SHAPE','VARIANT');
-    fprintf('R=%3d um | npts=%6d | ell=%.2f µm | ^Bg_I=%.4e mT/A | err=%.2f%%\n', ...
-            R_um, npts, ell, ghat_I_B, errpct);
+         'ell','gB','Khat','e_hat','J','errpct','R_um','I_actual','SHAPE','VARIANT', ...
+         'sigma_tot','iso_tot','sigma_min','iso_worst','Np_range');            % [MODIFIED] + σ_tot/iso_tot
+    fprintf('R=%3d um | npts=%6d | ell=%.2f µm | ^Bg_I=%.4e mT/A | err=%.2f%% | sigma_tot=%.4f mT/A | iso_tot=%.4f (Np=%d, sigma_min=%.4f, iso_worst=%.4f)\n', ...
+            R_um, npts, ell, ghat_I_B, errpct, sigma_tot, iso_tot, Np_range, sigma_min, iso_worst);
 end
 fprintf('done (%s mode, variant=%s): %d result PDF(s) in %s\n', MODE, VARIANT, numel(R_um_list), tex_dir);
 

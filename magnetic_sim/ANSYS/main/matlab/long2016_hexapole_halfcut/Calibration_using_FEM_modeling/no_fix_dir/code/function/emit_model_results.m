@@ -11,13 +11,15 @@ function emit_model_results()
     out_dir = fullfile(base,'results');
     if ~exist(out_dir,'dir'); mkdir(out_dir); end
 
-    S = load(fullfile(base,'data',sprintf('fit_bias_R150um_%s.mat',VARIANT)),'ell','gB','Khat','e_hat');
-    K_bar    = S.Khat;      % K̄_I（無因次，K̄(1,1)=5/6）
+    S = load(fullfile(base,'data',sprintf('fit_bias_R150um_%s.mat',VARIANT)));   % [MODIFIED] 全載（含 σ_tot/iso_tot）
+    coil_sign = [1 -1 1 -1 -1 1];               % all-source 顯示翻號（欄縮放翻上極 P2/P4/P5；同 write_KbarI_tex）
+    K_bar    = S.Khat .* coil_sign;             % K̄_I（無因次，K̄(1,1)=5/6）→ 對角全正、off-diag 全負
     ell      = S.ell;       % ℓ̂ [µm]
     ghat_I_B = S.gB;        % ^Bĝ_I [mT/A]
+    hasAiso  = isfield(S,'sigma_tot') && isfield(S,'iso_tot');   % 控制範圍總代表值
     I_A = 1;                % 激發電流 [A]
     F = I_A * eye(6);       % 電流矩陣 [A]
-    G = ghat_I_B * K_bar * F;   % [mT]
+    G = ghat_I_B * K_bar * F;   % [mT]（用翻號後 K̄ → G 上極對角也轉正）
     e = S.e_hat;                                   % 17-vec bias
     E36 = zeros(3,6);                              % 重建 ê(3×6)（含 e6z 約束）
     E36(:,1)=e(1:3); E36(:,2)=e(4:6); E36(:,3)=e(7:9); E36(:,4)=e(10:12); E36(:,5)=e(13:15);
@@ -37,6 +39,13 @@ function emit_model_results()
     emit_mat(fid, 'F~[\mathrm{A}]', F, pole, '');
     emit_scalar_unit(fid, '{}^{B}\hat{g}_{I}', ghat_I_B, 'mT/A');   % 10^0 不標
     emit_e(fid, '\hat{e}', E36, pole, '');                  % 3×6 bias，無因次 → 不標單位
+    if hasAiso   % 控制範圍總代表值：σ_tot=總增益(有單位)、iso_tot=σmax/σmin(無因次不標)
+        fprintf(fid,'\\[\n \\sigma_{tot} = %.4f~\\mathrm{mT/A}\n\\]\n', S.sigma_tot);
+        fprintf(fid,'\\[\n \\mathrm{iso}_{tot} = %.4f\n\\]\n', S.iso_tot);
+        if isfield(S,'Np_range')
+            fprintf(fid,'\\noindent\\small $\\sigma_{tot}=\\overline{\\|T\\|_F}$, $\\mathrm{iso}_{tot}=\\overline{\\sigma_{\\max}/\\sigma_{\\min}}$ over %d real nodes in $R\\le150~\\mu$m ball.\n', S.Np_range);
+        end
+    end
     fprintf(fid,'\\end{document}\n');
     fclose(fid);
 
