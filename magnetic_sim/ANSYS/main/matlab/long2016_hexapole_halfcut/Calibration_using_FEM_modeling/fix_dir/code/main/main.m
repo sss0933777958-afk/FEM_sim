@@ -70,11 +70,15 @@ for R_um = R_um_list
     errpct                    = region_field_err(coil, J);
     % PDF 輸出已分離到 code/function/emit_model_results.m（功能分開：main 只算+存 .mat + console）
     % 存 fit_KI_fixl 解成 .mat（供 Hall_sensor_base_fix_dir 載入 ℓ̂；ell 為 [µm]）
-    gB = ghat_I_B;  Khat = K_bar;   % alias：維持 .mat field 名 'gB'/'Khat' 與下游 loader 相容（範圍：不改 .mat field 名）
-    save(fullfile(cal_dir, sprintf('fit_fixl_R%03dum%s.mat', R_um, vtag)), ...     % [MODIFIED] vtag
-         'ell','gB','Khat','J','errpct','R_um','I_actual','SHAPE','VARIANT');
-    fprintf('R=%3d um | nmin/coil=%6d | ell=%.2f µm | ^Bg_I=%.4e mT/A | err=%.2f%%  -> fit_fixl_R%03dum%s.mat\n', ...
-            R_um, nmin, ell, ghat_I_B, errpct, R_um, vtag);
+    gB = ghat_I_B;  Khat = K_bar;   % alias：維持 .mat field 名 'gB'/'Khat' 與下游 loader 相容
+    % [ADDED] 控制範圍（R≤R_um 球）總代表值：σ_tot=mean gain(‖T‖_F)、iso_tot=mean σ_max/σ_min（球內真實節點）
+    rm = calc_range_metrics(coil(1).p, gB*Khat, ell*1e-6, dhat);
+    sigma_tot = rm.sigma_tot;  iso_tot = rm.iso_tot;  sigma_min = rm.sigma_min;  iso_worst = rm.iso_worst;  Np_range = rm.Np;
+    save(fullfile(cal_dir, sprintf('fit_fixl_R%03dum%s.mat', R_um, vtag)), ...     % [MODIFIED] vtag + σ_tot/iso_tot
+         'ell','gB','Khat','J','errpct','R_um','I_actual','SHAPE','VARIANT', ...
+         'sigma_tot','iso_tot','sigma_min','iso_worst','Np_range');
+    fprintf('R=%3d um | nmin=%6d | ell=%.2f µm | ^Bg_I=%.4e mT/A | err=%.2f%% | sigma_tot=%.4f mT/A | iso_tot=%.4f (Np=%d, sigma_min=%.4f, iso_worst=%.4f)\n', ...
+            R_um, nmin, ell, ghat_I_B, errpct, sigma_tot, iso_tot, Np_range, sigma_min, iso_worst);
 end
 fprintf('done (%s mode, variant=%s): %d result PDF(s) in %s\n', MODE, VARIANT, numel(R_um_list), tex_dir);
 

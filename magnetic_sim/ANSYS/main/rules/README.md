@@ -10,7 +10,7 @@
 | `db-folder-retention.md`（#1） | `db/` 子夾只留 `.db` + 主 `.rmg`，殘留禁留 | `ANSYS_data/<model>/db/**` |
 | `matlab-output-layout.md`（#2） | `.mat` 放產生它的程式旁 `data/`（`MATLAB_data/` 已移除） | `matlab/<model>/<activity>/data/` |
 | `results-pdf-only.md`（#3） | 該 `results/` 只放 PDF | `…/Hall_sensor_base_fix_dir/results/` |
-| `figure-style.md`（繪圖風格） | 圖表視覺風格 preset 目錄；**畫圖前必先問使用者要哪個選項**。選項①＝粗體框圖（大字粗體/box/無 grid/tick 減半/單位 `()`）；**3D 框體＝手動 `draw_box_edges`（12 邊省略最遠角 3 條）+ box off + `daspect([1 1 1])` + 三軸同刻度（不要 axis equal／BoxStyle full／單純 box on）**；數值標註：**10^0 不標、無單位不標**（圖+結果 PDF 通用） | 畫任何圖之前 |
+| `figure-style.md`（繪圖風格） | 圖表視覺風格 preset 目錄；**畫圖前必先問使用者要哪個選項**。選項①＝粗體框圖（大字粗體/box/無 grid/tick 減半/單位 `()`）；**3D 框體＝兩變體依幾何選（判準＝能否 `daspect([1 1 1])`）：A 同尺度立方＝手動 `draw_box_edges`（省最遠角 3 邊）+box off+daspect+三軸同刻度；B 異質軸(z≠x,y 單位，如 surf 山丘)＝`box on`+`pbaspect([1 1 1])`；A/B 不可混用（不要 axis equal／BoxStyle full）**；數值標註：**10^0 不標、無單位不標**（圖+結果 PDF 通用） | 畫任何圖之前 |
 | `figure-output.md`（繪圖輸出） | 圖一律**輸出實檔**到 `figures/`；要改**原地改腳本→重跑→覆蓋同檔**，迭代到定案（不丟 temp 等定案） | 畫任何圖 |
 
 相關 memory：`feedback_matlab_local_data_layout`、`feedback_ansys_sim_cleanup_sop`、`reference_local_latex_compile`、`feedback_field_quiver_style`。

@@ -12,10 +12,11 @@ function emit_model_results()
     if ~exist(out_dir,'dir'); mkdir(out_dir); end
 
     %% ---- 載校正結果 -------------------------------------------------------
-    S = load(fullfile(fixdir,'data',sprintf('fit_fixl_R150um_%s.mat',VARIANT)),'ell','gB','Khat');
+    S = load(fullfile(fixdir,'data',sprintf('fit_fixl_R150um_%s.mat',VARIANT)));
     K_bar    = S.Khat;      % K̄_I（dimensionless，K̄(1,1)=5/6）
     ell      = S.ell;       % ℓ̂ [µm]
     ghat_I_B = S.gB;        % ^Bĝ_I [mT/A]
+    hasAiso  = isfield(S,'sigma_tot') && isfield(S,'iso_tot');   % 控制範圍總代表值（main 新存 σ_tot/iso_tot）
     I_A = 1;                % 激發電流 [A]（= FEM）
     F = I_A * eye(6);       % 電流矩陣 [A]：每極 1A（paper P1..P6）
     G = ghat_I_B * K_bar * F;   % [mT]  = ^Bĝ_I·K̄·F（= Hall D^v）
@@ -39,6 +40,13 @@ function emit_model_results()
         fprintf(fid,'\\[\n {}^{B}\\hat{g}_{I} = %.4f~\\mathrm{mT/A}\n\\]\n', ghat_I_B);
     else
         fprintf(fid,'\\[\n {}^{B}\\hat{g}_{I} = %.3f\\times10^{%d}~\\mathrm{mT/A}\n\\]\n', gm, ge);
+    end
+    if hasAiso   % 控制範圍總代表值：σ_tot=總增益(有單位)、iso_tot=σmax/σmin(無因次不標)
+        fprintf(fid,'\\[\n \\sigma_{tot} = %.4f~\\mathrm{mT/A}\n\\]\n', S.sigma_tot);
+        fprintf(fid,'\\[\n \\mathrm{iso}_{tot} = %.4f\n\\]\n', S.iso_tot);
+        if isfield(S,'Np_range')
+            fprintf(fid,'\\noindent\\small $\\sigma_{tot}=\\overline{\\|T\\|_F}$, $\\mathrm{iso}_{tot}=\\overline{\\sigma_{\\max}/\\sigma_{\\min}}$ over %d real nodes in $R\\le150~\\mu$m ball.\n', S.Np_range);
+        end
     end
     fprintf(fid,'\\end{document}\n');
     fclose(fid);

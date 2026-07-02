@@ -59,33 +59,49 @@ cbar.set_label('|B| (T)', fontweight='bold', fontsize=16)
 
 匯出建議：DPI 150、figure ~1180px 寬（PNG < 2000px 才能被 Read 目視）。
 
-### 3D 版（統一 3D 框體）
+### 3D 版（黑色粗體框線：**兩種 sanctioned 變體，依幾何選**）
 
-使用者 2026-07-01 拍板（多輪來回定案）：**main/ 所有 3D 圖框體＝手動畫框邊、box off、daspect、三軸同刻度**。
-canonical 實作 = `…/fix_dir/code/plot/plot_charge_positions_3d.m` 的 `draw_box_edges` local function + 框體區塊。
+使用者 2026-07-01 拍板、2026-07-02 補充：3D 框體**不是只有一種**。**先看三軸幾何再選框法**——選錯會被 X 掉（踩過）。
 
-**source of truth 配方**：
+| 變體 | 何時用 | 框法 | 立方比 | 範例 |
+|---|---|---|---|---|
+| **A. 手動框邊** | **同尺度立方幾何**：x,y,z 都是空間、同單位、可等比（例：磁荷位置示意） | `box off` + 手動 `draw_box_edges`（省最遠角 3 邊） | `daspect([1 1 1])` | `plot_charge_positions_3d.m` |
+| **B. box on** | **異質軸**：z 是跟 x,y 不同的物理量/單位/尺度（例：surf 高度/山丘圖，x,y=µm、z=gain/iso） | 直接 `box on`（MATLAB 標準 3D 框：外框 + 後方三面邊） | `pbaspect([1 1 1])`（**不能 daspect**，會把小範圍的 z 壓扁） | `plot_svd_gain_iso_3d.m`、`plot_upperP2P5_circuit_3d.m` |
+
+**判準一句話**：**能 `daspect([1 1 1])`（三軸同單位同尺度）→ 用 A 手動框邊；不能（z 是別的量）→ 用 B `box on` + `pbaspect`**。
+
+**變體 A 配方**（同尺度立方）：
 ```matlab
-grid off; box off; daspect([1 1 1]);                 % box off（不用 MATLAB 自動框）；daspect（不是 axis equal）保住 limits
-xlim([-bh bh]); ylim([-bh bh]); zlim([-bh bh]);      % 立方體範圍；view/limits 各圖自訂
-view(az,el);
+grid off; box off; daspect([1 1 1]);                 % daspect（不是 axis equal）保住 limits
+xlim([-bh bh]); ylim([-bh bh]); zlim([-bh bh]);
+view(az,el);                                         % 先設 view（draw_box_edges 用 campos）
 set(gca,'FontSize',13,'FontWeight','bold','LineWidth',1.5);
 set(gca,'XTick',-2:1:2,'YTick',-2:1:2,'ZTick',-2:1:2);   % 三軸「同刻度」（z 跟 x/y 一致）
-draw_box_edges(bh, 1.5);                             % ← 手動畫框邊（見下），必須在 view 設好之後（要 campos）
-xlabel('x (mm)','FontWeight','bold'); ylabel('y (mm)','FontWeight','bold'); zlabel('z (mm)','FontWeight','bold');
+draw_box_edges(bh, 1.5);                             % 手動畫框邊（省最遠角 3 邊）
+xlabel('x (mm)','FontWeight','bold'); ...
 ```
-`draw_box_edges`：畫立方體 12 邊黑色 `LineWidth 1.5`，但**省略「離相機最遠那個角」相連的 3 條邊**（那 3 條會從頂部橫穿內部變雜線）→ 剩 9 邊 = 乾淨外框 + 後方框邊，全黑等粗。用 `campos` 找最遠角（故 view 要先設）。
+`draw_box_edges`：立方 12 邊黑 `LineWidth 1.5`，**省略「離相機最遠角」相連 3 邊**（會橫穿內部變雜線）→ 剩 9 邊 = 外框 + 後方框邊，全黑等粗。用 `campos` 找最遠角（故 view 先設）。⚠ 若軸異質（z 範圍遠小於 x,y），`campos` 距離會被大範圍軸蓋掉、選錯角 → **這種就別用 A，改用 B**。
+
+**變體 B 配方**（異質軸 surf/山丘）：
+```matlab
+surf(X,Y,Z,'EdgeColor','none'); shading interp; colormap(jet); caxis([min(Z(:)) max(Z(:))]);
+grid off; box on;                                    % ← 標準 box on（外框 + 後方三面邊，粗體黑）
+xlim(...); ylim(...); zlim([min(Z(:)) max(Z(:))]);
+view(-40,30); pbaspect([1 1 1]);                     % pbaspect 立方 plot box（不用 daspect）
+set(gca,'FontSize',16,'FontWeight','bold','LineWidth',2,'TickLength',[.018 .018]);   % LineWidth 2 = 粗體黑框
+ax=gca; ax.Toolbar.Visible='off';                    % 匯出不帶 axes 工具列
+```
 
 🔴 **踩過的坑（別重犯）**：
-- **不要 `axis equal`**——會重算/撐開 limits；用 **`daspect([1 1 1])`**。
-- **不要 `set(gca,'BoxStyle','full')`**——多畫細內邊，使用者 X 掉。
-- **不要單純 `box on`**——此視角下 MATLAB 前粗後細不均、且會留最遠角的橫穿雜線；使用者要**全邊等粗黑、且移除最遠角那 3 條**→ 只能手動 `draw_box_edges`。
-- **三軸刻度要一致**（z 常被 MATLAB 自動設成 0.5 間距）→ 明設 `ZTick` 跟 x/y 同。
+- **不要 `axis equal`**（撐開 limits）；A 用 `daspect([1 1 1])`、B 用 `pbaspect([1 1 1])`。
+- **不要 `BoxStyle','full'`**（多畫細內邊）。
+- **`box on` vs 手動框邊不可混用**：A 幾何用 `box on` 在 el 負視角會前粗後細/最遠角橫穿雜線（故 A 才要手動）；**但 B（異質軸 surf）就是要 `box on`**——別硬套 A 的手動框邊（正規化 campos 也易選錯邊、被 X 掉）。
+- A 的**三軸刻度要一致**（z 常被設 0.5 間距）→ 明設 `ZTick` 跟 x/y 同；B 的 z 是別的量、各軸自然刻度即可。
 
-沿用①：`grid off`、單位 `()`、`x/y/z (mm)` 粗體。
+沿用①：`grid off`、單位 `()`、軸標粗體。
 
-範例圖：`…/fix_dir/figures/charge_positions_P1P2_3d.png`、`…/no_fix_dir/figures/charge_positions_P1P2_3d.png`
-（腳本各自 `code/plot/plot_charge_positions_3d.m`，view −30/−20；no_fix 版另標相對 fix 的總偏移 Δ）。
+範例圖：A＝`…/fix_dir/figures/charge_positions_P1P2_3d.png`（view −30/−20）；
+B＝`…/fix_dir/figures/svd_gain_3d.png`・`svd_iso_3d.png`（surf 山丘，view −40/30）、`…/Hall_sensor_base_fix_dir/figures/circuit_3d_*.png`。
 
 ---
 
