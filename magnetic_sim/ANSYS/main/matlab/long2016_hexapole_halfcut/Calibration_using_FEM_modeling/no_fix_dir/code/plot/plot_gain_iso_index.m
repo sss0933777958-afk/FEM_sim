@@ -55,10 +55,10 @@ function render_hist(y, xlab, sunit, vline, out)
 % 平滑密度填充圖（連續、非離散長條）：細箱 histcounts + gaussian 平滑 → area 實心填充。
 %   左上黑框註記、Count 縱軸、vline 紅虛線（C→mean、kappa→1）。
     n = numel(y);  m = mean(y);  s = std(y);
-    NB = 200;                                                       % 細箱 → 平滑成連續密度包絡（避免離散長條）
+    NB = 500;                                                       % 高解析取樣（曲線用 500 點畫 → 平滑無折角）
     [cnt, edges] = histcounts(y, NB);
     ctr   = edges(1:end-1) + diff(edges)/2;
-    cnt_s = smoothdata(cnt, 'gaussian', max(9, round(NB/10)));      % gaussian 平滑：去 bin 噪聲、成連續線
+    cnt_s = smoothdata(cnt, 'gaussian', round(NB/6));               % 強高斯平滑：徹底去 bin 噪聲、看不出離散
     fig = figure('Color','w','Position',[100 100 760 560]);
     ax  = axes(fig);
     area(ax, ctr, cnt_s, 'FaceColor',[0.20 0.40 0.70], 'EdgeColor','none'); hold(ax,'on');   % 實心、連續
