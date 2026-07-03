@@ -52,12 +52,16 @@ function plot_gain_iso_index()
 end
 
 function render_hist(y, xlab, sunit, vline, out)
-% 直方圖（風格比照 plot_charge_field_err_hist）：鋼藍+白邊細長條、左上黑框註記、Count 縱軸、vline 紅虛線。
+% 平滑密度填充圖（連續、非離散長條）：細箱 histcounts + gaussian 平滑 → area 實心填充。
+%   左上黑框註記、Count 縱軸、vline 紅虛線（C→mean、kappa→1）。
     n = numel(y);  m = mean(y);  s = std(y);
-    NB = 300;                                                       % bin 數（爆密；配 EdgeColor none → 長條併成實心、看不出格子）
+    NB = 200;                                                       % 細箱 → 平滑成連續密度包絡（避免離散長條）
+    [cnt, edges] = histcounts(y, NB);
+    ctr   = edges(1:end-1) + diff(edges)/2;
+    cnt_s = smoothdata(cnt, 'gaussian', max(9, round(NB/10)));      % gaussian 平滑：去 bin 噪聲、成連續線
     fig = figure('Color','w','Position',[100 100 760 560]);
     ax  = axes(fig);
-    histogram(ax, y, NB, 'FaceColor',[0.20 0.40 0.70], 'EdgeColor','none');
+    area(ax, ctr, cnt_s, 'FaceColor',[0.20 0.40 0.70], 'EdgeColor','none'); hold(ax,'on');   % 實心、連續
     xl = xlim(ax);                                                  % 若 vline 貼/超右界 → 延伸右界讓虛線落在框內
     if vline >= xl(2) - 0.005*(xl(2)-xl(1))
         xlim(ax, [xl(1), vline + 0.03*(xl(2)-xl(1))]);
