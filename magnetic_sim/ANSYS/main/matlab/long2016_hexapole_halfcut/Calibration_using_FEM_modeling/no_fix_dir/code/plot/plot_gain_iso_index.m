@@ -36,10 +36,10 @@ function plot_gain_iso_index()
 
     fixfig = fullfile(calroot,'fix_dir','figures');
     nofig  = fullfile(nofix,'figures');
-    render_index(gf,  'Gain (mT/A)', '(mT/A)^2', fullfile(fixfig,'gain_index.png'));
-    render_index(isf, 'iso',         '',         fullfile(fixfig,'iso_index.png'));
-    render_index(gb,  'Gain (mT/A)', '(mT/A)^2', fullfile(nofig, 'gain_index.png'));
-    render_index(isb, 'iso',         '',         fullfile(nofig, 'iso_index.png'));
+    render_index(gf,  'Gain (mT/A)', '(mT/A)^2', 'mT/A', fullfile(fixfig,'gain_index.png'));
+    render_index(isf, 'iso',         '',         '',     fullfile(fixfig,'iso_index.png'));
+    render_index(gb,  'Gain (mT/A)', '(mT/A)^2', 'mT/A', fullfile(nofig, 'gain_index.png'));
+    render_index(isb, 'iso',         '',         '',     fullfile(nofig, 'iso_index.png'));
 
     fprintf('\n=== 逐節點 gain/iso（R≤150µm 球 %d 節點）===\n', npts);
     fprintf('Var  gain: fix=%.5g  bias=%.5g (mT/A)^2 | iso: fix=%.5g  bias=%.5g\n', ...
@@ -48,8 +48,8 @@ function plot_gain_iso_index()
             mean(gf), mean(gb), mean(isf), mean(isb));
 end
 
-function render_index(y, ylab, vunit, out)
-    v = var(y);  m = mean(y);  n = numel(y);
+function render_index(y, ylab, vunit, sunit, out)
+    v = var(y);  s = std(y);  m = mean(y);  n = numel(y);
     fig = figure('Color','w','Position',[80 80 1000 620]); hold on;
     plot(1:n, y, '.', 'MarkerSize', 4, 'Color', [0.10 0.35 0.75]);
     yline(m, '--', 'Color', [0.85 0.20 0.20], 'LineWidth', 2);
@@ -58,9 +58,11 @@ function render_index(y, ylab, vunit, out)
     set(gca,'FontSize',15,'FontWeight','bold','LineWidth',2,'TickLength',[.012 .012]);
     xlabel('node index','FontWeight','bold');
     ylabel(ylab,'FontWeight','bold');
-    if isempty(vunit), vtxt = sprintf('Var = %.4g', v);
-    else,              vtxt = sprintf('Var = %.4g %s', v, vunit); end
-    txt = sprintf('%s\nmean = %.4g', vtxt, m);
+    if isempty(vunit)
+        txt = sprintf('Var = %.4g\nstd = %.4g\nmean = %.4g', v, s, m);
+    else
+        txt = sprintf('Var = %.4g %s\nstd = %.4g %s\nmean = %.4g', v, vunit, s, sunit, m);
+    end
     text(0.030, 0.94, txt, 'Units','normalized', 'FontSize',15,'FontWeight','bold', ...
          'VerticalAlignment','top','BackgroundColor',[1 1 1],'EdgeColor',[0 0 0],'Margin',5);
     ax = gca; ax.Toolbar.Visible = 'off';
