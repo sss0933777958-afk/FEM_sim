@@ -2,12 +2,12 @@
 
 **用途**：18-param bias 點電荷校正主程式的所有 MATLAB 碼，依角色分三組。
 **內容**：
-- `main/` — 主程式 `main.m`（驅動：load → select → fit_bias → gauge → error → 存 `.mat` + console；**PDF 由 `function/emit_model_results.m`**）。
-- `main_function/` — **main.m 掛勾的 pipeline 函式**（`load_coils_actuator`、`select_ball`、`fit_bias`、`bias_resid`、`build_A`、`make_Pc`、`gauge_KI`、`region_field_err`、`calc_range_metrics`）。
-- `function/` — 非 main 的輔助（`emit_model_results`、`write_KbarI_tex`）。
+- `main/` — 主程式 `main.m`（驅動：load → select → fit_bias → gauge → error → 存 `.mat` + console；**PDF 由 `main_function/emit_model_results.m`**）。
+- `main_function/` — **main 校正流程函式**：pipeline（`load_coils_actuator`、`select_ball`、`fit_bias`、`bias_resid`、`build_A`、`make_Pc`、`gauge_KI`、`region_field_err`、`calc_range_metrics`）+ 輸出階段 `emit_model_results`（獨立跑、讀 `.mat` 出 PDF）。
+- `function/` — 非 main 的輔助（`write_KbarI_tex`）。
 - `plot/` — 該主程式繪圖。
 
-**資料來源 / 流向**：`main.m` 讀 `ANSYS_data/.dat`（經 `ansys_path`）→ `main_function/` 算 → 存 `../data/*.mat`；`function/emit_model_results.m` 讀 `.mat` 出 `../results/*.pdf`；`plot/` 畫圖。
+**資料來源 / 流向**：`main.m` 讀 `ANSYS_data/.dat`（經 `ansys_path`）→ `main_function/` 算 → 存 `../data/*.mat`；`main_function/emit_model_results.m` 讀 `.mat` 出 `../results/*.pdf`；`plot/` 畫圖。
 
 **命名 / 慣例**：`code/{main,function,plot}/`；數學在 `function/`、driver 在 `main/`。
 

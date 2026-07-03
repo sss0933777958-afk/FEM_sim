@@ -25,7 +25,7 @@
 %  DATA   : variant 'gap200um_mueq'（GRADED mesh + support-base μ_eff），coil1..6（all-source）。
 %  Sign   : all-source（literal flip-sink：只翻下極 sink P1/P3/P6；上極 source 不翻）→ D^v 對角全正。
 %  Order  : 所有矩陣 paper P1..P6（激發欄重排 APDL coil1..6 → P1..P6，對角=自激發）。
-%  Output : .mat -> 本包 data/（field 名不變）；PDF（V/D̄/^Bĝ_V/Ĥ_V）由 code/function/emit_model_results.m 產生。
+%  Output : .mat -> 本包 data/（field 名不變）；PDF（V/D̄/^Bĝ_V/Ĥ_V）由 code/main_function/emit_model_results.m 產生。
 %  Current: I = 1 A = FEM excitation (per fit-current-matches-sim rule)。
 % =========================================================================
 
@@ -137,7 +137,7 @@ save(mat_out, 'Dmat','D_bar','g_V','Dv_p','Vmat_p','exc_sign','ell_hat','Pc', ..
               'U_hv','S_hv','W_hv','kappa');   % [ADDED] Ĥ_V 的 SVD（Σ=S_hv、U/W、條件數 κ）
 fprintf('已存 %s\n', mat_out);
 
-%% ---- PDF 輸出已分離到 code/function/emit_model_results.m（功能分開：main 只算+存 .mat + console）----
+%% ---- PDF 輸出已分離到 code/main_function/emit_model_results.m（功能分開：main 只算+存 .mat + console）----
 
 %% ---- local：在軸 single-parameter profiled field cost（Dv profile 掉）------
 function J = onaxis_cost(l, P, Bstack, Pc)

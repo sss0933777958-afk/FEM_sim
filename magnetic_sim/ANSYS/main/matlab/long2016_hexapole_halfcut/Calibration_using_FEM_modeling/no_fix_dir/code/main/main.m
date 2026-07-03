@@ -9,7 +9,7 @@
 %  MODE switch:
 %    'single' -> one fit at R = R_single_um
 %    'sweep'  -> fits at R = R_start_um : R_step_um : R_end_um
-%  Output: per-R fit .mat to data\ + console summary (PDF via code\function\emit_model_results.m).
+%  Output: per-R fit .mat to data\ + console summary (PDF via code\main_function\emit_model_results.m).
 %  All model math lives in code\main_function\ ; this file is just the driver.
 %
 %  Pipeline (top-to-bottom call order):
@@ -18,7 +18,7 @@
 %    3) fit_bias            -- lsqnonlin fit {ell, e_hat(17)}              (fit)
 %    4) gauge_KI            -- profile g_j, gauge -> ^Bg_I, K_bar          (gauge)
 %    5) region_field_err    -- relative RMS field error over region        (accuracy)
-%    6) save fit .mat       -- console summary; PDF via function/emit_model_results.m
+%    6) save fit .mat       -- console summary; PDF via main_function/emit_model_results.m
 
 clear; clc;
 
@@ -69,7 +69,7 @@ for R_um = R_um_list
     [K_bar, ghat_I_B] = gauge_KI(ell, Pc, P, Bstack, D.F);          % K_bar、^Bg_I=ghat_I_B [mT/A]（ell/P 均公尺）
     ell               = ell * 1e6;                                 % m → µm（此後 write/print 用 µm）
     errpct            = region_field_err(Bstack, J);
-    % PDF 輸出已分離到 code/function/emit_model_results.m（功能分開：main 只算+存 .mat + console）
+    % PDF 輸出已分離到 code/main_function/emit_model_results.m（功能分開：main 只算+存 .mat + console）
     gB = ghat_I_B;  Khat = K_bar;                                   % alias（.mat field 名沿用 gB/Khat）
     % [ADDED] 控制範圍（R≤R_um 球）總代表值：σ_tot=mean ‖T‖_F、iso_tot=mean σ_max/σ_min
     %   P=actuator 節點、Pc=actuator bias 電荷（同框直接配對，不需 R_act）；gain/iso 框無關。
@@ -82,4 +82,4 @@ for R_um = R_um_list
     fprintf('R=%3d um | npts=%6d | ell=%.2f µm | ^Bg_I=%.4e mT/A | err=%.2f%% | sigma_tot=%.4f mT/A | iso_tot=%.4f (Np=%d, sigma_min=%.4f, iso_worst=%.4f)\n', ...
             R_um, npts, ell, ghat_I_B, errpct, sigma_tot, iso_tot, Np_range, sigma_min, iso_worst);
 end
-fprintf('done (%s mode, variant=%s): %d 個 .mat 存到 %s（PDF 由 code/function/emit_model_results.m 產生）\n', MODE, VARIANT, numel(R_um_list), fullfile(TREE,'data'));
+fprintf('done (%s mode, variant=%s): %d 個 .mat 存到 %s（PDF 由 code/main_function/emit_model_results.m 產生）\n', MODE, VARIANT, numel(R_um_list), fullfile(TREE,'data'));
