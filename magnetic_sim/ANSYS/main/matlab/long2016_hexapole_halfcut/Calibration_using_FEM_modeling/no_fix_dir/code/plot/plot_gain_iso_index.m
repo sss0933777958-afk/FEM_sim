@@ -1,7 +1,10 @@
 function plot_gain_iso_index()
-% PLOT_GAIN_ISO_INDEX  逐節點 gain / iso vs node index（fix 與 bias 各兩張，共 4 張）。
-%   R≤150µm 球內每個真實 FEM 節點 p 各自算 gain(p)=‖T‖_F、iso(p)=σ_max/σ_min，T=S(p)·Ĥ_I。
-%   橫軸=node index、縱軸=gain / iso；圖上標註該量的**變異數 Var**（+ mean 參考線/值）。
+% PLOT_GAIN_ISO_INDEX  逐節點性能量 C / kappa 的**直方圖**（fix 與 bias 各兩張，共 4 張）。
+%   R≤150µm 球內每個真實 FEM 節點 p 各自算致動增益矩陣 ^BG_I(p)=S(p)·Ĥ_I 的 SVD（σ₁≥σ₂≥σ₃），
+%   依 singular_value.pdf 定義：
+%     C(p)     = ∏σ_k = σ₁σ₂σ₃   （flux-generating ellipsoid 體積，(mT/A)³）
+%     kappa(p) = σ_min/σ_max = σ₃/σ₁   （isotropy，≤1、→1 等向）
+%   直方圖（風格同 err-hist 圖）：橫軸=C / kappa 值、縱軸=Count、右上黑框標 N/mean/std（NB=120 細長條、鋼藍白邊）。
 %   輸出：fix_dir/figures/{gain_index,iso_index}.png、no_fix_dir/figures/{gain_index,iso_index}.png。
 %   ★ 兩模型都在 actuator 框同一組節點算（R_act·dhat=Pc_base）：fix 電荷=Pc_base（在軸）、bias=make_Pc(ê)（離軸）。
 
@@ -23,56 +26,55 @@ function plot_gain_iso_index()
 
     Sf = load(fullfile(calroot,'fix_dir','data','fit_fixl_R150um_gap200um_mueq.mat'), 'ell','gB','Khat');
     Sb = load(fullfile(nofix,        'data','fit_bias_R150um_gap200um_mueq.mat'), 'ell','gB','Khat','e_hat');
-    ellf = Sf.ell*1e-6;  Hf = Sf.gB*Sf.Khat;  Cf = Pc_base;
-    ellb = Sb.ell*1e-6;  Hb = Sb.gB*Sb.Khat;  Cb = make_Pc(Sb.e_hat, Pc_base);
+    ellf = Sf.ell*1e-6;  Hf = Sf.gB*Sf.Khat;  Pcf = Pc_base;                     % fix：在軸電荷
+    ellb = Sb.ell*1e-6;  Hb = Sb.gB*Sb.Khat;  Pcb = make_Pc(Sb.e_hat, Pc_base);  % bias：離軸電荷
 
-    gf = zeros(npts,1); isf = zeros(npts,1);  gb = zeros(npts,1); isb = zeros(npts,1);
+    Cvf = zeros(npts,1); kapf = zeros(npts,1);  Cvb = zeros(npts,1); kapb = zeros(npts,1);
     for i = 1:npts
         p = P(i,:).';
-        svf = svd(((p/ellf - Cf) ./ (vecnorm(p/ellf - Cf).^3)) * Hf);
-        svb = svd(((p/ellb - Cb) ./ (vecnorm(p/ellb - Cb).^3)) * Hb);
-        gf(i)=norm(svf); isf(i)=svf(1)/svf(3);
-        gb(i)=norm(svb); isb(i)=svb(1)/svb(3);
+        svf = svd(((p/ellf - Pcf) ./ (vecnorm(p/ellf - Pcf).^3)) * Hf);
+        svb = svd(((p/ellb - Pcb) ./ (vecnorm(p/ellb - Pcb).^3)) * Hb);
+        Cvf(i)=prod(svf); kapf(i)=svf(3)/svf(1);   % C=∏σ_k [(mT/A)³]、kappa=σ₃/σ₁（singular_value.pdf）
+        Cvb(i)=prod(svb); kapb(i)=svb(3)/svb(1);
     end
 
     fixfig = fullfile(calroot,'fix_dir','figures');
     nofig  = fullfile(nofix,'figures');
-    % 四張各自 auto y 範圍，但 y 軸一律固定切 6 段（7 刻度）→ gain 與 iso 刻度區間數一致
-    render_index(gf,  'Gain (mT/A)', '(mT/A)^2', 'mT/A', fullfile(fixfig,'gain_index.png'));
-    render_index(isf, 'iso',         '',         '',     fullfile(fixfig,'iso_index.png'));
-    render_index(gb,  'Gain (mT/A)', '(mT/A)^2', 'mT/A', fullfile(nofig, 'gain_index.png'));
-    render_index(isb, 'iso',         '',         '',     fullfile(nofig, 'iso_index.png'));
+    Clab = '$\mathcal{C}\;[(\mathrm{mT/A})^{3}]$';
+    render_hist(Cvf,  Clab,       '(mT/A)^3', fullfile(fixfig,'gain_index.png'));
+    render_hist(kapf, '$\kappa$', '',         fullfile(fixfig,'iso_index.png'));
+    render_hist(Cvb,  Clab,       '(mT/A)^3', fullfile(nofig, 'gain_index.png'));
+    render_hist(kapb, '$\kappa$', '',         fullfile(nofig, 'iso_index.png'));
 
-    fprintf('\n=== 逐節點 gain/iso（R≤150µm 球 %d 節點）===\n', npts);
-    fprintf('Var  gain: fix=%.5g  bias=%.5g (mT/A)^2 | iso: fix=%.5g  bias=%.5g\n', ...
-            var(gf), var(gb), var(isf), var(isb));
-    fprintf('Mean gain: fix=%.4f  bias=%.4f mT/A     | iso: fix=%.4f  bias=%.4f\n', ...
-            mean(gf), mean(gb), mean(isf), mean(isb));
+    fprintf('\n=== 逐節點 C / kappa（R≤150µm 球 %d 節點）===\n', npts);
+    fprintf('mean C     : fix=%.4g  bias=%.4g (mT/A)^3\n', mean(Cvf), mean(Cvb));
+    fprintf('mean kappa : fix=%.4f  bias=%.4f\n',           mean(kapf), mean(kapb));
 end
 
-function render_index(y, ylab, vunit, sunit, out)
-    v = var(y);  s = std(y);  m = mean(y);  n = numel(y);
-    fig = figure('Color','w','Position',[80 80 1000 620]); hold on;
-    plot(1:n, y, '.', 'MarkerSize', 4, 'Color', [0.10 0.35 0.75]);
-    yline(m, '--', 'Color', [0.85 0.20 0.20], 'LineWidth', 2);
-    grid off; box on;
-    xlim([1 n]);
-    yl = ylim;                                              % 各圖自己的 auto y 範圍
-    yt = linspace(yl(1), yl(2), 7);                         % 固定 6 段（7 刻度）→ 四張刻度區間數一致
-    set(gca,'YTick', yt, 'YTickLabel', arrayfun(@(v) sprintf('%.4g',v), yt, 'UniformOutput', false));
-    set(gca,'FontSize',15,'FontWeight','bold','LineWidth',2,'TickLength',[.012 .012]);
-    xlabel('node index','FontWeight','bold');
-    ylabel(ylab,'FontWeight','bold');
-    if isempty(vunit)
-        txt = sprintf('Var = %.4g\nstd = %.4g\nmean = %.4g', v, s, m);
+function render_hist(y, xlab, sunit, out)
+% 直方圖（風格比照 plot_charge_field_err_hist）：鋼藍+白邊細長條、右上黑框註記、Count 縱軸、無 mean 線。
+    n = numel(y);  m = mean(y);  s = std(y);
+    NB = 120;                                                       % bin 數（細；參考 err-hist 圖 ~160 格）
+    fig = figure('Color','w','Position',[100 100 760 560]);
+    ax  = axes(fig);
+    histogram(ax, y, NB, 'FaceColor',[0.20 0.40 0.70], 'EdgeColor','w');
+    set(ax,'FontSize',16,'FontWeight','bold','LineWidth',2,'TickLength',[.018 .018]);
+    box(ax,'on'); grid(ax,'off');
+    xt = get(ax,'XTick'); set(ax,'XTick',xt(1:2:end));
+    yt = get(ax,'YTick'); set(ax,'YTick',yt(1:2:end));
+    xint = 'tex'; if startsWith(strtrim(xlab),'$'), xint = 'latex'; end
+    xlabel(ax, xlab, 'FontWeight','bold','Interpreter',xint);
+    ylabel(ax,'Count','FontWeight','bold');
+    if isempty(sunit)
+        txt = sprintf('N = %d\nmean = %.4g\nstd = %.4g', n, m, s);
     else
-        txt = sprintf('Var = %.4g %s\nstd = %.4g %s\nmean = %.4g', v, vunit, s, sunit, m);
+        txt = sprintf('N = %d\nmean = %.4g %s\nstd = %.4g %s', n, m, sunit, s, sunit);
     end
-    text(0.030, 0.94, txt, 'Units','normalized', 'FontSize',15,'FontWeight','bold', ...
-         'VerticalAlignment','top','BackgroundColor',[1 1 1],'EdgeColor',[0 0 0],'Margin',5);
-    ax = gca; ax.Toolbar.Visible = 'off';
-    hold off;
-    exportgraphics(fig, out, 'Resolution', 150);
+    text(ax, 0.97, 0.95, txt, 'Units','normalized', 'HorizontalAlignment','right', ...
+         'VerticalAlignment','top', 'FontSize',14, 'FontWeight','bold', ...
+         'BackgroundColor','w', 'EdgeColor','k', 'LineWidth',1.5, 'Margin',5);
+    ax.Toolbar.Visible = 'off';
+    exportgraphics(fig, out, 'Resolution',600);
     fprintf('saved %s\n', out);
     close(fig);
 end

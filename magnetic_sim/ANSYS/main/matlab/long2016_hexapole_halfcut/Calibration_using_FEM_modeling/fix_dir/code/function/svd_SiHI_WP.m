@@ -17,8 +17,8 @@
 %     ∴ S_i(WP) = −Pc_base（3×6），且與 ℓ̂ 無關（電荷距中心恆 = ℓ̂，ℓ̂ 在 kernel 對消）。
 %
 %  SVD 幾何讀法（兩指標）：T 把單位電流球映成 3D 場橢球，半軸 = σ1..σ3、方向 = U(:,1..3)。
-%     形狀大小（增益）：σ1（最大）、(σ1σ2σ3)^{1/3}（幾何平均）；越大 = 致動越強。
-%     均勻度（球度）  ：iso = σ3/σ1 ∈(0,1]（=1 等向）、κ = σ1/σ3；越接近 1 = 越接近正球。
+%     體積（增益）：𝒞 = ∏σ_k = σ₁σ₂σ₃（flux ellipsoid 體積）、幾何平均 = 𝒞^(1/3)；越大 = 致動越強。
+%     均勻度（球度）：κ = σ_min/σ_max = σ₃/σ₁ ∈(0,1]（→1 越接近正球）。（singular_value.pdf）
 %     Σ、Wᵀ 框無關；U 為 actuator 框（= R_act·U_measure）。
 %
 %  輸入：fix_dir/data/fit_fixl_R150um_gap200um_mueq.mat（gB=^Bĝ_I、Khat=K̄；ell 中心點不用）。
@@ -68,10 +68,10 @@ sv   = diag(Sig);                % 3 個奇異值 [mT/A]
 recon = norm(U*Sig*W.' - T, 'fro') / norm(T,'fro');   % 重建檢查
 
 %% ---- 兩指標：形狀大小（增益）+ 均勻度（球度）------------------------------
-gain_max = sv(1);                        % 最大增益（橢球最長半軸）
-gain_gm  = (sv(1)*sv(2)*sv(3))^(1/3);    % 幾何平均增益（橢球「體積」半徑）
-iso      = sv(3) / sv(1);                % 均勻度 ∈(0,1]（=1 完美等向/正球）
-kappa    = sv(1) / sv(3);                % 條件數 σ1/σ3（=1 完美等向）
+Cvol     = prod(sv);                     % 𝒞 = ∏σ_k = σ₁σ₂σ₃（flux ellipsoid 體積，(mT/A)³）
+kappa    = sv(3) / sv(1);                % κ = σ_min/σ_max = σ₃/σ₁ ∈(0,1]（=1 完美等向/正球）
+gain_max = sv(1);                        % 最大增益（橢球最長半軸；供參考）
+gain_gm  = Cvol^(1/3);                   % 幾何平均增益 = 𝒞^(1/3)
 
 %% ---- 參考：P1 激發在 WP 中心的場（= T 第 1 欄，actuator 框）----------------
 F    = [1;0;0;0;0;0];            % P1 激發電流向量（paper 序，1 A）
@@ -97,14 +97,14 @@ fprintf('\nWᵀ（6×6，電流端主軸；列 = 主組合 1..6，欄 = 電流 P
 for r = 1:6, fprintf('  % .6f % .6f % .6f % .6f % .6f % .6f\n', WT(r,:)); end
 
 fprintf('\nσ = [% .4e % .4e % .4e] mT/A\n', sv);
-fprintf('指標｜形狀大小(增益)：σ1=%.4f、幾何平均=(σ1σ2σ3)^{1/3}=%.4f mT/A\n', gain_max, gain_gm);
-fprintf('指標｜均勻度(球度)  ：iso=σ3/σ1=%.4f（→1 越圓）、κ=σ1/σ3=%.4f\n', iso, kappa);
+fprintf('指標｜體積 C=∏σ_k=σ1σ2σ3=%.4g (mT/A)^3（幾何平均=C^(1/3)=%.4f、σ1=%.4f mT/A）\n', Cvol, gain_gm, gain_max);
+fprintf('指標｜均勻度 κ=σ_min/σ_max=σ3/σ1=%.4f（→1 越圓）\n', kappa);
 fprintf('參考：P1 激發 (F=e1) 在 WP 中心的場 b_P1 = [% .4e % .4e % .4e] mT（actuator）\n', b_P1);
 fprintf('=====================================================================\n');
 
 %% ---- 存 .mat ---------------------------------------------------------------
 out_mat = fullfile(data_dir, sprintf('svd_SiHI_WP_%s.mat', VARIANT));
-save(out_mat, 'T','U','Sig','W','WT','sv','kappa','iso','gain_max','gain_gm', ...
+save(out_mat, 'T','U','Sig','W','WT','sv','Cvol','kappa','gain_max','gain_gm', ...
               'recon','chk_center','chk_rot','p_wp','Pc_base','R_act','dhat', ...
               'Si','T_meas','Hhat_I','ell_m','F','b_P1','VARIANT');
 fprintf('已存 %s\n', out_mat);

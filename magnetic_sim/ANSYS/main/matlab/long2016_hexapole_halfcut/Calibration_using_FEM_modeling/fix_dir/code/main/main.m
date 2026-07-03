@@ -71,13 +71,13 @@ for R_um = R_um_list
     % PDF 輸出已分離到 code/main_function/emit_model_results.m（功能分開：main 只算+存 .mat + console）
     % 存 fit_KI_fixl 解成 .mat（供 Hall_sensor_base_fix_dir 載入 ℓ̂；ell 為 [µm]）
     gB = ghat_I_B;  Khat = K_bar;   % alias：維持 .mat field 名 'gB'/'Khat' 與下游 loader 相容
-    % [ADDED] 控制範圍（R≤R_um 球）總代表值：σ_tot=mean gain(‖T‖_F)、iso_tot=mean σ_max/σ_min（球內真實節點）
-    rm = calc_range_metrics(coil(1).p, gB*Khat, ell*1e-6, Pc_base);  % [MODIFIED] coil.p 與電荷 Pc_base 同在 actuator 框（gain/iso 框無關）
-    sigma_tot = rm.sigma_tot;  iso_tot = rm.iso_tot;  sigma_min = rm.sigma_min;  iso_worst = rm.iso_worst;  Np_range = rm.Np;
-    save(fullfile(cal_dir, sprintf('fit_fixl_R%03dum%s.mat', R_um, vtag)), ...     % [MODIFIED] vtag + σ_tot/iso_tot
+    % [ADDED] 控制範圍（R≤R_um 球）性能量（singular_value.pdf）：C_mean=mean ∏σ_k、kappa_mean=mean σ₃/σ₁（球內真實節點）
+    rm = calc_range_metrics(coil(1).p, gB*Khat, ell*1e-6, Pc_base);  % [MODIFIED] coil.p 與電荷 Pc_base 同在 actuator 框（C/kappa 框無關）
+    C_mean = rm.C_mean;  kappa_mean = rm.kappa_mean;  C_min = rm.C_min;  kappa_worst = rm.kappa_worst;  Np_range = rm.Np;
+    save(fullfile(cal_dir, sprintf('fit_fixl_R%03dum%s.mat', R_um, vtag)), ...     % [MODIFIED] vtag + C_mean/kappa_mean
          'ell','gB','Khat','J','errpct','R_um','I_actual','SHAPE','VARIANT', ...
-         'sigma_tot','iso_tot','sigma_min','iso_worst','Np_range');
-    fprintf('R=%3d um | nmin=%6d | ell=%.2f µm | ^Bg_I=%.4e mT/A | err=%.2f%% | sigma_tot=%.4f mT/A | iso_tot=%.4f (Np=%d, sigma_min=%.4f, iso_worst=%.4f)\n', ...
-            R_um, nmin, ell, ghat_I_B, errpct, sigma_tot, iso_tot, Np_range, sigma_min, iso_worst);
+         'C_mean','kappa_mean','C_min','kappa_worst','Np_range');
+    fprintf('R=%3d um | nmin=%6d | ell=%.2f µm | ^Bg_I=%.4e mT/A | err=%.2f%% | C_mean=%.4g (mT/A)^3 | kappa_mean=%.4f (Np=%d, C_min=%.4g, kappa_worst=%.4f)\n', ...
+            R_um, nmin, ell, ghat_I_B, errpct, C_mean, kappa_mean, Np_range, C_min, kappa_worst);
 end
 fprintf('done (%s mode, variant=%s): %d 個 .mat 存到 %s（PDF 由 code/main_function/emit_model_results.m 產生）\n', MODE, VARIANT, numel(R_um_list), cal_dir);

@@ -33,19 +33,19 @@ function plot_svd_gain_iso_3d()
     rr_um = 0:3:150;   thd = 0:5:360;                               % l_bar[µm]、θ[deg]
     [RR, TH] = meshgrid(rr_um, thd*pi/180);                        % size = [nth, nr]
     X = RR .* cos(TH);   Y = RR .* sin(TH);                        % µm（Cartesian 渲染）
-    gain = zeros(size(RR));   iso = zeros(size(RR));
+    Cvol = zeros(size(RR));   kap = zeros(size(RR));
     for a = 1:numel(RR)
         r = RR(a)*1e-6;
         p  = r * [cos(TH(a)); sin(TH(a)); 0];                      % z=0 平面物理點 [m]（measure）
         Dk = p/ell_m - dhat_bias;                                  % 3×6（bias 電荷）
         sv = svd((Dk ./ (vecnorm(Dk).^3)) * Hhat_I);              % 3 個奇異值 [mT/A]
-        gain(a) = norm(sv);   iso(a) = sv(1)/sv(3);
+        Cvol(a) = prod(sv);   kap(a) = sv(3)/sv(1);   % 𝒞=∏σ_k、κ=σ3/σ1（singular_value.pdf）
     end
-    fprintf('bias 中心 r=0：gain=%.3f mT/A、iso=%.4f\n', gain(1,1), iso(1,1));
+    fprintf('bias 中心 r=0：C=%.4g (mT/A)^3、kappa=%.4f\n', Cvol(1,1), kap(1,1));
 
-    %% ---- 兩張單一山丘 surf（gain z 標籤 Gain；iso 翻色階）------------------
-    render_hill(X, Y, gain, 'Gain (mT/A)', fullfile(figdir,'svd_gain_3d.png'), false);
-    render_hill(X, Y, iso,  'iso',       fullfile(figdir,'svd_iso_3d.png'),  true);     % iso 翻色階
+    %% ---- 兩張單一山丘 surf（𝒞=∏σ、κ=σ3/σ1）------------------
+    render_hill(X, Y, Cvol, '$\mathcal{C}\;[(\mathrm{mT/A})^{3}]$', fullfile(figdir,'svd_gain_3d.png'), false);
+    render_hill(X, Y, kap,  '$\kappa$',                            fullfile(figdir,'svd_iso_3d.png'),  true);   % 翻色階
 end
 
 function render_hill(X, Y, Z, zlab, outpng, flipcmap)
@@ -68,11 +68,12 @@ function render_hill(X, Y, Z, zlab, outpng, flipcmap)
     set(gca,'ZTick', zt, 'ZTickLabel', arrayfun(@(v) sprintf('%.4g',v), zt, 'UniformOutput',false));
     xlabel('x_m (\mum)','FontWeight','bold');
     ylabel('y_m (\mum)','FontWeight','bold');
-    zlabel(zlab,'FontWeight','bold');
+    zint = 'tex'; if startsWith(strtrim(zlab),'$'), zint = 'latex'; end   % 𝒞/κ 用 latex
+    zlabel(zlab,'FontWeight','bold','Interpreter',zint);
 
     cb = colorbar; cb.FontSize = 16; cb.FontWeight = 'bold';
     cb.Ticks = cb.Ticks(1:2:end);
-    cb.Label.String = zlab; cb.Label.FontWeight = 'bold'; cb.Label.FontSize = 16;
+    cb.Label.String = zlab; cb.Label.FontWeight = 'bold'; cb.Label.FontSize = 16; cb.Label.Interpreter = zint;
 
     ax = gca; ax.Toolbar.Visible = 'off';
     exportgraphics(fig, outpng, 'Resolution', 150);

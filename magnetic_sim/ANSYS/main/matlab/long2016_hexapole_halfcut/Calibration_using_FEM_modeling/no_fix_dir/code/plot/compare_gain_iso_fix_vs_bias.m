@@ -1,9 +1,9 @@
 function compare_gain_iso_fix_vs_bias()
-% COMPARE_GAIN_ISO_FIX_VS_BIAS  bias 相對 fix 的逐點 gain/iso RMS 相對誤差（R≤150µm 球）。
+% COMPARE_GAIN_ISO_FIX_VS_BIAS  bias 相對 fix 的逐點 C/kappa RMS 相對誤差（R≤150µm 球）。
 %   在 R≤150µm 球內每個真實 FEM 節點 p，各自算 fix（無 bias）與 bias 模型的
-%     gain(p) = ‖T‖_F = √Σσ²、iso(p) = σ_max/σ_min，T=S(p)·Ĥ_I。
+%     C(p) = ∏σ_k = σ₁σ₂σ₃、kappa(p) = σ_min/σ_max = σ₃/σ₁，^BG_I(p)=S(p)·Ĥ_I（singular_value.pdf）。
 %   回報 RMS 相對誤差（參考=沒 bias / fix）：
-%     relRMS_X = sqrt( Σ_i (X_bias,i − X_fix,i)² / Σ_i X_fix,i² ),  X∈{gain, iso}.
+%     relRMS_X = sqrt( Σ_i (X_bias,i − X_fix,i)² / Σ_i X_fix,i² ),  X∈{C, kappa}.
 %   ★ 兩模型都在 **actuator 框**同一組節點上算：R_act·dhat = Pc_base（load_coils_actuator 已 assert）
 %     → fix 電荷在 actuator 框 = Pc_base（在軸）、bias = Pc=make_Pc(ê)（離軸）；只差 (ℓ̂, Ĥ, 電荷位置)。
 %   純數值、印 console；不存檔、不畫圖。
@@ -14,7 +14,7 @@ function compare_gain_iso_fix_vs_bias()
     nofix = fileparts(fileparts(here));                        % .../no_fix_dir
     calroot = fileparts(nofix);                               % .../Calibration_using_FEM_modeling
     addpath(fullfile(nofix,'code','function'));               % load_coils_actuator/select_ball/make_Pc
-    addpath(fullfile(nofix,'code','main_function'));               % load_coils_actuator/select_ball/make_Pc
+    addpath(fullfile(nofix,'code','main_function'));          % load_coils_actuator/select_ball/make_Pc
 
     cnst = mt_constants();
     apdl_to_paper_idx = [1, 3, 6, 5, 2, 4];
@@ -27,31 +27,31 @@ function compare_gain_iso_fix_vs_bias()
     %% ---- 兩模型參數 ----
     Sf = load(fullfile(calroot,'fix_dir','data','fit_fixl_R150um_gap200um_mueq.mat'), 'ell','gB','Khat');
     Sb = load(fullfile(nofix,        'data','fit_bias_R150um_gap200um_mueq.mat'), 'ell','gB','Khat','e_hat');
-    ellf = Sf.ell*1e-6;   Hf = Sf.gB*Sf.Khat;   Cf = Pc_base;                 % fix：在軸電荷
-    ellb = Sb.ell*1e-6;   Hb = Sb.gB*Sb.Khat;   Cb = make_Pc(Sb.e_hat, Pc_base);   % bias：離軸電荷
+    ellf = Sf.ell*1e-6;   Hf = Sf.gB*Sf.Khat;   Pcf = Pc_base;                       % fix：在軸電荷
+    ellb = Sb.ell*1e-6;   Hb = Sb.gB*Sb.Khat;   Pcb = make_Pc(Sb.e_hat, Pc_base);    % bias：離軸電荷
 
-    %% ---- 逐節點 gain/iso ----
-    gf = zeros(npts,1); isf = zeros(npts,1);
-    gb = zeros(npts,1); isb = zeros(npts,1);
+    %% ---- 逐節點 C / kappa ----
+    Cvf = zeros(npts,1); kapf = zeros(npts,1);
+    Cvb = zeros(npts,1); kapb = zeros(npts,1);
     for i = 1:npts
         p = P(i,:).';
-        svf = svd(((p/ellf - Cf) ./ (vecnorm(p/ellf - Cf).^3)) * Hf);
-        svb = svd(((p/ellb - Cb) ./ (vecnorm(p/ellb - Cb).^3)) * Hb);
-        gf(i)=norm(svf); isf(i)=svf(1)/svf(3);
-        gb(i)=norm(svb); isb(i)=svb(1)/svb(3);
+        svf = svd(((p/ellf - Pcf) ./ (vecnorm(p/ellf - Pcf).^3)) * Hf);
+        svb = svd(((p/ellb - Pcb) ./ (vecnorm(p/ellb - Pcb).^3)) * Hb);
+        Cvf(i)=prod(svf); kapf(i)=svf(3)/svf(1);
+        Cvb(i)=prod(svb); kapb(i)=svb(3)/svb(1);
     end
 
-    RMSE_gain = sqrt( mean((gb-gf).^2) );                 % 絕對 RMSE = sqrt(mean(Δ²))
-    RMSE_iso  = sqrt( mean((isb-isf).^2) );
-    relRMS_gain = sqrt( sum((gb-gf).^2) / sum(gf.^2) );   % RMS 相對誤差（÷ Σ fix²）
-    relRMS_iso  = sqrt( sum((isb-isf).^2) / sum(isf.^2) );
+    RMSE_C     = sqrt( mean((Cvb-Cvf).^2) );                 % 絕對 RMSE = sqrt(mean(Δ²))
+    RMSE_kappa = sqrt( mean((kapb-kapf).^2) );
+    relRMS_C     = sqrt( sum((Cvb-Cvf).^2) / sum(Cvf.^2) );  % RMS 相對誤差（÷ Σ fix²）
+    relRMS_kappa = sqrt( sum((kapb-kapf).^2) / sum(kapf.^2) );
 
-    fprintf('\n=== bias vs no-bias（fix）逐點 gain/iso，R≤150µm 球內 %d 節點 ===\n', npts);
-    fprintf('sanity  mean gain: fix=%.4f  bias=%.4f mT/A（對照 σ_tot 18.605/18.612）\n', mean(gf), mean(gb));
-    fprintf('sanity  mean iso : fix=%.4f  bias=%.4f      （對照 iso_tot 1.141/1.144）\n', mean(isf), mean(isb));
-    fprintf('gain 逐點差：max|Δ|=%.4f mT/A\n', max(abs(gb-gf)));
-    fprintf('iso  逐點差：max|Δ|=%.4f\n',      max(abs(isb-isf)));
+    fprintf('\n=== bias vs no-bias（fix）逐點 C/kappa，R≤150µm 球內 %d 節點 ===\n', npts);
+    fprintf('sanity  mean C     : fix=%.4g  bias=%.4g (mT/A)^3\n', mean(Cvf), mean(Cvb));
+    fprintf('sanity  mean kappa : fix=%.4f  bias=%.4f\n',           mean(kapf), mean(kapb));
+    fprintf('C     逐點差：max|Δ|=%.4g (mT/A)^3\n', max(abs(Cvb-Cvf)));
+    fprintf('kappa 逐點差：max|Δ|=%.4f\n',           max(abs(kapb-kapf)));
     fprintf('----\n');
-    fprintf('RMSE           gain = %.4f mT/A | iso = %.4f\n', RMSE_gain, RMSE_iso);
-    fprintf('RMS 相對誤差   gain = %.4f%%    | iso = %.4f%%\n', 100*relRMS_gain, 100*relRMS_iso);
+    fprintf('RMSE           C = %.4g (mT/A)^3 | kappa = %.4f\n', RMSE_C, RMSE_kappa);
+    fprintf('RMS 相對誤差   C = %.4f%%        | kappa = %.4f%%\n', 100*relRMS_C, 100*relRMS_kappa);
 end

@@ -16,7 +16,7 @@ function emit_model_results()
     K_bar    = S.Khat .* coil_sign;             % K̄_I（無因次，K̄(1,1)=5/6）→ 對角全正、off-diag 全負
     ell      = S.ell;       % ℓ̂ [µm]
     ghat_I_B = S.gB;        % ^Bĝ_I [mT/A]
-    hasAiso  = isfield(S,'sigma_tot') && isfield(S,'iso_tot');   % 控制範圍總代表值
+    hasAiso  = isfield(S,'C_mean') && isfield(S,'kappa_mean');     % 控制範圍性能量
     I_A = 1;                % 激發電流 [A]
     F = I_A * eye(6);       % 電流矩陣 [A]
     G = ghat_I_B * K_bar * F;   % [mT]（用翻號後 K̄ → G 上極對角也轉正）
@@ -39,11 +39,11 @@ function emit_model_results()
     emit_mat(fid, 'F~[\mathrm{A}]', F, pole, '');
     emit_scalar_unit(fid, '{}^{B}\hat{g}_{I}', ghat_I_B, 'mT/A');   % 10^0 不標
     emit_e(fid, '\hat{e}', E36, pole, '');                  % 3×6 bias，無因次 → 不標單位
-    if hasAiso   % 控制範圍總代表值：σ_tot=總增益(有單位)、iso_tot=σmax/σmin(無因次不標)
-        fprintf(fid,'\\[\n \\sigma_{tot} = %.4f~\\mathrm{mT/A}\n\\]\n', S.sigma_tot);
-        fprintf(fid,'\\[\n \\mathrm{iso}_{tot} = %.4f\n\\]\n', S.iso_tot);
+    if hasAiso   % 控制範圍性能量（singular_value.pdf）：C_mean=體積 ∏σ_k(有單位)、kappa_mean=σmin/σmax(無因次不標)
+        fprintf(fid,'\\[\n \\mathcal{C}_{\\mathrm{mean}} = %.4g~(\\mathrm{mT/A})^{3}\n\\]\n', S.C_mean);
+        fprintf(fid,'\\[\n \\kappa_{\\mathrm{mean}} = %.4f\n\\]\n', S.kappa_mean);
         if isfield(S,'Np_range')
-            fprintf(fid,'\\noindent\\small $\\sigma_{tot}=\\overline{\\|T\\|_F}$, $\\mathrm{iso}_{tot}=\\overline{\\sigma_{\\max}/\\sigma_{\\min}}$ over %d real nodes in $R\\le150~\\mu$m ball.\n', S.Np_range);
+            fprintf(fid,'\\noindent\\small $\\mathcal{C}_{\\mathrm{mean}}=\\overline{\\prod_k\\sigma_k}$, $\\kappa_{\\mathrm{mean}}=\\overline{\\sigma_{\\min}/\\sigma_{\\max}}$ over %d real nodes in $R\\le150~\\mu$m ball.\n', S.Np_range);
         end
     end
     fprintf(fid,'\\end{document}\n');
