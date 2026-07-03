@@ -37,10 +37,13 @@ function plot_gain_iso_index()
 
     fixfig = fullfile(calroot,'fix_dir','figures');
     nofig  = fullfile(nofix,'figures');
-    render_index(gf,  'Gain (mT/A)', '(mT/A)^2', 'mT/A', fullfile(fixfig,'gain_index.png'));
-    render_index(isf, 'iso',         '',         '',     fullfile(fixfig,'iso_index.png'));
-    render_index(gb,  'Gain (mT/A)', '(mT/A)^2', 'mT/A', fullfile(nofig, 'gain_index.png'));
-    render_index(isb, 'iso',         '',         '',     fullfile(nofig, 'iso_index.png'));
+    % gain：fix/bias 兩張共用同一 y 軸尺度（涵蓋兩組資料 + 小 margin），散布大小才能直接比對
+    gall = [gf; gb];  gpad = 0.04*(max(gall)-min(gall));
+    glim = [min(gall)-gpad, max(gall)+gpad];
+    render_index(gf,  'Gain (mT/A)', '(mT/A)^2', 'mT/A', fullfile(fixfig,'gain_index.png'), glim);
+    render_index(isf, 'iso',         '',         '',     fullfile(fixfig,'iso_index.png'),  []);
+    render_index(gb,  'Gain (mT/A)', '(mT/A)^2', 'mT/A', fullfile(nofig, 'gain_index.png'), glim);
+    render_index(isb, 'iso',         '',         '',     fullfile(nofig, 'iso_index.png'),  []);
 
     fprintf('\n=== 逐節點 gain/iso（R≤150µm 球 %d 節點）===\n', npts);
     fprintf('Var  gain: fix=%.5g  bias=%.5g (mT/A)^2 | iso: fix=%.5g  bias=%.5g\n', ...
@@ -49,13 +52,15 @@ function plot_gain_iso_index()
             mean(gf), mean(gb), mean(isf), mean(isb));
 end
 
-function render_index(y, ylab, vunit, sunit, out)
+function render_index(y, ylab, vunit, sunit, out, yl)
+    if nargin < 6, yl = []; end
     v = var(y);  s = std(y);  m = mean(y);  n = numel(y);
     fig = figure('Color','w','Position',[80 80 1000 620]); hold on;
     plot(1:n, y, '.', 'MarkerSize', 4, 'Color', [0.10 0.35 0.75]);
     yline(m, '--', 'Color', [0.85 0.20 0.20], 'LineWidth', 2);
     grid off; box on;
     xlim([1 n]);
+    if ~isempty(yl); ylim(yl); end
     set(gca,'FontSize',15,'FontWeight','bold','LineWidth',2,'TickLength',[.012 .012]);
     xlabel('node index','FontWeight','bold');
     ylabel(ylab,'FontWeight','bold');
