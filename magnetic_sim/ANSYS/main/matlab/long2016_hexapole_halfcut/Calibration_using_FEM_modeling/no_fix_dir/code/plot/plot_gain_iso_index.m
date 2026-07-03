@@ -52,16 +52,16 @@ function plot_gain_iso_index()
 end
 
 function render_hist(y, xlab, sunit, vline, out)
-% 平滑密度填充圖（連續、非離散長條）：細箱 histcounts + gaussian 平滑 → area 實心填充。
+% 超高解析直方圖（保留長條視覺）：超多細箱 histcounts + 輕度 gaussian 平滑 heights（去單箱尖刺、留長條紋理）→ bar 白邊細長條。
 %   左上黑框註記、Count 縱軸、vline 紅虛線（C→mean、kappa→1）。
     n = numel(y);  m = mean(y);  s = std(y);
-    NB = 500;                                                       % 高解析取樣（曲線用 500 點畫 → 平滑無折角）
+    NB = 220;                                                       % 超高解析 bin 數（保留長條視覺、非平滑曲線）
     [cnt, edges] = histcounts(y, NB);
     ctr   = edges(1:end-1) + diff(edges)/2;
-    cnt_s = smoothdata(cnt, 'gaussian', round(NB/6));               % 強高斯平滑：徹底去 bin 噪聲、看不出離散
+    cnt_s = smoothdata(cnt, 'gaussian', round(NB/14));             % 輕度平滑 heights：去單箱尖刺、仍見長條起伏
     fig = figure('Color','w','Position',[100 100 760 560]);
     ax  = axes(fig);
-    area(ax, ctr, cnt_s, 'FaceColor',[0.20 0.40 0.70], 'EdgeColor','none'); hold(ax,'on');   % 實心、連續
+    bar(ax, ctr, cnt_s, 1, 'FaceColor',[0.20 0.40 0.70], 'EdgeColor','w', 'LineWidth',0.3); hold(ax,'on');   % 白邊細長條
     xl = xlim(ax);                                                  % 若 vline 貼/超右界 → 延伸右界讓虛線落在框內
     if vline >= xl(2) - 0.005*(xl(2)-xl(1))
         xlim(ax, [xl(1), vline + 0.03*(xl(2)-xl(1))]);
