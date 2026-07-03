@@ -9,16 +9,15 @@
 %  MODE switch:
 %    'single' -> one fit at R = R_single_um
 %    'sweep'  -> fits at R = R_start_um : R_step_um : R_end_um
-%  Output: results-only LaTeX scripts (one per R) to results\fix_1\,
-%          named  fit_<shape>_R<R>um_<I>A.tex   e.g. fit_ball_R150um_1A.tex
-%  All model math lives in code\function\ ; this file is just the driver.
+%  Output: per-R fit .mat to data\ + console summary (PDF via code\function\emit_model_results.m).
+%  All model math lives in code\main_function\ ; this file is just the driver.
 %
 %  Pipeline (top-to-bottom call order):
 %    1) load_coils      -- load the 6-coil FEM field once          (load data)
 %    2) select_ball     -- keep nodes inside the sampling ball R   (pick region)
 %    3) fit_KI_fixl      -- lsqnonlin fit {K_bar, ell, ^Bg_I}       (fit)
 %    4) region_field_err -- relative RMS field error over region    (accuracy)
-%    5) write_KI_tex     -- emit results-only LaTeX script           (output)
+%    5) save fit .mat    -- console summary; PDF via function/emit_model_results.m
 
 clear; clc;
 
@@ -39,8 +38,6 @@ addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long201
 addpath(fullfile(TREE,'code','function'));                                       % model helpers (added last -> takes precedence)
 addpath(fullfile(TREE,'code','main_function'));                                       % model helpers (added last -> takes precedence)
 results_root = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
-tex_dir      = fullfile(TREE,'results');
-if ~exist(tex_dir,'dir'); mkdir(tex_dir); end
 cal_dir      = fullfile(TREE,'data');   % 規則#2：.mat 放本組 data/（fit_fixl 解；Hall_sensor_base_fix_dir/decouple 由此載 ℓ̂）
 if ~exist(cal_dir,'dir'); mkdir(cal_dir); end
 
@@ -83,19 +80,4 @@ for R_um = R_um_list
     fprintf('R=%3d um | nmin=%6d | ell=%.2f µm | ^Bg_I=%.4e mT/A | err=%.2f%% | sigma_tot=%.4f mT/A | iso_tot=%.4f (Np=%d, sigma_min=%.4f, iso_worst=%.4f)\n', ...
             R_um, nmin, ell, ghat_I_B, errpct, sigma_tot, iso_tot, Np_range, sigma_min, iso_worst);
 end
-fprintf('done (%s mode, variant=%s): %d result PDF(s) in %s\n', MODE, VARIANT, numel(R_um_list), tex_dir);
-
-%% ---- local: 編 standalone .tex -> PDF（同夾，清中間檔；results/ 留 .pdf + .tex）----
-function compile_tex_pdf(texfile)
-    xelatex = 'C:\Users\Kuo\AppData\Local\Programs\MiKTeX\miktex\bin\x64\xelatex.exe';
-    [d,b]   = fileparts(texfile);
-    old = cd(d);
-    [st,out] = system(sprintf('"%s" -interaction=nonstopmode -halt-on-error "%s"', xelatex, texfile));
-    cd(old);
-    if st ~= 0 || ~exist(fullfile(d,[b '.pdf']),'file')
-        fprintf('%s\n', out); error('xelatex 編譯失敗：%s', texfile);
-    end
-    for ext = {'.tex','.aux','.log','.out'}    % results 只留 .pdf（連 .tex 一起清）
-        f = fullfile(d,[b ext{1}]); if exist(f,'file'); delete(f); end
-    end
-end
+fprintf('done (%s mode, variant=%s): %d 個 .mat 存到 %s（PDF 由 code/function/emit_model_results.m 產生）\n', MODE, VARIANT, numel(R_um_list), cal_dir);

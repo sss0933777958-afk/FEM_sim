@@ -26,7 +26,7 @@
 %  DATA   : variant 'gap200um_mueq'（GRADED mesh + support-base μ_eff），coil1..6（all-source）。
 %  Sign   : all-source（literal flip-sink：只翻下極 sink P1/P3/P6；上極 source 不翻）→ D^v 對角全正。
 %  Order  : 所有矩陣 paper P1..P6（激發欄重排 APDL coil1..6 → P1..P6，對角=自激發）。
-%  Output : xelatex PDF（V, D̄, ^Bĝ_V, Ĥ_V）-> results/D_<variant>.pdf；.mat -> 本包 data/（field 名不變，含 ê）。
+%  Output : .mat -> 本包 data/（field 名不變，含 ê）；PDF（V/D̄/^Bĝ_V/Ĥ_V）由 code/function/emit_model_results.m 產生。
 %  Current: I = 1 A = FEM 激發（per fit-current-matches-sim）。
 % =========================================================================
 
@@ -57,7 +57,6 @@ model        = 'long2016_hexapole_halfcut';
 results_root = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
 mesh_csv_dir = fullfile(results_root,'mesh','graded','csv');   % gap200=graded → graded sensor-local tet CSV（csv/ 子夾）
 TREE         = fullfile(CAL,'Hall_sensor_base_no_fix_dir');    % 本包（bias）
-out_dir      = fullfile(TREE,'results');   if ~exist(out_dir,'dir'); mkdir(out_dir); end
 mat_dir      = fullfile(TREE,'data');      if ~exist(mat_dir,'dir'); mkdir(mat_dir); end
 
 %% ---- 常數 + 慣例 -----------------------------------------------------------
@@ -138,27 +137,3 @@ save(mat_out, 'Dmat','D_bar','g_V','Dv_p','Vmat_p','exc_sign','ell_hat','e_hat',
 fprintf('已存 %s\n', mat_out);
 
 %% ---- PDF 輸出已分離到 code/function/emit_model_results.m（功能分開：main 只算+存 .mat + console）----
-
-%% ---- local function：渲染帶 P1..P6 表頭的 6×6 矩陣（含自動 10^n 因子）----------
-function emit_labeled_matrix(fid, name_tex, M, rowlab, collab, factor_mode, caption)
-    if strcmp(factor_mode,'auto')
-        mx = max(abs(M(:)));
-        if mx > 0, e = floor(log10(mx)); else, e = 0; end
-        if e ~= 0, Ms = M / 10^e; fac = sprintf('10^{%d}\\,', e);
-        else,      Ms = M;        fac = '';
-        end
-    else
-        Ms = M; fac = '';
-    end
-    fprintf(fid,'\\[\n%s = %s\\begin{array}{c|cccccc}\n', name_tex, fac);
-    fprintf(fid,' ');
-    for j = 1:6, fprintf(fid,'& %s ', collab{j}); end
-    fprintf(fid,'\\\\\\hline\n');
-    for i = 1:6
-        fprintf(fid,'%s ', rowlab{i});
-        for j = 1:6, fprintf(fid,'& %+9.4f ', Ms(i,j)); end
-        fprintf(fid,'\\\\\n');
-    end
-    fprintf(fid,'\\end{array}\n\\]\n');
-    fprintf(fid,'\\noindent\\small %s\n\n', caption);
-end
