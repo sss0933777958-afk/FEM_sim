@@ -82,7 +82,7 @@ CAD_model (SLDPRT/STEP)
 `matlab/<model>/` 第二層是**功能組**（activity），每組視性質含：
 - 單一主程式組 → `code/main/main.m`（如 `Calibration using FEM modeling/{fix_l,no_fix_l}`）
 - 多腳本組 → `code/scripts/`（如 `fixl_fit, bias_fit, bs_matrix, sensor_d, validation`）
-- 純繪圖組 → `code/plot/`（如 `field_viz, sensor_placement`）
+- 純繪圖組 → `code/plot/`（如 `field_viz, field_cancellation`）
 - 每組另有 `figures/`（圖）、`results/`（PDF / auto-gen `.tex`）、**`data/`（該組 `.mat` 成果，規則 #2 `rules/matlab-output-layout.md`）**。
   - `Calibration_using_FEM_modeling` 4 子夾一律有 `data/`；其他組有產 `.mat` 才有。
 
@@ -90,7 +90,7 @@ CAD_model (SLDPRT/STEP)
 
 ## 🎨 繪圖腳本規則（強制，畫任何圖前先讀）
 
-1. **動手畫圖前，先跟使用者確認這支繪圖腳本屬於哪個功能組**（`field_viz` / `sensor_placement` / `flux_profile` / …），不要自己猜。
+1. **動手畫圖前，先跟使用者確認這支繪圖腳本屬於哪個功能組**（`field_viz` / `field_cancellation` / …），不要自己猜。
 2. **不屬於任何現有功能組** → 要**新增一個功能組資料夾**（`matlab/<model>/<新組>/code/plot/` + `figures/`）；**開新組前也要先問使用者**。
 3. **每個圖 / 每個繪圖任務只維護「一支」腳本**：在同一支腳本上**原地反覆修改**到使用者定案；**定案前不可另開新腳本**。
 4. **使用者沒明講「新增（另一支）」就不開第二支腳本**（一個功能組底下可有多支，但各自對應一張已定案的圖）。

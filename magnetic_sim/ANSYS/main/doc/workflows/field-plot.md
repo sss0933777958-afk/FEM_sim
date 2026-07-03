@@ -30,7 +30,6 @@
 | Contour | `magnetic_sim/ANSYS/main/analysis/kuo_quadrupole/plot/plot_Bcontour_xy_*.m` |
 | Quiver | `plot_Bvector_topview_*.m`(top)、`plot_Bvector_sideview*.m`(side) |
 | Streamline | `magnetic_sim/ANSYS/main/analysis/long2016_charge_fit/plot/plot_streamlines_yzero_with_charges.m` |
-| Sensor placement | `magnetic_sim/ANSYS/main/analysis/long2016_hexapole_halfcut/plot/plot_pole_sensor_placement.m`<br>`plot_disc_sampling.m` |
 | Coil layout | `magnetic_sim/ANSYS/main/analysis/kuo_quadrupole/plot/plot_ScaleDown_coil_layout.m`<br>`preview_coil_placement.m` |
 | Flux check | `magnetic_sim/ANSYS/main/analysis/long2016_dipole_lower/check_flux_conservation.m` |
 

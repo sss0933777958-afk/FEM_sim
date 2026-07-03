@@ -6,7 +6,7 @@
 - `common/` — ★ resolver（`ansys_path.m` 讀 FEM `.dat/.db`、`matlab_path.m` 讀寫 `.mat`）；不要硬寫絕對路徑。
 - `Calibration_using_FEM_modeling/` — 點電荷校正 + Hall-sensor d 主流程（單一主程式組 `{fix_dir, no_fix_dir, Hall_sensor_base_fix_dir, Hall_sensor_base_no_fix_dir}/code/main/main.m`）。
 - `fixl_fit/`、`bias_fit/`、`bs_matrix/`、`validation/` — 多腳本組（`code/scripts/`）。
-- `field_viz/`、`sensor_placement/` — 純繪圖組（`code/plot/`）。
+- `field_viz/` — 純繪圖組（`code/plot/`）。
 - `field_cancellation/` — 掃 64 種 source/sink 電流組合，找工作空間磁場抵銷（`code/main/` driver + `code/plot/`，僅 `figures/`、無 `results/`）。
 - 每組另含 `figures/`（`.png`/`.gif`）與 `results/`（auto-gen `.tex`）。
 

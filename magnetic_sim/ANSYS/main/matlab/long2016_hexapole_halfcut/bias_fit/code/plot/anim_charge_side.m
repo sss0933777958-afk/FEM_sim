@@ -1,7 +1,7 @@
 %% anim_charge_side.m
 %  ============================================================================
 %  兩個側視動畫(GIF):下極 P1 / 上極 P2 的含-bias 等效磁荷位置 vs 取樣半徑 R=50→500µm。
-%  磁極輪廓 = CAD 幾何(STEP intent,同 plot_lower/upper_pole_sensor_placement.m):
+%  磁極輪廓 = CAD 幾何(STEP intent):
 %    POLE_R=3.175mm、POLE_CONE_LEN=15.876mm、half-angle 11.31°;
 %    P1 = milled half-cone(磨平面 y=0 朝 WP、下半錐),軸水平;
 %    P2 = full natural cone,軸傾斜 35.26°(=90−54.74)。

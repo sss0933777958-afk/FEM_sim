@@ -10,7 +10,7 @@ matlab/<model>/<activity>[/<subfolder>]/data/*.mat
 
 ## 🔒 規則
 1. **`Calibration_using_FEM_modeling` 的子資料夾一律建 `data/`**（`fix_dir`、`no_fix_dir`、`Hall_sensor_base_fix_dir`、`Hall_sensor_base_no_fix_dir`，即使暫無 `.mat` 也先建）。
-2. **`matlab/<model>/` 其他活動夾**（`bs_matrix`、`bias_fit`、`flux_profile`…）：**有產 `.mat` 才建 `data/`**；純繪圖組（`field_viz`、`sensor_placement`、`field_cancellation`）不產 `.mat`、不必建。
+2. **`matlab/<model>/` 其他活動夾**（`bs_matrix`、`bias_fit`、`flux_profile`…）：**有產 `.mat` 才建 `data/`**；純繪圖組（`field_viz`、`field_cancellation`）不產 `.mat`、不必建。
 3. **寫法**：腳本用自己已定義的 root 變數（`TREE`/`CAL`/相對自身）算出 `fullfile(<本功能組夾>,'data')`，**不要硬寫 `MATLAB_data` 絕對路徑**。
 4. **跨夾讀取**：A 夾的腳本要讀 B 夾產的 `.mat` → 指 B 的 `data/`（相對或絕對），讀取方跟著產出方走。
 5. **同步 README**：建/搬 `data/` 後，更新該功能組 `README.md` 的 pipeline／輸出路徑。
