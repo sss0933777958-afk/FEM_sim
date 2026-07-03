@@ -47,6 +47,10 @@ magnetic_sim/ANSYS/main/semulator/**/*-Input/
 magnetic_sim/ANSYS/main/semulator/**/*-Output/
 magnetic_sim/ANSYS/main/semulator/**/__semu_*.py
 
+# ANSYS Maxwell / Electronics Desktop project + solver artefacts (local exercise, regenerable)
+magnetic_sim/ANSYS/Maxwell/
+*.aedtresults/
+
 # COMSOL files (large binary, not tracked)
 magnetic_sim/ANSYS/backup/hung/comsol/
 
