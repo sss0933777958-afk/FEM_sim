@@ -64,8 +64,8 @@ function render_hill(X, Y, Z, zlab, outpng, flipcmap)
     tol = 0.055*(zmx - zmn);                                     % 丟掉太靠近端點的自動刻度，避免與 min/max 標籤重疊
     zt = unique([zmn, zt(zt>zmn+tol & zt<zmx-tol), zmx]);       % 保留內部自動刻度 + 多加 min/max
     set(gca,'ZTick', zt, 'ZTickLabel', arrayfun(@(v) sprintf('%.4g',v), zt, 'UniformOutput',false));
-    xlabel('x (\mum)','FontWeight','bold');
-    ylabel('y (\mum)','FontWeight','bold');
+    xlabel('x_m (\mum)','FontWeight','bold');
+    ylabel('y_m (\mum)','FontWeight','bold');
     zlabel(zlab,'FontWeight','bold');
 
     cb = colorbar; cb.FontSize = 16; cb.FontWeight = 'bold';

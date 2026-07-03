@@ -37,13 +37,11 @@ function plot_gain_iso_index()
 
     fixfig = fullfile(calroot,'fix_dir','figures');
     nofig  = fullfile(nofix,'figures');
-    % gain：fix/bias 兩張共用同一 y 軸尺度（涵蓋兩組資料 + 小 margin），散布大小才能直接比對
-    gall = [gf; gb];  gpad = 0.04*(max(gall)-min(gall));
-    glim = [min(gall)-gpad, max(gall)+gpad];
-    render_index(gf,  'Gain (mT/A)', '(mT/A)^2', 'mT/A', fullfile(fixfig,'gain_index.png'), glim);
-    render_index(isf, 'iso',         '',         '',     fullfile(fixfig,'iso_index.png'),  []);
-    render_index(gb,  'Gain (mT/A)', '(mT/A)^2', 'mT/A', fullfile(nofig, 'gain_index.png'), glim);
-    render_index(isb, 'iso',         '',         '',     fullfile(nofig, 'iso_index.png'),  []);
+    % 四張各自 auto y 範圍，但 y 軸一律固定切 6 段（7 刻度）→ gain 與 iso 刻度區間數一致
+    render_index(gf,  'Gain (mT/A)', '(mT/A)^2', 'mT/A', fullfile(fixfig,'gain_index.png'));
+    render_index(isf, 'iso',         '',         '',     fullfile(fixfig,'iso_index.png'));
+    render_index(gb,  'Gain (mT/A)', '(mT/A)^2', 'mT/A', fullfile(nofig, 'gain_index.png'));
+    render_index(isb, 'iso',         '',         '',     fullfile(nofig, 'iso_index.png'));
 
     fprintf('\n=== 逐節點 gain/iso（R≤150µm 球 %d 節點）===\n', npts);
     fprintf('Var  gain: fix=%.5g  bias=%.5g (mT/A)^2 | iso: fix=%.5g  bias=%.5g\n', ...
@@ -52,15 +50,16 @@ function plot_gain_iso_index()
             mean(gf), mean(gb), mean(isf), mean(isb));
 end
 
-function render_index(y, ylab, vunit, sunit, out, yl)
-    if nargin < 6, yl = []; end
+function render_index(y, ylab, vunit, sunit, out)
     v = var(y);  s = std(y);  m = mean(y);  n = numel(y);
     fig = figure('Color','w','Position',[80 80 1000 620]); hold on;
     plot(1:n, y, '.', 'MarkerSize', 4, 'Color', [0.10 0.35 0.75]);
     yline(m, '--', 'Color', [0.85 0.20 0.20], 'LineWidth', 2);
     grid off; box on;
     xlim([1 n]);
-    if ~isempty(yl); ylim(yl); end
+    yl = ylim;                                              % 各圖自己的 auto y 範圍
+    yt = linspace(yl(1), yl(2), 7);                         % 固定 6 段（7 刻度）→ 四張刻度區間數一致
+    set(gca,'YTick', yt, 'YTickLabel', arrayfun(@(v) sprintf('%.4g',v), yt, 'UniformOutput', false));
     set(gca,'FontSize',15,'FontWeight','bold','LineWidth',2,'TickLength',[.012 .012]);
     xlabel('node index','FontWeight','bold');
     ylabel(ylab,'FontWeight','bold');
