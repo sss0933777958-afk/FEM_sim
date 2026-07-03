@@ -11,6 +11,7 @@ function plot_charge_positions_3d()
     nofix  = fileparts(fileparts(here));                    % .../no_fix_dir
     calroot= fileparts(nofix);                              % .../Calibration_using_FEM_modeling
     addpath(fullfile(nofix,'code','function'));             % load_coils_actuator/select_ball/fit_bias/make_Pc
+    addpath(fullfile(nofix,'code','main_function'));             % load_coils_actuator/select_ball/fit_bias/make_Pc
     figdir = fullfile(nofix,'figures');  if ~exist(figdir,'dir'); mkdir(figdir); end
 
     cnst = mt_constants();

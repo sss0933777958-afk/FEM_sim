@@ -3,7 +3,8 @@
 **用途**：18-param bias 點電荷校正主程式的所有 MATLAB 碼，依角色分三組。
 **內容**：
 - `main/` — 主程式 `main.m`（驅動：load → select → fit_bias → gauge → error → 出 `.tex`）。
-- `function/` — 模型數學輔助函式（`load_coils_actuator`、`select_ball`、`fit_bias`、`bias_resid`、`build_A`、`make_Pc`、`gauge_KI`、`region_field_err`、`write_KbarI_tex`）。
+- `main_function/` — **main.m 掛勾的 pipeline 函式**（`load_coils_actuator`、`select_ball`、`fit_bias`、`bias_resid`、`build_A`、`make_Pc`、`gauge_KI`、`region_field_err`、`calc_range_metrics`）。
+- `function/` — 非 main 的輔助（`emit_model_results`、`write_KbarI_tex`）。
 - `plot/` — 該主程式繪圖。
 
 **資料來源 / 流向**：`main.m` 讀 `ANSYS_data/.dat`（經 `ansys_path`）→ `function/` 算 → `plot/` 畫圖、`write_KbarI_tex` 寫 `../results/no_fix_l/*.tex`。

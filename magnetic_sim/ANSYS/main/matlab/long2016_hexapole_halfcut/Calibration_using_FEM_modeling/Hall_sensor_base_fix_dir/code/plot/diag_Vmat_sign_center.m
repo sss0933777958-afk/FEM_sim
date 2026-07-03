@@ -7,6 +7,7 @@ function diag_Vmat_sign_center(variant)
             'long2016_hexapole_halfcut\Calibration_using_FEM_modeling\Hall_sensor_base_fix_dir'];
     addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');
     addpath(fullfile(TREE,'code','function'));
+    addpath(fullfile(TREE,'code','main_function'));
     rr = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
     mesh_csv_dir = fullfile(rr,'mesh','standard','csv');   % 連接性恆用 baseline 網格（gap200um 同網格，csv/ 子夾）
 

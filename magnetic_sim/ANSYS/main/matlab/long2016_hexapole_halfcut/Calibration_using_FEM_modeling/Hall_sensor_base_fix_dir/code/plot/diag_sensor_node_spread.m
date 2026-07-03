@@ -9,6 +9,7 @@ TREE = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
         'long2016_hexapole_halfcut\Calibration_using_FEM_modeling\Hall_sensor_base_fix_dir'];
 addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');
 addpath(fullfile(TREE,'code','function'));
+addpath(fullfile(TREE,'code','main_function'));
 results_root = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
 
 SENSOR_R = 0.15e-3; AXIAL_T = 0.10e-3;

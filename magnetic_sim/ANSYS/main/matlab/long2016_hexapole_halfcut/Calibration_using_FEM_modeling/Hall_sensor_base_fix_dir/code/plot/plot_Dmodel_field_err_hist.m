@@ -27,6 +27,7 @@ CAL  = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
 addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');  % mt_constants/import_ansys_data/filter_iron_nodes
 addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\common');  % ansys_path
 addpath(fullfile(CAL,'no_fix_dir','code','function'));  % load_coils_actuator/select_ball/fit_bias/make_Pc/build_A
+addpath(fullfile(CAL,'no_fix_dir','code','main_function'));  % load_coils_actuator/select_ball/fit_bias/make_Pc/build_A
 model = 'long2016_hexapole_halfcut';
 figdir = fullfile(CAL,'Hall_sensor_base_fix_dir','figures');
 if ~exist(figdir,'dir'); mkdir(figdir); end

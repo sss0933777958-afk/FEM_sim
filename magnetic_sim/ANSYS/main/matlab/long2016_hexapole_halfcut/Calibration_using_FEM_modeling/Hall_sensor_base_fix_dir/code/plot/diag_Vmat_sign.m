@@ -6,6 +6,7 @@ function diag_Vmat_sign()
             'long2016_hexapole_halfcut\Calibration_using_FEM_modeling\Hall_sensor_base_fix_dir'];
     addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');
     addpath(fullfile(TREE,'code','function'));
+    addpath(fullfile(TREE,'code','main_function'));
     rr = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
 
     cnst = mt_constants();

@@ -21,6 +21,7 @@ TREE = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
         'long2016_hexapole_halfcut\Calibration_using_FEM_modeling\Hall_sensor_base_fix_dir'];
 addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');  % mt_constants/import_ansys_data
 addpath(fullfile(TREE,'code','function'));                                                      % 三個 extract_Vmat*
+addpath(fullfile(TREE,'code','main_function'));                                                      % 三個 extract_Vmat*
 results_root = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
 mesh_csv_dir = fullfile(results_root,'mesh','standard','csv');   % sensor_local_{nodes,elems}.csv（standard 拓樸，csv/ 子夾）
 resdir       = fullfile(TREE,'results');

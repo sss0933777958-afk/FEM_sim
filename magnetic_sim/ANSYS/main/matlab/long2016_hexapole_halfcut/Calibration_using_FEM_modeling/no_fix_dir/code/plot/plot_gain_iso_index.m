@@ -11,6 +11,7 @@ function plot_gain_iso_index()
     nofix = fileparts(fileparts(here));
     calroot = fileparts(nofix);
     addpath(fullfile(nofix,'code','function'));
+    addpath(fullfile(nofix,'code','main_function'));
 
     cnst = mt_constants();
     apdl_to_paper_idx = [1, 3, 6, 5, 2, 4];

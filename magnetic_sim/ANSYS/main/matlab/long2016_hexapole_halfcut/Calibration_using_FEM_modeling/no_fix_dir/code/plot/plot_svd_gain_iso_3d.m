@@ -13,6 +13,7 @@ function plot_svd_gain_iso_3d()
     here   = fileparts(mfilename('fullpath'));
     nofix  = fileparts(fileparts(here));
     addpath(fullfile(nofix,'code','function'));                     % make_Pc
+    addpath(fullfile(nofix,'code','main_function'));                     % make_Pc
     matf   = fullfile(nofix, 'data', 'fit_bias_R150um_gap200um_mueq.mat');
     figdir = fullfile(nofix, 'figures');
     if ~exist(figdir,'dir'); mkdir(figdir); end

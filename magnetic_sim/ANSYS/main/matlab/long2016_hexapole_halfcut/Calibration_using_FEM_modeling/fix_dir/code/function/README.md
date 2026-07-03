@@ -1,12 +1,7 @@
-# …/fix_l/code/function/ — fix-ℓ 模型輔助函式
+# …/fix_l/code/function/ — fix-ℓ 非 main 輔助函式
 
-**用途**：fix-ℓ 點電荷模型的數學/IO 輔助函式；`main.m` 全部從這裡呼叫。
+**用途**：fix-ℓ 的非 main 輔助（PDF/SVD/tex）。**main.m 掛勾的 pipeline 函式已移到 `../main_function/`**（load_coils/select_ball/fit_KI_fixl/charge_residual/unpack_params/region_field_err/calc_range_metrics）。
 **內容**：
-- `load_coils.m` — 一次載入 6-coil FEM 場（讀 `.dat`）。
-- `select_ball.m` — 取 WP 半徑 R 內的節點。
-- `fit_KI_fixl.m` — `lsqnonlin` fit `{K̂, ℓ, gB}`（呼叫 `charge_residual`、`unpack_params`）。
-- `charge_residual.m` — 殘差函式；`unpack_params.m` — 參數打包/解包。
-- `region_field_err.m` — 區域相對 RMS 場誤差。
 - `write_KI_tex.m` — 輸出純結果 `.tex`。
 - `svd_SiHI_WP.m` —（獨立腳本）在 WP 中心組電流→場轉移 `T = S_i·Ĥ_I`（`Ĥ_I=gB·Khat`）並 SVD，回報 `U/Σ/Wᵀ`；WP 中心 `S_i=−dhat`（與 ℓ̂ 無關）。存 `../../data/svd_SiHI_WP_<variant>.mat`。
 - `calc_range_metrics.m` — `m=calc_range_metrics(P,Ĥ_I,ell_m,dhat)`：對 R≤150µm 球內真實節點逐點 SVD → 回 `.sigma_tot`(mean ‖T‖_F)/`.iso_tot`(mean σmax/σmin)/`.sigma_min`/`.iso_worst`/`.Np`。`main.m` 呼叫、存進 fit mat、console 印。

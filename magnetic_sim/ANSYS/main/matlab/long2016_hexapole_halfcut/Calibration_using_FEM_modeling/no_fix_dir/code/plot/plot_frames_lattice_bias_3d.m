@@ -10,6 +10,7 @@ function plot_frames_lattice_bias_3d()
     here   = fileparts(mfilename('fullpath'));
     nofix  = fileparts(fileparts(here));                            % .../no_fix_dir
     addpath(fullfile(nofix,'code','function'));                     % make_Pc
+    addpath(fullfile(nofix,'code','main_function'));                     % make_Pc
     figdir = fullfile(nofix,'figures');   if ~exist(figdir,'dir'); mkdir(figdir); end
 
     %% ---- 載 bias fit（ell µm、ê 17×1）+ 重建 6 荷位置（不需 FEM）----

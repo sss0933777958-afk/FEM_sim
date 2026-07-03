@@ -50,7 +50,9 @@ CAL  = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
 addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');     % mt_constants/import_ansys_data/filter_iron_nodes
 addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\common');  % ansys_path
 addpath(fullfile(CAL,'no_fix_dir','code','function'));          % 沿用：load_coils_actuator/select_ball/build_A
+addpath(fullfile(CAL,'no_fix_dir','code','main_function'));          % 沿用：load_coils_actuator/select_ball/build_A
 addpath(fullfile(CAL,'Hall_sensor_base_fix_dir','code','function'));  % 沿用：build_sensor_geometry/extract_Vmat_interp（最後 addpath→優先）
+addpath(fullfile(CAL,'Hall_sensor_base_fix_dir','code','main_function'));  % 沿用：build_sensor_geometry/extract_Vmat_interp（最後 addpath→優先）
 model        = 'long2016_hexapole_halfcut';
 results_root = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
 mesh_csv_dir = fullfile(results_root,'mesh','graded','csv');   % gap200=graded → graded sensor-local tet CSV（csv/ 子夾）

@@ -14,6 +14,7 @@ function compare_gain_iso_fix_vs_bias()
     nofix = fileparts(fileparts(here));                        % .../no_fix_dir
     calroot = fileparts(nofix);                               % .../Calibration_using_FEM_modeling
     addpath(fullfile(nofix,'code','function'));               % load_coils_actuator/select_ball/make_Pc
+    addpath(fullfile(nofix,'code','main_function'));               % load_coils_actuator/select_ball/make_Pc
 
     cnst = mt_constants();
     apdl_to_paper_idx = [1, 3, 6, 5, 2, 4];

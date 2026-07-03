@@ -16,6 +16,7 @@ CAL = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
 addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');
 addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\common');
 addpath(fullfile(CAL,'no_fix_dir','code','function'));     % load_coils_actuator/select_ball/fit_bias/make_Pc/build_A/gauge_KI
+addpath(fullfile(CAL,'no_fix_dir','code','main_function'));     % load_coils_actuator/select_ball/fit_bias/make_Pc/build_A/gauge_KI
 model='long2016_hexapole_halfcut'; cnst=mt_constants(); apdl_to_paper_idx=[1,3,6,5,2,4];
 if ~exist(OUTDIR,'dir'); mkdir(OUTDIR); end
 

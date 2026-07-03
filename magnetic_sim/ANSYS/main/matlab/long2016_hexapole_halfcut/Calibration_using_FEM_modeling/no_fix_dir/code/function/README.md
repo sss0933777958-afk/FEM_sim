@@ -1,13 +1,9 @@
-# …/no_fix_l/code/function/ — no-fix-ℓ 模型輔助函式
+# …/no_fix_l/code/function/ — no-fix-ℓ 非 main 輔助函式
 
-**用途**：18-param bias 點電荷模型的數學/IO 輔助函式；`main.m` 全部從這裡呼叫。
+**用途**：非 main 輔助（PDF/tex）。**main.m 掛勾的 pipeline 函式已移到 `../main_function/`**（load_coils_actuator/select_ball/fit_bias/bias_resid/build_A/make_Pc/gauge_KI/region_field_err/calc_range_metrics）。
 **內容**：
-- `load_coils_actuator.m` — 載入 6-coil FEM 場並旋到 actuator frame（讀 `.dat`）。
-- `select_ball.m` — 取 WP 半徑 R 內節點。
-- `fit_bias.m` — `lsqnonlin` fit `{ℓ, ê(17)}`（呼叫 `bias_resid`、`make_Pc`、`build_A`）。
-- `bias_resid.m` — 殘差；`make_Pc.m` — 由 ê + Pc_base 組電荷座標；`build_A.m` — 建設計矩陣。
-- `gauge_KI.m` — profile g_j（→G=D^v）並 gauge 出 `^Bĝ_I`(=ghat_I_B)、`K̄`(=K_bar)；中間 Ĥ_I = G·Fᵀ(FFᵀ)⁻¹（論文 step 8）。
-- `region_field_err.m` — 區域相對 RMS 場誤差；`write_KbarI_tex.m` — 輸出純結果 `.tex`。
+- `emit_model_results.m` — 載 fit mat 出結果 PDF（K̄_I/ℓ̂/G/F/^Bĝ_I + σ_tot/iso_tot；含 coil_sign 全 source 翻號）。
+- `write_KbarI_tex.m` — 輸出純結果 `.tex`。
 
 **資料來源 / 流向**：`load_coils_actuator` 讀 `ANSYS_data/.dat` → fit/gauge/誤差 → `write_KbarI_tex` 寫 `../../results/no_fix_l/*.tex`。
 

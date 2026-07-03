@@ -1,6 +1,6 @@
 # …/Hall_sensor_base_fix_dir/code/function/ — 求 d 模型/IO 輔助函式
 
-**用途**：Hall-sensor 每極 `d` 流程的數學/IO 輔助函式（一檔一函式）；`main.m` 全部從這裡呼叫。
+**用途**：Hall-sensor 每極 `d` 流程的數學/IO 輔助函式（一檔一函式）。**main.m 掛勾的 `build_sensor_geometry`、`extract_Vmat_interp` 已移到 `../main_function/`**（下方仍列說明）；本夾留其餘（build_S/extract_Vmat/…/solve_d/emit）。
 
 **內容**：
 - `build_S.m` — 單點 3×6 點電荷空間核 `S(p̄; ℓ̂)`（庫倫式核，column k = (p̄−p̄_ck)/‖·‖³）。
