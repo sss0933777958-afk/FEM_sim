@@ -54,10 +54,10 @@ end
 function render_hist(y, xlab, sunit, vline, out)
 % 直方圖（風格比照 plot_charge_field_err_hist）：鋼藍+白邊細長條、左上黑框註記、Count 縱軸、vline 紅虛線。
     n = numel(y);  m = mean(y);  s = std(y);
-    NB = 160;                                                       % bin 數（細；參考 err-hist 圖 ~160 格）
+    NB = 300;                                                       % bin 數（爆密；配 EdgeColor none → 長條併成實心、看不出格子）
     fig = figure('Color','w','Position',[100 100 760 560]);
     ax  = axes(fig);
-    histogram(ax, y, NB, 'FaceColor',[0.20 0.40 0.70], 'EdgeColor','w');
+    histogram(ax, y, NB, 'FaceColor',[0.20 0.40 0.70], 'EdgeColor','none');
     xl = xlim(ax);                                                  % 若 vline 貼/超右界 → 延伸右界讓虛線落在框內
     if vline >= xl(2) - 0.005*(xl(2)-xl(1))
         xlim(ax, [xl(1), vline + 0.03*(xl(2)-xl(1))]);
