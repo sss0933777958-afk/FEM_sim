@@ -6,7 +6,7 @@ function r = charge_residual(x, coil, dhat, I, freemask)
 %   Inputs:
 %     x        : packed [ell_mm; ghat_I_B; K_bar(free)]  (see unpack_params)
 %     coil     : struct array, coil(k).p (Nx3 [m]), .bfem (3N x1 [mT]), .pj (paper idx)
-%     dhat     : 3x6 unit pole-tip directions
+%     dhat     : 3x6 charge unit directions in the working frame (fix_dir=actuator → Pc_base)
 %     I        : scalar drive current [A]
 %     freemask : 6x6 logical of free Khat entries
 %   Output r : stacked [Bx;By;Bz] residual over all coils.

@@ -3,6 +3,9 @@ function [ell, ghat_I_B, K_bar, J] = fit_KI_fixl(coil, dhat, I)
 %   [ell, ghat_I_B, K_bar, J] = FIT_KI_FIXL(coil, dhat, I)
 %   Document fix-l point-charge model: the 6 charges are locked on the pole axes at
 %   ell*dhat (no bias); free parameters are ell, ^Bg_I (ghat_I_B) and the 35 off-fixed K_bar entries.
+%   NOTE: `dhat` = charge unit directions in the WORKING frame; fix_dir now works in the
+%   actuator frame (coil/field rotated by load_coils), so callers pass Pc_base (= R_act·d̂),
+%   the on-axis lattice. Frame-invariant → identical fit vs the old WP-frame dhat.
 %   Solved by lsqnonlin on charge_residual. Returns ell [m], ghat_I_B, K_bar (6x6), J (cost).
 %   Initial guess per the document: K_bar0 = eye(6)-ones(6)/6, ell0 = 0.5 mm, ghat_I_B0 = 1.
 %   Units: fit in SI (coil.p [m], ell [m]; well-scaled optimizer packs ell in mm); coil.bfem [mT]

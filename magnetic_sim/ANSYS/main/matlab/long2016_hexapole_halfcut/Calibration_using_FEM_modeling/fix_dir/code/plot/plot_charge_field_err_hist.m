@@ -28,6 +28,8 @@ cnst = mt_constants();
 apdl_to_paper_idx = [1,3,6,5,2,4];
 tip  = [cnst.pole_tip_x; cnst.pole_tip_y; cnst.pole_tip_z_wp];
 dhat = tip ./ vecnorm(tip);
+R_act   = [dhat(:,1), dhat(:,3), dhat(:,5)].';    % [ADDED] load_coils 已把場旋到 actuator 框
+Pc_base = R_act * dhat;                           % [ADDED] actuator 框電荷方向（相減在 actuator）
 
 %% ---- 讀結果防呆 + 載 6 coil（gap200, 'wp'）-------------------------------
 fprintf('讀結果：coil{1..6}/%s（dataset=wp）；期望 gap200 |B| 較 baseline 低 ~30%%。\n', VARIANT);
@@ -38,7 +40,7 @@ C = load_coils(results_root, cnst, apdl_to_paper_idx, VARIANT);   % [沿用，+v
 [ell, ghat_I_B, K_bar, J] = fit_KI_fixl(coil, dhat, I_actual);    % 在 SI 公尺擬合；^Bg_I [mT/A]、ell [m]
 freemask = true(6); freemask(1,1) = false;                        % K_bar(1,1) 固定 5/6
 x = [ell*1e3; ghat_I_B; K_bar(freemask)];                        % 重組 packed 參數（ell 打包成 mm，同 fit_KI_fixl 順序）
-r = charge_residual(x, coil, dhat, I_actual, freemask);           % [沿用] 殘差（逐 coil 區塊串接；mT）
+r = charge_residual(x, coil, Pc_base, I_actual, freemask);        % [MODIFIED] actuator 框相減（coil 已 actuator、電荷 Pc_base）；殘差 mT
 
 err = []; off = 0; sumB2 = 0;
 for k = 1:numel(coil)

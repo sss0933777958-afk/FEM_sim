@@ -47,7 +47,9 @@ if ~exist(cal_dir,'dir'); mkdir(cal_dir); end
 cnst = mt_constants();
 apdl_to_paper_idx = [1, 3, 6, 5, 2, 4];                 % coil k excites this paper pole
 tip  = [cnst.pole_tip_x; cnst.pole_tip_y; cnst.pole_tip_z_wp];
-dhat = tip ./ vecnorm(tip);                             % 3x6 unit directions
+dhat = tip ./ vecnorm(tip);                             % 3x6 unit directions (WP frame)
+R_act   = [dhat(:,1), dhat(:,3), dhat(:,5)].';          % [ADDED] measure→actuator（load_coils 已把場旋到 actuator）
+Pc_base = R_act * dhat;                                 % [ADDED] actuator 框電荷方向 = [+u -u +v -v +w -w]（= 在軸單位晶格）
 
 %% ---- load FEM once (all 6 coils) -------------------------------------------
 fprintf('loading 6 coils (variant ''%s'') ...\n', VARIANT);     % [MODIFIED]
@@ -65,14 +67,14 @@ end
 %% ---- fit + emit LaTeX result per R -----------------------------------------
 for R_um = R_um_list
     [coil, nmin]              = select_ball(C, R_um*1e-6);            % coil.p [m]、bfem [mT]
-    [ell, ghat_I_B, K_bar, J] = fit_KI_fixl(coil, dhat, I_actual);   % 在 SI 公尺擬合；^Bg_I [mT/A]、ell [m]
+    [ell, ghat_I_B, K_bar, J] = fit_KI_fixl(coil, Pc_base, I_actual); % [MODIFIED] actuator 框：電荷方向 Pc_base（相減在 actuator）；^Bg_I [mT/A]、ell [m]
     ell                       = ell * 1e6;                           % m → µm（此後 write/save 用 µm）
     errpct                    = region_field_err(coil, J);
     % PDF 輸出已分離到 code/function/emit_model_results.m（功能分開：main 只算+存 .mat + console）
     % 存 fit_KI_fixl 解成 .mat（供 Hall_sensor_base_fix_dir 載入 ℓ̂；ell 為 [µm]）
     gB = ghat_I_B;  Khat = K_bar;   % alias：維持 .mat field 名 'gB'/'Khat' 與下游 loader 相容
     % [ADDED] 控制範圍（R≤R_um 球）總代表值：σ_tot=mean gain(‖T‖_F)、iso_tot=mean σ_max/σ_min（球內真實節點）
-    rm = calc_range_metrics(coil(1).p, gB*Khat, ell*1e-6, dhat);
+    rm = calc_range_metrics(coil(1).p, gB*Khat, ell*1e-6, Pc_base);  % [MODIFIED] coil.p 與電荷 Pc_base 同在 actuator 框（gain/iso 框無關）
     sigma_tot = rm.sigma_tot;  iso_tot = rm.iso_tot;  sigma_min = rm.sigma_min;  iso_worst = rm.iso_worst;  Np_range = rm.Np;
     save(fullfile(cal_dir, sprintf('fit_fixl_R%03dum%s.mat', R_um, vtag)), ...     % [MODIFIED] vtag + σ_tot/iso_tot
          'ell','gB','Khat','J','errpct','R_um','I_actual','SHAPE','VARIANT', ...
