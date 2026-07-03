@@ -4,7 +4,7 @@ function plot_gain_iso_index()
 %   依 singular_value.pdf 定義：
 %     C(p)     = ∏σ_k = σ₁σ₂σ₃   （flux-generating ellipsoid 體積，(mT/A)³）
 %     kappa(p) = σ_min/σ_max = σ₃/σ₁   （isotropy，≤1、→1 等向）
-%   直方圖（風格同 err-hist 圖）：橫軸=C / kappa 值、縱軸=Count、右上黑框標 N/mean/std（NB=120 細長條、鋼藍白邊）。
+%   直方圖（風格同 err-hist 圖）：橫軸=C / kappa 值、縱軸=Count、左上黑框標 N/mean/std、紅虛線（C→mean、kappa→1）；NB=160 細長條、鋼藍白邊。
 %   輸出：fix_dir/figures/{gain_index,iso_index}.png、no_fix_dir/figures/{gain_index,iso_index}.png。
 %   ★ 兩模型都在 actuator 框同一組節點算（R_act·dhat=Pc_base）：fix 電荷=Pc_base（在軸）、bias=make_Pc(ê)（離軸）。
 
@@ -41,23 +41,28 @@ function plot_gain_iso_index()
     fixfig = fullfile(calroot,'fix_dir','figures');
     nofig  = fullfile(nofix,'figures');
     Clab = '$\mathcal{C}\;[(\mathrm{mT/A})^{3}]$';
-    render_hist(Cvf,  Clab,       '(mT/A)^3', fullfile(fixfig,'gain_index.png'));
-    render_hist(kapf, '$\kappa$', '',         fullfile(fixfig,'iso_index.png'));
-    render_hist(Cvb,  Clab,       '(mT/A)^3', fullfile(nofig, 'gain_index.png'));
-    render_hist(kapb, '$\kappa$', '',         fullfile(nofig, 'iso_index.png'));
+    render_hist(Cvf,  Clab,       '(mT/A)^3', mean(Cvf), fullfile(fixfig,'gain_index.png'));   % C→mean 線
+    render_hist(kapf, '$\kappa$', '',         1,         fullfile(fixfig,'iso_index.png'));    % kappa→1 線
+    render_hist(Cvb,  Clab,       '(mT/A)^3', mean(Cvb), fullfile(nofig, 'gain_index.png'));
+    render_hist(kapb, '$\kappa$', '',         1,         fullfile(nofig, 'iso_index.png'));
 
     fprintf('\n=== 逐節點 C / kappa（R≤150µm 球 %d 節點）===\n', npts);
     fprintf('mean C     : fix=%.4g  bias=%.4g (mT/A)^3\n', mean(Cvf), mean(Cvb));
     fprintf('mean kappa : fix=%.4f  bias=%.4f\n',           mean(kapf), mean(kapb));
 end
 
-function render_hist(y, xlab, sunit, out)
-% 直方圖（風格比照 plot_charge_field_err_hist）：鋼藍+白邊細長條、右上黑框註記、Count 縱軸、無 mean 線。
+function render_hist(y, xlab, sunit, vline, out)
+% 直方圖（風格比照 plot_charge_field_err_hist）：鋼藍+白邊細長條、左上黑框註記、Count 縱軸、vline 紅虛線。
     n = numel(y);  m = mean(y);  s = std(y);
-    NB = 120;                                                       % bin 數（細；參考 err-hist 圖 ~160 格）
+    NB = 160;                                                       % bin 數（細；參考 err-hist 圖 ~160 格）
     fig = figure('Color','w','Position',[100 100 760 560]);
     ax  = axes(fig);
     histogram(ax, y, NB, 'FaceColor',[0.20 0.40 0.70], 'EdgeColor','w');
+    xl = xlim(ax);                                                  % 若 vline 貼/超右界 → 延伸右界讓虛線落在框內
+    if vline >= xl(2) - 0.005*(xl(2)-xl(1))
+        xlim(ax, [xl(1), vline + 0.03*(xl(2)-xl(1))]);
+    end
+    xline(ax, vline, '--', 'Color',[0.85 0.20 0.20], 'LineWidth', 2);   % 標線（C→mean、kappa→1）
     set(ax,'FontSize',16,'FontWeight','bold','LineWidth',2,'TickLength',[.018 .018]);
     box(ax,'on'); grid(ax,'off');
     xt = get(ax,'XTick'); set(ax,'XTick',xt(1:2:end));
@@ -70,7 +75,7 @@ function render_hist(y, xlab, sunit, out)
     else
         txt = sprintf('N = %d\nmean = %.4g %s\nstd = %.4g %s', n, m, sunit, s, sunit);
     end
-    text(ax, 0.97, 0.95, txt, 'Units','normalized', 'HorizontalAlignment','right', ...
+    text(ax, 0.03, 0.95, txt, 'Units','normalized', 'HorizontalAlignment','left', ...
          'VerticalAlignment','top', 'FontSize',14, 'FontWeight','bold', ...
          'BackgroundColor','w', 'EdgeColor','k', 'LineWidth',1.5, 'Margin',5);
     ax.Toolbar.Visible = 'off';
