@@ -4,7 +4,7 @@ function plot_ref_planes_3d()
 %   6 磁極尖端（在 R_norm=500µm 球面）標紅點 + P1–P6 標籤（frames_lattice 風格）。
 %   框 = box on + daspect（cube 幾何、view-robust）。輸出 fix_dir/figures/ref_planes_3d.png。
 
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');   % mt_constants
+    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hung\analysis\core');   % hung mt_constants
     cnst = mt_constants();
     here   = fileparts(mfilename('fullpath'));
     fixdir = fileparts(fileparts(here));

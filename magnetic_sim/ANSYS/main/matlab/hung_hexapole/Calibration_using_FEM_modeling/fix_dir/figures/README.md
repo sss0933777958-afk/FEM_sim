@@ -13,9 +13,9 @@
 **SVD 致動指標逐節點直方圖**（原始資料真實計數、統一 135 bins、紅虛線在各自 mean、黑框 N/mean/CV%）：
 - `gain_index.png` / `iso_index.png` — R≤150µm 球內逐節點 C=∏σ_k（增益,(mT/A)³）/ κ=σ₃/σ₁（等向）分布（**藍**；8774 節點；C mean 1226/CV 2.19%、κ mean 0.878/CV 4.71%）。
 - `gain_index_R500um.png` / `iso_index_R500um.png` — 同上但 **R≤500µm**（**棕** [0.55 0.35 0.17]；180423 節點；C mean 1351/CV 10.06%、κ mean 0.463/CV 38.5%）。R500 已到點電荷模型邊緣（>~380µm 誤差增大），僅呈現該範圍分布。標準圖 x 軸各自尺度、乾淨整數刻度。
-- `gain_index_overlay.png` / `iso_index_overlay.png` — **headline 疊圖**（= 掃描 R_k=150 frame）：R150（**淺藍** [0.45 0.68 0.90]）+ R500（**淺紅** [0.95 0.55 0.55]）；x 軸用 R500 尺度、共用 edges、半透明+白邊；legend 標半徑；「僅此」= 無統計框、無均值線。直觀對比：近中心 R150 集中且較等向（κ~0.88），R500 擴散、等向差（κ~0.46）。
-- `gain_index_overlay_R{150,200,…,500}um.png` / `iso_index_overlay_R{…}um.png` — **掃描疊圖**（每 metric 8 張）：**R500 固定（淺紅）** + **R_k（淺藍）掃 150→500 step 50**；**x 軸固定用 R500 尺度**（8 張同軸可比）→ 逐張看 R_k 分布隨範圍變大、從高-κ 尖峰擴散到 = R500。legend 動態顯示該 R_k。
-- 疊圖用**淺藍/淺紅**專屬配色；**標準圖維持 R150 深藍 navy [0.05 0.12 0.40]、R500 棕 [0.55 0.35 0.17]**（未被疊圖換色影響）。
+- `gain_index_overlay.png` / `iso_index_overlay.png` — **headline 疊圖**（= 掃描 R_k=150 frame）：R150（**深藍 navy** [0.05 0.12 0.40]）+ R500（棕）；x 軸用 R500 尺度、共用 edges、半透明+白邊；legend 標半徑；「僅此」= 無統計框、無均值線。直觀對比：近中心 R150 集中且較等向（κ~0.88），R500 擴散、等向差（κ~0.46）。
+- `gain_index_overlay_R{150,200,…,500}um.png` / `iso_index_overlay_R{…}um.png` — **掃描疊圖**（每 metric 8 張）：**R500 固定（棕）** + **R_k（navy）掃 150→500 step 50**；**x 軸固定用 R500 尺度**（8 張同軸可比）→ 逐張看 R_k 分布隨範圍變大、從高-κ 尖峰擴散到 = R500。legend 動態顯示該 R_k。
+- 標準 R150 圖（`gain_index.png`/`iso_index.png`）也改為 **深藍 navy**（與疊圖 identity 一致）。
 - 由 `../code/plot/plot_gain_iso_index.m` 產生（效率：只 `select_ball(500e-6)` 算一次逐點 C/κ，各 R_k 用 `r<=R_k` 過濾巢狀子集；沿用 R150 fit 參數 ell/gB/Khat）。
 
 **SVD 致動 gain/iso 山丘 + 幾何示意圖**（model-derived、非 raw FEM；3D 框變體 B＝`box on`）：
