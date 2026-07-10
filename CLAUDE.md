@@ -3,16 +3,17 @@
 `FEM_sim/` 是**通用 FEM 模擬容器**。磁學相關的模擬全部收在 `magnetic_sim/` 這一類底下，再依**求解器**分子層：目前為 `magnetic_sim/ANSYS/`（未來可並列 `COMSOL/` 等），其下 `main/` 為活躍設計（4-pole MEMS Quadrupole，原 `kuo/`），`backup/` 歸檔非活躍設計（`hexapole-long2016/`、`hung/`）；未來其他模擬類別（如靜電 / 結構 / 熱）會與 `magnetic_sim/` **並列**為 `FEM_sim/` 的兄弟資料夾。
 
 ## Quick Triggers
-- 當使用者說「**建 hexapole**」時，參照 `.claude/rules/hexapole-build.md` 執行建模流程
-- 當工作涉及 `magnetic_sim/ANSYS/backup/hung/` 目錄時，參照 `.claude/rules/hung-docs.md` 讀取必要文件
-- 當工作涉及 `magnetic_sim/ANSYS/main/` 目錄（cwd 在 magnetic_sim/ANSYS/main/、討論 Quadrupole、編輯 magnetic_sim/ANSYS/main/* 檔案）時，參照 `.claude/rules/main-workspace.md`，所有新產物寫進 magnetic_sim/ANSYS/main/ 下對應子目錄，不得寫到其他設計目錄或外部路徑
-- 當使用者要求 SolidWorks 出檔／解析 STEP／寫 MT_Geom／檢查模型 等 kuo 流程操作時（自然語觸發，例「出 STEP」「解析 STEP」「建 APDL 幾何」「檢查模型」），參照 `.claude/rules/main-workflows.md` 啟動對應 SOP（`magnetic_sim/ANSYS/main/doc/workflows/`）
-- 當工作涉及「**清 sim 副產物 / 清 ANSYS results / 磁碟滿 / 整理 result dir / cleanup sim**」等清理動作時，**動手前必須先完整讀 `.claude/rules/sim-cleanup.md`**；該規則寫死「6 項不可影響工作 + 2 項不可失去能力」criteria、強制 dry-run、預設 half-clean（保 `.db` + 主 `.rmg`）、`--full` 要使用者明確批准；helper script `magnetic_sim/ANSYS/main/apdl/common/clean_sim_dir.sh`
-- 當使用者貼一個 `IGES_converted/<...>.iges` 或 `IGES/<...>.iges` 路徑時，**Claude 必須從路徑識別這是哪個物理模擬模型**（Long Fei 半切六極 / Kuo Quadrupole / Zhang Quadrupole / ...），把該模型當作後續對話的「當前討論模型」，**不要問「這是哪個模型？」**；模型清單見 `.claude/rules/iges-model-id.md`
-- 當工作涉及「**改 ANSYS 幾何 / 改 mt_constants / 寫新 APDL 幾何腳本 / 對齊 CAD / ANSYS 跟 CAD 不一致**」等動作時，**動手前必須先完整讀 `.claude/rules/ansys-cad-alignment.md`**；該規則寫死「CAD STEP/IGES 是 source of truth、ANSYS 數值必對齊 CAD、改前必量 CAD、不一致必通報使用者由其拍板、預設 Path A(改 ANSYS)」
-- 當工作涉及「**跑 COMSOL / LiveLink / mphserver / 連 COMSOL server / 跑 .mph / COMSOL 頻掃**」等動作時，參照 `.claude/rules/comsol-livelink.md`（跨設計通用）；該規則寫死成功連線法 = 「獨立啟 `comsolmphserver.exe` + 另一個 `matlab.exe -batch` 內 `mphstart(2036)`」兩個 process，**不要用整合式 `comsolmphserver matlab`**（Win + R2025b 壞）；一鍵 launcher `magnetic_sim/ANSYS/main/comsol/kuo_quadrupole/run_matlab_with_comsol.ps1`
-- 當工作涉及「**配 FEM 場的擬合 / 改 I_actual·I_in / 寫新 charge fit / 用 fit 參數預測不同電流**」時，**動手前必須先讀 `.claude/rules/fit-current-matches-sim.md`**；該規則寫死「模型電流 I 必須等於 FEM 激發電流（目前 1A），不可塞操作電流 0.6A（會把 1/0.6 假因子灌進 gB、預測需補正）；例外＝用 0.6A 把 1A 場縮到操作點的 V/V 矩陣」
-- 當工作涉及「**讀 / 載入 ANSYS 結果（抽 .dat / import_ansys_data / 載入 coilN / postproc 或算矩陣·fit·畫場圖前載入 result）**」時，**動手前必須先讀 `.claude/rules/result-read-safety.md`**，照三層執行：①讀前回報絕對路徑+dataset+期望指紋，≥2 候選讓使用者選不自己猜 ②讀後核指紋（matched 節點數 + \|B\| max + case_tag，baseline vs `gap200um_mueq` 同節點數只能靠 \|B\| 低 ~30% 區分）對不上就停 ③查 `magnetic_sim/ANSYS/main/ANSYS_data/<topic>/RESULTS_MAP.md` 凌駕 memory（目前已建 long2016_hexapole_halfcut）
+- 當使用者說「**建 hexapole**」時，參照 `magnetic_sim/.claude/rules/hexapole-build.md` 執行建模流程
+- 當工作涉及 `magnetic_sim/ANSYS/backup/hung/` 目錄時，參照 `magnetic_sim/.claude/rules/hung-docs.md` 讀取必要文件
+- 當工作涉及 `magnetic_sim/ANSYS/main/` 目錄（cwd 在 magnetic_sim/ANSYS/main/、討論 Quadrupole、編輯 magnetic_sim/ANSYS/main/* 檔案）時，參照 `magnetic_sim/.claude/rules/main-workspace.md`，所有新產物寫進 magnetic_sim/ANSYS/main/ 下對應子目錄，不得寫到其他設計目錄或外部路徑
+- 當使用者要求 SolidWorks 出檔／解析 STEP／寫 MT_Geom／檢查模型 等 kuo 流程操作時（自然語觸發，例「出 STEP」「解析 STEP」「建 APDL 幾何」「檢查模型」），參照 `magnetic_sim/.claude/rules/main-workflows.md` 啟動對應 SOP（`magnetic_sim/ANSYS/main/doc/workflows/`）
+- 當工作涉及「**清 sim 副產物 / 清 ANSYS results / 磁碟滿 / 整理 result dir / cleanup sim**」等清理動作時，**動手前必須先完整讀 `magnetic_sim/.claude/rules/sim-cleanup.md`**；該規則寫死「6 項不可影響工作 + 2 項不可失去能力」criteria、強制 dry-run、預設 half-clean（保 `.db` + 主 `.rmg`）、`--full` 要使用者明確批准；helper script `magnetic_sim/ANSYS/main/apdl/common/clean_sim_dir.sh`
+- 當使用者貼一個 `IGES_converted/<...>.iges` 或 `IGES/<...>.iges` 路徑時，**Claude 必須從路徑識別這是哪個物理模擬模型**（Long Fei 半切六極 / Kuo Quadrupole / Zhang Quadrupole / ...），把該模型當作後續對話的「當前討論模型」，**不要問「這是哪個模型？」**；模型清單見 `magnetic_sim/.claude/rules/iges-model-id.md`
+- 當工作涉及「**改 ANSYS 幾何 / 改 mt_constants / 寫新 APDL 幾何腳本 / 對齊 CAD / ANSYS 跟 CAD 不一致**」等動作時，**動手前必須先完整讀 `magnetic_sim/.claude/rules/ansys-cad-alignment.md`**；該規則寫死「CAD STEP/IGES 是 source of truth、ANSYS 數值必對齊 CAD、改前必量 CAD、不一致必通報使用者由其拍板、預設 Path A(改 ANSYS)」
+- 當工作涉及「**跑 COMSOL / LiveLink / mphserver / 連 COMSOL server / 跑 .mph / COMSOL 頻掃**」等動作時，參照 `magnetic_sim/.claude/rules/comsol-livelink.md`（跨設計通用）；該規則寫死成功連線法 = 「獨立啟 `comsolmphserver.exe` + 另一個 `matlab.exe -batch` 內 `mphstart(2036)`」兩個 process，**不要用整合式 `comsolmphserver matlab`**（Win + R2025b 壞）；一鍵 launcher `magnetic_sim/ANSYS/main/comsol/kuo_quadrupole/run_matlab_with_comsol.ps1`
+- 當工作涉及「**配 FEM 場的擬合 / 改 I_actual·I_in / 寫新 charge fit / 用 fit 參數預測不同電流**」時，**動手前必須先讀 `magnetic_sim/.claude/rules/fit-current-matches-sim.md`**；該規則寫死「模型電流 I 必須等於 FEM 激發電流（目前 1A），不可塞操作電流 0.6A（會把 1/0.6 假因子灌進 gB、預測需補正）；例外＝用 0.6A 把 1A 場縮到操作點的 V/V 矩陣」
+- 當工作涉及「**讀 / 載入 ANSYS 結果（抽 .dat / import_ansys_data / 載入 coilN / postproc 或算矩陣·fit·畫場圖前載入 result）**」時，**動手前必須先讀 `magnetic_sim/.claude/rules/result-read-safety.md`**，照三層執行：①讀前回報絕對路徑+dataset+期望指紋，≥2 候選讓使用者選不自己猜 ②讀後核指紋（matched 節點數 + \|B\| max + case_tag，baseline vs `gap200um_mueq` 同節點數只能靠 \|B\| 低 ~30% 區分）對不上就停 ③查 `magnetic_sim/ANSYS/main/ANSYS_data/<topic>/RESULTS_MAP.md` 凌駕 memory（目前已建 long2016_hexapole_halfcut）
+- 當工作涉及「**把 CAD/STEP 真實幾何匯進 ANSYS / IGESIN 匯不進 / ~PARAIN / Parasolid 匯入 / 建真實幾何模型**」時，參照 `magnetic_sim/.claude/rules/cad-import-ansys.md`（跨設計通用）；**複雜 CAD 不要 primitive 硬拼**，走 STEP →(SpaceClaim)→ `.x_t` →(`ac4para` 產 ANF)→ MAPDL `/INPUT` → `.db`（`IGESIN` 2025R2 只 SMOOTH 會爆、`~PARAIN` bat 不穩已繞過；`ac4para` 要 PATH 含 `ansys\bin\winx64`；model=公尺MKS、IGES=mm）；另 STEP→OCP→IGES(mm) 供檢查
 
 ## Commands
 
@@ -53,8 +54,9 @@ FEM_sim/                   Git root — 通用 FEM 模擬容器
 ├── README.md                            Project overview
 ├── CLAUDE.md                            This file
 ├── .gitignore                           Excludes ANSYS outputs
-├── .claude/rules/                       Path-scoped editing rules
+├── .claude/                            Git-root Claude config (settings.local.json, README)
 ├── magnetic_sim/                        磁學模擬類別（目前唯一類別）
+│   ├── .claude/rules/                   Path-scoped editing rules (moved here 2026-07-06)
 │   └── ANSYS/                           ANSYS 求解器子層（未來可並列 COMSOL/ 等）
 │       ├── main/                        ★ 活躍設計：4-pole MEMS Quadrupole (Harrison-style；原 kuo/)
 │       │   ├── apdl/{geom,sim,postproc,sweep}/  APDL scripts
@@ -108,10 +110,10 @@ These constraints apply to ALL hexapole designs in this repo. They are non-negot
 - NEVER change geometry parameters without explicit user approval
 - NEVER modify element types or material properties without approval
 - NEVER remove boundary condition section (`[ADDED]` block near line 500)
-- NEVER 跑任何 sim 清理（rm intermediates / rm result dir）前未先讀 `.claude/rules/sim-cleanup.md` 全文 — 該規則寫死「6 項不可影響工作 + 2 項不可失去能力」criteria；違反 = 違規
+- NEVER 跑任何 sim 清理（rm intermediates / rm result dir）前未先讀 `magnetic_sim/.claude/rules/sim-cleanup.md` 全文 — 該規則寫死「6 項不可影響工作 + 2 項不可失去能力」criteria；違反 = 違規
 - NEVER 用 `--full` 模式清 sim 副產物 unless 使用者**明確同意**（預設一律 half-clean，保 `.db` + 主 `.rmg`）
 - NEVER 繞過 helper `magnetic_sim/ANSYS/main/apdl/common/clean_sim_dir.sh` 直接手刻 `rm` ANSYS 檔（會跟規則的保留清單不同步）
-- NEVER 改 ANSYS 幾何尺寸或 mt_constants 前未先量對應 CAD（SolidWorks STEP/IGES）並比對；發現不一致**不可自己選一個值**，必須通報使用者由其拍板（per `.claude/rules/ansys-cad-alignment.md`）
+- NEVER 改 ANSYS 幾何尺寸或 mt_constants 前未先量對應 CAD（SolidWorks STEP/IGES）並比對；發現不一致**不可自己選一個值**，必須通報使用者由其拍板（per `magnetic_sim/.claude/rules/ansys-cad-alignment.md`）
 - NEVER change alpha (54.74 deg) or the R_norm_xy / R_norm_z formulas
 - NEVER produce a pole configuration that violates pair-axis orthogonality
 - NEVER 用 scatteredInterpolant / 格點內插畫場圖，**除非使用者明確要求內插**；也 NEVER 把內插圖當成 raw／節點原值呈現（預設一律真實模擬節點，per Figure Production）

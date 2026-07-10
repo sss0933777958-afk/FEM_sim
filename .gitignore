@@ -83,3 +83,6 @@ desktop.ini
 .claude/settings.local.json
 # Claude Code local settings at ANY depth (root rule above is anchored)
 **/.claude/settings.local.json
+
+# scratch figures (working dir, not deliverables)
+magnetic_sim/ANSYS/main/temp_figures/

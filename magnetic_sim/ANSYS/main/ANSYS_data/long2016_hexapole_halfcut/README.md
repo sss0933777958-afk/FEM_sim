@@ -24,7 +24,7 @@ Long Fei 2016「下極半切」六極 hexapole 的 **FEM 模擬輸出**（`.dat`
 > **標準網格（Long2016 verbatim）** 的解，是主校正（R*=150µm、ℓ̂=0.856）、B̄ 矩陣、一般分析的
 > 資料來源。腳本讀法：`import_ansys_data(fullfile(<root>, 'coilN', 'standard'), 'wp'/'all', 'coilN')`。
 
-### `coilN/gap200um_mueq/` — μ_r 等效氣隙變體
+### `coilN/gap_200um/` — μ_r 等效氣隙變體
 μ_r 等效 200 µm 氣隙（不切幾何，protrusion 改 μ_r=31）。同標準網格、同節點數，
 但 |B| 比 baseline **低約 30%**（B̄ matrix v4 的 gap 對照）。
 

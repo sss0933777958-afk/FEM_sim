@@ -10,7 +10,7 @@
 
 clear; clc;
 
-VARIANT = 'gap200um_mueq';
+VARIANT = 'gap_200um';
 CAL = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
        'long2016_hexapole_halfcut\Calibration_using_FEM_modeling'];
 FIX_MAT   = fullfile(CAL,'fix_dir','data',    sprintf('field_err_hist_%s.mat', VARIANT));

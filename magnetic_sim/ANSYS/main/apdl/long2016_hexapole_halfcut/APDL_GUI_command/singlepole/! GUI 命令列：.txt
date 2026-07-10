@@ -1,0 +1,6 @@
+! GUI 命令列：
+RESUME,'sim_<shape>','db'
+ALLSEL,ALL
+ESEL,S,MAT,,2      ! 只選鋼件
+/PNUM,DEFA         ! 不顯示編號
+EPLOT

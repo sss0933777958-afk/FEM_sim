@@ -1,0 +1,85 @@
+! ============================================================================
+! MT_Sim_P1_basegap.txt — Long2016 halfcut, REAL 200um air-slab gap, coil 1
+!   RESUME mesh_graded_basegap.db（6 極 base 各 200µm slab 已是 MAT_AIR_SLAB μ_r=1；**NO EMODIF**）。
+!   coil 1 = +1 raw、其餘 0 → D,ALL,MAG,0 → magsolv,3 → POST 抽 4 .dat
+!   → 覆蓋 data/coil1/gap_200um/（取代舊 μ_eff 版；all-source negate 在 MATLAB post）。
+!   6 顆 coil 腳本只差激發 coil 編號（R,1=+1），其餘完全同步。
+! ============================================================================
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\gap_basegap_solve'
+/CLEAR,NOSTART
+/TITLE, Long2016 halfcut geometric 200um air-slab gap - coil 1
+RESUME,'mesh_graded','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\mesh_graded_basegap'
+
+/PREP7
+*afun,DEG
+! ---- geom consts (APDL scalars not stored in .db；POST 用 SPH_OFST) ----
+PROT_H     = 7.0e-3
+YOKE_H     = 2.0e-3
+R_norm     = 500e-6
+R_norm_z   = R_norm/sqrt(3.0)
+SPH_OFST   = -PROT_H - 6e-3 + R_norm_z
+AIR_CYL_R  = 80e-3
+AIR_CYL_H  = 70e-3
+COIL_OUT_R = 8e-3
+COIL_IN_R  = 5e-3
+COIL_THK   = COIL_OUT_R - COIL_IN_R
+COIL_H     = PROT_H
+TURNS      = 70
+
+! ---- coil currents: coil 1 = +1 raw, others 0 ----
+R,1,1,TURNS*0,COIL_THK,COIL_H
+R,2,1,TURNS*0,COIL_THK,COIL_H
+R,3,1,TURNS*0,COIL_THK,COIL_H
+R,4,1,TURNS*0,COIL_THK,COIL_H
+R,5,1,TURNS*0,COIL_THK,COIL_H
+R,6,1,TURNS*0,COIL_THK,COIL_H
+R,1,1,TURNS*1,COIL_THK,COIL_H
+
+! ---- far-field BC: MAG=0 on outer cyl lateral + caps ----
+AIR_CYL_Z_CTR = YOKE_H/2
+AIR_CYL_Z_BOT = AIR_CYL_Z_CTR - AIR_CYL_H/2
+AIR_CYL_Z_TOP = AIR_CYL_Z_CTR + AIR_CYL_H/2
+LOCAL,11,1,0,0,0
+CSYS,11
+NSEL,S,LOC,X, AIR_CYL_R-0.5e-3, AIR_CYL_R+0.5e-3
+CSYS,0
+NSEL,A,LOC,Z, AIR_CYL_Z_TOP-0.5e-3, AIR_CYL_Z_TOP+0.5e-3
+NSEL,A,LOC,Z, AIR_CYL_Z_BOT-0.5e-3, AIR_CYL_Z_BOT+0.5e-3
+D,ALL,MAG,0
+ALLSEL,ALL
+FINISH
+
+! ---- solve (DSP scalar potential) ----
+/SOLU
+magsolv,3,,,,,1
+FINISH
+
+! ====================================================================
+! POST1: 4 .dat -> data/coil1/gap_200um/ (all + WP region)
+! ====================================================================
+/POST1
+SET,LAST
+ALLSEL,ALL
+/HEADER,OFF,OFF,OFF,OFF,OFF,OFF
+/FORMAT,10,,20,12,,
+/PAGE,1000000,,1000000
+/OUTPUT,'coil1_coord_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil1\gap_200um'
+NLIST,ALL, , ,COORD
+/OUTPUT
+/OUTPUT,'coil1_bfield_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil1\gap_200um'
+PRNSOL,B,COMP
+/OUTPUT
+LOCAL,12,2, 0, 0, SPH_OFST
+CSYS,12
+NSEL,S,LOC,X, 0, 2e-3
+CSYS,0
+/OUTPUT,'coil1_coord_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil1\gap_200um'
+NLIST,ALL, , ,COORD
+/OUTPUT
+/OUTPUT,'coil1_bfield_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil1\gap_200um'
+PRNSOL,B,COMP
+/OUTPUT
+ALLSEL,ALL
+CSYS,0
+FINISH
+/EXIT,NOSAVE            ! [ADDED] no auto-save jobname.db (.dat 已抽、mesh .db 另存)

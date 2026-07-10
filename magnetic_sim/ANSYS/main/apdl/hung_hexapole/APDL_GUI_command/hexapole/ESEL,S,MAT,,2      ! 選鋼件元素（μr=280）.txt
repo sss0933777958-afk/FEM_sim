@@ -1,0 +1,2 @@
+/PNUM,MAT,0
+EPLOT              ! 看網格

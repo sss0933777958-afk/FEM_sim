@@ -1,0 +1,56 @@
+! ====================================================================
+! MT_View_Springs.txt — 檢視 hung μ_eq 實際施加的「6 整塊支撐座」部件
+! ====================================================================
+! 目的：確認 μ_eq 施加在「整塊支撐座」(非導柱)。
+!   ⚠ 舊版本選「導柱 R<GP_R(4mm) 圓柱」= 錯 (太小)。
+!   本版本「忠實複製 SOLVE deck 的 EMODIF 選取」——才是真正的 μ_eq 區：
+!     solve deck = sim/gap200um_mueq/MT_Sim_P1_gap200.txt
+!     下極塊: 原點圓柱座標 z∈[-10,1]mm, R∈[24,62]mm  (P1/P3/P6, μr 88.41)
+!     上極塊: 原點圓柱座標 z∈[20,31.5]mm, R∈[21,62]mm (P2/P4/P5, μr 101.36)
+!   MAT 2 鋼 → 暫標檢視材料：下極 MAT 99、上極 MAT 98 (僅記憶體、不存檔)。
+! 用法：MAPDL /INPUT 本檔 (自己 RESUME db)，GUI 螢幕顯示；不 /EXIT。
+! ⚠ 變數用不撞 db param 的新名；EMODIF 是 PREP7 指令，RESUME 後先 /PREP7。
+! ====================================================================
+Finish
+/CLEAR,NOSTART
+RESUME,'mesh_graded','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\db\mesh_graded'
+/PREP7
+
+mv_lo = 99            ! 下極支撐座 檢視材料
+mv_up = 98            ! 上極支撐座 檢視材料
+
+! ===== 下極 3 塊支撐座 (複製 solve deck: z[-10,1]mm, R[24,62]mm 原點圓柱環帶) =====
+LOCAL, 13, 1, 0, 0, 0             ! 原點圓柱座標 (X=徑向 R, Z=高)
+CSYS, 13
+ESEL, S, CENT, Z, -10e-3, 1e-3
+ESEL, R, CENT, X, 24e-3, 62e-3
+CSYS, 0
+ESEL, R, MAT, , 2                 ! 只鋼件
+EMODIF, ALL, MAT, mv_lo
+*GET, n_lo, ELEM, 0, COUNT
+ALLSEL, ALL
+
+! ===== 上極 3 塊支撐座 (複製 solve deck: z[20,31.5]mm, R[21,62]mm) =====
+CSYS, 13
+ESEL, S, CENT, Z, 20e-3, 31.5e-3
+ESEL, R, CENT, X, 21e-3, 62e-3
+CSYS, 0
+ESEL, R, MAT, , 2
+EMODIF, ALL, MAT, mv_up
+*GET, n_up, ELEM, 0, COUNT
+ALLSEL, ALL
+
+/GO
+*MSG, INFO, n_lo, n_up
+ mu_eq view: LOWER blocks (MAT99) = %G elems,  UPPER blocks (MAT98) = %G elems
+
+! ===== 顯示 6 塊支撐座 (下極 MAT99 + 上極 MAT98 兩色；不 /EXIT → GUI 保持) =====
+/PNUM, MAT, 1
+ESEL, S, MAT, , mv_up
+ESEL, A, MAT, , mv_lo
+/VIEW, 1, 1, 1, 1
+/ANG, 1
+/AUTO, 1
+EPLOT                      ! → 螢幕顯示 6 塊 μ_eq 支撐座
+! 想跟全部鋼件對照再打： ESEL,A,MAT,,2 $ EPLOT
+! (本 deck 刻意不 /EXIT)

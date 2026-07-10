@@ -10,7 +10,7 @@
 clear; clc;
 
 %% ---- config ----------------------------------------------------------------
-VARIANT  = 'gap200um_mueq';   % FEM 變體
+VARIANT  = 'gap_200um';   % FEM 變體
 R_select = 150e-6;            % 取點半徑 [m]
 I_actual = 1;                 % 驅動電流 [A] = FEM 激發
 NB       = 40;                % 直方圖 bin 數

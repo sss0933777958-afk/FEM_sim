@@ -20,7 +20,7 @@ function plot_gain_iso_index()
     results_root = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\data';
 
     %% ---- 載 6 coil（air 節點、actuator frame）+ 固定校正參數（R150 fit）----
-    C = load_coils(results_root, cnst, idx, 'gap200um_mueq');
+    C = load_coils(results_root, cnst, idx, 'gap_200um');
     P = C(1).P;  r = vecnorm(P,2,2);  P = P(r<=500e-6, :);   % R500 球內真實節點
     npts = size(P,1);
 

@@ -20,7 +20,7 @@ function compare_gain_iso_fix_vs_bias()
     apdl_to_paper_idx = [1, 3, 6, 5, 2, 4];
 
     %% ---- R≤150µm 球內真實節點（actuator 框，8774）----
-    D = load_coils_actuator('long2016_hexapole_halfcut', cnst, apdl_to_paper_idx, 'all', 'gap200um_mueq');
+    D = load_coils_actuator('long2016_hexapole_halfcut', cnst, apdl_to_paper_idx, 'all', 'gap_200um');
     [P, ~, npts] = select_ball(D, 150e-6);                    % P: Np×3 [m] actuator 框
     Pc_base = D.Pc_base;                                      % 3×6 在軸單位晶格（actuator）
 

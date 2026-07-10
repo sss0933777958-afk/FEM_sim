@@ -26,7 +26,7 @@ function plot_charge_positions_3d()
 
     %% ---- 重跑 no_fix 18-param bias 擬合 → no_fix 磁荷（WP 框, mm）----
     model = 'long2016_hexapole_halfcut';  apdl = [1,3,6,5,2,4];
-    D = load_coils_actuator(model, cnst, apdl, 'all', 'gap200um_mueq');
+    D = load_coils_actuator(model, cnst, apdl, 'all', 'gap_200um');
     [P, Bstack] = select_ball(D, 150e-6);
     [ell_nofix, e_hat] = fit_bias(P, Bstack, D.Pc_base, 0.5e-3);     % ell_nofix [m]
     Pc      = make_Pc(e_hat, D.Pc_base);                            % 3x6 (actuator, 正規化)

@@ -3,23 +3,20 @@
 `magnetic_sim/ANSYS/main/` 是目前**唯一活躍的設計**：4-pole MEMS Quadrupole（原 `kuo/`，FEM 求解器 = ANSYS MAPDL）。
 本檔是 Claude 在此目錄工作的導覽 + 規則。動手前先讀：要找什麼資料、放哪、用哪支 resolver、繪圖怎麼做。
 
-> 補充規範（不在此重複）：輸出位置細表見 `../../../.claude/rules/main-workspace.md`；
+> 補充規範（不在此重複）：輸出位置細表見 `../../.claude/rules/main-workspace.md`；
 > 操作 SOP（出 STEP / 跑 FEM / 抽場 / fit / 畫圖…）見 `doc/workflows/README.md`；
-> 讀 ANSYS 結果防呆見 `../../../.claude/rules/result-read-safety.md`。
+> 讀 ANSYS 結果防呆見 `../../.claude/rules/result-read-safety.md`。
 
 ---
 
-## 🔁 鐵則：每次在 main/ 工作前，先讀 `rules/` 全部規則
+## 📁 main/ 相關規則（已移到全域自動載入的 `.claude/rules/`）
 
-**任何在 `main/` 下動手的工作（跑 sim / 寫分析 / 搬檔 / 畫圖 / 改腳本…）開始前，先讀 `rules/` 內全部規則檔再動手**（規則 #4 `rules/read-rules-first.md`）。
-
-## 📁 本地資料夾佈局規則（main/ 專屬，動到對應路徑前先讀 `rules/`）
-
-使用者 2026-06-26 拍板，全文見 `rules/`（索引 `rules/README.md`）：
+**原 `main/rules/` 的 6 條規則已於 2026-07-06 移到 `…/FEM_sim/.claude/rules/`，改為每 session 自動載入**（不必再手動「先讀」）。全文見 `../../.claude/rules/`（索引 `../../.claude/rules/README.md`）：
 1. **`db-folder-retention.md`** — `ANSYS_data/<model>/db/` 子夾只留 `.db` + 主 `.rmg`（無 digit），殘留禁留。
 2. **`matlab-output-layout.md`** — MATLAB `.mat` 放**產生它的程式旁 `data/`**（`matlab/<model>/<activity>[/<sub>]/data/`）。`MATLAB_data/` 已於 2026-06-26 全量遷移並**移除**。
 3. **`results-pdf-only.md`** — `…/Hall_sensor_base_fix_dir/results/` 只放 `.pdf`。
-4. **`read-rules-first.md`** — 每次在 main/ 工作前先讀本資料夾全部規則。
+4. **`figure-style.md` / `figure-output.md`** — 畫圖前**先問使用者要哪個風格選項**（①粗體框圖）；圖一律輸出實檔到 `figures/`、原地改覆蓋迭代到定案。
+5. **`read-rules-first.md`** — 保留為提醒（規則已自動載入，不必再手動先讀）。
 
 ---
 
@@ -54,7 +51,7 @@
 | `apdl/` | APDL 腳本：`<model>/{geom,sim,postproc}/`（+ sweep） | 改幾何/參數/重跑 sim 的 input |
 | `ANSYS_data/` | FEM 輸出 `<model>/<case>/`（`.dat` 場 / `.db` 模型 / `.cdb`） | **讀 FEM 結果**（.dat） |
 | `matlab/` | MATLAB 分析碼 `<model>/<功能組>/code/...` + `figures/` + `results/` + **`data/`（`.mat` 成果，規則 #2）** | 跑分析、畫圖、**讀/寫 `.mat`** |
-| ~~`MATLAB_data/`~~ | **已移除（2026-06-26）**：全量遷移到各活動 `matlab/<model>/<activity>/data/`（規則 `rules/matlab-output-layout.md`）；`matlab_path()` 已 deprecated | `.mat` 改去 `matlab/.../data/` |
+| ~~`MATLAB_data/`~~ | **已移除（2026-06-26）**：全量遷移到各活動 `matlab/<model>/<activity>/data/`（規則 `../../.claude/rules/matlab-output-layout.md`）；`matlab_path()` 已 deprecated | `.mat` 改去 `matlab/.../data/` |
 | `doc/` | LaTeX 原稿 + 編譯 PDF + `workflows/`(SOP) | 推導、報告、流程 SOP |
 | `.claude/` | Claude Code 本地設定（`settings.local.json`） | 非工作產物，通常不動 |
 
@@ -83,7 +80,7 @@ CAD_model (SLDPRT/STEP)
 - 單一主程式組 → `code/main/main.m`（如 `Calibration using FEM modeling/{fix_l,no_fix_l}`）
 - 多腳本組 → `code/scripts/`（如 `fixl_fit, bias_fit, bs_matrix, sensor_d, validation`）
 - 純繪圖組 → `code/plot/`（如 `field_viz, field_cancellation`）
-- 每組另有 `figures/`（圖）、`results/`（PDF / auto-gen `.tex`）、**`data/`（該組 `.mat` 成果，規則 #2 `rules/matlab-output-layout.md`）**。
+- 每組另有 `figures/`（圖）、`results/`（PDF / auto-gen `.tex`）、**`data/`（該組 `.mat` 成果，規則 #2 `../../.claude/rules/matlab-output-layout.md`）**。
   - `Calibration_using_FEM_modeling` 4 子夾一律有 `data/`；其他組有產 `.mat` 才有。
 
 ---
@@ -94,8 +91,8 @@ CAD_model (SLDPRT/STEP)
 2. **不屬於任何現有功能組** → 要**新增一個功能組資料夾**（`matlab/<model>/<新組>/code/plot/` + `figures/`）；**開新組前也要先問使用者**。
 3. **每個圖 / 每個繪圖任務只維護「一支」腳本**：在同一支腳本上**原地反覆修改**到使用者定案；**定案前不可另開新腳本**。
 4. **使用者沒明講「新增（另一支）」就不開第二支腳本**（一個功能組底下可有多支，但各自對應一張已定案的圖）。
-5. **圖一律實際輸出到該組 `figures/`**（使用者要直接開檔）；**要改就原地改腳本→重跑→覆蓋同一個檔**，反覆覆寫到使用者定案（**不要**只丟 temp preview 等定案才落地）。詳見 `rules/figure-output.md`。
+5. **圖一律實際輸出到該組 `figures/`**（使用者要直接開檔）；**要改就原地改腳本→重跑→覆蓋同一個檔**，反覆覆寫到使用者定案（**不要**只丟 temp preview 等定案才落地）。詳見 `../../.claude/rules/figure-output.md`。
 6. 沿用 repo 既有 Figure Production 慣例：**場圖一律畫真實 FEM 節點原值，不用 scatteredInterpolant / 格點內插**（除非使用者明確要求，且須在圖說標示為內插）。
-7. **動手畫圖前（與確認功能組同時），先問使用者「要用哪個風格選項？」**——風格 preset 目錄見 `rules/figure-style.md`（目前：①粗體框圖）。不可自己預設風格、不可憑記憶猜。
+7. **動手畫圖前（與確認功能組同時），先問使用者「要用哪個風格選項？」**——風格 preset 目錄見 `../../.claude/rules/figure-style.md`（目前：①粗體框圖）。不可自己預設風格、不可憑記憶猜。
 
 > 一句話：**先問功能組 + 風格選項 → 一任務一腳本、原地改 → 每輪輸出實檔、覆蓋迭代到定案**。

@@ -10,7 +10,7 @@ clear; clc;
 OUTDIR = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
           'long2016_hexapole_halfcut\Calibration_using_FEM_modeling\no_fix_dir\figures'];   % <== 本副本輸出位置
 
-VARIANT='gap200um_mueq'; R_select=150e-6; ell0=0.5e-3;   % ell0 [m]（fit_bias 在 SI）
+VARIANT='gap_200um'; R_select=150e-6; ell0=0.5e-3;   % ell0 [m]（fit_bias 在 SI）
 CAL = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
        'long2016_hexapole_halfcut\Calibration_using_FEM_modeling'];
 addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');

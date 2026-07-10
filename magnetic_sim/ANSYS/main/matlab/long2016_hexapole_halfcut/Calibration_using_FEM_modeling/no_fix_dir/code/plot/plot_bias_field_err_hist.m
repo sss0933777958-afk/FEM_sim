@@ -11,7 +11,7 @@
 clear; clc;
 
 %% ---- config ----------------------------------------------------------------
-VARIANT  = 'gap200um_mueq';   % FEM 變體
+VARIANT  = 'gap_200um';   % FEM 變體
 R_select = 150e-6;            % 取點半徑 [m]
 ell0     = 0.5e-3;           % ell_hat 初值 [m]（fit_bias 在 SI）
 NB       = 40;                % 直方圖 bin 數

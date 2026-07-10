@@ -5,7 +5,7 @@ function emit_model_results()
 %   F = 1A × I₆（paper P1..P6）；G = ^Bĝ_I·K̄·F（= Hall D^v，mT）。
 %   輸出：fix_dir/results/model_results_gap200um_mueq.pdf。
 
-    VARIANT = 'gap200um_mueq';
+    VARIANT = 'gap_200um';
     here   = fileparts(mfilename('fullpath'));            % .../code/function
     fixdir = fileparts(fileparts(here));                  % .../fix_dir
     out_dir = fullfile(fixdir,'results');

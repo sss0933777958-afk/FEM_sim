@@ -9,7 +9,7 @@ function C = load_coils(results_root, cnst, apdl_to_paper_idx, variant)
 %   actuator frame, consistent with the other 3 calibration packages. Frame rotation is
 %   norm-preserving → fit results (ell, ^Bg_I, K̄, err) are unchanged vs the old WP frame.
 %   In the actuator frame the on-axis charges sit at ell·Pc_base (Pc_base = R_act·d̂).
-%   variant (optional, default 'standard'): FEM variant subfolder, e.g. 'gap200um_mueq'.
+%   variant (optional, default 'standard'): FEM variant subfolder, e.g. 'gap_200um'.
 %   Returns struct array C(k):
 %     .P  Nx3 [m]  air-node positions (ACTUATOR frame)
 %     .Bn Nx3 [mT] FEM B at those nodes (ANSYS Tesla ×1e3 → mT), all-source, ACTUATOR frame

@@ -1,0 +1,70 @@
+! ============================================================================
+! MT_Sim_P3_samemesh.txt - hung_hexapole, NO-GAP same-mesh (slab MAT5->steel), coil 3
+!   RESUME meshbg.db（含 6 SOURC36 線圈 + 6 極 base 200µm slab 已是 MAT_AIR_SLAB μ_r=1；**NO EMODIF**）。
+!   coil 3 = +1A raw、其餘 0 → D,ALL,MAG,0(外球 R180) → magsolv,3(DSP) → POST 抽 4 .dat
+!   → 覆蓋 data/coil3/gap_200um/（取代舊 μ_eff 版；all-source negate 在 MATLAB post）。
+!   6 顆 coil 腳本只差激發 coil 編號（R,3=+1），其餘完全同步。WP 在原點。
+! ============================================================================
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\db\no_gap_solve'
+/CLEAR,NOSTART
+/TITLE, hung_hexapole no-gap same-mesh (slab->steel) - coil 3
+RESUME,'mesh_graded','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\db\mesh_graded_basegap'
+
+/PREP7
+MP,MURX,5,280  ! [ADDED samemesh] slab MAT_AIR_SLAB(5) air->steel; ONLY diff vs gap deck (same mesh)
+*afun,DEG
+! ---- coil 3 = +1A raw, others 0（線圈幾何同 mesh deck：THK 3mm, H 7mm, N70）----
+COIL_THK = 3e-3
+COIL_H   = 7e-3
+TURNS    = 70
+R,1,1,TURNS*0,COIL_THK,COIL_H
+R,2,1,TURNS*0,COIL_THK,COIL_H
+R,3,1,TURNS*0,COIL_THK,COIL_H
+R,4,1,TURNS*0,COIL_THK,COIL_H
+R,5,1,TURNS*0,COIL_THK,COIL_H
+R,6,1,TURNS*0,COIL_THK,COIL_H
+R,3,1,TURNS*1,COIL_THK,COIL_H
+
+! ---- BC: 外球 R180 面 MAG=0（DSP 唯一解）----
+LOCAL,11,2,0,0,0
+CSYS,11
+NSEL,S,LOC,X,179e-3,181e-3
+CSYS,0
+D,ALL,MAG,0
+ALLSEL,ALL
+FINISH
+
+! ---- solve (DSP scalar potential) ----
+/SOLU
+magsolv,3,,,,,1
+FINISH
+
+! ====================================================================
+! POST1: 4 .dat -> data/coil3/gap_200um/ (all + WP region, WP=origin)
+! ====================================================================
+/POST1
+SET,LAST
+ALLSEL,ALL
+/HEADER,OFF,OFF,OFF,OFF,OFF,OFF
+/FORMAT,10,,20,12,,
+/PAGE,1000000,,1000000
+/OUTPUT,'coil3_coord_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\data\coil3\no_gap'
+NLIST,ALL, , ,COORD
+/OUTPUT
+/OUTPUT,'coil3_bfield_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\data\coil3\no_gap'
+PRNSOL,B,COMP
+/OUTPUT
+LOCAL,12,2,0,0,0
+CSYS,12
+NSEL,S,LOC,X,0,2e-3
+CSYS,0
+/OUTPUT,'coil3_coord_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\data\coil3\no_gap'
+NLIST,ALL, , ,COORD
+/OUTPUT
+/OUTPUT,'coil3_bfield_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\data\coil3\no_gap'
+PRNSOL,B,COMP
+/OUTPUT
+ALLSEL,ALL
+CSYS,0
+FINISH
+/EXIT,NOSAVE            ! [ADDED] no auto-save jobname.db (.dat 已抽、mesh .db 另存)

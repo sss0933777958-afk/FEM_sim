@@ -1,5 +1,15 @@
-function plot_gain_iso_overlay()
+function plot_gain_iso_overlay(variant, variant_hung)
 % PLOT_GAIN_ISO_OVERLAY  hung vs long 的 gain(C)/iso(κ) 疊圖（cross-model 對照）。
+%   plot_gain_iso_overlay()               -> gap 版（'gap_200um'，向後相容）
+%   plot_gain_iso_overlay('no_gap') -> no-gap 版（檔名加 '_nogap'）
+%   plot_gain_iso_overlay('gap_200um','gap_200um') -> [ADDED] long/hung 吃不同 variant：
+%       long=第1參數(fit+lattice)、hung=第2參數(僅 fit)。檔名 suffix 依「第1參數」(long) 決定，
+%       故 ('gap_200um','gap_200um') 仍覆蓋 canonical gain_hung_vs_long_R*.png（hung=新 100mm² gap）。
+    if nargin < 1, variant = 'gap_200um'; end                 % [ADDED] variant 切換（long）
+    if nargin < 2 || isempty(variant_hung), variant_hung = variant; end  % [ADDED] hung variant（預設 = long）
+    if     strcmp(variant,'gap_200um'),  vsfx = '';           % gap 保留原檔名
+    elseif strcmp(variant,'no_gap'),   vsfx = '_nogap';
+    else,                                    vsfx = ['_' variant]; end
 %   C、κ 是位置相關的「平滑擬合函數」（charge model：C=∏σ_k、κ=σ₃/σ₁；非 raw FEM 場）→
 %   **在球內「均勻 3D 網格」上連續取樣**（不用 FEM 節點；節點密度不均，尤其 WP 核心球會
 %   過度加權中心 → 直方圖有偏）。均勻體積取樣 = 無偏的 C/κ 空間分布。
@@ -17,9 +27,9 @@ function plot_gain_iso_overlay()
     addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\common');  % ansys_path resolver
     addpath(fullfile(LONG_CAL,'no_fix_dir','code','main_function'));      % load_coils_actuator
     cnstL = mt_constants();                                               % long
-    DL = load_coils_actuator('long2016_hexapole_halfcut', cnstL, [1,3,6,5,2,4], 'all', 'gap200um_mueq');
+    DL = load_coils_actuator('long2016_hexapole_halfcut', cnstL, [1,3,6,5,2,4], 'all', variant);
     PcL = DL.Pc_base;
-    SL = load(fullfile(LONG_CAL,'fix_dir','data','fit_fixl_R150um_gap200um_mueq.mat'), 'ell','gB','Khat');
+    SL = load(fullfile(LONG_CAL,'fix_dir','data',sprintf('fit_fixl_R150um_%s.mat',variant)), 'ell','gB','Khat');
     ellL = SL.ell*1e-6;  HhatL = SL.gB*SL.Khat;
 
     %% ---- hung：electric lattice PcH + fit（後 addpath hung core 蓋掉 long）----
@@ -28,7 +38,7 @@ function plot_gain_iso_overlay()
     cnstH = mt_constants();                                               % hung（後 addpath 優先）
     tip = [cnstH.pole_tip_x; cnstH.pole_tip_y; cnstH.pole_tip_z_wp];  dhat = tip./vecnorm(tip);
     R_act = [dhat(:,1), dhat(:,3), dhat(:,5)].';  PcH = R_act*dhat;
-    SH = load(fullfile(HUNG_CAL,'fix_dir','data','fit_fixl_R150um_gap200um_mueq.mat'), 'ell','gB','Khat');
+    SH = load(fullfile(HUNG_CAL,'fix_dir','data',sprintf('fit_fixl_R150um_%s.mat',variant_hung)), 'ell','gB','Khat');  % [MODIFIED] hung 用 variant_hung
     ellH = SH.ell*1e-6;  HhatH = SH.gB*SH.Khat;
 
     %% ---- figures dirs, colors ----
@@ -44,8 +54,8 @@ function plot_gain_iso_overlay()
         [CH,KH] = ck_nodes(P, ellH, HhatH, PcH);                         % hung
         fprintf('R%d (N=%d)  long: meanC=%.4g meanK=%.4f | hung: meanC=%.4g meanK=%.4f | hung/long C=%.4f\n', ...
                 R_um, size(P,1), mean(CL), mean(KL), mean(CH), mean(KH), mean(CH)/mean(CL));
-        render_overlay(CL, CH, '$\mathcal{C}\;[(\mathrm{mT/A})^{3}]$', RED, BLUE, {figL,figH}, sprintf('gain_hung_vs_long_R%dum.png', R_um));
-        render_overlay(KL, KH, '$\kappa$',                            RED, BLUE, {figL,figH}, sprintf('iso_hung_vs_long_R%dum.png', R_um));
+        render_overlay(CL, CH, '$\mathcal{C}\;[(\mathrm{mT/A})^{3}]$', RED, BLUE, {figL,figH}, sprintf('gain_hung_vs_long%s_R%dum.png', vsfx, R_um));
+        render_overlay(KL, KH, '$\kappa$',                            RED, BLUE, {figL,figH}, sprintf('iso_hung_vs_long%s_R%dum.png', vsfx, R_um));
     end
 end
 

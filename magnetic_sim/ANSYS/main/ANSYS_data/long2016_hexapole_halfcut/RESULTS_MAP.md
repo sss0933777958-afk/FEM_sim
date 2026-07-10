@@ -15,7 +15,7 @@
 `Matched %d nodes`。載入後**對照下表的「matched 節點」與「|B| max」**：
 
 - 節點數可區分 **mesh 種類**（baseline vs graded）。
-- 節點數**無法**區分 baseline vs `gap200um_mueq`（同 mesh）→ **必須再看 |B| max**：
+- 節點數**無法**區分 baseline vs `gap_200um`（同 mesh）→ **必須再看 |B| max**：
   gap 版整體低約 30%。
 
 `dataset` 也是指紋的一部分：同一個 baseline 幾何有 `all`（全域）與 `wp`（WP 區域子集）兩種匯出，節點數不同，**回報時要連 dataset 一起講**。
@@ -42,7 +42,7 @@
 
 | dir | 物理意義 | matched 節點 | \|B\| max 指紋（判別關鍵） | 用途 |
 |---|---|---|---|---|
-| `coil2_gap200um_mueq` … `coil6_gap200um_mueq` | **舊 7mm 公式 μ_r 等效 200µm 氣隙**（protrusion 改 μ_r=31，單一材料）| 與 baseline **相同**（~390579/494873）| **比 baseline 低約 30%**（coil2 ~0.83 / coil5 ~0.25 T）| B̄ matrix v4 的 gap 對照（coil2–6 仍舊公式）|
+| `coil2_gap_200um` … `coil6_gap_200um` | **舊 7mm 公式 μ_r 等效 200µm 氣隙**（protrusion 改 μ_r=31，單一材料）| 與 baseline **相同**（~390579/494873）| **比 baseline 低約 30%**（coil2 ~0.83 / coil5 ~0.25 T）| B̄ matrix v4 的 gap 對照（coil2–6 仍舊公式）|
 | `coil1/gap{0,50,100,150,200}um_mueq` | **新 2 段式 μ_eff gap sweep（2026-06-26）**：coil1(P1, +1 raw) 激發，effective_permeability.pdf 兩段式公式，**上極/下極分開**施加在 6 protrusion 支撐座（upper3 μ_up / lower3 μ_lo；EMODIF 2882 lower + 3147 upper）。⚠ **覆寫了 coil1 的舊 gap100/gap200**（舊 7mm 公式作廢）| 與 baseline **相同**（494871/all，490579/wp）| \|B\|max 隨 gap **遞減**：gap0 **1.1259**（=baseline 驗證）/ 50 **1.0833** / 100 **1.0448** / 150 **1.0102** / 200 **0.9785** T。μ_eff: 50→137/165, 100→95/114, 150→73/88, 200→59/71（up/lo）。比舊公式溫和（舊 200µm ~0.71 vs 新 0.978）| gap 對 WP 場衰減研究 |
 | `P1_graded` | graded 密 mesh，**P1 only**，charge-fit 用 | 與 baseline **不同**（graded mesh）| ~1.20 T | KI 電荷擬合密網格 |
 | `P2toP6_graded` | graded 密 mesh，P2–P6 | graded（不同）| ~1.21 T | KI 電荷擬合密網格 |
@@ -51,7 +51,7 @@
 
 > ⚠ `data/singlepole` 命名異於 coilN：檔名 `singlepole_{coord,bfield}_{all,tip}.dat`（prefix=`singlepole`、dataset∈{all,tip}）。是**獨立單極幾何**（非 6 極 hexapole），節點數 704744 與所有 hexapole 結果都不同、易辨。mesh/solve 分離：`apdl/.../mesh/MT_Mesh_SinglePole.txt` + `sim/singlepole/MT_Sim_SinglePole.txt`，db `db/singlepole/{mesh,sim}_singlepole.db`。
 
-⚠ **最易混點**：`coilN` vs `coilN_gap200um_mueq` 節點數一模一樣，**只有 \|B\| 能分**。要 baseline 卻載到 gap 版 → \|B\| 會低 ~30%，層②必須在此攔下。
+⚠ **最易混點**：`coilN` vs `coilN_gap_200um` 節點數一模一樣，**只有 \|B\| 能分**。要 baseline 卻載到 gap 版 → \|B\| 會低 ~30%，層②必須在此攔下。
 
 ---
 

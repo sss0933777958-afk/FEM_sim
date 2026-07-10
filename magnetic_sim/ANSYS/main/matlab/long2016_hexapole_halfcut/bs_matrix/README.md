@@ -4,11 +4,11 @@
 
 **內容**（功能組 root，下分 `code/scripts` + `results` + `data`）：
 - `code/scripts/` — 矩陣計算 + LaTeX 產生器（`compute_B_*`、`gen_Vout_Vin_*`、`gen_Bs_latex` 等）。
-- `results/` — auto-gen `.tex`（`B_bar_matrix_0p6A`、`B_s_*`、`Vout_Vin_*`，含多 sensor 距離變體與 gap200um_mueq 變體）。
+- `results/` — auto-gen `.tex`（`B_bar_matrix_0p6A`、`B_s_*`、`Vout_Vin_*`，含多 sensor 距離變體與 gap_200um 變體）。
 - `data/` — 本組 `.mat` 成果（規則 #2，2026-06-26 由 `MATLAB_data/.../bs_matrix` 遷入）：`B_bar`、`B_s_*`、`Bbar_S_*`、`Vout_Vin_*`；另含 `compute_delay` 用的頻響 `.mat`（`fig44_*`、`P1field_P5act*`、`comsol_wp_plane_P1` …，原 `freq_response`）。
 
 **資料來源 / 流向**：腳本讀 `ANSYS_data/long2016_hexapole_halfcut/coilN`（FEM `.dat`，FEM 激發 0.6A → 直接對齊操作電流，免線性縮放）→ 感測盤面積平均算 B → `.mat` 寫本組 `data/`（如 `B_bar.mat`）→ `.tex` 進 `results/` 與 `doc/Solve B_matrix/.../scripts/`。
-- ⚠ sensor 資料夾陷阱（baseline vs gap200um_mueq vs pre_fine_mesh 等）：讀結果前依 `result-read-safety` 規則核指紋。
+- ⚠ sensor 資料夾陷阱（baseline vs gap_200um vs pre_fine_mesh 等）：讀結果前依 `result-read-safety` 規則核指紋。
 
 **命名 / 慣例**：功能組 schema = `code/scripts` + `results`（此組無 `plot/`）；`gen_Vout_Vin_<dist>` 的 `<dist>`（如 `4p572`）= sensor-to-tip 距離變體；`0p6A` = 操作電流；`results/` 只放 auto-gen `.tex`。
 

@@ -40,7 +40,11 @@ function c = mt_constants()
         c.tip_y(i) = sind(c.pole_angles(i)) * fc_r;
         c.tip_z(i) = layer(i) * fc_h;
     end
+    c.pole_tip_x    = c.tip_x;  % alias for fitting scripts (load_coils expects pole_tip_*)
+    c.pole_tip_y    = c.tip_y;  % alias
     c.pole_tip_z_wp = c.tip_z;  % alias for fitting scripts
+    % pole cone axis (tip -> base, outward) for filter_iron_nodes: unit radial dir through each tip
+    c.pole_axis     = [c.tip_x; c.tip_y; c.tip_z] / c.R_norm;   % 3x6 unit columns
 
     % Physical constants for point-charge model
     c.N_c   = 70;                  % coil turns per pole

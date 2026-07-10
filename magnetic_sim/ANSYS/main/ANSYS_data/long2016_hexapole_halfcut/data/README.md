@@ -13,7 +13,7 @@ MATLAB 分析（Vmat / d / D_H / charge fit / 場圖）一律從這裡讀。
 |---|---|---|
 | `standard` | Long2016 verbatim **baseline**（smrt5、μ_r=280 全鋼） | coil1–6 |
 | `sensor_spheres` | baseline + 6 顆 sensor 加密球（每 sensor 524~586 節點） | coil1 |
-| `gap200um_mueq` | μ_r 等效 200µm 氣隙（protrusion μ_r=31） | coil1–6 |
+| `gap_200um` | μ_r 等效 200µm 氣隙（protrusion μ_r=31） | coil1–6 |
 | `gap20um_mueq` | μ_r 等效 20µm 氣隙（μ_r=156） | coil1 |
 | `gap100um_mueq` | μ_r 等效 100µm 氣隙（μ_r=56；P2←P1 翻負區） | coil1–6 |
 | `mueq_s1/s2/s3` | μ_eff 掃描 120/90/60（找 P2←P1 翻負臨界 ~μ72） | coil1 |

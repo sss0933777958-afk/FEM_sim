@@ -1,0 +1,26 @@
+! 直接 /INPUT ac4para 產出的 ANF (APDL 幾何檔), 繞過不穩的 ~PARAIN bat 機制
+! ANF 單位=公尺 (0.0432m=43.2mm); 匯入後量 bbox, 之後統一處理 scale
+FINISH
+/CLEAR,NOSTART
+/TITLE, hung_hexapole full geometry (ANF /INPUT from Parasolid, meters)
+/INPUT,hung_hexapole_full,anf
+/PREP7
+NUMCMP,ALL
+ALLSEL,ALL
+*GET,NVOL,VOLU,0,COUNT
+*GET,NARE,AREA,0,COUNT
+*GET,NKP ,KP  ,0,COUNT
+KSEL,ALL
+*GET,XMN,KP,0,MNLOC,X
+*GET,XMX,KP,0,MXLOC,X
+*GET,YMN,KP,0,MNLOC,Y
+*GET,YMX,KP,0,MXLOC,Y
+*GET,ZMN,KP,0,MNLOC,Z
+*GET,ZMX,KP,0,MXLOC,Z
+/GO
+*MSG,INFO,NVOL,NARE,NKP
+ANF RESULT: NVOL=%G  NARE=%G  NKP=%G
+*MSG,INFO,XMN,XMX,YMN,YMX,ZMN,ZMX
+BBOX: X[%G, %G] Y[%G, %G] Z[%G, %G]
+SAVE
+FINISH

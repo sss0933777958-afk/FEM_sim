@@ -19,7 +19,13 @@ function [ell, ghat_I_B, K_bar, J] = fit_KI_fixl(coil, dhat, I)
         'MaxFunctionEvaluations',1e5,'MaxIterations',4e3, ...
         'FunctionTolerance',1e-20,'StepTolerance',1e-12);
     x0 = [ell0*1e3; ghat_I_B0; K_bar0(freemask)];   % ell 打包成 mm（well-scaled）
-    xf = lsqnonlin(@(x) charge_residual(x, coil, dhat, I, freemask), x0, [], [], opts);
+    % [ADDED] ell>0 lower bound — the cost is EXACTLY even in ell (charge dirs = antipodal
+    %   pole pairs Pc_base=[+u -u +v -v +w -w] → ell→-ell = relabel paired poles + flip
+    %   weight sign, absorbed by the free K_bar/gB), giving twin minima at ±ell with identical
+    %   err & C_mean. Physical charge depth is BEHIND the tip (ell>0); pin that branch so
+    %   downstream (Hall_sensor_base/decouple) loads a positive ell. hung already lands +890.
+    lb = [1e-4; -inf(numel(x0)-1,1)];   % ell_mm > 0 ; gB & K_bar free
+    xf = lsqnonlin(@(x) charge_residual(x, coil, dhat, I, freemask), x0, lb, [], opts);
     [ell, ghat_I_B, K_bar] = unpack_params(xf, freemask);
     J = sum(charge_residual(xf, coil, dhat, I, freemask).^2);
 end

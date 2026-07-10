@@ -1,0 +1,7 @@
+鋼件 + 內球一起看（看極尖在球內）：
+CMSEL,S,COMP_MT $ CMSEL,A,COMP_AIR1
+EPLOT
+/PNUM,MAT,1          ! 依材料上色（1=內球空氣 cyan、2=鋼件 magenta）
+ESEL,S,MAT,,1        ! 選內球
+ESEL,A,MAT,,2        ! 加選鋼件
+EPLOT

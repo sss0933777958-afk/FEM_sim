@@ -1,0 +1,206 @@
+! =======================================
+! MT_Geom_Poles.txt  —  hung_hexapole 部件式重建：只建 6 根磁極
+! 直接參考 backup/hung/apdl/geom/MT_Hung_Assembly_Dfillet.txt（磁極段）
+! 磁極 = D 形錐-圓角圓柱：前 28mm D 形(VROTAT 180) + 後 15mm 全圓(VROTAT 360)
+! 上層(P2,P4,P5) tilt +35°；下層(P1,P3,P6) tilt +5.71°(向下)
+! 尖端在 R_sphere=0.5mm magic-angle(54.74°) 球面
+! 單位：SolidWorks 讀 IGES 當英寸 → 內部用英寸建模(MM=1/25.4)
+! 輸出：IGESOUT hung_poles.iges (供檢查，之後再一個一個加支撐座/yoke)
+! =======================================
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\db\geom_poles'
+/PREP7
+*afun, DEG
+BTOL, 1e-5
+MM = 1.0/25.4                 ! 1mm = 0.03937 inch (SolidWorks IGES 相容)
+
+! ===== Pole 尺寸 (from Mag_Pole_Bottom.STEP) =====
+POLE_R         = 3.175*MM
+POLE_CONE_LEN  = 15.875*MM
+POLE_TOTAL_LEN = 43.0*MM
+POLE_FLAT_LEN  = 28.0*MM
+POLE_TIP_R    = 0.040*MM       ! 40 µm fillet radius
+PCH           = sqrt(POLE_CONE_LEN*POLE_CONE_LEN + POLE_R*POLE_R)
+FANG1         = acos(POLE_R/PCH)
+FANG2         = 90 - FANG1
+LFIL          = POLE_CONE_LEN*POLE_TIP_R/POLE_R
+PTC           = LFIL/cos(FANG2)
+PCN2          = LFIL*cos(FANG2)
+PTR2          = POLE_TIP_R*cos(FANG2)
+FDROP         = PTC - POLE_TIP_R
+FPROT         = PCN2 - FDROP
+JUNC_X        = POLE_CONE_LEN - FDROP
+
+! ===== 球面幾何 =====
+R_sphere = 0.5*MM
+fc_theta = 54.74              ! magic angle (極角)
+fc_h = cos(fc_theta)*R_sphere
+fc_r = sin(fc_theta)*R_sphere
+TILT_UP = 35.0
+TILT_DN = 5.71
+
+! ===== 6 根 pole tip/tilt/azimuth =====
+*dim, fc_tx, , 6
+*dim, fc_ty, , 6
+*dim, fc_tz, , 6
+*dim, fc_ia, , 6
+*dim, fc_ra, , 6
+
+fc_tx(1) = fc_r
+fc_ty(1) = 0
+fc_tz(1) = -fc_h
+fc_ia(1) = -TILT_DN
+fc_ra(1) = 0
+
+fc_tx(5) = cos(60)*fc_r
+fc_ty(5) = sin(60)*fc_r
+fc_tz(5) = fc_h
+fc_ia(5) = TILT_UP
+fc_ra(5) = 60
+
+fc_tx(3) = cos(120)*fc_r
+fc_ty(3) = sin(120)*fc_r
+fc_tz(3) = -fc_h
+fc_ia(3) = -TILT_DN
+fc_ra(3) = 120
+
+fc_tx(2) = cos(180)*fc_r
+fc_ty(2) = sin(180)*fc_r
+fc_tz(2) = fc_h
+fc_ia(2) = TILT_UP
+fc_ra(2) = 180
+
+fc_tx(6) = cos(240)*fc_r
+fc_ty(6) = sin(240)*fc_r
+fc_tz(6) = -fc_h
+fc_ia(6) = -TILT_DN
+fc_ra(6) = 240
+
+fc_tx(4) = cos(300)*fc_r
+fc_ty(4) = sin(300)*fc_r
+fc_tz(4) = fc_h
+fc_ia(4) = TILT_UP
+fc_ra(4) = 300
+
+! ===== 建立 6 根 pole（前段 D 型 + 後段全圓）=====
+*do, fc_pi, 1, 6, 1
+
+    fc_incl = fc_ia(fc_pi)
+    fc_azim = fc_ra(fc_pi)
+
+    fc_ax = cos(fc_incl)*cos(fc_azim)
+    fc_ay = cos(fc_incl)*sin(fc_azim)
+    fc_az = sin(fc_incl)
+
+    ! 截面偏移方向（決定削平面朝向）
+    *if, fc_incl, GE, 0, THEN
+        fc_nsx = -sin(fc_azim)
+        fc_nsy = cos(fc_azim)
+    *else
+        fc_nsx = sin(fc_azim)
+        fc_nsy = -cos(fc_azim)
+    *endif
+
+    ! Numbering
+    *get, KP_NUM, KP, , NUM, MAX
+    *if, KP_NUM, LT, 1, THEN
+        KP_NUM = 0
+    *endif
+    KP_START = KP_NUM + 1
+    NUMSTR, KP, KP_START
+
+    *get, LI_NUM, LINE, , NUM, MAX
+    *if, LI_NUM, LT, 1, THEN
+        LI_NUM = 0
+    *endif
+    LI_START = LI_NUM + 1
+    NUMSTR, LINE, LI_START
+
+    ! Tip 位置
+    p1x = fc_tx(fc_pi)
+    p1y = fc_ty(fc_pi)
+    p1z = fc_tz(fc_pi)
+
+    ! 軸上關鍵位置
+    fc_fx = p1x + POLE_FLAT_LEN*fc_ax
+    fc_fy = p1y + POLE_FLAT_LEN*fc_ay
+    fc_fz = p1z + POLE_FLAT_LEN*fc_az
+    fc_ex = p1x + POLE_TOTAL_LEN*fc_ax
+    fc_ey = p1y + POLE_TOTAL_LEN*fc_ay
+    fc_ez = p1z + POLE_TOTAL_LEN*fc_az
+
+    ! 前段：tip → 28mm（D 型，VROTAT 180°）+ 40µm fillet
+    K, KP_START,   p1x, p1y, p1z
+    K, KP_START+1, p1x + FPROT*fc_ax + PTR2*fc_nsx, p1y + FPROT*fc_ay + PTR2*fc_nsy, p1z + FPROT*fc_az
+    K, KP_START+2, p1x + JUNC_X*fc_ax + POLE_R*fc_nsx, p1y + JUNC_X*fc_ay + POLE_R*fc_nsy, p1z + JUNC_X*fc_az
+    K, KP_START+3, fc_fx + POLE_R*fc_nsx, fc_fy + POLE_R*fc_nsy, fc_fz
+    K, KP_START+4, fc_fx, fc_fy, fc_fz
+    K, KP_START+5, fc_ex, fc_ey, fc_ez
+    K, KP_START+6, p1x + POLE_TIP_R*fc_ax, p1y + POLE_TIP_R*fc_ay, p1z + POLE_TIP_R*fc_az
+
+    LARC, KP_START, KP_START+1, KP_START+6, POLE_TIP_R
+    L, KP_START+1, KP_START+2
+    L, KP_START+2, KP_START+3
+    L, KP_START+3, KP_START+4
+    L, KP_START+4, KP_START
+
+    *get, AR_NUM, AREA, , NUM, MAX
+    *if, AR_NUM, LT, 1, THEN
+        AR_NUM = 0
+    *endif
+    AR_START = AR_NUM + 1
+    NUMSTR, AREA, AR_START
+    AL, LI_START, LI_START+1, LI_START+2, LI_START+3, LI_START+4
+
+    VROTAT, AR_START, ,,,, , KP_START, KP_START+5, 180, 2
+
+    ALLSEL, ALL
+
+    ! 後段：28mm → 43mm（全圓，VROTAT 360°），獨立 KP
+    *get, KP_NUM, KP, , NUM, MAX
+    KP_START2 = KP_NUM + 1
+    NUMSTR, KP, KP_START2
+
+    *get, LI_NUM, LINE, , NUM, MAX
+    LI_START2 = LI_NUM + 1
+    NUMSTR, LINE, LI_START2
+
+    K, KP_START2,   fc_fx, fc_fy, fc_fz
+    K, KP_START2+1, fc_fx + POLE_R*fc_nsx, fc_fy + POLE_R*fc_nsy, fc_fz
+    K, KP_START2+2, fc_ex + POLE_R*fc_nsx, fc_ey + POLE_R*fc_nsy, fc_ez
+    K, KP_START2+3, fc_ex, fc_ey, fc_ez
+
+    L, KP_START2, KP_START2+1
+    L, KP_START2+1, KP_START2+2
+    L, KP_START2+2, KP_START2+3
+    L, KP_START2+3, KP_START2
+
+    *get, AR_NUM, AREA, , NUM, MAX
+    AR_START2 = AR_NUM + 1
+    NUMSTR, AREA, AR_START2
+    AL, LI_START2, LI_START2+1, LI_START2+2, LI_START2+3
+
+    VROTAT, AR_START2, ,,,, , KP_START2, KP_START2+3, , 4
+
+    ALLSEL, ALL
+
+    *msg, INFO, fc_pi
+     Pole P%I built (D-shape + round)
+
+*enddo
+
+! ===== 整理與匯出 =====
+CSYS, 0
+NUMCMP, VOLU
+NUMCMP, AREA
+NUMCMP, LINE
+NUMCMP, KP
+
+*get, fc_nvf, VOLU, 0, NUM, MAX
+*msg, INFO, fc_nvf
+ Final: %I pole volumes
+
+ALLSEL, ALL
+IGESOUT, 'hung_poles', 'iges'
+
+FINISH
+/EXIT, NOSAV

@@ -1,0 +1,86 @@
+! ====================================================================
+! MT_Sim_SinglePole_Filled.txt — SOLVE deck (+x graded single-pole, FILLED)
+! ====================================================================
+! RESUME mesh_filled.db (mesh-only, +x, graded) + BC(MAG=0 on R80 outer)
+!   + magsolv(DSP) + 抽 B 場到 data/coil1/singlepole/filled/.
+! baseline (steel MAT2 μ_r=280, 無 μ_eq)；coil = 翻向 1A (source 朝外)；MKS 公尺；WP 在原點。
+! param (SPH_OFST=0/AIR_CYL_R/AIR_CYL_H/TURNS/COIL_THK/COIL_H) 都存在 db、RESUME 帶回。
+! mesh/solve 分離：mesh deck = ../../mesh/MT_Mesh_SinglePole_Filled.txt。
+! ====================================================================
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\singlepole\filled_gap_x42a150'
+FINISH
+/CLEAR,NOSTART
+RESUME,'mesh_filled','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\singlepole\filled_gap_x42a150'
+/FILNAME,sim_filled,1
+
+! ===== [MODIFIED] 重下 coil 電流 (翻向 1A，明確) =====
+/PREP7
+R,1,1,-TURNS*1,COIL_THK,COIL_H
+FINISH
+
+! ===== BC: MAG=0 on 外 R80 圓柱 (側面 + z=±AIR_CYL_H/2 兩蓋；中心 z=SPH_OFST=0) =====
+/SOLU
+AIR_CYL_Z_CTR = SPH_OFST
+AIR_CYL_Z_BOT = AIR_CYL_Z_CTR - AIR_CYL_H/2
+AIR_CYL_Z_TOP = AIR_CYL_Z_CTR + AIR_CYL_H/2
+LOCAL, 11, 1, 0, 0, 0
+CSYS, 11
+NSEL, S, LOC, X, AIR_CYL_R - 0.5e-3, AIR_CYL_R + 0.5e-3
+CSYS, 0
+NSEL, A, LOC, Z, AIR_CYL_Z_TOP - 0.5e-3, AIR_CYL_Z_TOP + 0.5e-3
+NSEL, A, LOC, Z, AIR_CYL_Z_BOT - 0.5e-3, AIR_CYL_Z_BOT + 0.5e-3
+*GET, NBC, NODE, 0, COUNT
+D, ALL, MAG, 0
+ALLSEL, ALL
+/GO
+*MSG, INFO, NBC
+ BC nodes on R80 cylinder = %G
+
+! ===== solve (DSP) =====
+magsolv, 3
+FINISH
+
+! ===== POST1: 抽 B 場 -> data/coil1/singlepole/filled/ =====
+/POST1
+SET, LAST
+ALLSEL, ALL
+/HEADER, OFF,OFF,OFF,OFF,OFF,OFF
+/FORMAT, 10, , 20, 12, ,
+/PAGE, 1000000, , 1000000
+/OUTPUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil1\singlepole\filled_gap_x42a150\coord_all', 'dat'
+NLIST, ALL, , , COORD
+/OUTPUT
+/OUTPUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil1\singlepole\filled_gap_x42a150\bfield_all', 'dat'
+PRNSOL, B, COMP
+/OUTPUT
+LOCAL, 12, 2, 0, 0, SPH_OFST
+CSYS, 12
+NSEL, S, LOC, X, 0, 2e-3
+CSYS, 0
+/OUTPUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil1\singlepole\filled_gap_x42a150\coord_tip', 'dat'
+NLIST, ALL, , , COORD
+/OUTPUT
+/OUTPUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil1\singlepole\filled_gap_x42a150\bfield_tip', 'dat'
+PRNSOL, B, COMP
+/OUTPUT
+
+! ===== [ADDED] WP 中心點：最靠原點單一節點 |B| =====
+nwp = NODE(0,0,0)
+*GET, wbx, NODE, nwp, B, X
+*GET, wby, NODE, nwp, B, Y
+*GET, wbz, NODE, nwp, B, Z
+*GET, wnx, NODE, nwp, LOC, X
+*GET, wny, NODE, nwp, LOC, Y
+*GET, wnz, NODE, nwp, LOC, Z
+wbmag = sqrt(wbx*wbx + wby*wby + wbz*wbz)
+/OUTPUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil1\singlepole\filled_gap_x42a150\wpcenter', 'txt'
+*VWRITE, nwp, wnx*1e6, wny*1e6, wnz*1e6, wbx*1e3, wby*1e3, wbz*1e3, wbmag*1e3
+('WP center node=',F10.0,'  loc(um)=',3F9.2,'  B(mT)=',3F11.4,'  |B|(mT)=',F11.4)
+/OUTPUT
+/GO
+*MSG, INFO, wbmag*1e3
+ WP center |B| = %G mT
+ALLSEL, ALL
+FINISH
+FINISH
+/EXIT, NOSAV

@@ -1,0 +1,238 @@
+! =======================================
+! hung — P1 SINGLE POLE (磁極+支撐座+coil) for dimensional comparison
+! =======================================
+! P1 = +X-axis lower pole (azimuth 0deg, tilt -5.71deg), ACTUAL geometry = D-shape.
+!   pole P1 (D-shape 2-seg VROTAT) + lower support block (T-shape, 2 parts VADD)
+!   + coil ring (solid Ri4/Ro7/H7) + coil-height R4 導柱 stub (fills coil bore).
+! WP already at ORIGIN (no shift). Units inch (MM=1/25.4); IGES flag patched 6->1.
+! Extracted from MT_Geom_FullAssembly.txt (fc_pi=1 only; no other poles/yoke/upper).
+! Output -> IGES/dif_singlepole_dim/hung_p1.iges  (patched copy in IGES_converted/)
+! =======================================
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\db\geom_p1_singlepole'
+
+/PREP7
+*afun, DEG
+BTOL, 1e-5
+MM = 1.0/25.4                 ! SolidWorks reads IGES as inch -> build in inch
+
+! ===== Pole 尺寸 =====
+POLE_R         = 3.175*MM
+POLE_CONE_LEN  = 15.875*MM
+POLE_TOTAL_LEN = 43.0*MM
+POLE_FLAT_LEN  = 28.0*MM
+POLE_TIP_R     = 0.040*MM
+PCH   = sqrt(POLE_CONE_LEN*POLE_CONE_LEN + POLE_R*POLE_R)
+FANG1 = acos(POLE_R/PCH)
+FANG2 = 90 - FANG1
+LFIL  = POLE_CONE_LEN*POLE_TIP_R/POLE_R
+PTC   = LFIL/cos(FANG2)
+PCN2  = LFIL*cos(FANG2)
+PTR2  = POLE_TIP_R*cos(FANG2)
+FDROP = PTC - POLE_TIP_R
+FPROT = PCN2 - FDROP
+JUNC_X = POLE_CONE_LEN - FDROP
+
+! ===== 球面幾何 =====
+R_sphere = 0.5*MM
+fc_theta = 54.74
+fc_h = cos(fc_theta)*R_sphere
+fc_r = sin(fc_theta)*R_sphere
+TILT_DN = 5.71
+
+! ===== P1 (lower, azimuth 0) =====
+p1x = fc_r
+p1y = 0
+p1z = -fc_h
+fc_incl = -TILT_DN
+fc_azim = 0
+
+fc_ax = cos(fc_incl)*cos(fc_azim)
+fc_ay = cos(fc_incl)*sin(fc_azim)
+fc_az = sin(fc_incl)
+
+! lower pole -> +side_perp
+fc_nsx = sin(fc_azim)
+fc_nsy = -cos(fc_azim)
+
+! 軸上關鍵位置
+fc_fx = p1x + POLE_FLAT_LEN*fc_ax
+fc_fy = p1y + POLE_FLAT_LEN*fc_ay
+fc_fz = p1z + POLE_FLAT_LEN*fc_az
+fc_ex = p1x + POLE_TOTAL_LEN*fc_ax
+fc_ey = p1y + POLE_TOTAL_LEN*fc_ay
+fc_ez = p1z + POLE_TOTAL_LEN*fc_az
+
+! ---- 前段：tip -> 28mm (D 型, VROTAT 180) + 40µm fillet ----
+K, 1, p1x, p1y, p1z
+K, 2, p1x + FPROT*fc_ax + PTR2*fc_nsx, p1y + FPROT*fc_ay + PTR2*fc_nsy, p1z + FPROT*fc_az
+K, 3, p1x + JUNC_X*fc_ax + POLE_R*fc_nsx, p1y + JUNC_X*fc_ay + POLE_R*fc_nsy, p1z + JUNC_X*fc_az
+K, 4, fc_fx + POLE_R*fc_nsx, fc_fy + POLE_R*fc_nsy, fc_fz
+K, 5, fc_fx, fc_fy, fc_fz
+K, 6, fc_ex, fc_ey, fc_ez
+K, 7, p1x + POLE_TIP_R*fc_ax, p1y + POLE_TIP_R*fc_ay, p1z + POLE_TIP_R*fc_az
+
+LARC, 1, 2, 7, POLE_TIP_R
+L, 2, 3
+L, 3, 4
+L, 4, 5
+L, 5, 1
+AL, 1, 2, 3, 4, 5
+VROTAT, 1, ,,,, , 1, 6, 180, 2
+ALLSEL, ALL
+
+! ---- 後段：28mm -> 43mm (全圓, VROTAT 360) ----
+*get, KP_NUM, KP, , NUM, MAX
+KP2 = KP_NUM + 1
+NUMSTR, KP, KP2
+*get, LI_NUM, LINE, , NUM, MAX
+LI2 = LI_NUM + 1
+NUMSTR, LINE, LI2
+
+K, KP2,   fc_fx, fc_fy, fc_fz
+K, KP2+1, fc_fx + POLE_R*fc_nsx, fc_fy + POLE_R*fc_nsy, fc_fz
+K, KP2+2, fc_ex + POLE_R*fc_nsx, fc_ey + POLE_R*fc_nsy, fc_ez
+K, KP2+3, fc_ex, fc_ey, fc_ez
+
+L, KP2, KP2+1
+L, KP2+1, KP2+2
+L, KP2+2, KP2+3
+L, KP2+3, KP2
+*get, AR_NUM, AREA, , NUM, MAX
+AR2 = AR_NUM + 1
+NUMSTR, AREA, AR2
+AL, LI2, LI2+1, LI2+2, LI2+3
+VROTAT, AR2, ,,,, , KP2, KP2+3, , 4
+ALLSEL, ALL
+
+! ===== 支撐座 block (lower, T 形 2 塊 VADD) =====
+PENE_DN = 4.5*MM
+BLK_T   = 10.0*MM
+
+fc_s1a = 2.0*MM
+fc_s1b = 9.0*MM
+fc_u1a = -11.0*MM
+fc_u1b = 11.0*MM
+fc_s2a = -13.0*MM
+fc_s2b = 2.0*MM
+fc_u2a = -5.0*MM
+fc_u2b = 5.0*MM
+
+fc_endx = p1x + POLE_TOTAL_LEN*fc_ax
+fc_endy = p1y + POLE_TOTAL_LEN*fc_ay
+fc_endz = p1z + POLE_TOTAL_LEN*fc_az
+
+! Lower: block 垂直居中在 pole 軸, 中心 = pole 尾端 XY
+fc_zbot = fc_endz - BLK_T/2
+fc_ztop = fc_endz + BLK_T/2
+fc_cx = fc_endx
+fc_cy = fc_endy
+
+fc_twx = -cos(fc_azim)
+fc_twy = -sin(fc_azim)
+fc_sdx = sin(fc_azim)
+fc_sdy = -cos(fc_azim)
+
+! Block Part 1
+*get, KP_NUM, KP, , NUM, MAX
+fc_bkp = KP_NUM + 1
+NUMSTR, KP, fc_bkp
+K,fc_bkp,  fc_cx+fc_s1a*fc_twx+fc_u1a*fc_sdx, fc_cy+fc_s1a*fc_twy+fc_u1a*fc_sdy, fc_zbot
+K,fc_bkp+1,fc_cx+fc_s1b*fc_twx+fc_u1a*fc_sdx, fc_cy+fc_s1b*fc_twy+fc_u1a*fc_sdy, fc_zbot
+K,fc_bkp+2,fc_cx+fc_s1b*fc_twx+fc_u1b*fc_sdx, fc_cy+fc_s1b*fc_twy+fc_u1b*fc_sdy, fc_zbot
+K,fc_bkp+3,fc_cx+fc_s1a*fc_twx+fc_u1b*fc_sdx, fc_cy+fc_s1a*fc_twy+fc_u1b*fc_sdy, fc_zbot
+K,fc_bkp+4,fc_cx+fc_s1a*fc_twx+fc_u1a*fc_sdx, fc_cy+fc_s1a*fc_twy+fc_u1a*fc_sdy, fc_ztop
+K,fc_bkp+5,fc_cx+fc_s1b*fc_twx+fc_u1a*fc_sdx, fc_cy+fc_s1b*fc_twy+fc_u1a*fc_sdy, fc_ztop
+K,fc_bkp+6,fc_cx+fc_s1b*fc_twx+fc_u1b*fc_sdx, fc_cy+fc_s1b*fc_twy+fc_u1b*fc_sdy, fc_ztop
+K,fc_bkp+7,fc_cx+fc_s1a*fc_twx+fc_u1b*fc_sdx, fc_cy+fc_s1a*fc_twy+fc_u1b*fc_sdy, fc_ztop
+V,fc_bkp,fc_bkp+1,fc_bkp+2,fc_bkp+3,fc_bkp+4,fc_bkp+5,fc_bkp+6,fc_bkp+7
+
+! Block Part 2
+*get, KP_NUM, KP, , NUM, MAX
+fc_bkp2 = KP_NUM + 1
+NUMSTR, KP, fc_bkp2
+K,fc_bkp2,  fc_cx+fc_s2a*fc_twx+fc_u2a*fc_sdx, fc_cy+fc_s2a*fc_twy+fc_u2a*fc_sdy, fc_zbot
+K,fc_bkp2+1,fc_cx+fc_s2b*fc_twx+fc_u2a*fc_sdx, fc_cy+fc_s2b*fc_twy+fc_u2a*fc_sdy, fc_zbot
+K,fc_bkp2+2,fc_cx+fc_s2b*fc_twx+fc_u2b*fc_sdx, fc_cy+fc_s2b*fc_twy+fc_u2b*fc_sdy, fc_zbot
+K,fc_bkp2+3,fc_cx+fc_s2a*fc_twx+fc_u2b*fc_sdx, fc_cy+fc_s2a*fc_twy+fc_u2b*fc_sdy, fc_zbot
+K,fc_bkp2+4,fc_cx+fc_s2a*fc_twx+fc_u2a*fc_sdx, fc_cy+fc_s2a*fc_twy+fc_u2a*fc_sdy, fc_ztop
+K,fc_bkp2+5,fc_cx+fc_s2b*fc_twx+fc_u2a*fc_sdx, fc_cy+fc_s2b*fc_twy+fc_u2a*fc_sdy, fc_ztop
+K,fc_bkp2+6,fc_cx+fc_s2b*fc_twx+fc_u2b*fc_sdx, fc_cy+fc_s2b*fc_twy+fc_u2b*fc_sdy, fc_ztop
+K,fc_bkp2+7,fc_cx+fc_s2a*fc_twx+fc_u2b*fc_sdx, fc_cy+fc_s2a*fc_twy+fc_u2b*fc_sdy, fc_ztop
+V,fc_bkp2,fc_bkp2+1,fc_bkp2+2,fc_bkp2+3,fc_bkp2+4,fc_bkp2+5,fc_bkp2+6,fc_bkp2+7
+
+*get, fc_bv2, VOLU, 0, NUM, MAX
+fc_bv1 = fc_bv2 - 1
+VADD, fc_bv1, fc_bv2
+ALLSEL, ALL
+
+! ===== coil 環 (solid Ri4/Ro7/H7, 貼導柱) =====
+COIL_RI = 4.0*MM
+COIL_RO = 7.0*MM
+COIL_H  = 7.0*MM
+
+fc_ztop_blk = fc_endz + BLK_T/2
+fc_cz1 = fc_ztop_blk
+fc_cz2 = fc_ztop_blk + COIL_H
+
+*get, KP_NUM, KP, , NUM, MAX
+fc_ckp = KP_NUM + 1
+NUMSTR, KP, fc_ckp
+K, fc_ckp,   fc_cx+COIL_RI, fc_cy, fc_cz1
+K, fc_ckp+1, fc_cx+COIL_RO, fc_cy, fc_cz1
+K, fc_ckp+2, fc_cx+COIL_RO, fc_cy, fc_cz2
+K, fc_ckp+3, fc_cx+COIL_RI, fc_cy, fc_cz2
+K, fc_ckp+4, fc_cx, fc_cy, fc_cz1
+K, fc_ckp+5, fc_cx, fc_cy, fc_cz2
+*get, LI_NUM, LINE, , NUM, MAX
+fc_cli = LI_NUM + 1
+NUMSTR, LINE, fc_cli
+L,fc_ckp,fc_ckp+1
+L,fc_ckp+1,fc_ckp+2
+L,fc_ckp+2,fc_ckp+3
+L,fc_ckp+3,fc_ckp
+*get, AR_NUM, AREA, , NUM, MAX
+fc_car = AR_NUM + 1
+NUMSTR, AREA, fc_car
+AL,fc_cli,fc_cli+1,fc_cli+2,fc_cli+3
+VROTAT,fc_car,,,,,,fc_ckp+4,fc_ckp+5,,4
+ALLSEL, ALL
+
+! ===== [ADDED] R4 導柱樁 (與 coil 同高, 填 coil 內孔) =====
+GP_R = 4.0*MM
+*get, KP_NUM, KP, , NUM, MAX
+fc_gkp = KP_NUM + 1
+NUMSTR, KP, fc_gkp
+K, fc_gkp,   fc_cx+GP_R, fc_cy, fc_cz1
+K, fc_gkp+1, fc_cx+GP_R, fc_cy, fc_cz2
+K, fc_gkp+2, fc_cx,      fc_cy, fc_cz2
+K, fc_gkp+3, fc_cx,      fc_cy, fc_cz1
+*get, LI_NUM, LINE, , NUM, MAX
+fc_gli = LI_NUM + 1
+NUMSTR, LINE, fc_gli
+L, fc_gkp, fc_gkp+1
+L, fc_gkp+1, fc_gkp+2
+L, fc_gkp+2, fc_gkp+3
+L, fc_gkp+3, fc_gkp
+*get, AR_NUM, AREA, , NUM, MAX
+fc_gar = AR_NUM + 1
+NUMSTR, AREA, fc_gar
+AL, fc_gli, fc_gli+1, fc_gli+2, fc_gli+3
+VROTAT, fc_gar, ,,,, , fc_gkp+2, fc_gkp+3, , 4
+ALLSEL, ALL
+
+! ===== 整理與匯出 =====
+CSYS, 0
+NUMCMP, VOLU
+NUMCMP, AREA
+NUMCMP, LINE
+NUMCMP, KP
+
+*get, fc_nvf, VOLU, 0, NUM, MAX
+*msg, INFO, fc_nvf
+ hung P1 single-pole: %I volumes
+
+ALLSEL, ALL
+IGESOUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\IGES\dif_singlepole_dim\hung_p1', 'iges'
+
+FINISH
+/EXIT, NOSAV

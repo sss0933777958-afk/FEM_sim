@@ -1,0 +1,15 @@
+! =============================================================================
+! MT_View_GapMesh.txt — 檢視 long2016 halfcut 真幾何 200µm 氣隙 mesh
+!   RESUME gap mesh → 顯示鋼件(MAT_MT=2) + 6 極 base 200µm 氣隙 slab(MAT_AIR_SLAB=5)
+!   /INPUT 這支即可；ESEL,S,MAT,,5 $ EPLOT 只看 6 片氣隙 slab；zoom 到某極 base 看 200µm 薄層。
+! =============================================================================
+RESUME,'mesh_graded','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\mesh_graded_basegap'
+/PREP7
+ESEL,S,MAT,,2         ! 鋼 MAT_MT（極 + 支撐座 + yoke）
+ESEL,A,MAT,,5         ! + 200µm 氣隙 slab MAT_AIR_SLAB
+/PNUM,MAT,1           ! 依材料號上色（鋼 vs 氣隙 slab 不同色）
+/NUMBER,1
+/VIEW,1,1,1,1         ! iso 視角
+/ANG,1
+/REPLOT
+EPLOT
