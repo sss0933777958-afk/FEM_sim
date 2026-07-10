@@ -12,6 +12,12 @@
 - `bias_field_err_hist_gap_200um.png` — 18-param bias 模型 vs FEM（gap200）逐點逐激發向量差 |B_model−B_FEM|（6 激發合併，R=150 µm 球內 8774 點×6）。橫軸 mT、縱軸 count；median≈0.028 mT（參考 region err 0.46%，不顯示於圖；場模型同 Hall_sensor 的 main_Dmatrix，故數值一致）。由 `../code/plot/plot_bias_field_err_hist.m` 產生（同時存 `../data/field_err_hist_gap_200um.mat` 供疊圖用）。
 - `fix_vs_nofix_err_hist.png` — **single-parameter（= fix-l）vs 18-param bias 疊圖比較**（半透明 + 各自 median 虛線線段）：single-parameter median 0.183 mT、18-param bias median 0.028 mT；顯示 bias 模型誤差明顯更集中近 0。圖標 legend 標 `single-parameter` / `18-param bias`。由 `../code/plot/plot_fix_vs_nofix_err_hist.m` 產生（純載兩個 err .mat、不重算）。同檔亦存於 fix_dir/figures/。
 
+**單極 bias 側視磁路箭頭圖**（風格①粗體框；真實 FEM 節點 grid-sample 不內插、turbo 依 |B|、極錐輪廓、WP `+`、bias 電荷粉點）：
+- `singlepole_sideview_{filled,halfcut,tipcut}.png` — y=0 (xz) 面 |B| quiver + 該形狀極錐輪廓 + **bias 電荷粉點 @ (ℓ̂, ℓ̂·e_z)**（讀 `../data/singlepole_bias_fit.mat` 的 ell_um/e_z；halfcut 粉點偏下軸 ℓ̂·e_z≈−69µm）。**3 張共用同一 colorbar/clim**（共用 CAP=max prctile-92≈38mT，跨形狀可比、最大值數字不誤導；見 figure-style 同類比較共用色階規則）。**tipcut 有左上角尖端 zoom inset（純畫圖：dashed=完整尖端 / solid=切尖 + 場箭頭，無刻度/軸標/title，只留外框）**；只 inset 不另出獨立 zoom 圖。由 `../code/plot/plot_singlepole_sideview.m` 產生。
+
+**單極 bias 場誤差直方圖**（選項①粗體框圖）：
+- `singlepole_magerr_hist_R150.png` — 單極 **有-bias** 模型 vs FEM 逐節點向量差 `|B_model−B_FEM|/|B_FEM|·100%`，filled/halfcut/tipcut 三形狀疊圖（**直方圖規則 nb=180、FaceAlpha0.55、白邊、mean 虛線、headroom**）。電荷 `pc=ℓ·[1,e_y,e_z]`（讀 `../data/singlepole_bias_fit.mat`）。對照 fix_dir 無-bias 版（`fix_dir/figures/singlepole_magerr_hist_R150.png`）halfcut 孤立在 6.24%，此 bias 版三形狀收斂到 ~1%（halfcut 1.03%、filled/tipcut 0.96%）。由 `../code/plot/plot_singlepole_magerr_hist.m` 產生。
+
 **SVD 致動指標逐節點直方圖**（原始資料真實計數、統一 135 bins、紅虛線在各自 mean、黑框 N/mean/CV%；bias 版）：
 - `gain_index.png` / `iso_index.png` — R≤150µm 球內逐節點 C=∏σ_k（增益,(mT/A)³）/ κ=σ₃/σ₁（等向）分布（**藍**；8774 節點；C mean 1228/CV 5.19%、κ mean 0.876/CV 4.95%）。
 - `gain_index_R500um.png` / `iso_index_R500um.png` — 同上但 **R≤500µm**（**棕** [0.55 0.35 0.17]；180423 節點；C mean 1361/CV ~10%、κ mean 0.463/CV 38.5%）。R500 已到點電荷模型邊緣（>~380µm 誤差增大），僅呈現該範圍分布。標準圖 x 軸各自尺度、乾淨整數刻度。

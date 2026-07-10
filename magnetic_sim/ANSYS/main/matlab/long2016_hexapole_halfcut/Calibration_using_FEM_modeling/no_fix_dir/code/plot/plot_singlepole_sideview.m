@@ -1,18 +1,20 @@
 function plot_singlepole_sideview(shapes)
-% PLOT_SINGLEPOLE_SIDEVIEW  單極 y=0 (xz) 側視磁路箭頭圖 + charge_model 位置（+x 框）。
+% PLOT_SINGLEPOLE_SIDEVIEW  單極 y=0 (xz) 側視磁路箭頭圖 + bias 電荷位置（no_fix / +x 框）。
 %   shapes (optional): cell of shapes, default {'filled','halfcut','tipcut'}.
 %   +x mesh：極軸 = +x、WP 在原點、尖端頂點 (0.5,0,0)mm。view x∈[-2,7]、z∈[-3,4] mm、y=0。
 %   all-source：coil 已翻向 → raw FEM 即 source（SGN=+1，不再翻 B）。
 %   真實節點 grid-sample、均勻箭頭、色=|B|（不內插）。
-%   標 charge_model 位置 = ℓ̂·d̂ = (ℓ̂,0)（R150 fit，粉色圓點）+ WP 原點 + 極錐輪廓（per shape）。
-%   風格① 粗體框圖。出 fix_dir/figures/singlepole_sideview_{filled,halfcut,tipcut}.png。
+%   標 bias 電荷位置 = (x_c, z_c) = (ℓ̂, ℓ̂·e_z)（讀 singlepole_bias_fit.mat，粉色圓點；off-axis）
+%   + WP 原點 + 極錐輪廓（per shape）。tipcut 不畫 zoom inset。
+%   風格① 粗體框圖。出 no_fix_dir/figures/singlepole_sideview_{filled,halfcut,tipcut}.png。
 
     if nargin < 1 || isempty(shapes), shapes = {'filled','halfcut','tipcut'}; end
     here   = fileparts(mfilename('fullpath'));
-    fixdir = fileparts(fileparts(here));
+    nfdir  = fileparts(fileparts(here));                                                          % no_fix_dir
+    FIX_MFUN = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\Calibration_using_FEM_modeling\fix_dir\code\main_function';  % load_singlepole
     addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');  % mt_constants
-    addpath(fullfile(fixdir,'code','main_function'));                                              % load_singlepole
-    figdir = fullfile(fixdir,'figures');  if ~exist(figdir,'dir'); mkdir(figdir); end
+    addpath(FIX_MFUN);                                                                            % load_singlepole (reuse)
+    figdir = fullfile(nfdir,'figures');  if ~exist(figdir,'dir'); mkdir(figdir); end
     DATA   = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil1\singlepole';
 
     cnst = mt_constants();
@@ -21,9 +23,9 @@ function plot_singlepole_sideview(shapes)
     POLE_R = cnst.POLE_R*1e3;  POLE_LEN = cnst.POLE_CONE_LEN*1e3;
     slp  = POLE_R/POLE_LEN;                             % 錐半角斜率 = 3/15 = 0.2
 
-    S = load(fullfile(fixdir,'data','singlepole_fit.mat'));   % SHAPES, ell_um, gI
+    S = load(fullfile(nfdir,'data','singlepole_bias_fit.mat'));   % SHAPES, ell_um, ey, ez（bias fit）
 
-    xlim_v = [-2, 7];   zlim_v = [-3, 4];               % view [mm]（使用者拍板）
+    xlim_v = [-2, 7];   zlim_v = [-3, 4];               % view [mm]
     XV = xlim_v(2);
     nx = 40;  nz = 32;                                  % grid-sample 格數（cell ~0.22mm）
 
@@ -47,7 +49,7 @@ function plot_singlepole_sideview(shapes)
         D(s).shp=shp;  D(s).Xg=xv(pick); D(s).Zg=zv(pick);
         D(s).Bx_g=bxv(pick); D(s).Bz_g=bzv(pick);
         D(s).bsum_mT=sqrt(bxv(pick).^2+byv(pick).^2+bzv(pick).^2)*1e3;
-        D(s).xmm=xmm; D(s).zmm=zmm; D(s).ymm=ymm; D(s).Bx=Bx; D(s).Bz=Bz;      % tipcut inset/zoom 用（完整節點）
+        D(s).xmm=xmm; D(s).zmm=zmm; D(s).ymm=ymm; D(s).Bx=Bx; D(s).Bz=Bz;      % tipcut inset 用（完整節點）
         fprintf('== %s ==  arrows: %d | |B| max=%.4g mT\n', shp, numel(pick), max(D(s).bsum_mT));
     end
     CAP = max(arrayfun(@(d) prctile(d.bsum_mT, 92), D));    % 3 形狀共用色階上限
@@ -59,7 +61,7 @@ function plot_singlepole_sideview(shapes)
     for s = 1:numel(shapes)
         shp = D(s).shp;
         Xg=D(s).Xg; Zg=D(s).Zg; Bx_g=D(s).Bx_g; Bz_g=D(s).Bz_g;  bsum_mT=D(s).bsum_mT;
-        xmm=D(s).xmm; zmm=D(s).zmm; ymm=D(s).ymm; Bx=D(s).Bx; Bz=D(s).Bz;     % for tipcut inset/zoom
+        xmm=D(s).xmm; zmm=D(s).zmm; ymm=D(s).ymm; Bx=D(s).Bx; Bz=D(s).Bz;     % for tipcut inset
         Bip = hypot(Bx_g, Bz_g);  Bip(Bip<eps)=eps;
         bx_q = Bx_g./Bip*arrow_len;  bz_q = Bz_g./Bip*arrow_len;
         mag_c = min(bsum_mT, CAP);
@@ -90,9 +92,9 @@ function plot_singlepole_sideview(shapes)
         end
         plot(ax,0,0,'k+','MarkerSize',15,'LineWidth',2.4);
 
-        %% charge_model 位置 = (ℓ̂,0)（粉色圓點、無標籤）
+        %% bias 電荷位置 = (ℓ̂, ℓ̂·e_z) [mm]（粉色圓點、無標籤；off-axis）
         si = find(strcmp(S.SHAPES, shp), 1);
-        cx = S.ell_um(si)/1000;  cz = 0;
+        cx = S.ell_um(si)/1000;  cz = S.ell_um(si)*S.ez(si)/1000;
         plot(ax,cx,cz,'o','MarkerSize',7,'MarkerFaceColor',[1 0.45 0.75],'MarkerEdgeColor',[0.80 0.20 0.50],'LineWidth',1.0);
 
         %% axes（風格①）
@@ -107,28 +109,14 @@ function plot_singlepole_sideview(shapes)
         cb.Label.String='|B| (mT)'; cb.Label.FontWeight='bold'; cb.Label.FontSize=16;
         ax.Toolbar.Visible='off';
 
-        %% ===== tipcut 尖端 zoom：主圖 inset（保留）+ 獨立圖（另出）=====
+        %% ===== tipcut 尖端 zoom：主圖左上角 inset（純粹加圖；不另出獨立 zoom 圖）=====
         if strcmp(shp,'tipcut')
             Rt = cnst.POLE_TIP_R*1e3;
             xin=[0.45 0.62];  zin=[-0.08 0.08];
             rectangle(ax,'Position',[xin(1) zin(1) diff(xin) diff(zin)],'EdgeColor','k','LineWidth',1.2);   % 主圖標 zoom 框
-            % --- inset（保留）---
             axi = axes(fig,'Position',[0.150 0.605 0.30 0.32],'Color','w');
             draw_tip_zoom(axi, xmm,zmm,ymm,Bx,Bz, APEX,slp,Rt);
-            set(axi,'FontSize',11,'FontWeight','bold','LineWidth',1.5,'XTick',[0.45 0.55],'YTick',[-0.05 0 0.05]);
-            xlabel(axi,'x (mm)','FontSize',11,'FontWeight','bold'); ylabel(axi,'z (mm)','FontSize',11,'FontWeight','bold');
-            title(axi,'tip zoom: dashed=full, solid=10 \mum cut','FontSize',10,'FontWeight','bold');
-            % --- 獨立圖（另出）風格① 粗體框 ---
-            fz = figure('Position',[80 80 820 620],'Color','w');  axz = axes(fz);
-            draw_tip_zoom(axz, xmm,zmm,ymm,Bx,Bz, APEX,slp,Rt);
-            set(axz,'FontSize',16,'FontWeight','bold','LineWidth',2,'TickLength',[.018 .018], ...
-                'XTick',[0.45 0.50 0.55 0.60],'YTick',[-0.05 0 0.05]);
-            xlabel(axz,'x (mm)','FontWeight','bold'); ylabel(axz,'z (mm)','FontWeight','bold');
-            title(axz,'tip zoom: dashed = full, solid = 10 \mum cut','FontSize',14,'FontWeight','bold');
-            axz.Toolbar.Visible='off';
-            outz = fullfile(figdir,'singlepole_sideview_tipcut_zoom.png');
-            exportgraphics(fz, outz, 'Resolution',600);  close(fz);
-            fprintf('  saved %s\n', outz);
+            set(axi,'XTick',[],'YTick',[],'LineWidth',1.5);        % 純畫圖：無刻度/軸標/title，只留外框
         end
 
         out = fullfile(figdir, sprintf('singlepole_sideview_%s.png', shp));
@@ -140,7 +128,7 @@ end
 
 function draw_tip_zoom(axt, xmm,zmm,ymm,Bx,Bz, APEX,slp,Rt)
 % 尖端 zoom 內容：細格 grid-sample 灰箭頭 + 完整尖端(dashed 灰) + tipcut(solid 黑) 輪廓。
-%   圓角球心 Cx=APEX+Rt、半徑 Rt；平切 XCUT=0.510mm；圓角↔錐相切點 Ptan。畫在 axt（inset 或獨立圖）。
+%   圓角球心 Cx=APEX+Rt、半徑 Rt；平切 XCUT=0.510mm；圓角↔錐相切點 Ptan。畫在 axt（inset）。
     Cx=APEX+Rt;  bt=atan(slp);
     XCUT=0.510;  zf=sqrt(Rt^2-(Cx-XCUT)^2);
     th_tan=atan2(cos(bt),-sin(bt));  Ptan=[Cx-Rt*sin(bt), Rt*cos(bt)];

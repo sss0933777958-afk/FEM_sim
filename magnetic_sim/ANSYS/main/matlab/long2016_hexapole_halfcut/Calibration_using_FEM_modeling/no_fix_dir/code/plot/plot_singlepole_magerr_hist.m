@@ -1,11 +1,13 @@
-%% plot_singlepole_magerr_hist.m -- single-pole field VECTOR error histogram (3 shapes overlaid)
+%% plot_singlepole_magerr_hist.m -- single-pole BIAS field VECTOR error histogram (3 shapes overlaid)
 % =========================================================================
-%  橫軸 = 逐節點向量誤差 e_i = |B_model - B_FEM| / |B_FEM| * 100 %  (含方向)
-%  縱軸 = count。filled / halfcut / tipcut 三形狀疊圖（reference 風格：半透明無邊框 + mean 虛線）。
-%  ⚠ 相減在「同一座標系」：B_model 用 dhat=[1 0 0] 在 global +x 框算；B_FEM=+BmT(SGN=+1)
+%  no_fix_l 版（bias）：對照 fix_dir/code/plot/plot_singlepole_magerr_hist.m（無-bias）。
+%  橫軸 = 逐節點向量誤差 e_i = |B_model - B_FEM| / |B_FEM| * 100 %。
+%  縱軸 = count。filled / halfcut / tipcut 三形狀疊圖（reference 風格：半透明 + mean 虛線）。
+%  ⚠ 相減在「同一座標系」：B_model 用 pc_hat=[1,e_y,e_z] 在 global +x 框算；B_FEM=+BmT(SGN=+1)
 %    也在同一 global +x 框（load_singlepole 不旋轉、cnst.SPH_OFST=0）→ 逐分量相減合法。
-%  B_model = gI*I*(p/ell - dhat)/|p/ell - dhat|^3。取樣 R<=150µm。legend 標 mean 與 std。
-%  REUSES：load_singlepole；fit 結果讀 data/singlepole_fit.mat。風格① 粗體框圖。
+%  B_model = gI*I*(p/ell - pc_hat)/|p/ell - pc_hat|^3。取樣 R<=150µm。
+%  REUSES：fix_dir 的 load_singlepole；fit 結果讀 data/singlepole_bias_fit.mat。風格① 粗體框圖。
+%  對照無-bias：bias 讓 halfcut 分布明顯左移（誤差下降）。
 %  輸出 -> 本組 figures/singlepole_magerr_hist_R150.png。
 % =========================================================================
 
@@ -14,32 +16,31 @@ clear; clc;
 %% ---- config ----
 R_fit  = 150e-6;      % 取樣半徑 [m]
 I      = 1;           % drive current [A]
-NB     = 80;          % bin 數（更細）
-d_act  = [1;0;0];     % +x 極軸
 
 %% ---- paths ----
-TREE = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\Calibration_using_FEM_modeling\fix_dir';
+TREE     = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\Calibration_using_FEM_modeling\no_fix_dir';
+FIX_MFUN = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\Calibration_using_FEM_modeling\fix_dir\code\main_function';  % load_singlepole
 addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');   % mt_constants
-addpath(fullfile(TREE,'code','main_function'));                                                 % load_singlepole
+addpath(FIX_MFUN);                                                                              % load_singlepole (reuse)
 DATA = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil1\singlepole';
 figdir = fullfile(TREE,'figures');  if ~exist(figdir,'dir'); mkdir(figdir); end
 
 cnst = mt_constants();
 cnst.SPH_OFST = 0;    % +x mesh: WP at ORIGIN (no z-shift) -> same global +x frame as B_model
 
-%% ---- load fit results ----
-S = load(fullfile(TREE,'data','singlepole_fit.mat'));   % SHAPES, ell_um, gI
+%% ---- load bias fit results ----
+S = load(fullfile(TREE,'data','singlepole_bias_fit.mat'));   % SHAPES, ell_um, ey, ez, gI
 SHAPES = S.SHAPES;  ns = numel(SHAPES);
 
-%% ---- per-shape VECTOR error (same-frame subtraction) ----
+%% ---- per-shape VECTOR error (bias model, same-frame subtraction) ----
 E = cell(1,ns);  mu = zeros(1,ns);  sd = zeros(1,ns);  Npt = zeros(1,ns);
 for s = 1:ns
     [Pw, BmT] = load_singlepole(fullfile(DATA, SHAPES{s}), cnst, 'tip');
     in = vecnorm(Pw,2,2) <= R_fit;  P = Pw(in,:);  Bfem = BmT(in,:);   % SGN=+1, global +x frame
-    ell = S.ell_um(s)*1e-6;  gI = S.gI(s);
-    D    = P/ell - d_act.';
+    ell = S.ell_um(s)*1e-6;  pchat = [1, S.ey(s), S.ez(s)];           % bias charge位置
+    D    = P/ell - pchat;
     nrm  = vecnorm(D,2,2);
-    Bmod = gI * I * D ./ (nrm.^3);                                     % same global +x frame
+    Bmod = S.gI(s) * I * D ./ (nrm.^3);                               % same global +x frame
     e = vecnorm(Bmod - Bfem, 2, 2) ./ vecnorm(Bfem, 2, 2) * 100;      % vector err % (>=0)
     E{s} = e;  mu(s) = mean(e);  sd(s) = std(e);  Npt(s) = numel(e);
     fprintf('%-8s | N=%d | mean=%.3f%% | std=%.3f%% | max=%.3f%%\n', SHAPES{s}, Npt(s), mu(s), sd(s), max(e));

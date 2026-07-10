@@ -122,6 +122,15 @@ B＝`…/fix_dir/figures/svd_gain_3d.png`・`svd_iso_3d.png`（surf 山丘，vie
 - bars 樣式：`FaceAlpha 0.55`、`EdgeColor 'w'`、`LineWidth 0.3`；mean 用 `xline` 虛線（同色）；legend 用 histogram handles；上方留 headroom（`ylim*1.20`）讓 legend 不壓 bar。
 - 範例：`plot_gain_iso_overlay.m` 的 `render_overlay`（gain 𝒞 / iso κ 疊圖）。
 
+## 同類比較圖共用色階 / 軸尺度（shared color/axis scale for comparison）
+
+使用者 2026-07-10 拍板：**一組要「互相比較」的同類圖**（如 filled/halfcut/tipcut 三形狀側視場圖、多變體 / 多 case 的 |B| 場圖、同量的多面板）——**必須共用同一 colorbar/`clim`（必要時也共用軸範圍）**。
+
+- **做法**：先把「該組全部圖的資料合併」算一個共用上限（如 `CAP = max_s prctile(bsum_s, 92)`），每張都用同一 `clim([0 CAP])` + 同一 colorbar 範圍。
+- **禁止各圖各自 auto-scale**：各自 `prctile`/`caxis auto` 會讓每張 colorbar 最大值不同 → **跨圖比較被誤導**（例：單極 halfcut 近表面峰值真的較高，但獨立色階會讓人誤以為「halfcut 最大值 > filled」純粹因為色階不同）。
+- **兩段式實作**：Pass 1 載入全組 + 算共用 CAP；Pass 2 逐張用共用 CAP 渲染。範例：`no_fix_dir/code/plot/plot_singlepole_sideview.m`（3 形狀側視共用 CAP）。
+- 何時不適用：**單張獨立圖**（無跨圖比較意圖）可自身 auto-scale；刻意要凸顯各自分布形狀的圖（另註明）。
+
 ## 觸發片語
 - 「畫場圖 / 畫 contour / 畫 quiver / 出圖」——啟動本規則 → **先問要哪個風格選項**。
 - 「用選項① / 粗體框圖 / 套那個風格」——直接套對應 preset。

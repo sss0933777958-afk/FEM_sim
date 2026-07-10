@@ -25,7 +25,7 @@
 - `db-folder-retention.md` — `ANSYS_data/<model>/db/` 子夾只留 `.db` + 主 `.rmg`（無 digit），殘留禁留。
 - `matlab-output-layout.md` — MATLAB `.mat` 放產生它的程式旁 `data/`（`matlab/<model>/<activity>/data/`；`MATLAB_data/` 已移除）。
 - `results-pdf-only.md` — `…/Hall_sensor_base_fix_dir/results/` 只放 `.pdf`（`.mat/.tex/.aux` 不留）。
-- `figure-style.md` — 圖表風格 preset；**畫圖前必先問使用者要哪個風格選項**（①粗體框圖：大字粗體/box/無 grid/tick 減半/單位 `()`；3D 框體 A 立方 daspect / B 異質軸 pbaspect 兩變體依幾何選）；10^0/無單位不標。
+- `figure-style.md` — 圖表風格 preset；**畫圖前必先問使用者要哪個風格選項**（①粗體框圖：大字粗體/box/無 grid/tick 減半/單位 `()`；3D 框體 A 立方 daspect / B 異質軸 pbaspect 兩變體依幾何選）；10^0/無單位不標；直方圖 nb=180；**同類比較圖共用 colorbar/clim（禁各自 auto-scale）**。
 - `figure-output.md` — 圖一律**輸出實檔**到 `figures/`；要改**原地改腳本→重跑→覆蓋同檔**迭代到定案（不丟 temp）。
 
 **位置**：本資料夾 2026-07-06 由 `FEM_sim/.claude/rules/` 移到 `magnetic_sim/.claude/rules/`（使用者拍板，改放磁學模擬層）。
