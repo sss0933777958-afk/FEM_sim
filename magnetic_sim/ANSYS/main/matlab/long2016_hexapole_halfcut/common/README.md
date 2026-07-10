@@ -20,12 +20,12 @@ d = import_ansys_data(ansys_path(model,'coil1','standard'), 'all', 'coil1');
 % 讀/寫 MATLAB 成果（MATLAB_data/<model>/<功能>/...）
 matlab_path(model)                        % .../main/MATLAB_data/<model>
 matlab_path(model,'charge_fit')           % .../<model>/charge_fit
-matlab_path(model,'bs_matrix','B_bar.mat')% .../<model>/bs_matrix/B_bar.mat
+matlab_path(model,'flux_profile','P1_flux.mat')% .../<model>/flux_profile/P1_flux.mat（deprecated）
 ```
 
 **自身定位機制**：兩支都用 `here = fileparts(mfilename('fullpath'))` 取得自己所在的 `.../common`，再 `fileparts ×3` 回到 `.../main`，最後接 `ANSYS_data` / `MATLAB_data`。資料夾名字各寫在檔內**唯一一行常數**（`DATA_DIRNAME` / `MAT_DIRNAME`）——要改名只動那一行。
 
-**資料來源 / 流向**：本層不算任何東西，只回傳路徑字串。`ansys_path` → 指向 `ANSYS_data`（FEM `.dat/.db`，讀）；`matlab_path` → 指向 `MATLAB_data`（分析 `.mat`，讀寫）。功能組腳本（`bias_fit` / `bs_matrix` / `sensor_d`）一律透過這兩支取路徑。
+**資料來源 / 流向**：本層不算任何東西，只回傳路徑字串。`ansys_path` → 指向 `ANSYS_data`（FEM `.dat/.db`，讀）；`matlab_path` → 指向 `MATLAB_data`（分析 `.mat`，讀寫；**deprecated**，`.mat` 現放各活動 local `data/`）。功能組腳本（`bias_fit` / `sensor_d` 等）透過 `ansys_path` 取 FEM 路徑。
 
 **命名 / 慣例**：
 - ⚠ **`ansys_path.m` / `matlab_path.m` 絕不可隨意改動**——全功能組腳本都依賴其簽章與回傳結構；唯一允許的修改是「資料夾改名時改那唯一一行常數」。

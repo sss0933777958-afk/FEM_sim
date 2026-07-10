@@ -5,7 +5,7 @@
 **內容**（第二層 = 功能組 activity）：
 - `common/` — ★ resolver（`ansys_path.m` 讀 FEM `.dat/.db`、`matlab_path.m` 讀寫 `.mat`）；不要硬寫絕對路徑。
 - `Calibration_using_FEM_modeling/` — 點電荷校正 + Hall-sensor d 主流程（單一主程式組 `{fix_dir, no_fix_dir, Hall_sensor_base_fix_dir, Hall_sensor_base_no_fix_dir}/code/main/main.m`）。
-- `fixl_fit/`、`bias_fit/`、`bs_matrix/`、`validation/` — 多腳本組（`code/scripts/`）。
+- `fixl_fit/`、`bias_fit/`、`validation/` — 多腳本組（`code/scripts/`）。（原 `bs_matrix/` 已於 2026-07-10 撤：唯一活腳本 `gen_B_matrix.m` 移入 `Calibration_using_FEM_modeling/Hall_sensor_base_{fix,no_fix}_dir/code/function/`、活資料 `Bbar_S_4p572.mat` 移 `field_viz/data/`、孤兒 .mat 刪。）
 - `field_viz/` — 純繪圖組（`code/plot/`）。
 - `field_cancellation/` — 掃 64 種 source/sink 電流組合，找工作空間磁場抵銷（`code/main/` driver + `code/plot/`，僅 `figures/`、無 `results/`）。
 - 每組另含 `figures/`（`.png`/`.gif`）與 `results/`（auto-gen `.tex`）。

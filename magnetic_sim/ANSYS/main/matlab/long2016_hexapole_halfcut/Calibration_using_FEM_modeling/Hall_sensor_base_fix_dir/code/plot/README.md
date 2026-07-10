@@ -6,6 +6,11 @@
 **內容**：
 - `plot_P2sensor_Braw_P1exc.m` — P2-sensor 局部磁路箭頭圖（coil1 P1 激發、all-source）。模式
   `circuit`/`zoom`/`pole`/`why`/`nodes`；參數 `VARIANT`(`sensor_spheres`/`standard`)、`FLIP`(`flip`/`raw`)。
+- `plot_sensor_mounting.m` — **Hall sensor 安裝位置純幾何示意圖**（x-z 側視 / WP 框，無 FEM 場）。參數
+  `POLE`(`'P1'` 下極半切 / `'P2'` 上極自然斜錐)；畫磁極截面(灰)+WP 星+tip+sensor glyph(綠盤+n+紅箭頭)
+  +安裝偏移 λ1=4.572mm(沿錐面)/λ2=0.41mm(air-gap)。幾何全來自 `mt_constants`+`build_sensor_geometry`
+  （對照 `reference/hall_sensor_full.pdf` 的 `P=ℓ̂·e+λ1·e1+λ2·e2`，驗證安裝式）。出
+  `figures/sensor_mounting_{P1,P2}.png`。
 - `plot_P1P2_air_circuit_3d.m` — 3D 空氣磁路圖。`FOCUS` = `sensor`/`full`/`p2pole`；參數
   `VARIANT`/`DATASET`/`FLIP`（如 `'graded_p2','p2reg','none'` 畫 P2 整根極）。
 - `plot_P2pole_circuit_2d.m` — **P2 整根磁路 2D 剖面**（WP→支撐座，graded 密網格、含鋼件輪廓）。

@@ -57,7 +57,7 @@ function emit_labeled_matrix(fid, name_tex, M, rowlab, collab, factor_mode, capt
     if strcmp(factor_mode,'auto')
         mx = max(abs(M(:)));
         if mx > 0, e = floor(log10(mx)); else, e = 0; end
-        if e ~= 0, Ms = M / 10^e; fac = sprintf('10^{%d}\\,', e); else, Ms = M; fac = ''; end
+        if abs(e) >= 2, Ms = M / 10^e; fac = sprintf('10^{%d}\\,', e); else, Ms = M; fac = ''; end
     else
         Ms = M; fac = '';
     end

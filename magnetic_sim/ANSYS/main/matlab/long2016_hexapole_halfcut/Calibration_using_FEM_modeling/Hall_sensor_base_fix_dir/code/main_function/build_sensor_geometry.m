@@ -17,14 +17,17 @@ function [sensor_pos, sensor_n] = build_sensor_geometry(cnst, SOFF_upper)
 %     P = ℓ̂·e1 + 4.572·dir(−β) + 0.41·dir(−β−90°)。ψ 只進 e1（極尖在 magic-angle 位置 z=−R_norm_z）。
 %   SOFF = 4.572mm（沿錐面距極尖）、AIR = 0.41mm（離面）。
 %   說明：PDF 原式把錐面綁在 ψ，但 FEM 下極半切後錐軸是水平的 → 下極改用 −β 才使 sensor 真正
-%     離實體底錐面 0.41mm（修正 PDF 的 ψ+β）。上極 PDF(ψ=35.26°) vs FEM 錐軸(36.59°) 差 ~0.1mm，暫不改。
+%     離實體底錐面 0.41mm（修正 PDF 的 ψ+β）。**上極錐面 slant/法線改用 FEM 真實上錐軸傾角
+%     inc_up = cnst.upper_incline ≈ 36.59°（非理想 magic-angle ψ=35.26°）** → sensor 真正貼齊
+%     FEM 上錐面（消掉舊 ~0.1mm 離面誤差）；e1（極尖）仍用 ψ0（極尖物理位置鎖 magic-angle）。
 %
 % 輸入：cnst（R_norm/R_norm_xy/R_norm_z、POLE_R、POLE_CONE_LEN、pole_angles、pole_is_lower）
 %       SOFF_upper（選填）：上極沿錐面距極尖 [m]，預設 4.572e-3；可外移上極 sensor（下極固定 4.572e-3）
 % 輸出：sensor_pos 3×6 全域(WP 框)[m]；sensor_n 3×6 法線 n+（出鋼、指向 sensor）
 % -------------------------------------------------------------------------
-    beta = atan2(cnst.POLE_R, cnst.POLE_CONE_LEN);          % 半錐角 β ≈ 11.31° [rad]
-    psi0 = atan2(cnst.R_norm_z, cnst.R_norm_xy);            % 仰角 ψ ≈ 35.26° [rad]（= WP→tip 仰角，magic-angle）
+    beta   = atan2(cnst.POLE_R, cnst.POLE_CONE_LEN);        % 半錐角 β ≈ 11.31° [rad]
+    psi0   = atan2(cnst.R_norm_z, cnst.R_norm_xy);          % 仰角 ψ ≈ 35.26° [rad]（= WP→tip 仰角，magic-angle；只進 e1 極尖）
+    inc_up = cnst.upper_incline;                            % [MODIFIED] 上極錐軸傾角 = FEM/CAD 實際值 ≈ 36.59°（上極 slant/法線用此，非 magic-angle）
     ell  = cnst.R_norm;                                     % ℓ̂ = 工作空間半徑 [m]
     if nargin < 2 || isempty(SOFF_upper), SOFF_upper = 4.572e-3; end  % [ADDED] 上極沿錐面距極尖（選填，預設原值 4.572mm）
     SOFF_lower = 4.572e-3;                                  % 下極沿錐面距極尖 [m]（固定）
@@ -41,9 +44,9 @@ function [sensor_pos, sensor_n] = build_sensor_geometry(cnst, SOFF_upper)
             e2   = dir(-beta,      th);                     % 底錐面 slant（水平錐軸往下 β）
             nhat = dir(-beta-pi/2, th);                    % 底錐面外法線 = [−sinβ cz; −sinβ sz; −cosβ]（n+ 朝下出鋼）
         else
-            % 上極：自然斜錐，沿錐面 ψ+β、外法線 ψ+β+90°（PDF）
-            e2   = dir(psi+beta,      th);                 % 極尖→sensor（沿錐面 slant）
-            nhat = dir(psi+beta+pi/2, th);                 % 錐面外法線（n+ 朝上出鋼）
+            % 上極：自然斜錐，沿錐面 inc_up+β、外法線 inc_up+β+90°（[MODIFIED] 用 FEM 實際傾角非 magic-angle）
+            e2   = dir(inc_up+beta,      th);              % 極尖→sensor（沿真實錐面 slant）
+            nhat = dir(inc_up+beta+pi/2, th);              % 真實錐面外法線（n+ 朝上出鋼）
         end
         if cnst.pole_is_lower(i), soff = SOFF_lower; else, soff = SOFF_upper; end   % [ADDED] 上極可沿斜面外移
         sensor_pos(:,i) = ell*e1 + soff*e2 + AIR*nhat;     % P = ℓ̂·e1 + soff·e2 + 0.41·n+

@@ -5,7 +5,7 @@ function p = matlab_path(model, varargin)
 %MATLAB_PATH  Central resolver for the design (magnetic_sim/ANSYS/main) MATLAB-output root (.mat/.csv/.npz).
 %   Resolved RELATIVE to this file (no hard-coded drive letter). MATLAB analysis
 %   outputs are organised as magnetic_sim/ANSYS/main/MATLAB_data/<model>/<function>/ (function =
-%   charge_fit / bs_matrix / flux_profile / freq_response / bh_saturation / ...).
+%   charge_fit / flux_profile / freq_response / bh_saturation / ...).
 %
 %   p = matlab_path()                          -> .../main/MATLAB_data
 %   p = matlab_path(model)                     -> .../main/MATLAB_data/<model>

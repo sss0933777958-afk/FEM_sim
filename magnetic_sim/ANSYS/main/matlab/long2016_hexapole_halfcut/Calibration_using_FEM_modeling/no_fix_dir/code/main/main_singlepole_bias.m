@@ -6,7 +6,7 @@
 %  ell 抓軸向（tipcut）、(e_y,e_z) 抓形狀橫向不對稱（halfcut z-cut -> e_z != 0）。
 %  all-source：coil 電流在 mesh 已翻向 -> raw FEM 即 source（Bx@WP<0）-> SGN=+1。
 %  對照無-bias（fix_dir/main_singlepole）：bias 讓 halfcut 誤差明顯下降。
-%  輸出：data/singlepole_bias_fit.mat + results/singlepole_bias_fit.pdf（表：ell、e_y、e_z、ghat_I、mean err%）。
+%  輸出：data/singlepole_bias_fit.mat + results/singlepole_bias_fit.pdf（表：ell、e_y、e_z、ghat_I、cost J [mT^2]）。
 
 clear; clc;
 
@@ -52,10 +52,10 @@ save(fullfile(datadir,'singlepole_bias_fit.mat'), 'SHAPES','ell_um','ey','ez','g
      'Jcost','errpct','Nnode','R_fit','I');
 
 %% ---- 輸出 PDF（純結果表；e_y,e_z 用 µm 物理偏移 = ℓ̂·e；.tex -> xelatex -> 只留 .pdf）----
-emit_singlepole_bias_pdf(SHAPES, ell_um, ell_um.*ey, ell_um.*ez, gI, errpct, Nnode, R_fit, I, resdir);
+emit_singlepole_bias_pdf(SHAPES, ell_um, ell_um.*ey, ell_um.*ez, gI, Jcost, Nnode, R_fit, I, resdir);
 
 %% ================= local functions =================
-function emit_singlepole_bias_pdf(shapes, ell_um, ey_um, ez_um, gI, errpct, Nnode, R_fit, I, out_dir)
+function emit_singlepole_bias_pdf(shapes, ell_um, ey_um, ez_um, gI, Jcost, Nnode, R_fit, I, out_dir)
     base = 'singlepole_bias_fit';
     tex_path = fullfile(out_dir, [base '.tex']);
     pdf_path = fullfile(out_dir, [base '.pdf']);
@@ -65,13 +65,13 @@ function emit_singlepole_bias_pdf(shapes, ell_um, ey_um, ez_um, gI, errpct, Nnod
     fprintf(fid, '\\begin{center}\\large\\textbf{Single-pole (P1) point-charge fit with transverse bias}\\end{center}\n');
     fprintf(fid, '\\[\n B(p) = \\hat{g}_I\\, I\\, \\dfrac{p/\\hat{\\ell} - \\hat{p}_c}{|p/\\hat{\\ell} - \\hat{p}_c|^{3}},\\quad p_c=(\\hat{\\ell},\\,e_y,\\,e_z),\\quad R\\le %d~\\mu\\mathrm{m},\\quad I=%g~\\mathrm{A}\n\\]\n', round(R_fit*1e6), I);
     fprintf(fid, '\\begin{center}\n\\begin{tabular}{lcccccc}\n\\hline\n');
-    fprintf(fid, 'shape & $\\hat{\\ell}~[\\mu\\mathrm{m}]$ & $e_y~[\\mu\\mathrm{m}]$ & $e_z~[\\mu\\mathrm{m}]$ & ${}^{B}\\hat{g}_{I}~[\\mathrm{mT/A}]$ & mean err [\\%%] & $N$ \\\\\n\\hline\n');
+    fprintf(fid, 'shape & $\\hat{\\ell}~[\\mu\\mathrm{m}]$ & $e_y~[\\mu\\mathrm{m}]$ & $e_z~[\\mu\\mathrm{m}]$ & ${}^{B}\\hat{g}_{I}~[\\mathrm{mT/A}]$ & cost $J~[\\mathrm{mT}^2]$ & $N$ \\\\\n\\hline\n');
     for s = 1:numel(shapes)
-        fprintf(fid, '%s & %.2f & %+.2f & %+.2f & %.4f & %.3f & %d \\\\\n', ...
-                shapes{s}, ell_um(s), ey_um(s), ez_um(s), gI(s), errpct(s), Nnode(s));
+        fprintf(fid, '%s & %.2f & %+.2f & %+.2f & %.4f & %.4g & %d \\\\\n', ...
+                shapes{s}, ell_um(s), ey_um(s), ez_um(s), gI(s), Jcost(s), Nnode(s));
     end
     fprintf(fid, '\\hline\n\\end{tabular}\n\\end{center}\n');
-    fprintf(fid, '\\noindent\\small Fitted point-charge position $p_c=(\\hat{\\ell},e_y,e_z)$ in the +x single-pole frame (WP at origin, pole axis $+x$), all in $\\mu$m. $\\hat{\\ell}$ = axial depth ($x$); $(e_y,e_z)$ = transverse offset capturing tip-shape asymmetry (e.g.\\ halfcut $e_z<0$). A single monopole has only 3 position DOF, so no separate axial bias $e_x$ (degenerate with $\\hat{\\ell}$). mean err $=\\langle |B_{\\mathrm{mod}}-B_{\\mathrm{FEM}}|/|B_{\\mathrm{FEM}}|\\rangle$ over real FEM nodes ($R\\le %d~\\mu$m).\n', round(R_fit*1e6));
+    fprintf(fid, '\\noindent\\small Fitted point-charge position $p_c=(\\hat{\\ell},e_y,e_z)$ in the +x single-pole frame (WP at origin, pole axis $+x$), all in $\\mu$m. $\\hat{\\ell}$ = axial depth ($x$); $(e_y,e_z)$ = transverse offset capturing tip-shape asymmetry (e.g.\\ halfcut $e_z<0$). A single monopole has only 3 position DOF, so no separate axial bias $e_x$ (degenerate with $\\hat{\\ell}$). cost $J=\\sum_i |B_{\\mathrm{mod}}(p_i)-B_{\\mathrm{FEM}}(p_i)|^2$ (the lsqnonlin objective) over real FEM nodes ($R\\le %d~\\mu$m).\n', round(R_fit*1e6));
     fprintf(fid, '\\end{document}\n');
     fclose(fid);
     xelatex = 'C:\Users\Kuo\AppData\Local\Programs\MiKTeX\miktex\bin\x64\xelatex.exe';

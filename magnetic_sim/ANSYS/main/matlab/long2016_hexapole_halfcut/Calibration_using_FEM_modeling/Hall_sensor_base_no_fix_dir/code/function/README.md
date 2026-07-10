@@ -8,6 +8,7 @@
 - `build_sensor_geometry.m` — 每極 sensor 位置/法線 n+（只回 `sensor_pos`/`sensor_n`；frame-independent，與 fix-ℓ 版相同）。
 - `extract_Vmat.m` — 抽 sensor 電壓 `Vmat`（**沿 n+ 圓柱選真實 FEM 節點**平均 signed B·n+、**非內插**）+ all-source 翻下極欄（含 `variant` 讀 mesh 變體子夾；與 fix-ℓ 版相同）。
 - `solve_d.m` — 閉式解 `d`（**no-gain，無 g_H**；吃 bias 的 M、c）。
+- `gen_B_matrix.m` — **已於 2026-07-10 移到 `../main_function/`**（results 輸出腳本統一放 main_function）。B 矩陣 `B_ij=V_out/V_in` + 參考矩陣 Frobenius → `results/B_matrix_result.pdf`（見 `../main_function/README.md`）。
 
 **註**：`build_S / build_sensor_geometry / extract_Vmat` 與 `../../Hall_sensor_base_fix_dir/code/function/` **完全相同**；`sensor_residual_bias` = fix-ℓ 版 `sensor_residual` 的 build_S 逐點 cost（只差檔名），`solve_d` 為 no-gain（吃 `main` 以 build_S 建好的 M、c，與 fix-ℓ 版數學等價）。**bias 唯一差異已收斂到 `main.m`**（載 calib_bias、旋進 actuator 框、用 Pc_18）。已移除 `build_A / compute_KH / write_*_tex`（堆疊 / g_H / K_H / LaTeX）。
 

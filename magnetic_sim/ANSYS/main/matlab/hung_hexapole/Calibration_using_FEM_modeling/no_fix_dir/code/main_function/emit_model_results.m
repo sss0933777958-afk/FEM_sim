@@ -5,7 +5,7 @@ function emit_model_results()
 %   F = 1A × I₆（paper P1..P6）；G = ^Bĝ_I·K̄·F（mT）；ê 由 e_hat(17) 依 e6z 約束重建。
 %   輸出：no_fix_dir/results/model_results_gap200um_mueq.pdf。
 
-    VARIANT = 'gap_200um';
+    VARIANT = 'gap200um_mueq';   % [MODIFIED 2026-07-10] charge no_fix fit 資料仍 μ_eff 版（fit_bias_R150um_gap200um_mueq.mat）；未 re-run basegap → 對齊現有資料名
     here   = fileparts(mfilename('fullpath'));
     base   = fileparts(fileparts(here));                  % .../no_fix_dir
     out_dir = fullfile(base,'results');
@@ -38,7 +38,7 @@ function emit_model_results()
     emit_mat(fid, 'G~[\mathrm{mT}]', G, pole, '');
     emit_mat(fid, 'F~[\mathrm{A}]', F, pole, '');
     emit_scalar_unit(fid, '{}^{B}\hat{g}_{I}', ghat_I_B, 'mT/A');   % 10^0 不標
-    emit_e(fid, '\hat{e}', E36, pole, '');                  % 3×6 bias，無因次 → 不標單位
+    emit_e(fid, 'e~[\mu\mathrm{m}]', ell.*E36, pole, '');    % 3×6 物理偏移 e = ℓ̂·ê [µm]（per unit-reference 長度→µm）
     if hasAiso   % 控制範圍性能量（singular_value.pdf）：C_mean=體積 ∏σ_k(有單位)、kappa_mean=σmin/σmax(無因次不標)
         fprintf(fid,'\\[\n \\mathcal{C}_{\\mathrm{mean}} = %.4g~(\\mathrm{mT/A})^{3}\n\\]\n', S.C_mean);
         fprintf(fid,'\\[\n \\kappa_{\\mathrm{mean}} = %.4f\n\\]\n', S.kappa_mean);
@@ -60,7 +60,7 @@ end
 
 function emit_mat(fid, name, M, lab, fmode)
     Ms = M; fac = '';
-    if strcmp(fmode,'auto'), mx=max(abs(M(:))); if mx>0, e=floor(log10(mx)); if e~=0, Ms=M/10^e; fac=sprintf('10^{%d}\\,',e); end, end, end
+    if strcmp(fmode,'auto'), mx=max(abs(M(:))); if mx>0, e=floor(log10(mx)); if abs(e)>=2, Ms=M/10^e; fac=sprintf('10^{%d}\\,',e); end, end, end
     fprintf(fid,'\\[\n%s = %s\\begin{array}{c|cccccc}\n ', name, fac);
     for j=1:6, fprintf(fid,'& %s ', lab{j}); end
     fprintf(fid,'\\\\\\hline\n');
@@ -70,7 +70,7 @@ end
 
 function emit_e(fid, name, E, collab, fmode)
     Es = E; fac = '';
-    if strcmp(fmode,'auto'), mx=max(abs(E(:))); if mx>0, e=floor(log10(mx)); if e~=0, Es=E/10^e; fac=sprintf('10^{%d}\\,',e); end, end, end
+    if strcmp(fmode,'auto'), mx=max(abs(E(:))); if mx>0, e=floor(log10(mx)); if abs(e)>=2, Es=E/10^e; fac=sprintf('10^{%d}\\,',e); end, end, end
     erow = {'e_x','e_y','e_z'};
     fprintf(fid,'\\[\n%s = %s\\begin{array}{c|cccccc}\n ', name, fac);
     for j=1:6, fprintf(fid,'& %s ', collab{j}); end
@@ -81,7 +81,7 @@ end
 
 function emit_scalar_unit(fid, name, val, unit)
     ge = floor(log10(abs(val)));
-    if ge==0
+    if abs(ge)<=1
         fprintf(fid,'\\[\n %s = %.4f~\\mathrm{%s}\n\\]\n', name, val, unit);
     else
         fprintf(fid,'\\[\n %s = %.3f\\times10^{%d}~\\mathrm{%s}\n\\]\n', name, val/10^ge, ge, unit);

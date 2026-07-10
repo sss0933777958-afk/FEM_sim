@@ -2,8 +2,9 @@
 
 **用途**：對已求解、存好的 `.db` / 結果做 POST1 後處理，抽出 B 場到 `.dat`。不重跑求解，只 RESUME 既有解再 PRNSOL。
 
-**內容**：本層只放子資料夾：
+**內容**：
 - `dump/` — `MT_Dump_*.txt`：RESUME 存好的 master `.db`，對指定區域（slab / WP / circuit）抽座標 + B 場到 `.dat`。
+- `MT_Export_SensorLocalMesh{,_graded,_basegap}.txt` — RESUME 對應網格 `.db`（standard / plain-graded / **basegap**），dump 6 顆 Hall-sensor 附近的局部 SOLID96 air tet 連接性到 CSV（供 `extract_Vmat_interp.m` 做真-FEM tet 重心內插）。**`_basegap`（2026-07-10）= gap_200um 真實 200µm slab 網格（706k），CSV → `ANSYS_data/<model>/csv/`**（舊 `_graded` 的 636k CSV 與 gap_200um 706k 差 ~20mm 不可用）。純網格 export、不求解。
 
 **資料來源 / 流向**：input = `ANSYS_data/long2016_hexapole_halfcut/coilN/<case>/3DMTmagneticfield.db`（已解）；output = 同 CWD 的 `coilN_coord_*.dat` + `coilN_bfield_*.dat`，供 MATLAB 讀。
 

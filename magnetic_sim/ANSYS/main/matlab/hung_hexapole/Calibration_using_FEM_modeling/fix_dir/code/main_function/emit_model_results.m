@@ -36,7 +36,7 @@ function emit_model_results()
     emit_mat(fid, 'G~[\mathrm{mT}]', G, pole, '');
     emit_mat(fid, 'F~[\mathrm{A}]', F, pole, '');
     ge = floor(log10(abs(ghat_I_B)));  gm = ghat_I_B/10^ge;
-    if ge==0    % 10^0 不標
+    if abs(ge)<=1    % 10^0 不標
         fprintf(fid,'\\[\n {}^{B}\\hat{g}_{I} = %.4f~\\mathrm{mT/A}\n\\]\n', ghat_I_B);
     else
         fprintf(fid,'\\[\n {}^{B}\\hat{g}_{I} = %.3f\\times10^{%d}~\\mathrm{mT/A}\n\\]\n', gm, ge);
@@ -65,7 +65,7 @@ end
 %% ---- local：Hall 表格式 6×6（無 caption；單位標在 name）----
 function emit_mat(fid, name, M, lab, fmode)
     Ms = M; fac = '';
-    if strcmp(fmode,'auto'), mx=max(abs(M(:))); if mx>0, e=floor(log10(mx)); if e~=0, Ms=M/10^e; fac=sprintf('10^{%d}\\,',e); end, end, end
+    if strcmp(fmode,'auto'), mx=max(abs(M(:))); if mx>0, e=floor(log10(mx)); if abs(e)>=2, Ms=M/10^e; fac=sprintf('10^{%d}\\,',e); end, end, end
     fprintf(fid,'\\[\n%s = %s\\begin{array}{c|cccccc}\n ', name, fac);
     for j=1:6, fprintf(fid,'& %s ', lab{j}); end
     fprintf(fid,'\\\\\\hline\n');

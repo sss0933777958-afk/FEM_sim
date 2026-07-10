@@ -78,7 +78,7 @@ CAD_model (SLDPRT/STEP)
 
 `matlab/<model>/` 第二層是**功能組**（activity），每組視性質含：
 - 單一主程式組 → `code/main/main.m`（如 `Calibration using FEM modeling/{fix_l,no_fix_l}`）
-- 多腳本組 → `code/scripts/`（如 `fixl_fit, bias_fit, bs_matrix, sensor_d, validation`）
+- 多腳本組 → `code/scripts/`（如 `fixl_fit, bias_fit, sensor_d, validation`）
 - 純繪圖組 → `code/plot/`（如 `field_viz, field_cancellation`）
 - 每組另有 `figures/`（圖）、`results/`（PDF / auto-gen `.tex`）、**`data/`（該組 `.mat` 成果，規則 #2 `../../.claude/rules/matlab-output-layout.md`）**。
   - `Calibration_using_FEM_modeling` 4 子夾一律有 `data/`；其他組有產 `.mat` 才有。

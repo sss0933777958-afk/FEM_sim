@@ -17,6 +17,7 @@
   （網格拓樸仍用 standard CSV，只換場）。`calib_gap100um.m` 用 n_uniform=100 + variant='gap100um_mueq'。
 - `extract_Vmat_interp_center.m` — **單點內插版** Vmat：在「圓柱底面中心」(= sensor 中心) 重心內插單點 B·n+
   （非平均）；可帶 `variant`（standard / gap*_mueq）比 sign。
+- `gen_B_matrix.m` — **已於 2026-07-10 移到 `../main_function/`**（results 輸出腳本統一放 main_function）。B 矩陣 `B_ij=V_out/V_in` + 參考矩陣 Frobenius → `results/B_matrix_result.pdf`（見 `../main_function/README.md`）。
 
 **資料來源 / 流向**：`main.m` 讀 `ANSYS_data/.../data/coil1..6` 的 `.dat` → 這些函式算 Vmat、d、J（M/c 內外層加總都在 `solve_d` 內部）。
 

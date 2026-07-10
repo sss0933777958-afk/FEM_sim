@@ -67,7 +67,7 @@ function plot_P2_tilted(cnst, x_phi, phi_arr, POLE_R, POLE_TIP_R, POLE_LEN, ...
     fprintf('\n=== P2 (tilted +%.2f deg) ===\n', rad2deg(inc));
 
     d = import_ansys_data(res_dir, 'all', 'coil5');
-    bbar_mat = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\bs_matrix\data\Bbar_S_4p572.mat';
+    bbar_mat = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\field_viz\data\Bbar_S_4p572.mat';
     sign_val = -1;
     if exist(bbar_mat, 'file')
         Bs = load(bbar_mat, 'col_sign');
@@ -209,7 +209,7 @@ function plot_one(res_dir, coilname, pole_axis, up_hat, WP_m, ...
 
     %% Load FEM + sign correction
     d = import_ansys_data(res_dir, 'all', coilname);
-    bbar_mat = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\bs_matrix\data\Bbar_S_4p572.mat';
+    bbar_mat = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\field_viz\data\Bbar_S_4p572.mat';
     sign_val = +1;
     if exist(bbar_mat, 'file')
         Bs = load(bbar_mat, 'col_sign');

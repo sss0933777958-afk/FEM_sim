@@ -32,7 +32,7 @@ function emit_model_results()
     emit_mat(fid, 'V~[\mathrm{mV}]', V, pole, '');
     fprintf(fid,'\\[\n\\hat{\\ell} = %.1f~\\mu\\mathrm{m}\n\\]\n', ell_hat);
     emit_scalar_unit(fid, '{}^{B}\hat{g}_{V}', ghat_V_B, 'mT/mV');
-    emit_e(fid, '\hat{e}', E36, pole, '');                  % 3×6 bias，無因次 → 不標單位
+    emit_e(fid, 'e~[\mu\mathrm{m}]', ell_hat.*E36, pole, '');  % 3×6 物理偏移 e = ℓ̂·ê [µm]（per unit-reference 長度→µm）
     fprintf(fid,'\\end{document}\n');
     fclose(fid);
 
@@ -48,7 +48,7 @@ end
 %% ---- local：Hall 表格式 6×6（無 caption；單位標在 name）----
 function emit_mat(fid, name, M, lab, fmode)
     Ms = M; fac = '';
-    if strcmp(fmode,'auto'), mx=max(abs(M(:))); if mx>0, e=floor(log10(mx)); if e~=0, Ms=M/10^e; fac=sprintf('10^{%d}\\,',e); end, end, end
+    if strcmp(fmode,'auto'), mx=max(abs(M(:))); if mx>0, e=floor(log10(mx)); if abs(e)>=2, Ms=M/10^e; fac=sprintf('10^{%d}\\,',e); end, end, end
     fprintf(fid,'\\[\n%s = %s\\begin{array}{c|cccccc}\n ', name, fac);
     for j=1:6, fprintf(fid,'& %s ', lab{j}); end
     fprintf(fid,'\\\\\\hline\n');
@@ -59,7 +59,7 @@ end
 %% ---- local：ê 3×6（列 e_x/e_y/e_z，欄 P1..P6；無 caption）----
 function emit_e(fid, name, E, collab, fmode)
     Es = E; fac = '';
-    if strcmp(fmode,'auto'), mx=max(abs(E(:))); if mx>0, e=floor(log10(mx)); if e~=0, Es=E/10^e; fac=sprintf('10^{%d}\\,',e); end, end, end
+    if strcmp(fmode,'auto'), mx=max(abs(E(:))); if mx>0, e=floor(log10(mx)); if abs(e)>=2, Es=E/10^e; fac=sprintf('10^{%d}\\,',e); end, end, end
     erow = {'e_x','e_y','e_z'};
     fprintf(fid,'\\[\n%s = %s\\begin{array}{c|cccccc}\n ', name, fac);
     for j=1:6, fprintf(fid,'& %s ', collab{j}); end
@@ -71,7 +71,7 @@ end
 %% ---- local：純量 + 單位（10^0 不標）----
 function emit_scalar_unit(fid, name, val, unit)
     ge = floor(log10(abs(val)));
-    if ge==0
+    if abs(ge)<=1
         fprintf(fid,'\\[\n %s = %.4f~\\mathrm{%s}\n\\]\n', name, val, unit);
     else
         fprintf(fid,'\\[\n %s = %.3f\\times10^{%d}~\\mathrm{%s}\n\\]\n', name, val/10^ge, ge, unit);

@@ -46,7 +46,7 @@ end
 %% ---- local：Hall 表格式 6×6（無 caption；單位標在 name）----
 function emit_mat(fid, name, M, lab, fmode)
     Ms = M; fac = '';
-    if strcmp(fmode,'auto'), mx=max(abs(M(:))); if mx>0, e=floor(log10(mx)); if e~=0, Ms=M/10^e; fac=sprintf('10^{%d}\\,',e); end, end, end
+    if strcmp(fmode,'auto'), mx=max(abs(M(:))); if mx>0, e=floor(log10(mx)); if abs(e)>=2, Ms=M/10^e; fac=sprintf('10^{%d}\\,',e); end, end, end
     fprintf(fid,'\\[\n%s = %s\\begin{array}{c|cccccc}\n ', name, fac);
     for j=1:6, fprintf(fid,'& %s ', lab{j}); end
     fprintf(fid,'\\\\\\hline\n');
@@ -57,7 +57,7 @@ end
 %% ---- local：純量 + 單位（10^0 不標）----
 function emit_scalar_unit(fid, name, val, unit)
     ge = floor(log10(abs(val)));
-    if ge==0
+    if abs(ge)<=1
         fprintf(fid,'\\[\n %s = %.4f~\\mathrm{%s}\n\\]\n', name, val, unit);
     else
         fprintf(fid,'\\[\n %s = %.3f\\times10^{%d}~\\mathrm{%s}\n\\]\n', name, val/10^ge, ge, unit);

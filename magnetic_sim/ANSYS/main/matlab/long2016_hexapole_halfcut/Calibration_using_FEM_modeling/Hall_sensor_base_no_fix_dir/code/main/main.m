@@ -55,7 +55,7 @@ addpath(fullfile(CAL,'Hall_sensor_base_fix_dir','code','function'));  % 沿用�
 addpath(fullfile(CAL,'Hall_sensor_base_fix_dir','code','main_function'));  % 沿用：build_sensor_geometry/extract_Vmat_interp（最後 addpath→優先）
 model        = 'long2016_hexapole_halfcut';
 results_root = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
-mesh_csv_dir = fullfile(results_root,'mesh','graded','csv');   % gap200=graded → graded sensor-local tet CSV（csv/ 子夾）
+mesh_csv_dir = fullfile(fileparts(results_root),'csv');   % [MODIFIED 2026-07-10] gap_200um=basegap 網格 → sensor-local tet CSV 從 mesh_graded_basegap.db 匯出，放 ANSYS_data/<model>/csv/（舊 mesh/graded/csv 是 636k plain-graded、與 706k basegap 資料差 20mm 不可用）
 TREE         = fullfile(CAL,'Hall_sensor_base_no_fix_dir');    % 本包（bias）
 mat_dir      = fullfile(TREE,'data');      if ~exist(mat_dir,'dir'); mkdir(mat_dir); end
 

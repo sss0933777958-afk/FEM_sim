@@ -8,7 +8,7 @@ matlab/
 ├── long2016_hexapole_halfcut/      ← 主力
 │   ├── common/                     ← ★ resolver：ansys_path.m / matlab_path.m
 │   ├── Calibration using FEM modeling/{fix_l,no_fix_l}/  ← 單一主程式：code/main/main.m
-│   ├── fixl_fit/ bias_fit/ bs_matrix/ sensor_d/ validation/  ← 多腳本：code/scripts/
+│   ├── fixl_fit/ bias_fit/ sensor_d/ validation/            ← 多腳本：code/scripts/
 │   └── field_viz/                                            ← 純繪圖：code/plot/
 ├── kuo_quadrupole/    ← 空 placeholder
 └── zhang_quadrupole/  ← 空 placeholder

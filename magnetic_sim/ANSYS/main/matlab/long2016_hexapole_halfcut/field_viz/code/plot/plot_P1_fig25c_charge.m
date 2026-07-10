@@ -80,7 +80,7 @@ function plot_P1_fig25c_charge(save_final)
     d = import_ansys_data(res_dir, 'all', 'coil1');
 
     %% --- Per-pole sign correction ---
-    bbar_mat = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\bs_matrix\data\Bbar_S_4p572.mat';   % bs_matrix/data（規則#2）
+    bbar_mat = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\field_viz\data\Bbar_S_4p572.mat';   % field_viz/data（原 bs_matrix 已撤，2026-07-10）
     sign_p1 = +1;
     if exist(bbar_mat, 'file')
         Bs = load(bbar_mat, 'col_sign');
