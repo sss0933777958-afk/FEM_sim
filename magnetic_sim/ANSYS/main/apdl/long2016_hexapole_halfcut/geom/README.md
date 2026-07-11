@@ -8,7 +8,7 @@
 
 > mesh 檢視 deck 已不放這裡：往後 mesh 產生統一用 `../mesh/MT_Mesh_Graded.txt`（canonical mesh-only deck）。
 
-**資料來源 / 流向**：源幾何邏輯抄自 `long2016_hexapole_full` + `hexapole-long2016` verbatim；`export/` 寫 IGES 到 `IGES/`（metre）+ `IGES_converted/`（mm，flag 6→2）；mesh `.db` 與 PNG 存到 `ANSYS_data/long2016_hexapole_halfcut/{geom_export_*,mesh/*}`。
+**資料來源 / 流向**：源幾何邏輯抄自 `long2016_hexapole_full` + `hexapole-long2016` verbatim；`export/` 寫 IGES 到 `IGES/`（metre）+ `model_check/`（mm，flag 6→2）；mesh `.db` 與 PNG 存到 `ANSYS_data/long2016_hexapole_halfcut/{geom_export_*,mesh/*}`。
 
 **命名 / 慣例**：`MT_Geom_Export*` 幾何匯出、`MT_Mesh_*` mesh-only；`_mm` 後綴 = SolidWorks 相容 mm 版、無後綴 = MKS metre 版；改動標 `[ADDED]`/`[MODIFIED]`；改尺寸（R_norm、POLE_R、YOKE…）前先量對齊 CAD，不可自選 round number。
 

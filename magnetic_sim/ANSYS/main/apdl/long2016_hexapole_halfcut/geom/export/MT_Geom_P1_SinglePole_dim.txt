@@ -7,7 +7,7 @@
 ! WP shifted to ORIGIN (VGEN +z, WP native z = Z0_LOW-6+R_norm_z = -12.711 mm).
 ! Units mm (/UNITS,MKS); IGES unit flag patched 6->2 AFTER run (SolidWorks reads mm).
 ! Derived from MT_Geom_Export_mm_SinglePole.txt + MT_Geom_mm_WithCoil.txt.
-! Output -> IGES/dif_singlepole_dim/long_p1.iges  (patched copy in IGES_converted/)
+! Output -> IGES/dif_singlepole_dim/long_p1.iges  (patched copy in model_check/)
 ! ====================================================================
 /CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\geom_p1_singlepole'
 

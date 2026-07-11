@@ -26,12 +26,14 @@
 
 ## §2 IGES round-trip 檢查
 
-- **檢項**:`IGES_converted/{topic}/{basename}.iges` re-import 後 bounding box 對得上原 SLDPRT
+> ⚠ **方向區分**:本節是「**SolidWorks→export 的 model_check** 自我 round-trip」。若是把 **ANSYS 建完的幾何交付使用者**疊 CAD 檢查(反方向),**一律出 STEP、不出 ANSYS IGES**(ANSYS `IGESOUT` 的 IGES 被 SW/OCC 讀成英吋 ×25.4、flag/name 都救不了)——見 `.claude/rules/deliver-step-for-check.md`。
+
+- **檢項**:`model_check/{topic}/{basename}.iges` re-import 後 bounding box 對得上原 SLDPRT
 - **判準**:bbox 誤差 < 0.5%;不會「縮小 1000× 變看不見」或「放大 1000× 爆 viewport」
 - **怎麼做**(任一):
   - FreeCAD 開 `.iges` → View → Fit All → 看右下角 bbox
   - SolidWorks open IGES → Tools → Measure 量整體 X/Y/Z
-- **不通過**:回 `cad-export.md` Step 5 重做 IGES_converted
+- **不通過**:回 `cad-export.md` Step 5 重做 model_check
   - 常見成因:抄了 hung 的 sed 公式 / IGES unit flag 沒改
 
 ---

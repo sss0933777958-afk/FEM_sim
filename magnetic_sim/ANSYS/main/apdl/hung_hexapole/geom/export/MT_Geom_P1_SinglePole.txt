@@ -6,7 +6,7 @@
 !   + coil ring (solid Ri4/Ro7/H7) + coil-height R4 導柱 stub (fills coil bore).
 ! WP already at ORIGIN (no shift). Units inch (MM=1/25.4); IGES flag patched 6->1.
 ! Extracted from MT_Geom_FullAssembly.txt (fc_pi=1 only; no other poles/yoke/upper).
-! Output -> IGES/dif_singlepole_dim/hung_p1.iges  (patched copy in IGES_converted/)
+! Output -> IGES/dif_singlepole_dim/hung_p1.iges  (patched copy in model_check/)
 ! =======================================
 /CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\db\geom_p1_singlepole'
 

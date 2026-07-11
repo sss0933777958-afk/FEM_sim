@@ -3,7 +3,7 @@
 **用途**：hung_hexapole 從 CAD（`CAD_model/hung_hexapole/STEP/Full_Assembly.STEP`）匯入真實幾何到 ANSYS 的非-APDL 輔助腳本。依 apdl 規則，`geom/import/` 只放 `.txt`（APDL decks），故 `.py`/`.bat` 一律歸此 `scripts/`。
 
 **內容**：
-- `step_to_iges.py` — python/**OCP**：STEP → IGES（mm, unit flag 2），供目視檢查（輸出 `IGES/` + `IGES_converted/hung_hexapole/`）。
+- `step_to_iges.py` — python/**OCP**：STEP → IGES（mm, unit flag 2），供目視檢查（輸出 `IGES/` + `model_check/hung_hexapole/`）。
 - `sc_step_to_parasolid.py` — **SpaceClaim headless** IronPython：STEP → Parasolid `.x_t`（給 ac4para 轉 ANF）。
 - `ac4para252.bat` — MAPDL `~PARAIN` 用不上（此環境不穩），改由此 wrapper 直接呼叫 `ac4para.exe`：`.x_t` → `.anf`（APDL 幾何檔）。**bat 純 ASCII、內含設 PATH（含 `ansys\bin\winx64` 核心 DLL）**。
 

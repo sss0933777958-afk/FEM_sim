@@ -11,12 +11,13 @@
 - `apdl-editing.md` — APDL 腳本編輯規則（`[ADDED]`/`[MODIFIED]` 標記、6 coil 只差 CURR_ARRAY、保留 `D,ALL,MAG,0`）。
 - `comsol-livelink.md` — COMSOL LiveLink 連線通用法（拆兩 process：獨立 server + `matlab -batch` 內 `mphstart(2036)`）。
 - `cad-import-ansys.md` — 複雜 CAD(STEP)→ANSYS 真實幾何匯入通用法（STEP→SpaceClaim `.x_t`→`ac4para` ANF→MAPDL `/INPUT`；別 primitive 硬拼、別 IGESIN/~PARAIN）。
+- `deliver-step-for-check.md` — ANSYS 建完幾何**交付使用者疊 CAD 檢查一律出 STEP**（不出 ANSYS IGES：被 SW/OCC 讀成英吋 ×25.4，flag/name 都救不了）；用 OCC 產 mm STEP（`write.step.unit=MM`）。
 - `fit-current-matches-sim.md` — 擬合電流必須等於 FEM 激發電流（目前 1A），不可把操作電流 0.6A 灌進 fit。
 - `charge-model-source-convention.md` — 電荷模型符號慣例：每顆極激發時 B 一律從尖端射出（全 source）。
 - `actuator-frame.md` — `Calibration_using_FEM_modeling/` 整包一律用 actuator（磁極軸）座標系；六極 `R_act` 旋轉、單極 +x 建模，不可停在 measure/WP frame。
 - `hung-docs.md` — 涉及 `magnetic_sim/ANSYS/backup/hung/` 時的必讀文件清單（troubleshooting、build workflow…）。
 - `hexapole-build.md` — 「建 hexapole」觸發流程：依序收集 4 個參數、嚴格照 build-workflow 執行。
-- `iges-model-id.md` — 貼 `IGES_converted/<topic>/*.iges` 路徑時，從路徑識別物理模型，不問「這是哪個模型」。
+- `iges-model-id.md` — 貼 `model_check/<topic>/*.iges` 路徑時，從路徑識別物理模型，不問「這是哪個模型」。
 - `simulation-constraints.md` — APDL 幾何/材料/求解器硬約束（alpha=54.74° FIXED、tip 公式鎖定、元素型別、BC）。
 - `unit-reference.md` — 單位統一慣例（ℓ̂ µm／b mT／ĝ_I mT/A／V mV／R_a A/Wb／力 pN），source of truth = doc/Unit Reference Sheet PDF。
 

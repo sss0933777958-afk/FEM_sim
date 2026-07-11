@@ -9,7 +9,7 @@
 
 | 你要做什麼 | 對 Claude 講(任一句) | 啟動的流程 |
 |---|---|---|
-| 從 SolidWorks 出 STEP / IGES / IGES_converted | 「出 STEP」「重 export 模型」「更新 IGES」 | [cad-export](cad-export.md) |
+| 從 SolidWorks 出 STEP / IGES / model_check | 「出 STEP」「重 export 模型」「更新 IGES」 | [cad-export](cad-export.md) |
 | 從 STEP 抽幾何尺寸做成參數表 | 「解析 STEP」「STEP 變參數表」「讀 STEP」 | [step-to-apdl](step-to-apdl.md) |
 | 寫 APDL 幾何腳本(`MT_Geom_*.txt`) | 「建 APDL 幾何」「寫 MT_Geom」「新增 variant」 | [apdl-geom-build](apdl-geom-build.md) |
 | 單獨檢查模型 | 「檢查模型」「跑 model-check §N」 | [model-check](model-check.md) |
@@ -22,7 +22,7 @@
 | 從 `.rst` 抽 B 場 / PATH / grid 成 `.dat` | 「抽 B 場」「跑 postproc」「抽 PATH」 | [apdl-postproc](apdl-postproc.md) |
 | 跑 COMSOL `.mph`(DC / AC) | 「跑 COMSOL」「LiveLink」「COMSOL 頻掃」 | [comsol-livelink](comsol-livelink.md) |
 | 跑 SEMulator 3D 製程 | 「跑 SEMulator」「跑製程」 | [semulator-process](semulator-process.md) |
-| 同步單顆 IGES↔IGES_converted | 「同步 IGES」「重新轉 IGES」 | [iges-sync-quick](iges-sync-quick.md) |
+| 同步單顆 IGES↔model_check | 「同步 IGES」「重新轉 IGES」 | [iges-sync-quick](iges-sync-quick.md) |
 
 ### Analysis / Visualization(Round 2)
 
@@ -44,7 +44,7 @@
 SLDPRT                                           ┌─→ [comsol-livelink]   (替代 / 補強)
   │  → [cad-export]              ⏸ §1 + §2      │
   ▼                                              │
-STEP + IGES + IGES_converted ───→ [semulator-process]
+STEP + IGES + model_check ───→ [semulator-process]
   │  → [step-to-apdl]             ⏸ §3
   ▼
 <basename>_params.md                           ┌─→ [iges-sync-quick] (零碎更新)
@@ -66,7 +66,7 @@ MT_Geom_<variant>.txt ─── [apdl-fem-run] ──→ .rst/.rmg
 
 | 階段 | 文件 | 做什麼 |
 |---|---|---|
-| input | [cad-export.md](cad-export.md) | SolidWorks 一次出 STEP + IGES + IGES_converted |
+| input | [cad-export.md](cad-export.md) | SolidWorks 一次出 STEP + IGES + model_check |
 | input | [step-to-apdl.md](step-to-apdl.md) | 解析 STEP → 尺寸參數表(三維交叉檢查) |
 | input | [apdl-geom-build.md](apdl-geom-build.md) | 參數表 + 樣板 → `MT_Geom_<variant>.txt` |
 | check | [model-check.md](model-check.md) | 4 節獨立檢查 routine |
@@ -74,7 +74,7 @@ MT_Geom_<variant>.txt ─── [apdl-fem-run] ──→ .rst/.rmg
 | sim | [apdl-postproc.md](apdl-postproc.md) | 抽 B 場 / PATH / grid 成 `.dat` |
 | sim | [comsol-livelink.md](comsol-livelink.md) | COMSOL DC/AC + LiveLink 自動化 |
 | sim | [semulator-process.md](semulator-process.md) | SEMulator 3D 製程(GUI-only) |
-| sync | [iges-sync-quick.md](iges-sync-quick.md) | IGES↔IGES_converted 快速同步 |
+| sync | [iges-sync-quick.md](iges-sync-quick.md) | IGES↔model_check 快速同步 |
 | analysis | [h1h2-analysis.md](h1h2-analysis.md) | H1/H2 場比值(雙極對稱性) |
 | analysis | [charge-model-fit.md](charge-model-fit.md) | 等效電荷模型擬合 |
 | analysis | [bs-matrix-derive.md](bs-matrix-derive.md) | B̄_S → B_S → V_out/V_in 矩陣鏈 |

@@ -5,13 +5,13 @@
 !   SKIPPED) + its 4 support-base BLOCKs + 1 protrusion (coil pillar).
 ! NO yoke ring, NO upper poles, NO coil geometry (coil is SOURC36 = no solid body).
 ! Derived from MT_Geom_Export_mm.txt (mm units); [ADDED]/[MODIFIED] mark changes.
-! mm units -> IGES_converted/long_fei/ ; the IGES unit flag is patched 6->2
+! mm units -> model_check/long_fei/ ; the IGES unit flag is patched 6->2
 !   (PowerShell, AFTER this run) so SolidWorks measures correct mm (per
 !   memory kuo-iges-export-workflow). No metre version produced (user: mm only).
 ! ====================================================================
 
 ! [MODIFIED] /CWD points to neutral scratch dir; ANSYS .db/.out/.png stay there
-! [MODIFIED] IGESOUT at end writes .iges directly into IGES_converted/long_fei/
+! [MODIFIED] IGESOUT at end writes .iges directly into model_check/long_fei/
 /CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\geom_export_mm'
 
 Finish
@@ -147,6 +147,6 @@ VPLOT
 
 ! ===== IGES export (mm magnitudes; flag patched 6->2 by PowerShell AFTER run) =====
 ALLSEL, ALL
-IGESOUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\IGES_converted\long_fei\SinglePoleFilled', 'iges'
+IGESOUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\model_check\long_fei\SinglePoleFilled', 'iges'
 
 FINISH

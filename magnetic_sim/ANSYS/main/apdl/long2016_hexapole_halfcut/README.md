@@ -9,7 +9,7 @@
 - `postproc/` — 後處理：`dump/`（從存好的 .db 重抽場）。
 - `gui/` — **GUI 檢視用（非求解）**：build-only（不 mesh、不解）建模存 `.db` 供 MAPDL GUI 開來檢視。`MT_AllSource.txt`＝6 極 all-source 電流方向（下極 CURR=−1、上極 +1），存 `ANSYS_data/.../db/allsource/allsource.db`。
 
-**資料來源 / 流向**：input 幾何來自 `IGES_converted/long2016_hexapole_halfcut/`；解出的 `.dat`（場）/ `.db`（模型）存到 `ANSYS_data/long2016_hexapole_halfcut/<case>/`（如 `coilN/standard`、`coilN/graded`、`coilN/gap_200um`）。
+**資料來源 / 流向**：input 幾何來自 `model_check/long2016_hexapole_halfcut/`；解出的 `.dat`（場）/ `.db`（模型）存到 `ANSYS_data/long2016_hexapole_halfcut/<case>/`（如 `coilN/standard`、`coilN/graded`、`coilN/gap_200um`）。
 
 **命名 / 慣例**：`MT_Geom*` = 幾何、`MT_Sim_*` = 求解、`MT_Mesh_*` = mesh、`MT_Dump_*` = 後處理；6 顆 coil 腳本只差 `CURR_ARRAY`（coil N = 1，其餘 0）；改動標 `[ADDED]`/`[MODIFIED]`（英文註解）；`D,ALL,MAG,0` 邊界必存在於 `/SOLU` 前；改幾何尺寸先對齊 CAD（`ansys-cad-alignment.md`）；極一律用紙上名 P1-P6。
 

@@ -1,0 +1,96 @@
+! ============================================================================
+! NTU_hexapole — pole ASSEMBLY (磁極 pole.STEP + 短導柱 short guide post)
+! ----------------------------------------------------------------------------
+! Rebuilt PARAMETRICALLY from CAD. Model frame = 磁極(pole.STEP) local frame.
+! ⚠ pole組合.STEP is an ASSEMBLY: each part has its own local frame + transform.
+!   Correct positions obtained by baking transforms via OpenCascade (OCP).
+!   短導柱 offset in pole frame = T_post(#104) - T_pole(#589) = (+20.5, 0, +11.25).
+!
+! Parts (all analytic, no NURBS; mm coords):
+!  A) 磁極 = flat planar pole, 0.25mm thick, 2D profile extruded +z (unchanged).
+!  B) 短導柱 = SOLID stepped cylinder (full; tip recess/flats OMITTED per user),
+!       axis (x=20.5, y=0) upright +Z:  r2.5 z 0.25->11.25 ; r2.49 z 11.25->17.25.
+!
+! Kept as SEPARATE volumes (no boolean); post base sits on the plate top at x~20.5.
+!
+! Unit toggle UNIT_MM: 1 = mm -> model_check/ (patch flag 6->2) ; 0 = metre -> IGES/.
+! Output name = pole_assembly (does NOT overwrite the pole-only pole.iges).
+! ============================================================================
+
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\NTU_hexapole\db\geom_export'
+
+Finish
+/cle
+/PREP7
+*afun, DEG
+
+! ---- [ADDED] unit toggle ---------------------------------------------------
+UNIT_MM = 1
+*if, UNIT_MM, eq, 1, then
+    SC = 1.0
+    BTOL, 1e-4
+*else
+    SC = 1.0e-3
+    BTOL, 1e-7
+*endif
+/UNITS, MKS
+
+! ============================================================================
+! PART A — 磁極 (flat pole, 2D profile z=0 -> extrude 0.25 mm)
+! ============================================================================
+TH = 0.25*SC
+
+K, 1,  0.357*SC,  0.005*SC, 0       ! A tip upper
+K, 2,  0.353*SC,  0.000*SC, 0       ! B tip point
+K, 3,  0.357*SC, -0.005*SC, 0       ! C tip lower
+K, 4,  4.509*SC, -0.523*SC, 0       ! D
+K, 5,  6.175*SC, -0.877*SC, 0       ! E
+K, 6, 19.048*SC, -4.784*SC, 0       ! F
+K, 7, 19.048*SC,  4.784*SC, 0       ! G
+K, 8,  6.175*SC,  0.877*SC, 0       ! H
+K, 9,  4.509*SC,  0.523*SC, 0       ! I
+K, 10, 25.500*SC,  0.000*SC, 0      ! far r5 CONVEX apex (on circle 20.5+5)
+K, 101,  0.358*SC,   0.000*SC, 0    ! tip 5um fillet centre
+K, 102,  3.271*SC, -10.446*SC, 0    ! lower r10 centre
+K, 103,  3.271*SC,  10.446*SC, 0    ! upper r10 centre
+K, 104, 20.500*SC,   0.000*SC, 0    ! far r5 centre
+
+LARC, 1, 2, 101, 0.005*SC           ! L1  tip arc upper
+LARC, 2, 3, 101, 0.005*SC           ! L2  tip arc lower
+L,    3, 4                          ! L3
+LARC, 4, 5, 102, 10.0*SC            ! L4  lower r10
+L,    5, 6                          ! L5
+LARC, 6, 10, 104, 5.0*SC            ! L6  far r5 lower half
+LARC, 10, 7, 104, 5.0*SC            ! L7  far r5 upper half
+L,    7, 8                          ! L8
+LARC, 8, 9, 103, 10.0*SC            ! L9  upper r10
+L,    9, 1                          ! L10
+
+AL, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+VEXT, 1, , , 0, 0, TH               ! -> pole volume
+KDELE, 101, 104, 1                  ! drop pole guide keypoints
+
+! ============================================================================
+! PART B — 短導柱 = SOLID stepped cylinder (full, no tip recess/flats)
+!   Position in pole frame: axis (x=20.5, y=0), upright +Z.
+!   = 短導柱.STEP native (Z axis, r2.5 z-11->0, r2.49 z0->6) + assembly
+!     offset (+20.5, 0, +11.25)  [from OCC-baked pole組合 transforms:
+!     T_post(#104) - T_pole(#589)]. base sits on plate top at x~20.5.
+! ============================================================================
+POSTX = 20.5*SC                     ! post axis x (pole frame)
+WPOFFS, POSTX, 0, 0                 ! move WP origin onto post axis
+CYLIND, 2.50*SC, , 0.25*SC, 11.25*SC    ! lower round r2.5   z 0.25 -> 11.25
+CYLIND, 2.49*SC, , 11.25*SC, 17.25*SC   ! upper round r2.49  z 11.25 -> 17.25 (tip, solid)
+WPOFFS, -POSTX, 0, 0                ! restore WP to origin
+
+! ---- finalise + IGES -------------------------------------------------------
+ALLSEL, ALL
+NUMCMP, ALL
+
+*if, UNIT_MM, eq, 1, then
+    IGESOUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\model_check\NTU_hexapole\pole_assembly', 'iges'
+*else
+    IGESOUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\IGES\NTU_hexapole\pole_assembly', 'iges'
+*endif
+
+SAVE

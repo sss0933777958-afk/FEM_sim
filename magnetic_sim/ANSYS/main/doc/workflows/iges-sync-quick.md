@@ -1,6 +1,6 @@
 # iges-sync-quick
 
-改了單一 IGES 零件後,快速同步到 `IGES_converted/`。
+改了單一 IGES 零件後,快速同步到 `model_check/`。
 **不是首次 export** — 那走 [cad-export.md](cad-export.md)。
 
 ## 何時用
@@ -24,7 +24,7 @@
 ### kuo(MKS-metre — **絕大多數**)
 
 從 SolidWorks **重新 export 該零件**,單位選 mm,直接放到
-`magnetic_sim/ANSYS/main/IGES_converted/{topic}/`(取代舊檔)。
+`magnetic_sim/ANSYS/main/model_check/{topic}/`(取代舊檔)。
 
 或在 SW 不開的情境下,改 IGES header 單位 flag 為 2:
 ```powershell
@@ -46,13 +46,13 @@ sed -i "s/,1.0,6,,/,1.0,1,,/" magnetic_sim/ANSYS/backup/hung/IGES_converted/Part
 
 ## 產物
 
-- [ ] `magnetic_sim/ANSYS/main/IGES_converted/{topic}/<file>.iges` 與 `magnetic_sim/ANSYS/main/IGES/{topic}/<file>.iges` 同步
+- [ ] `magnetic_sim/ANSYS/main/model_check/{topic}/<file>.iges` 與 `magnetic_sim/ANSYS/main/IGES/{topic}/<file>.iges` 同步
 - [ ] 第三方 viewer(FreeCAD / SW)再 import 驗 bbox(走 `model-check.md` §2)
 
 ## 常見坑
 
 - 抄錯設計的 sync 公式(hung vs kuo)→ 尺寸 1000× / 0.001×
-- 改了 `IGES/` 忘記同步 `IGES_converted/` → APDL import 用舊形狀
+- 改了 `IGES/` 忘記同步 `model_check/` → APDL import 用舊形狀
 - 刪除 / 重命名一邊 → 兩邊要同步處理(`main-workspace.md` 強制規則 #3)
 
 ## 適用 topic

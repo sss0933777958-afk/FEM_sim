@@ -1,7 +1,7 @@
 # cad-export
 
 從 SolidWorks SLDPRT 一次出 3 個檔:STEP(紀錄/SEMu/COMSOL)、IGES(ANSYS import)、
-IGES_converted(MKS 單位修正後給 APDL 用)。
+model_check(MKS 單位修正後給 APDL 用)。
 
 ## 何時用
 
@@ -22,7 +22,7 @@ IGES_converted(MKS 單位修正後給 APDL 用)。
    ```
    magnetic_sim/ANSYS/main/CAD/{topic}/{SLDPRT,STEP}/
    magnetic_sim/ANSYS/main/IGES/{topic}/
-   magnetic_sim/ANSYS/main/IGES_converted/{topic}/
+   magnetic_sim/ANSYS/main/model_check/{topic}/
    ```
 
 2. **SolidWorks 匯出 STEP** → `magnetic_sim/ANSYS/main/CAD/{topic}/STEP/{basename}.STEP`
@@ -36,11 +36,11 @@ IGES_converted(MKS 單位修正後給 APDL 用)。
 4. ⏸ **檢查點 → [`model-check.md` §1](model-check.md#1-solidworks-視覺檢查)**
    不過就回 SLDPRT 修,不要 re-export。
 
-5. **產生 `IGES_converted`**:
+5. **產生 `model_check`**:
    **kuo 是 MKS-metre** — 不可抄 hung 的 sed 公式
    (`s/,1.0,6,,/,1.0,1,,/` 是 hung 1/25.4 inches 用)。
    kuo 的做法:**重新從 SolidWorks export IGES 時把單位改成 mm**,然後把該檔
-   放進 `IGES_converted/{topic}/`。或在原 `.iges` header 改 IGES unit flag 為 2(=mm)。
+   放進 `model_check/{topic}/`。或在原 `.iges` header 改 IGES unit flag 為 2(=mm)。
    詳細根因見 memory `feedback_iges_unit_conversion`。
 
 6. ⏸ **檢查點 → [`model-check.md` §2](model-check.md#2-iges-round-trip-檢查)**
@@ -54,7 +54,7 @@ IGES_converted(MKS 單位修正後給 APDL 用)。
 
 - [ ] `magnetic_sim/ANSYS/main/CAD/{topic}/STEP/{basename}.STEP`
 - [ ] `magnetic_sim/ANSYS/main/IGES/{topic}/{basename}.iges`
-- [ ] `magnetic_sim/ANSYS/main/IGES_converted/{topic}/{basename}.iges`
+- [ ] `magnetic_sim/ANSYS/main/model_check/{topic}/{basename}.iges`
 - [ ] `_VERSIONS.md` 多一行
 
 ## 常見坑

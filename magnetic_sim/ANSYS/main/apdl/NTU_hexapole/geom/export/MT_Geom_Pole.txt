@@ -1,0 +1,87 @@
+! ============================================================================
+! NTU_hexapole — pole.STEP (flat PLANAR magnetic pole) geometry-only export
+! ----------------------------------------------------------------------------
+! Rebuilt PARAMETRICALLY from CAD (see pole_params.md). Fully analytic profile
+! (lines + circular arcs, no NURBS) extruded 0.25 mm -> 1 solid volume.
+! ORIGIN = STEP file origin (NOT moved to pole_tip; user 2026-07-11).
+!
+! Single deck, unit toggle UNIT_MM:
+!   UNIT_MM=1 -> build in MILLIMETRES  -> IGESOUT to model_check/ (patch flag 6->2 after) = SolidWorks check
+!   UNIT_MM=0 -> build in METRES (MKS) -> IGESOUT to IGES/ (flag 6)                          = FEM source
+! Geometry is identical; only length magnitude (SC) + BTOL + IGES path differ.
+!
+! Profile (z=0, CCW, symmetric about y=0; coords in mm):
+!   A(0.357,0.005) B(0.353,0) C(0.357,-0.005)  tip 5um fillet, centre (0.358,0)
+!   C->D(4.509,-0.523) LINE ; D->E(6.175,-0.877) ARC r10 c(3.271,-10.446)
+!   E->F(19.048,-4.784) LINE ; F->G(19.048,4.784) CONVEX r5 major-arc c(20.5,0) apex(25.5,0)
+!   G->H(6.175,0.877) LINE ; H->I(4.509,0.523) ARC r10 c(3.271,10.446) ; I->A LINE
+! ============================================================================
+
+! [MODIFIED] /CWD -> NTU db scratch (ANSYS .db/.out stay there, not in apdl source)
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\NTU_hexapole\db\geom_export'
+
+Finish
+/cle
+/PREP7
+*afun, DEG
+
+! ---- [ADDED] unit toggle ---------------------------------------------------
+UNIT_MM = 1                         ! 1 = mm (model_check check) ; 0 = metre (FEM)
+*if, UNIT_MM, eq, 1, then
+    SC = 1.0                        ! mm magnitude
+    BTOL, 1e-4
+*else
+    SC = 1.0e-3                     ! metre magnitude
+    BTOL, 1e-7
+*endif
+/UNITS, MKS
+
+TH = 0.25*SC                        ! plate thickness (z-extrude)
+
+! ---- [ADDED] boundary keypoints (CAD coords x SC), base face z=0 -----------
+K, 1,  0.357*SC,  0.005*SC, 0       ! A  tip upper
+K, 2,  0.353*SC,  0.000*SC, 0       ! B  tip point
+K, 3,  0.357*SC, -0.005*SC, 0       ! C  tip lower
+K, 4,  4.509*SC, -0.523*SC, 0       ! D
+K, 5,  6.175*SC, -0.877*SC, 0       ! E
+K, 6, 19.048*SC, -4.784*SC, 0       ! F
+K, 7, 19.048*SC,  4.784*SC, 0       ! G
+K, 8,  6.175*SC,  0.877*SC, 0       ! H
+K, 9,  4.509*SC,  0.523*SC, 0       ! I
+K, 10, 25.500*SC,  0.000*SC, 0      ! far r5 CONVEX apex (on circle: centre_x + r = 20.5+5)
+
+! arc centre-of-curvature guide keypoints (deleted after lines built)
+K, 101,  0.358*SC,   0.000*SC, 0    ! tip 5um fillet centre
+K, 102,  3.271*SC, -10.446*SC, 0    ! lower r10 centre
+K, 103,  3.271*SC,  10.446*SC, 0    ! upper r10 centre
+K, 104, 20.500*SC,   0.000*SC, 0    ! far r5 centre
+
+! ---- [ADDED] boundary lines/arcs (creation order = L1..L9) -----------------
+LARC, 1, 2, 101, 0.005*SC           ! L1  tip arc upper
+LARC, 2, 3, 101, 0.005*SC           ! L2  tip arc lower
+L,    3, 4                          ! L3  lower line 1
+LARC, 4, 5, 102, 10.0*SC            ! L4  lower r10
+L,    5, 6                          ! L5  lower line 2
+! far r5 base = CONVEX major arc (213 deg, apex at (25.5,0)); split into 2 arcs <180 deg
+LARC, 6, 10, 104, 5.0*SC            ! L6  far r5 lower half (F -> apex)
+LARC, 10, 7, 104, 5.0*SC            ! L7  far r5 upper half (apex -> G)
+L,    7, 8                          ! L8  upper line 2
+LARC, 8, 9, 103, 10.0*SC            ! L9  upper r10
+L,    9, 1                          ! L10 upper line 1
+
+! ---- [ADDED] area + extrude 0.25 mm along +z -> 1 volume -------------------
+AL, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+VEXT, 1, , , 0, 0, TH               ! offset area 1 by (0,0,TH)
+
+KDELE, 101, 104, 1                  ! remove free guide keypoints (unattached)
+NUMCMP, ALL
+ALLSEL, ALL
+
+! ---- [ADDED] IGES export (path by unit) -----------------------------------
+*if, UNIT_MM, eq, 1, then
+    IGESOUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\model_check\NTU_hexapole\pole', 'iges'
+*else
+    IGESOUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\IGES\NTU_hexapole\pole', 'iges'
+*endif
+
+SAVE

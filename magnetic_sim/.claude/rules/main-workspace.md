@@ -23,7 +23,7 @@
 | COMSOL 腳本（.m, .ps1） | `magnetic_sim/ANSYS/main/comsol/kuo_quadrupole/` |
 | COMSOL 模型（.mph） | `magnetic_sim/ANSYS/main/mph/kuo_quadrupole/` |
 | SEMulator 流程與輸出 | `magnetic_sim/ANSYS/main/semulator/kuo_quadrupole/` |
-| 幾何匯出 IGES | `magnetic_sim/ANSYS/main/IGES/kuo_quadrupole/` + `magnetic_sim/ANSYS/main/IGES_converted/kuo_quadrupole/`（必須同步） |
+| 幾何匯出 IGES | `magnetic_sim/ANSYS/main/IGES/kuo_quadrupole/` + `magnetic_sim/ANSYS/main/model_check/kuo_quadrupole/`（必須同步） |
 | SolidWorks / STEP 原檔 | `magnetic_sim/ANSYS/main/CAD/kuo_quadrupole/{SLDPRT,STEP}/` |
 | 所有圖檔（含報告圖） | `magnetic_sim/ANSYS/main/figures/<topic>/<case_tag>/`（多 variant 設計，如 `kuo_quadrupole/Lp046_T55_R0500/`）或 `magnetic_sim/ANSYS/main/figures/<topic>/`（單一 configuration，如 `long2016_p1_only/`）；`<case_tag>` 不可帶方法後綴（如 `_jfit`、`_fit`、`_post` — 方法不是模型）；**同一 case 不論 fit/sim/post/plot 圖都進同一個 `<case_tag>/`** |
 | LaTeX 腳本（.tex 原始檔） | `magnetic_sim/ANSYS/main/doc/<analysis>/<topic>/scripts/`（**analysis-first** schema） |
@@ -59,10 +59,10 @@
 
 1. 不可把新 kuo 工作產物寫到其他設計目錄（如 `magnetic_sim/ANSYS/backup/`）
 2. 不可把圖檔輸出到 `G:\my_workspace\report\` 或其他 `magnetic_sim/ANSYS/main/` 之外的絕對路徑；報告需要圖時改 reference `magnetic_sim/ANSYS/main/figures/kuo_quadrupole/<topic>/<file>.png`
-3. `magnetic_sim/ANSYS/main/IGES/kuo_quadrupole/` 與 `magnetic_sim/ANSYS/main/IGES_converted/kuo_quadrupole/` 必須同步：
+3. `magnetic_sim/ANSYS/main/IGES/kuo_quadrupole/` 與 `magnetic_sim/ANSYS/main/model_check/kuo_quadrupole/` 必須同步：
    ```bash
-   cp magnetic_sim/ANSYS/main/IGES/kuo_quadrupole/Part.iges magnetic_sim/ANSYS/main/IGES_converted/kuo_quadrupole/Part.iges
-   sed -i "s/,1.0,6,,/,1.0,1,,/" magnetic_sim/ANSYS/main/IGES_converted/kuo_quadrupole/Part.iges
+   cp magnetic_sim/ANSYS/main/IGES/kuo_quadrupole/Part.iges magnetic_sim/ANSYS/main/model_check/kuo_quadrupole/Part.iges
+   sed -i "s/,1.0,6,,/,1.0,1,,/" magnetic_sim/ANSYS/main/model_check/kuo_quadrupole/Part.iges
    ```
    刪除或重命名 `.iges` 時兩邊都要同步處理
 4. **新 topic（不是 Kuo Quadrupole 自身工作）必須開新 topic 子資料夾**，不可丟到 `kuo_quadrupole/` 下混雜。例：借 Long Fei 2016 幾何的 H1/H2 驗證放 `magnetic_sim/ANSYS/main/<canonical>/long2016_h1h2/`

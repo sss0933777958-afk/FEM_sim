@@ -16,7 +16,7 @@ FEM_sim/                         通用 FEM 容器（CLAUDE.md / README / .claud
 └── magnetic_sim/                磁學模擬類別
     ├── ANSYS/                   ANSYS 求解器子層
     │   ├── main/                ★ 活躍設計：4-pole MEMS Quadrupole（原 kuo/）
-    │   │   ├── CAD_model/ IGES/ IGES_converted/   幾何（CAD→IGES→轉換）
+    │   │   ├── CAD_model/ IGES/ model_check/   幾何（CAD→IGES→轉換）
     │   │   ├── apdl/            APDL 腳本（geom/sim/postproc）
     │   │   ├── ANSYS_data/      FEM 輸出 .dat/.db（gitignore 重產物）
     │   │   ├── matlab/          MATLAB 分析（<model>/<功能組>/code，含 common/ resolver）
@@ -49,7 +49,7 @@ FEM_sim/                         通用 FEM 容器（CLAUDE.md / README / .claud
 - **reorg 失效路徑全 repo 補正**：`.m` 115 處/75 檔、`.md` 104 處/25 檔（`magnetic_sim\hexapole-long2016`→`\ANSYS\backup\...`、`\hung`→`\ANSYS\backup\hung`）。詳見 memory [[long2016-hall-sensor-base]]、[[fem-sim-github-status]]。
 
 ## 5. 未決 / 待辦（之後可處理）
-- **命名兩套**：同一 Long Fei 模型在 `IGES_converted/` 叫 `long_fei`，但 `IGES/`、`ANSYS_data/`、`apdl/` 叫 `long2016_hexapole_halfcut`。
+- **命名兩套**：同一 Long Fei 模型在 `model_check/` 叫 `long_fei`，但 `IGES/`、`ANSYS_data/`、`apdl/` 叫 `long2016_hexapole_halfcut`。
 - 本機備份分支 `backup/old-history-magnetic-tweezers` + tag `pre-squash-2026-06-17` 保留舊歷史；確定不需要救回後可刪。
 - `.txt` APDL 內舊路徑指標未補（待定是否需要）；`Hall_sensor_base_fix_dir` P2 專用繪圖腳本與通用版並存（待定整併）。
 

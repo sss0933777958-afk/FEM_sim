@@ -5,7 +5,7 @@
 ! Built in mm values, WP shifted to ORIGIN, then VLSCALE mm->inch (x1/25.4) so the
 !   IGES (unit flag patched 6->1 = INCH) reads back as correct mm in SolidWorks
 !   (ANSYS IGES has blank units-name -> SolidWorks defaults to INCH; same trick as hung).
-! Output -> IGES/long_fei/singlepole_tipcut_x0p6.iges  (patched copy in IGES_converted/long_fei/)
+! Output -> IGES/long_fei/singlepole_tipcut_x0p6.iges  (patched copy in model_check/long_fei/)
 ! ====================================================================
 /CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\geom_singlepole_variants'
 
@@ -158,6 +158,6 @@ INCH = 1.0/25.4
 ALLSEL, BELOW, VOLU
 VLSCALE, ALL, , , INCH, INCH, INCH, , , 1
 ALLSEL, BELOW, VOLU
-IGESOUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\IGES_converted\long_fei\singlepole_tipcut', 'iges'
+IGESOUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\model_check\long_fei\singlepole_tipcut', 'iges'
 FINISH
 /EXIT, NOSAV

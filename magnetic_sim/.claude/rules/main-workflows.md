@@ -5,12 +5,12 @@
 
 ## 觸發 → SOP 對應
 
-### cad-export.md(SolidWorks → STEP + IGES + IGES_converted)
+### cad-export.md(SolidWorks → STEP + IGES + model_check)
 
 觸發片語(任一即可):
 - 「出 STEP」/「出 IGES」/「export 模型」
 - 「從 SLDPRT 出檔」/「重新 export 幾何」
-- 「更新 IGES」/「同步 IGES_converted」
+- 「更新 IGES」/「同步 model_check」
 
 啟動前主動問(缺什麼問什麼):
 - `{topic}`(kuo_quadrupole / long_fei / zhang_quadrupole / 新 topic)
@@ -205,7 +205,7 @@ SOP 全文:`magnetic_sim/ANSYS/main/doc/workflows/semulator-process.md`
 ### iges-sync-quick.md(IGES 快速同步)
 
 觸發片語:
-- 「同步 IGES」/「IGES_converted」
+- 「同步 IGES」/「model_check」
 - 「重新轉 IGES」/「fix IGES 單位」
 
 啟動前主動問:

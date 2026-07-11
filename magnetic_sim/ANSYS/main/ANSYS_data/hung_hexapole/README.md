@@ -4,13 +4,13 @@ Hung hexapole 的 ANSYS 幾何/模型資料。來源 CAD：`../../CAD_model/hung
 （mm 尺寸；檔案 inch 標籤視為誤標）。**純幾何階段**（尚無 FEM 場 `.dat`）。
 
 > 交付檔白名單（照 `../../rules/db-folder-retention.md`）：`db/<case>/` 只留 `.db`（+主 `.rmg`）；
-> log/`.out`/`.err`/`.iges` 一律不留（IGES 交付檔在 `../../IGES_converted/hung_hexapole/`）。
+> log/`.out`/`.err`/`.iges` 一律不留（IGES 交付檔在 `../../model_check/hung_hexapole/`）。
 
 ## 目前幾何來源：真實 CAD 匯入（✅ 已成功進 ANSYS）
 - **ANSYS 模型（真實幾何）**：`db/from_parasolid/hung_hexapole_full.db`
   — **97 volumes / 540 areas / 680 keypoints**（與 STEP 完全一致）、bbox ±62.5mm、原點=CAD 原點。
   **單位=公尺（MKS）**（0.0625m=62.5mm；符合本專案「模擬用 MKS」慣例）。
-- **IGES（真實幾何、供目視檢查、mm）**：`../../IGES_converted/hung_hexapole/hung_hexapole_full.iges`
+- **IGES（真實幾何、供目視檢查、mm）**：`../../model_check/hung_hexapole/hung_hexapole_full.iges`
   （OCP 從 STEP 轉出，mm、97 solid、540 face、原點=CAD 原點；疊到 Full_Assembly 應完全吻合）。
 
 ### 匯入管線（可重現）
@@ -25,4 +25,4 @@ STEP →(SpaceClaim `sc_step_to_parasolid.py`)→ `.x_t`(Parasolid, 公尺) →(
 
 ## 相關路徑
 - APDL：`../../apdl/hung_hexapole/geom/{export(primitive schematic), import(STEP→IGES + IGESIN)}/`
-- IGES：`../../IGES/hung_hexapole/`（原始）、`../../IGES_converted/hung_hexapole/`（交付/檢查）
+- IGES：`../../IGES/hung_hexapole/`（原始）、`../../model_check/hung_hexapole/`（交付/檢查）

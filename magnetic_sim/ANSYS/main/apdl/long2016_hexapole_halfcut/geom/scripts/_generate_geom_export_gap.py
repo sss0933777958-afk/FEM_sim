@@ -1,7 +1,7 @@
 """Generate gap200um geom export scripts (mm + metre) from halfcut baselines.
 
 Pipeline mirrors run_geom_export.ps1 conventions:
-  - mm script    -> IGES_converted/.../Geom_gap200um.iges (units flag patched 6->2)
+  - mm script    -> model_check/.../Geom_gap200um.iges (units flag patched 6->2)
   - metre script -> IGES/.../Geom_gap200um.iges            (units flag 6 = ANSYS default, FEM reload source of truth)
 
 This script only WRITES the two APDL files; ANSYS run + units-flag patch is

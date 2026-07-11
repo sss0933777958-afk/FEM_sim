@@ -25,7 +25,7 @@ r = STEPControl_Reader(); r.ReadFile(step); r.TransferRoots(); shape = r.OneShap
 Interface_Static.SetCVal_s("write.iges.unit","MM"); Interface_Static.SetIVal_s("write.iges.brep.mode",1)
 w = IGESControl_Writer("MM",1); w.AddShape(shape); w.Write(out)   # unit flag=2 (MM)
 ```
-輸出 `IGES/<model>/` + `IGES_converted/<model>/<name>.iges`。**這份給使用者疊 CAD 目視檢查**。
+輸出 `IGES/<model>/` + `model_check/<model>/<name>.iges`。**這份給使用者疊 CAD 目視檢查**。
 範本：`magnetic_sim/ANSYS/main/apdl/hung_hexapole/geom/scripts/step_to_iges.py`。
 
 ### 管線 B：STEP → ANSYS `.db`（公尺/MKS，模型）＝三步
@@ -90,7 +90,7 @@ hung 出 **97 vol / 540 area / 680 kp**、bbox ±62.5mm、原點置中。
 - **`.py` / `.bat` 腳本**（`step_to_iges.py` / `sc_step_to_parasolid.py` / `ac4para252.bat`）→ `apdl/<model>/geom/scripts/`。
   ⚠ **不可放 `geom/import/`**：apdl 的 `geom/import/` 依規則**只放 `.txt`**（+ 標準 README）。
 - **`.txt` APDL deck**（`MT_Input_ANF.txt`）→ `apdl/<model>/geom/import/`。
-- IGES：`IGES/<model>/`（原始）+ `IGES_converted/<model>/`（mm 檢查）。
+- IGES：`IGES/<model>/`（原始）+ `model_check/<model>/`（mm 檢查）。
 - 模型：`ANSYS_data/<model>/db/from_parasolid/<name>.db`（**db/ 只留 .db**）。
 - 中間檔（`.step`/`.x_t`/`.anf`）**不留 apdl**（可重生）；別留 db/。
 
