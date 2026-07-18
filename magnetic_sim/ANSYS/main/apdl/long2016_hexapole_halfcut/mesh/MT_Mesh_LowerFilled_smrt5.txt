@@ -1,6 +1,6 @@
 ! [KUO smrt5 variant] = MT_Mesh_LowerFilled.txt with the 2x EREFINE refinement REMOVED ->
 !   pure SMRTSIZE,5 + VMESH base (no cone refinement). Robust VATT-by-location kept.
-!   -> db/lower_filled/mesh_lowerfilled_smrt5.db (does NOT overwrite graded mesh_lowerfilled.db)
+!   -> db/geom/lower_filled/mesh_lowerfilled_smrt5.db (does NOT overwrite graded mesh_lowerfilled.db)
 ! ============================================================================
 ! MT_Mesh_LowerFilled_smrt5.txt — Long2016 hexapole, 3 LOWER POLES FILLED (full cone), region-graded MESH-ONLY
 !   [Variant of MT_Mesh_Graded.txt]: lower-pole half-cut BLOCK,0+VSBV REMOVED -> P1/P3/P6 are FULL cones.
@@ -22,7 +22,7 @@
 !   材料/網格分區一律 by location+size（VOVLAP/booleans 會清 VATT，volume 編號不可硬編）。
 ! ============================================================================
 
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\lower_filled'
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\geom\lower_filled'
 Finish
 /cle
 /CLEAR,NOSTART

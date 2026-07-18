@@ -1,13 +1,15 @@
 ! ============================================================================
 ! MT_Export_SensorLocalMesh_basegap.txt
 !   BASEGAP-mesh variant of MT_Export_SensorLocalMesh_graded.txt.
-!   RESUME the REAL 200um air-slab gap mesh (db/mesh_graded_basegap/mesh_graded.db,
+!   RESUME the REAL 200um air-slab gap mesh (db/geom/mesh_graded_basegap/mesh_graded.db,
 !   mesh-only, NO solve) and dump the LOCAL air mesh connectivity around the 6
 !   Hall-sensor centres so MATLAB can do true-FEM-tet barycentric interpolation of
 !   the (already-exported) gap_200um nodal B (.dat, coilN/gap_200um) at sample
 !   points inside each sensor cylinder.
-!   Node IDs match the gap_200um .dat because those solves RESUMEd THIS mesh
-!   (db/mesh_graded_basegap/mesh_graded.db, per MT_Sim_P*_basegap.txt).
+!   Node IDs match the coilN/<gap variant> .dat because those solves RESUMEd THIS mesh
+!   (db/geom/mesh_graded_basegap/mesh_graded.db, per MT_Sim_P*_basegap.txt).
+!   [2026-07-12] db is now the 1.21M **gap_300um** conformal real-slab mesh; output
+!     retargeted to csv/gap_300um/ (was csv/ for the old 706k gap_200um mesh, kept on disk).
 !   ⚠ The graded CSV (data/mesh/graded/csv) is on a DIFFERENT mesh (636k) and is
 !     mis-aligned (~20 mm) to gap_200um (706k) -> must use THIS basegap CSV instead.
 !
@@ -23,7 +25,7 @@
 
 FINISH
 /CLEAR,NOSTART
-RESUME,'mesh_graded','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\mesh_graded_basegap\'
+RESUME,'mesh_graded','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\geom\mesh_graded_basegap\'
 /PREP7
 
 ! ---- 6 sensor centres (ANSYS frame [m]) = build_sensor_geometry (upper real FEM angle) ----
@@ -67,7 +69,7 @@ ndd=0
     NCY(ii)=NY(ndd)
     NCZ(ii)=NZ(ndd)
 *enddo
-/OUTPUT,'sensor_local_nodes','csv','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\csv\'
+/OUTPUT,'sensor_local_nodes','csv','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\csv\gap_300um\'
 *VWRITE,NID(1),NCX(1),NCY(1),NCZ(1)
 (F12.0,',',ES23.14,',',ES23.14,',',ES23.14)
 /OUTPUT
@@ -84,7 +86,7 @@ edd=0
         EN(ii,k)=NELEM(edd,k)
     *enddo
 *enddo
-/OUTPUT,'sensor_local_elems','csv','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\csv\'
+/OUTPUT,'sensor_local_elems','csv','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\csv\gap_300um\'
 *VWRITE,EID(1),EN(1,1),EN(1,2),EN(1,3),EN(1,4),EN(1,5),EN(1,6),EN(1,7),EN(1,8)
 (F12.0,8(',',F12.0))
 /OUTPUT

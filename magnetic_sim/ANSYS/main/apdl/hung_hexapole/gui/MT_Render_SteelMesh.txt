@@ -1,0 +1,55 @@
+! ============================================================================
+! MT_Render_SteelMesh.txt — batch 算 hung_hexapole 鋼件網格 PNG（無 GUI、可靠）
+!   RESUME 拋棄式 view.db（唯讀、不 SAVE）→ 選鋼件 MAT_MT=2 → 多視角 EPLOT → PNG。
+!   **通用**：吃啟動 -dir；先把目標 mesh_graded.db 複製成 <-dir>\view.db，PNG 落 -dir。
+!   啟動：MAPDL -b -dir <輸出/圖夾> -j vimg -i 本檔 -o vimg.out
+!         （該夾需先有 view.db = mesh_graded.db 的副本；PNG 名 vimg000.png…）
+! ============================================================================
+/FILNAME,vimg,1
+RESUME,'view','db'              ! 從 -dir 讀 view.db
+/PREP7
+
+! 白底、深前景（報告風）
+/RGB,INDEX,100,100,100,0
+/RGB,INDEX, 80, 80, 80,13
+/RGB,INDEX, 60, 60, 60,14
+/RGB,INDEX,  0,  0,  0,15
+/GRAPHICS,POWER
+/PNUM,MAT,1
+/NUMBER,1
+/EDGE,1,0
+/SHOW,PNG,,,8
+/GFILE,1400
+
+! 只顯示鋼件（MAT_MT=2）= 6 磁極 + 6 導柱/上核 + yoke
+ESEL,S,MAT,,2
+
+/TITLE,hung STEEL mesh (6 poles + posts + yoke)  iso
+/VIEW,1,1,1,1
+/ANG,1
+/AUTO,1
+EPLOT
+
+/TITLE,hung STEEL mesh  front (x-z)
+/VIEW,1,0,-1,0
+/AUTO,1
+EPLOT
+
+/TITLE,hung STEEL mesh  top (x-y)
+/VIEW,1,0,0,1
+/AUTO,1
+EPLOT
+
+! 近-WP 6 tip 匯聚加密區（小盒，涵蓋 R=0.3~0.7mm tip）
+ESEL,S,MAT,,2
+ESEL,R,CENT,X, -1.5e-3, 1.5e-3
+ESEL,R,CENT,Y, -1.5e-3, 1.5e-3
+ESEL,R,CENT,Z, -1.5e-3, 1.5e-3
+/TITLE,hung STEEL mesh  6-tip refine zone near WP
+/VIEW,1,1,0.4,0.3
+/AUTO,1
+EPLOT
+
+/SHOW,CLOSE
+FINISH
+/EXIT,NOSAVE

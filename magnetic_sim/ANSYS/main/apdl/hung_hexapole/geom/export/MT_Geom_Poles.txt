@@ -7,7 +7,7 @@
 ! 單位：SolidWorks 讀 IGES 當英寸 → 內部用英寸建模(MM=1/25.4)
 ! 輸出：IGESOUT hung_poles.iges (供檢查，之後再一個一個加支撐座/yoke)
 ! =======================================
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\db\geom_poles'
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\db\geom\geom_poles'
 /PREP7
 *afun, DEG
 BTOL, 1e-5

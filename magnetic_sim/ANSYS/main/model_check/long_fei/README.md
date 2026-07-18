@@ -1,6 +1,12 @@
-# model_check/long_fei/ — Long Fei 六極半切 單位轉換後 IGES
+# model_check/long_fei/ — Long Fei 六極半切 檢查用幾何（IGES + STEP）
 
-**用途**：`../../IGES/long2016_hexapole_halfcut/` 經單位/旗標轉換後、可被 ANSYS `IGESIN` 正確讀入的 Long Fei 6 極下極半切 hexapole 幾何。
+**用途**：`../../IGES/long2016_hexapole_halfcut/` 經單位/旗標轉換後、可被 ANSYS `IGESIN` 正確讀入的 Long Fei 6 極下極半切 hexapole 幾何。**新交付一律出 STEP**（per deliver-step-for-check）。
+
+**gap 變體 STEP（交付檢查用；皆由 `apdl/.../geom/export/MT_Geom_BaseGap.txt` 的 `GAP_CFG` preset 產、`../scripts/make_gap_step.py <name>` 轉 mm STEP，中繼 IGES 走 scratch `ANSYS_data/.../db/geom_hexvariants/`）**：
+- `long2016_hexapole_gap_300um.step`（2026-07-12）：6 極 base 磁隙都往 tip 移、厚 **300µm**、截面 conformal（下極 T 形 45mm³/極、上極 y±11 矩形 66mm³/極）。7 solids（鋼 + 6 base slab）。
+- **`long2016_hexapole_gapdist.step`（2026-07-13，分布式）**：把「均勻 400µm base 磁阻」拆成 **base 100µm ＋ 導柱 protrusion 兩端各一 gap**（下極 z=−7/0 厚 78.6µm、上極 z=2/9 厚 86.87µm、圓 r=5mm）。**19 solids**（鋼 32838 + 6 base slab[下15/上22mm³] + 12 導柱圓盤 conformal r=5＝**截面 78.54mm²**[下6.17/上6.82mm³]）。OCC 驗：導柱盤 @radial47.5 z=−7/0/2/9、面積 78.54mm²、base @x42.5/40.95。
+- **`long2016_hexapole_gap_400um.step`（2026-07-13，均勻對照）**：只 base 磁隙、厚 **400µm**、無導柱 gap。7 solids（鋼 + 3 下極 T 60mm³ + 3 上極 88mm³）。
+- gapdist 與 gap_400um 總磁阻等價（使用者串聯磁阻設計）；μ_r=1 屬 sim 階段（STEP 不帶材料）。
 
 **內容**：`long2016_hexapole_no_gap.iges`（主）、`..._Geom_HollowProt.iges`、`..._Geom_HollowProt_Plain.iges`、`..._Geom_gap200um.iges`、`..._Geom_sphtip.iges`、`..._Geom_WPsphere.iges`（鐵件總成 ＋ WP 7mm 空氣球殼，raw 重疊、CAD 檢視用；mm/flag-2），另含 `Geom_WithCoil.iges`（6 coil rings）、`Geom_hp_split.iges`、`SinglePoleFilled.iges`（**單一下極：削平半錐填回完整圓錐** ＋ 4 塊支撐座 ＋ 1 根 protrusion 鐵柱；無 yoke / 無上極 / 無 coil 實體；mm/flag-2）。
 

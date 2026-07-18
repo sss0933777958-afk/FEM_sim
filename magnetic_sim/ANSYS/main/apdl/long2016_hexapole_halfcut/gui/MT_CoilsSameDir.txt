@@ -1,6 +1,6 @@
 !****/CWD,'C:\Users\feilong\Desktop\Fei Long Ansys\Magnetic Tweezers LowPermeability'
 !****/CWD,'D:\Fei Long ANSYS\Magnetic Tweezers LowPermeability'
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\coils_same_dir'   ! [MODIFIED] output: all 6 coils same current direction (CURR=-1)
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\sim\coils_same_dir'   ! [MODIFIED] output: all 6 coils same current direction (CURR=-1)
 
 Finish
 /cle

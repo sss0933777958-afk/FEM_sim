@@ -1,0 +1,236 @@
+! ============================================================================
+! NTU_hexapole — FULL ASSEMBLY (整體 model；階段性建構)
+!   命名 full_assembly = 整體 model；yoke/coil 之後階段擴充「此」deck。
+!   Source CAD = CAD_model/NTU_hexapole/STEP/總組合.STEP（OCP 世界座標量測，見 full_assembly_params.md）。
+!   階段① 6 磁極 = 兩平面薄板層（各厚 0.25mm，對齊 總組合.STEP 原點、不平移到 z=0）：
+!     下層 z=[8.80,9.05] @ WPROTA 0/120/240° ; 上層 z=[9.55,9.80] @ WPROTA 60/180/300°。
+!     輪廓同 pole_params.md（9 段環、尖端 5µm 圓角、遠端凸弧 r5）；建法沿用 MT_Geom_UpperAssembly.txt PART A。
+!   階段② 6 導柱 = 垂直實心圓柱 r2.5，沿磁極方位軸 r=20.5，底坐磁極頂面、頂齊平 z=26.80：
+!     長導柱 ×3 @0/120/240° z[9.05,26.80]（長17.75）；短導柱 ×3 @60/180/300° z[9.80,26.80]（長17.00）。
+!   階段③ yoke = rounded-rect 外盤 59.8×53.8 − 中心 cutout 31×20.5 − 6 孔 r2.5（VSBV）：
+!     忠實 r5 圓角（外盤 4 角 + cutout 4 角）；厚 5.5 @ z[20.80,26.30]；6 孔對齊導柱 → 1 volume。
+!   階段④ 6 襯套 = 凸緣頂帽狀空心襯套（bore r2.5 / tube 外徑 r3.5 / flange 外徑 r7.5，總組合.STEP 尺寸）：
+!     6 個在 r=20.5 @ 0/60/…/300°、全垂直、z[15.60,20.80]（flange z[15.60,16.60]、tube z[16.60,20.80]）；
+!     套上 6 導柱（導柱 r2.5 填內孔）；每個 = (flange VADD tube) VSBV bore → 空心環。
+!   STEP delivery = make_full_assembly_step.py -> model_check/NTU_hexapole/full_assembly.step（不出 IGES）。
+! [ADDED 2026-07-15] 階段①磁極 + 階段②導柱 + 階段③yoke；[ADDED 2026-07-17] 階段④6襯套；材料/元素/BC/coil 之後階段加。
+! ============================================================================
+
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\NTU_hexapole\db\geom\full_assembly'
+
+Finish
+/cle
+/PREP7
+*afun, DEG
+
+UNIT_MM = 1                  ! 1 = mm (SC=1.0，與 NTU UpperAssembly 一致；5µm 圓角在公尺尺度 LARC 建不起來) ; 0 = 公尺 MKS
+*if, UNIT_MM, eq, 1, then
+    SC = 1.0
+    BTOL, 1e-4
+*else
+    SC = 1.0e-3
+    BTOL, 1e-7
+*endif
+/UNITS, MKS
+
+TH  = 0.25*SC                ! 板厚 (VEXT 沿 +z)
+ZLO = 8.80*SC               ! 下層板底 z（總組合.STEP 世界座標）
+ZHI = 9.55*SC               ! 上層板底 z
+
+! [ADDED 階段②] 6 導柱參數（guide posts；世界座標 mm）
+RPOST = 20.5*SC             ! 導柱徑向位置（沿各磁極方位軸；貼近凸端 x25.5 略內縮）
+RP    = 2.5*SC              ! 導柱半徑（尖端簡化成整根 r2.5 實心，忽略 CAD r2.49 尖段）
+ZTOP  = 26.80*SC            ! 導柱頂端（6 根齊平）
+ZPLO  = 9.05*SC             ! 下層磁極板頂面 = 長導柱底（長17.75）
+ZPHI  = 9.80*SC             ! 上層磁極板頂面 = 短導柱底（長17.00）
+
+! [ADDED 階段③] yoke 參數（磁軛盤；世界座標 mm；忠實 r5 圓角）
+YRR  = 5.0*SC               ! 外盤 + cutout 四角圓角半徑 r5
+ZYB  = 20.80*SC             ! yoke 底 z
+ZYT  = 26.30*SC             ! yoke 頂 z（厚 5.5）
+YHR  = 2.5*SC               ! 6 導柱孔半徑（= 導柱 r2.5）
+
+! ============================================================================
+! 6 磁極：下層(0/120/240°@ZLO) + 上層(60/180/300°@ZHI)；每極一 volume
+!   輪廓 K/L/LARC/AL 原封沿用 UpperAssembly PART A；只加層 z 偏移 (WPOFFS) 與上層 +60° 相位。
+! ============================================================================
+*do, layer, 1, 2
+    *if, layer, eq, 1, then
+        ZB = ZLO
+        A0 = 0
+    *else
+        ZB = ZHI
+        A0 = 60
+    *endif
+    *do, pole, 1, 3
+        ANG = A0 + (pole-1)*120
+        WPLANE, 1,0,0,0
+        WPCSYS, -1, 0            ! WP = global cartesian
+        WPOFFS, 0, 0, ZB        ! WP 原點移到 (0,0,ZB) = 該層板底
+        WPROTA, ANG             ! 繞 WP z 轉 ANG（*afun DEG）
+        CSYS, 4                 ! 用 WP 座標系下點
+        *get, KB, KP, , NUM, MAX
+        K, KB+1,  0.357*SC,  0.005*SC, 0
+        K, KB+2,  0.353*SC,  0.000*SC, 0
+        K, KB+3,  0.357*SC, -0.005*SC, 0
+        K, KB+4,  4.509*SC, -0.523*SC, 0
+        K, KB+5,  6.175*SC, -0.877*SC, 0
+        K, KB+6, 19.048*SC, -4.784*SC, 0
+        K, KB+7, 19.048*SC,  4.784*SC, 0
+        K, KB+8,  6.175*SC,  0.877*SC, 0
+        K, KB+9,  4.509*SC,  0.523*SC, 0
+        K, KB+10,25.500*SC,  0.000*SC, 0
+        K, KB+11, 0.358*SC,  0.000*SC, 0        ! 尖端圓角中心
+        K, KB+12, 3.271*SC,-10.446*SC, 0        ! 下凹弧圓心
+        K, KB+13, 3.271*SC, 10.446*SC, 0        ! 上凹弧圓心
+        K, KB+14,20.500*SC,  0.000*SC, 0        ! 遠端凸弧圓心
+        *get, LB, LINE, , NUM, MAX
+        LARC, KB+1, KB+2, KB+11, 0.005*SC       ! 尖端圓角上
+        LARC, KB+2, KB+3, KB+11, 0.005*SC       ! 尖端圓角下
+        L,    KB+3, KB+4                         ! 下側直邊1
+        LARC, KB+4, KB+5, KB+12, 10.0*SC        ! 下凹弧 r10
+        L,    KB+5, KB+6                         ! 下側直邊2
+        LARC, KB+6, KB+10, KB+14, 5.0*SC        ! 遠端凸弧 r5（拆兩段 <180）
+        LARC, KB+10, KB+7, KB+14, 5.0*SC
+        L,    KB+7, KB+8                         ! 上側直邊2
+        LARC, KB+8, KB+9, KB+13, 10.0*SC        ! 上凹弧 r10
+        L,    KB+9, KB+1                         ! 上側直邊1
+        AL, LB+1, LB+2, LB+3, LB+4, LB+5, LB+6, LB+7, LB+8, LB+9, LB+10
+        *get, AB, AREA, , NUM, MAX
+        VEXT, AB, , , 0, 0, TH                  ! 沿 +z 拉伸 0.25mm
+        KDELE, KB+11, KB+14, 1                   ! 刪弧圓心構造點
+        CSYS, 0
+    *enddo
+*enddo
+
+! ============================================================================
+! [ADDED 階段②] 6 導柱：下層(0/120/240°@ZPLO) + 上層(60/180/300°@ZPHI)；每根一 volume
+!   垂直實心圓柱 r2.5，沿磁極方位軸 r=20.5，底坐磁極板頂面、頂齊平 ZTOP=26.80。
+!   WPROTA 繞 z 不改 z 軸 → CYLIND 仍垂直；WPOFFS,RPOST,0,0（旋轉後 = 徑向）。不 boolean。
+! ============================================================================
+*do, layer, 1, 2
+    *if, layer, eq, 1, then
+        ZBP = ZPLO
+        A0  = 0
+    *else
+        ZBP = ZPHI
+        A0  = 60
+    *endif
+    *do, pole, 1, 3
+        ANG = A0 + (pole-1)*120
+        WPLANE, 1,0,0,0
+        WPCSYS, -1, 0           ! WP = global cartesian
+        WPROTA, ANG             ! 繞 WP z 轉 ANG（z 軸不變）
+        WPOFFS, RPOST, 0, 0     ! 沿旋轉後 +x（= 徑向）移到導柱軸線
+        CYLIND, RP, , ZBP, ZTOP ! 垂直實心圓柱（WP z = 全域 +z），ZBP→ZTOP
+        CSYS, 0
+    *enddo
+*enddo
+
+! ============================================================================
+! [ADDED 階段③] yoke：rounded-rect 外盤 − rounded-rect 中心 cutout − 6 導柱孔（VSBV）
+!   忠實 r5 圓角（外盤 4 角 + cutout 4 角）；厚 5.5 @ z[20.80,26.30]；6 孔對齊導柱。
+!   rounded-rect 面 = 8 邊界 KP + 4 圓角中心 KP → 4 直邊 L + 4 角弧 LARC(r5) → AL → VEXT。
+! ============================================================================
+CSYS, 0
+*dim, YAX, , 2                  ! 半寬 X：外盤 29.9、cutout 15.5
+YAX(1) = 29.9*SC $ YAX(2) = 15.5*SC
+*dim, YAY, , 2                  ! 半寬 Y：外盤 26.9、cutout 10.25
+YAY(1) = 26.9*SC $ YAY(2) = 10.25*SC
+THY = ZYT - ZYB                 ! yoke 厚 5.5
+
+*do, ir, 1, 2
+    AX = YAX(ir)
+    AY = YAY(ir)
+    *get, KB, KP, , NUM, MAX
+    ! 8 邊界 KP（CCW，z=ZYB）：右邊→上邊→左邊→下邊
+    K, KB+1,  AX,        -(AY-YRR),  ZYB       ! 右邊下
+    K, KB+2,  AX,         (AY-YRR),  ZYB       ! 右邊上
+    K, KB+3,  (AX-YRR),   AY,        ZYB       ! 上邊右
+    K, KB+4, -(AX-YRR),   AY,        ZYB       ! 上邊左
+    K, KB+5, -AX,         (AY-YRR),  ZYB       ! 左邊上
+    K, KB+6, -AX,        -(AY-YRR),  ZYB       ! 左邊下
+    K, KB+7, -(AX-YRR),  -AY,        ZYB       ! 下邊左
+    K, KB+8,  (AX-YRR),  -AY,        ZYB       ! 下邊右
+    ! 4 圓角中心 KP
+    K, KB+9,  (AX-YRR),   (AY-YRR),  ZYB       ! TR 中心
+    K, KB+10,-(AX-YRR),   (AY-YRR),  ZYB       ! TL 中心
+    K, KB+11,-(AX-YRR),  -(AY-YRR),  ZYB       ! BL 中心
+    K, KB+12, (AX-YRR),  -(AY-YRR),  ZYB       ! BR 中心
+    *get, LB, LINE, , NUM, MAX
+    L,    KB+1, KB+2                            ! 右直邊
+    LARC, KB+2, KB+3, KB+9,  YRR                ! TR 角弧
+    L,    KB+3, KB+4                            ! 上直邊
+    LARC, KB+4, KB+5, KB+10, YRR                ! TL 角弧
+    L,    KB+5, KB+6                            ! 左直邊
+    LARC, KB+6, KB+7, KB+11, YRR                ! BL 角弧
+    L,    KB+7, KB+8                            ! 下直邊
+    LARC, KB+8, KB+1, KB+12, YRR                ! BR 角弧
+    AL, LB+1, LB+2, LB+3, LB+4, LB+5, LB+6, LB+7, LB+8
+    *get, AB, AREA, , NUM, MAX
+    VEXT, AB, , , 0, 0, THY                     ! 沿 +z 拉伸 5.5（z ZYB→ZYT）
+    KDELE, KB+9, KB+12, 1                       ! 刪圓角中心構造點
+    *if, ir, eq, 1, then
+        *get, V_OUT, VOLU, , NUM, MAX          ! 外盤 volume 號（cutout+孔 = V_OUT+1..+7）
+    *endif
+*enddo
+
+! 6 導柱孔 r2.5（對齊導柱位置 r20.5 @ 0/60/…/300°）
+*do, ih, 1, 6
+    HANG = (ih-1)*60
+    HX = RPOST*cos(HANG)
+    HY = RPOST*sin(HANG)
+    WPLANE, 1,0,0,0
+    WPCSYS, -1, 0
+    WPOFFS, HX, HY, 0
+    CYLIND, YHR, , ZYB, ZYT
+    WPOFFS, -HX, -HY, 0
+*enddo
+
+! 一次 VSBV：外盤 − (cutout + 6 孔) → yoke 1 volume（沿用 PART C 避序號重用坑）
+CSYS, 0
+VSEL, S, VOLU, , V_OUT, V_OUT+7
+VSBV, V_OUT, ALL
+ALLSEL, ALL
+
+! ============================================================================
+! [ADDED 階段④ 2026-07-17] 6 襯套（sleeve/bushing）：凸緣頂帽狀空心襯套，套上 6 導柱
+!   總組合.STEP 尺寸：bore r2.5、tube 外徑 r3.5、flange 外徑 r7.5；
+!   flange 段 z[15.60,16.60]（厚1.0）、tube 段 z[16.60,20.80]（長4.2）、bore r2.5 貫穿。
+!   6 個在 r=20.5 @ 0/60/…/300°、全垂直、同 z；每個 = (flange VADD tube) VSBV bore → 空心環
+!   （導柱 r2.5 填內孔、不與襯套體積重疊）。WPROTA 繞 z 不改 z 軸 → CYLIND 仍垂直。
+! ============================================================================
+!   空心 CYLIND（外徑,內徑）直接建環，免挖孔；flange 環 + tube 環 VADD 成一頂帽。
+!   ⚠ boolean 輸出取「最低可用號」非 max → 每個襯套後 NUMCMP,VOLU 壓實、下輪 *GET MAX 才對。
+SLV_RF = 7.5*SC             ! flange 外徑
+SLV_RT = 3.5*SC             ! tube 外徑
+SLV_RB = 2.5*SC             ! bore 內徑（= 導柱 r2.5）
+SLV_ZB = 15.60*SC           ! 襯套底（flange 底）
+SLV_ZM = 16.60*SC           ! flange 頂 / tube 底
+SLV_ZT = 20.80*SC           ! tube 頂（接 yoke 底）
+NUMCMP, VOLU                ! 壓實至 1..13（yoke boolean 留下的號洞清掉）
+*do, s, 1, 6
+    ANG = (s-1)*60
+    WPLANE, 1,0,0,0
+    WPCSYS, -1, 0
+    WPROTA, ANG             ! 繞 WP z 轉 ANG（z 軸不變）
+    WPOFFS, RPOST, 0, 0     ! 沿旋轉後 +x（= 徑向）移到襯套/導柱軸線
+    CYLIND, SLV_RF, SLV_RB, SLV_ZB, SLV_ZM   ! 空心 flange 環（外7.5 內2.5）
+    *get, VF, VOLU, , NUM, MAX
+    CYLIND, SLV_RT, SLV_RB, SLV_ZM, SLV_ZT   ! 空心 tube 環（外3.5 內2.5）
+    *get, VT, VOLU, , NUM, MAX
+    VADD, VF, VT                              ! flange 環 + tube 環 → 空心頂帽（1 volume）
+    NUMCMP, VOLU                              ! 壓實，下一輪號碼連續
+    CSYS, 0
+*enddo
+ALLSEL, ALL
+
+NUMCMP, ALL
+VPLOT
+
+*get, NVOL, VOLU, , COUNT
+/GO
+*MSG, INFO, NVOL
+FullAssembly volume count (expect 19 = 6 poles + 6 posts + 1 yoke + 6 sleeves) = %I
+SAVE, 'full_assembly', 'db'
+FINISH

@@ -1,0 +1,266 @@
+! ============================================================================
+! MT_Mesh_Graded.txt  —  NTU_hexapole (single pole plate + short guide post)
+!   region-graded MESH-ONLY deck（比照 long2016_hexapole_halfcut/mesh/MT_Mesh_Graded.txt）
+!   建幾何 + region-graded 網格 + SAVE 成 mesh_graded.db（**無 /SOLU、無 MAG BC、無 coil**）。
+!   之後 solve deck `RESUME mesh_graded.db` → 加 coil + D,ALL,MAG,0 + magsolv（mesh/solve 分離）。
+!
+!   ★ pipeline（比照 long 定案）：
+!     ① 純 SMRTSIZE,5 + VMESH,ALL（零強制 ESIZE/AESIZE/LESIZE）= 自適應 base。
+!        long 鐵律：此類幾何任何硬性尺寸都 sliver/thrash；細網格靠 EREFINE 折入、不靠硬 ESIZE。
+!     ② EREFINE 極尖 cone +1（tip 再 +1）：場源集中處。
+!     ③ EREFINE 2 顆 sensor 加密球（MAT_SENS）+2 級：供下游取 1000 點面積平均（節點不足時重心內插補）。
+!
+!   幾何 = 磁極薄板(pole.STEP 9 段 profile + VEXT 0.25mm) + 短導柱(實心階梯圓柱)，VADD 成鋼件。
+!     沿用 geom/export/MT_Geom_PoleAssembly.txt 的 profile（此處固定 metre/MKS：SC=1e-3）。
+!   空氣 = 內球 7mm + 中球 35mm + 外圓柱 R80×H70（比照龍飛外邊界；中球放大到 35>鋼件最遠 ~29mm 避 sliver）。
+!   Sensor 加密球 = 2 顆 R0.15mm air 球 @ (13.15,-0.99,-0.41)/(13.15,-0.99,+0.66) mm（pole frame）。
+!     ⚠ n+ 方向 S1→-z / S2→+z 僅供下游 B·n+ 符號用；球對稱、網格與方向無關（此處不建 disc 實體）。
+!   材料/網格分區一律 by location+size（VOVLAP 會清 VATT，volume 編號不可硬編）。
+! ============================================================================
+
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\NTU_hexapole\db\geom\mesh_graded'
+Finish
+/cle
+/CLEAR,NOSTART
+/TITLE, NTU_hexapole - region-graded mesh-only (SAVE mesh_graded.db)
+/FILNAME,mesh_graded,1
+/PREP7
+
+*afun, DEG
+SC = 1.0e-3            ! metre / MKS（幾何 magnitude 用 mm 數字 × SC）
+BTOL, 1e-7
+/UNITS, MKS
+
+! -------------------------------------------------------------------
+! sensor 中心（pole frame, metre）+ 加密球半徑
+! -------------------------------------------------------------------
+S1X = 13.15*SC   $ S1Y = -0.99*SC  $ S1Z = -0.41*SC    ! n+ -> -z
+S2X = 13.15*SC   $ S2Y = -0.99*SC  $ S2Z =  0.66*SC    ! n+ -> +z
+SENS_R = 0.15*SC                                        ! Ø0.3mm sensor footprint
+
+! -------------------------------------------------------------------
+! 空氣三層尺寸（比照龍飛外邊界；中心放原點 ≈ 極尖）
+! -------------------------------------------------------------------
+SPH_FINE_R = 7.0*SC     ! 內氣球
+MID_SPH_R  = 32.0*SC    ! 中氣球：須 >鋼件最遠 ~29mm（全包鋼件）且 <外圓柱半高 35mm（避免與端蓋相切→VOVLAP 退化、外圓柱丟失）。長飛同理 R30<35。
+AIR_CYL_R  = 80.0*SC    ! 外圓柱半徑（比照龍飛 80mm）
+AIR_CYL_H  = 70.0*SC    ! 外圓柱高（比照龍飛 70mm）
+
+! ============================================================================
+! PART A — 磁極薄板 (pole.STEP 9 段 profile, z=0 -> VEXT 0.25mm)  [沿用 MT_Geom_PoleAssembly.txt]
+! ============================================================================
+TH = 0.25*SC
+
+K, 1,  0.357*SC,  0.005*SC, 0       ! A tip upper
+K, 2,  0.353*SC,  0.000*SC, 0       ! B tip point
+K, 3,  0.357*SC, -0.005*SC, 0       ! C tip lower
+K, 4,  4.509*SC, -0.523*SC, 0       ! D
+K, 5,  6.175*SC, -0.877*SC, 0       ! E
+K, 6, 19.048*SC, -4.784*SC, 0       ! F
+K, 7, 19.048*SC,  4.784*SC, 0       ! G
+K, 8,  6.175*SC,  0.877*SC, 0       ! H
+K, 9,  4.509*SC,  0.523*SC, 0       ! I
+K, 10, 25.500*SC,  0.000*SC, 0      ! far r5 CONVEX apex
+K, 101,  0.358*SC,   0.000*SC, 0    ! tip 5um fillet centre
+K, 102,  3.271*SC, -10.446*SC, 0    ! lower r10 centre
+K, 103,  3.271*SC,  10.446*SC, 0    ! upper r10 centre
+K, 104, 20.500*SC,   0.000*SC, 0    ! far r5 centre
+
+! [MODIFIED] 5µm tip fillet arc 無法在 metre scale 建（feature 近 ANSYS 幾何容差下限；
+!   mm scale 建 STEP 時 OK）。fillet 5µm 遠小於網格尺度 → 改兩段直線、保 KP2 尖端位置不變。
+L,    1, 2                          ! L1  tip line upper (was 5µm arc)
+L,    2, 3                          ! L2  tip line lower (was 5µm arc)
+L,    3, 4                          ! L3
+LARC, 4, 5, 102, 10.0*SC            ! L4  lower r10
+L,    5, 6                          ! L5
+LARC, 6, 10, 104, 5.0*SC            ! L6  far r5 lower half
+LARC, 10, 7, 104, 5.0*SC            ! L7  far r5 upper half
+L,    7, 8                          ! L8
+LARC, 8, 9, 103, 10.0*SC            ! L9  upper r10
+L,    9, 1                          ! L10
+
+AL, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+VEXT, 1, , , 0, 0, TH               ! -> pole volume
+KDELE, 101, 104, 1                  ! drop guide keypoints
+
+! ============================================================================
+! PART B — 短導柱 = SOLID stepped cylinder (full)  axis (x=20.5,y=0) upright +Z
+! ============================================================================
+POSTX = 20.5*SC
+WPOFFS, POSTX, 0, 0
+CYLIND, 2.50*SC, , 0.25*SC, 11.25*SC    ! lower round r2.5   z 0.25 -> 11.25
+CYLIND, 2.49*SC, , 11.25*SC, 17.25*SC   ! upper round r2.49  z 11.25 -> 17.25
+WPOFFS, -POSTX, 0, 0
+
+! ---- fuse pole + post -> single steel body ----
+ALLSEL, ALL
+VADD, ALL                           ! 目前只有鋼件 3 vol（pole + 2 post 段）-> 融成 1 鋼件
+NUMCMP, VOLU
+
+! ============================================================================
+! 空氣三層（內球 + 中球 + 外圓柱，中心放原點）+ 2 顆 sensor 加密球
+! ============================================================================
+WPLANE, 1,0,0,0,,,,,,
+WPcsys,-1,0
+SPHERE, 0, SPH_FINE_R, 0,360        ! 內氣球 7mm @ origin
+SPHERE, 0, MID_SPH_R,  0,360        ! 中氣球 35mm @ origin（VOVLAP 後成 7..35mm 殼）
+WPOFFS, 0,0, -AIR_CYL_H/2
+CYL4, 0,0, AIR_CYL_R, ,,, AIR_CYL_H ! 外氣圓柱 R80 z[-35,35]
+WPOFFS, 0,0,  AIR_CYL_H/2
+
+! sensor 加密球（RAW 建，交給下方單一 VOVLAP 一起切）
+WPLANE, 1,0,0,0,,,,,,
+WPcsys,-1,0
+WPOFFS, S1X, S1Y, S1Z
+SPHERE, 0, SENS_R, 0,360
+WPLANE, 1,0,0,0,,,,,,
+WPcsys,-1,0
+WPOFFS, S2X, S2Y, S2Z
+SPHERE, 0, SENS_R, 0,360
+
+! ===== 單一 VOVLAP（鋼件 + 3 層空氣 + 2 sensor 球）=====
+ALLSEL, ALL
+VOVLAP, ALL
+NUMCMP, VOLU
+
+! ============================================================================
+! 材料 + 元素型別
+! ============================================================================
+MAT_AIR1    = 1   ! inner air sphere (R<=7mm)
+MAT_MT      = 2   ! steel (pole + post)  murx=280
+MAT_AIR2    = 3   ! outer cylinder air
+MAT_AIR_MID = 4   ! mid air shell (7..35mm)
+MAT_SENS    = 5   ! sensor refine spheres (air, R0.15mm)
+mp, murx, MAT_AIR1,    1
+mp, murx, MAT_MT,      280
+mp, murx, MAT_AIR2,    1
+mp, murx, MAT_AIR_MID, 1
+mp, murx, MAT_SENS,    1
+ET_nocurr = 1
+ET, ET_nocurr, SOLID96
+
+! ============================================================================
+! VATT by location + size（VOVLAP 清 VATT → 不可硬編 volume 號）
+!   估算體積[m^3]：sensor球 ~1.4e-11 < 鋼件段 (板尖~1e-9 / 板身~2e-8 / 導柱~3.3e-7)
+!                 < 內球 ~1.4e-6 < 中球殼 ~1.8e-4 < 外圓柱 ~1.2e-3
+!   dwp = centroid 到原點(WP≈極尖)距離[m]；dsens = 到 sensor 中心距離[m]
+!   順序（重要）：
+!     1) dsens<0.3mm            -> MAT_SENS（2 顆加密球，質心=sensor 中心、極小）
+!     2) vsz>5e-4               -> MAT_AIR2（外圓柱 ~1.2e-3）
+!     3) vsz>1e-5               -> MAT_AIR_MID（中球殼 ~1.8e-4，質心近原點 → 必在 dwp 判斷前）
+!     4) dwp>8mm                -> MAT_MT（鋼件遠段：導柱 dwp~22mm、板身 dwp~15mm）
+!     5) vsz>5e-7               -> MAT_AIR1（內球 ~1.4e-6，dwp~0）
+!     6) else                   -> MAT_MT（內球內鋼板尖段，極小 vsz、dwp<8mm）
+! ============================================================================
+ALLSEL, ALL
+V_S1 = 0                                  ! [ADDED] S1 加密球體號（供先 mesh + 節點數相等）
+V_S2 = 0                                  ! [ADDED] S2 加密球體號
+*get, VMAX, VOLU,, NUM, MAX
+*do, vi, 1, VMAX
+	VSEL, S, VOLU,, vi
+	VSUM
+	*get, vsz, VOLU, vi, VOLU              ! 體積（不存在回 0）
+	*if, vsz, GT, 0, then
+		*get, cx, VOLU, vi, CENT, X
+		*get, cy, VOLU, vi, CENT, Y
+		*get, cz, VOLU, vi, CENT, Z
+		dwp = sqrt( cx*cx + cy*cy + cz*cz )
+		ds1 = sqrt( (cx-S1X)**2 + (cy-S1Y)**2 + (cz-S1Z)**2 )
+		ds2 = sqrt( (cx-S2X)**2 + (cy-S2Y)**2 + (cz-S2Z)**2 )
+		*if, ds1, LT, 0.3e-3, then
+			VATT, MAT_SENS, 1, ET_nocurr
+			V_S1 = vi                     ! [ADDED]
+		*elseif, ds2, LT, 0.3e-3, then
+			VATT, MAT_SENS, 1, ET_nocurr
+			V_S2 = vi                     ! [ADDED]
+		*elseif, vsz, GT, 5e-4, then
+			VATT, MAT_AIR2, 1, ET_nocurr
+		*elseif, vsz, GT, 1e-5, then
+			VATT, MAT_AIR_MID, 1, ET_nocurr
+		*elseif, dwp, GT, 8e-3, then
+			VATT, MAT_MT, 1, ET_nocurr
+		*elseif, vsz, GT, 5e-7, then
+			VATT, MAT_AIR1, 1, ET_nocurr
+		*else
+			VATT, MAT_MT, 1, ET_nocurr
+		*endif
+	*endif
+*enddo
+ALLSEL, ALL
+
+! ============================================================================
+! 兩加密球節點數相等：先 mesh 兩球（同 ESIZE→free-tet 對相同幾何 deterministic→兩球拓樸相同）
+!   再 SMRTSIZE,5 mesh 鋼件+空氣（沿用已 mesh 的球面 → conform）。
+!   ⚠ 薄板本質：0.25mm 板 smrt5 給 ~0.12mm(板厚 ~2 層)→鋼件 ~1.4M、~8min，合理非 bug。
+! ============================================================================
+MSHAPE,1,3D
+MSHKEY,0
+
+! ---- Step1: 先 mesh 兩顆 sensor 加密球（同 ESIZE → 兩球相同拓樸/節點數）----
+SENS_ESZ = 0.025e-3
+ESIZE, SENS_ESZ
+VMESH, V_S1
+VMESH, V_S2
+ESIZE, 0                                  ! 清 ESIZE（不影響後面 smrt）
+
+! ---- Step2: mesh 其餘（鋼件+空氣）smrt5，conform 到已 mesh 的球面 ----
+SMRTSIZE,5
+VSEL, S, VOLU, , 1, VMAX
+VSEL, U, VOLU, , V_S1
+VSEL, U, VOLU, , V_S2
+VMESH, ALL
+ALLSEL, ALL
+
+! ---- 極尖 cone +1（鋼件受控 ~0.12mm；極尖再加密 ~0.06mm）----
+ESEL,S,MAT,,MAT_MT
+ESEL,R,CENT,X, -1.0, 3e-3
+EREFINE,ALL, , ,1, ,OFF
+ALLSEL, ALL
+! sensor 球不再 EREFINE（已由 Step1 細化、且需維持兩球拓樸相同）
+
+! ===== 元素 component（依材料；給 solve/檢視用）=====
+ESEL,S,MAT,,MAT_MT      $ CM,COMP_MT,ELEM   $ ALLSEL,ALL
+ESEL,S,MAT,,MAT_AIR1    $ CM,COMP_AIR1,ELEM $ ALLSEL,ALL
+ESEL,S,MAT,,MAT_AIR_MID $ CM,COMP_AIRMID,ELEM $ ALLSEL,ALL
+ESEL,S,MAT,,MAT_AIR2    $ CM,COMP_AIR2,ELEM $ ALLSEL,ALL
+ESEL,S,MAT,,MAT_SENS    $ CM,COMP_SENS,ELEM $ ALLSEL,ALL
+
+! ============================================================================
+! report + SAVE（mesh-only，無 /SOLU、無 D,ALL,MAG,0）
+! ============================================================================
+ALLSEL, ALL
+*GET, NE_TOT, ELEM, 0, COUNT
+*GET, NN_TOT, NODE, 0, COUNT
+ESEL,S,MAT,,MAT_MT      $ *GET, NE_MT,  ELEM, 0, COUNT $ ALLSEL,ALL
+ESEL,S,MAT,,MAT_AIR1    $ *GET, NE_A1,  ELEM, 0, COUNT $ ALLSEL,ALL
+ESEL,S,MAT,,MAT_AIR_MID $ *GET, NE_MID, ELEM, 0, COUNT $ ALLSEL,ALL
+ESEL,S,MAT,,MAT_AIR2    $ *GET, NE_A2,  ELEM, 0, COUNT $ ALLSEL,ALL
+ESEL,S,MAT,,MAT_SENS    $ *GET, NE_SE,  ELEM, 0, COUNT $ ALLSEL,ALL
+VSEL,S,MAT,,MAT_MT      $ *GET, NV_MT,  VOLU, 0, COUNT $ ALLSEL,ALL
+VSEL,S,MAT,,MAT_SENS    $ *GET, NV_SE,  VOLU, 0, COUNT $ ALLSEL,ALL
+! 鋼件體積（對 CAD sanity）
+VSEL,S,MAT,,MAT_MT $ VSUM $ *GET, VOL_MT, VOLU, 0, VOLU $ ALLSEL,ALL
+! 每顆 sensor 球節點數（MAT_SENS 節點 ∩ z 帶；兩球應相等）
+ESEL,S,MAT,,MAT_SENS $ NSLE,S $ NSEL,R,LOC,Z, -1.0, 0.125e-3 $ *GET, NN_S1, NODE, 0, COUNT $ ALLSEL,ALL
+ESEL,S,MAT,,MAT_SENS $ NSLE,S $ NSEL,R,LOC,Z, 0.125e-3, 1.0 $ *GET, NN_S2, NODE, 0, COUNT $ ALLSEL,ALL
+NN_DIFF = abs(NN_S1 - NN_S2)
+/com, ================= MESH SUMMARY =================
+*VWRITE, NN_TOT, NE_TOT
+('TOTAL  nodes = ',F12.0,'   elements = ',F12.0)
+*VWRITE, NE_MT, NE_A1, NE_MID, NE_A2, NE_SE
+('ELEM   STEEL = ',F12.0,'  AIR1 = ',F12.0,'  MID = ',F12.0,'  AIR2 = ',F12.0,'  SENS = ',F10.0)
+*VWRITE, NV_MT, NV_SE
+('VOLU   STEEL = ',F8.0,'   SENS = ',F8.0)
+*VWRITE, VOL_MT
+('STEEL  volume [m^3] = ',E14.6)
+*VWRITE, NN_S1, NN_S2, NN_DIFF
+('SENSOR nodes  S1 = ',F10.0,'   S2 = ',F10.0,'   |diff| = ',F8.0)
+*if, NN_DIFF, GT, 0, then
+	/com, *** WARNING: sensor sphere node counts NOT equal (see |diff|) ***
+*else
+	/com, OK: sensor sphere node counts EQUAL
+*endif
+/com, ===============================================
+
+SAVE                 ! -> mesh_graded.db（供 solve deck RESUME / GUI 檢查鋼件）
+FINISH

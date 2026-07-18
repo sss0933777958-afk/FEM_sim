@@ -16,7 +16,7 @@
 
 FINISH
 /CLEAR,NOSTART
-RESUME,'mesh_baseline','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\mesh_baseline\'
+RESUME,'mesh_baseline','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\geom\mesh_baseline\'
 /PREP7
 
 ! ---- 6 sensor centres (ANSYS frame [m]) ----

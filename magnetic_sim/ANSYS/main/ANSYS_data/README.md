@@ -2,16 +2,20 @@
 
 ANSYS MAPDL 求解後的**原始 FEM 資料**。與 MATLAB 分析成果（`../MATLAB_data/`，`.mat`）分開。
 
-## 結構：`<model>/<case>/`
+## 結構：`<model>/data/<variant>/coil<N>/`（2026-07-14 全包統一為 `<variant>/coil<N>`）
+
+FEM 場 `.dat` 一律 `<model>/data/<variant>/coil<N>/coil<N>_{coord,bfield}_{all,wp}.dat`
+（**2026-07-14 使用者拍板：三包全翻成 `<variant>/coil<N>`，不再 `coil<N>/<variant>`**）。
 
 ```
 ANSYS_data/
 ├── long2016_hexapole_halfcut/   ← 主力（Long Fei 下極半切六極）
-│   ├── coil1 … coil6/           ← 每顆 pole 自激解（baseline）
-│   ├── mesh/                    ← mesh-only .db/.cdb
+│   ├── data/<variant>/coil1..6/ ← standard(coil2-6)/no_gap/gap_calibrate/gap_200um/gap_300um/graded/protgap/gap400
+│   ├── data/{singlepole, coil1/singlepole, mesh}/  ← 非 coil-indexed（未翻轉，維持原位）
+│   ├── db/ , csv/               ← .db 模型/mesh；csv=<variant>/*.csv（無 coil 層）
 │   └── RESULTS_MAP.md           ← ★ 哪個 dir 是哪份結果的權威清單
-├── kuo_quadrupole/              ← coil1..6 + mesh（4-pole 四極）
-└── zhang_quadrupole/            ← coil1..6 + mesh
+├── hung_hexapole/               ← data/<variant>/coil1..6（variant∈{gap_200um,no_gap}）+ db/ + RESULTS_MAP.md
+└── NTU_hexapole/                ← data/<類別>/coil1（類別∈{singlepole,upper_assembly}）+ db/
 ```
 
 ## 檔案類型

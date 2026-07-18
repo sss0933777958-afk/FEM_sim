@@ -2,13 +2,13 @@
 ! MT_Sim_P5_basegap.txt — Long2016 halfcut, REAL 200um air-slab gap, coil 5
 !   RESUME mesh_graded_basegap.db（6 極 base 各 200µm slab 已是 MAT_AIR_SLAB μ_r=1；**NO EMODIF**）。
 !   coil 5 = +1 raw、其餘 0 → D,ALL,MAG,0 → magsolv,3 → POST 抽 4 .dat
-!   → 覆蓋 data/coil5/gap_200um/（取代舊 μ_eff 版；all-source negate 在 MATLAB post）。
+!   → 覆蓋 data/gap_300um/coil5/（取代舊 μ_eff 版；all-source negate 在 MATLAB post）。
 !   6 顆 coil 腳本只差激發 coil 編號（R,5=+1），其餘完全同步。
 ! ============================================================================
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\gap_basegap_solve'
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\sim\gap_basegap_solve'
 /CLEAR,NOSTART
 /TITLE, Long2016 halfcut geometric 200um air-slab gap - coil 5
-RESUME,'mesh_graded','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\mesh_graded_basegap'
+RESUME,'mesh_graded','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\geom\mesh_graded_basegap'
 
 /PREP7
 *afun,DEG
@@ -55,7 +55,7 @@ magsolv,3,,,,,1
 FINISH
 
 ! ====================================================================
-! POST1: 4 .dat -> data/coil5/gap_200um/ (all + WP region)
+! POST1: 4 .dat -> data/gap_300um/coil5/ (all + WP region)
 ! ====================================================================
 /POST1
 SET,LAST
@@ -63,20 +63,20 @@ ALLSEL,ALL
 /HEADER,OFF,OFF,OFF,OFF,OFF,OFF
 /FORMAT,10,,20,12,,
 /PAGE,1000000,,1000000
-/OUTPUT,'coil5_coord_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil5\gap_200um'
+/OUTPUT,'coil5_coord_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\gap_300um\coil5'
 NLIST,ALL, , ,COORD
 /OUTPUT
-/OUTPUT,'coil5_bfield_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil5\gap_200um'
+/OUTPUT,'coil5_bfield_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\gap_300um\coil5'
 PRNSOL,B,COMP
 /OUTPUT
 LOCAL,12,2, 0, 0, SPH_OFST
 CSYS,12
 NSEL,S,LOC,X, 0, 2e-3
 CSYS,0
-/OUTPUT,'coil5_coord_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil5\gap_200um'
+/OUTPUT,'coil5_coord_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\gap_300um\coil5'
 NLIST,ALL, , ,COORD
 /OUTPUT
-/OUTPUT,'coil5_bfield_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil5\gap_200um'
+/OUTPUT,'coil5_bfield_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\gap_300um\coil5'
 PRNSOL,B,COMP
 /OUTPUT
 ALLSEL,ALL

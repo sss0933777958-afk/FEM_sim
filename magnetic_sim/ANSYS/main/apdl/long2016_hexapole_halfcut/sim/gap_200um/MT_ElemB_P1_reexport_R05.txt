@@ -2,11 +2,11 @@
 ! MT_ElemB_P1_reexport_R05.txt
 !   POST1-only：RESUME 已解的 gap200_elemB_P1（coil1）→ 用 R=0.5mm 球重新匯出元素 B。
 !   免重解（讀現有 .db + .rmg）。須以 -j gap200_elemB_P1 跑（SET 才找得到 .rmg）。
-!   輸出 3 檔 -> data/coil1/gap_200um/ ：coil1_elemB_R05 / _elemconn_R05 / _nodes_R05
+!   輸出 3 檔 -> data/gap_200um/coil1/ ：coil1_elemB_R05 / _elemconn_R05 / _nodes_R05
 ! ============================================================================
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\gap200_elemB'
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\sim\gap200_elemB'
 /CLEAR,NOSTART
-RESUME,'gap200_elemB_P1','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\gap200_elemB'
+RESUME,'gap200_elemB_P1','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\sim\gap200_elemB'
 
 /POST1
 SET,LAST
@@ -41,7 +41,7 @@ NSLE,S,ALL
 /PAGE,1000000,,1000000
 /FORMAT,10,,20,12,,
 
-/OUTPUT,'coil1_elemB_R05','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil1\gap_200um'
+/OUTPUT,'coil1_elemB_R05','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\gap_200um\coil1'
 PRETAB,EBX,EBY,EBZ
 /OUTPUT
 
@@ -55,12 +55,12 @@ edd=0
         EN(ii,k)=NELEM(edd,k)
     *enddo
 *enddo
-/OUTPUT,'coil1_elemconn_R05','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil1\gap_200um'
+/OUTPUT,'coil1_elemconn_R05','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\gap_200um\coil1'
 *VWRITE,EID(1),EN(1,1),EN(1,2),EN(1,3),EN(1,4),EN(1,5),EN(1,6),EN(1,7),EN(1,8)
 (F12.0,8(',',F12.0))
 /OUTPUT
 
-/OUTPUT,'coil1_nodes_R05','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil1\gap_200um'
+/OUTPUT,'coil1_nodes_R05','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\gap_200um\coil1'
 NLIST,ALL, , ,COORD
 /OUTPUT
 ALLSEL,ALL

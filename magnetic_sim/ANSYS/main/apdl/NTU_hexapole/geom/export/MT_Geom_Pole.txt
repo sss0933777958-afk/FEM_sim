@@ -18,7 +18,7 @@
 ! ============================================================================
 
 ! [MODIFIED] /CWD -> NTU db scratch (ANSYS .db/.out stay there, not in apdl source)
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\NTU_hexapole\db\geom_export'
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\NTU_hexapole\db\geom\geom_export'
 
 Finish
 /cle

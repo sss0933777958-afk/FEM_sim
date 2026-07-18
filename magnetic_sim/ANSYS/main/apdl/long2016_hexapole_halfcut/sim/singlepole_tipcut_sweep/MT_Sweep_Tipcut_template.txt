@@ -4,10 +4,10 @@
 !     __XCUT__   = tip-cut plane x [metre]  (e.g. 0.500e-3 .. 0.550e-3)
 !     __OUTDIR__ = .dat output dir          (…\data\coil1\singlepole_tipcut_sweep\tipcut_x<um>)
 !   +x graded single-pole, WP core 0.022mm, tip cut at XCUT, coil flipped 1A, magsolv DSP.
-!   Scratch /CWD = db\singlepole_tipcut_sweep (reused per case; driver full-cleans after).
+!   Scratch /CWD = db\sim\singlepole_tipcut_sweep (reused per case; driver full-cleans after).
 !   Merged from mesh/MT_Mesh_SinglePole_Tipcut.txt + sim/singlepole/MT_Sim_SinglePole_Tipcut.txt.
 ! ============================================================================
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\singlepole\tipcut_sweep'
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\sim\singlepole\tipcut_sweep'
 Finish
 /cle
 /CLEAR,NOSTART

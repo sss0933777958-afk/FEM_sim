@@ -6,7 +6,35 @@
 
 對應 memory：`feedback_charge_model_source_convention.md`
 相關文件：`magnetic_sim/ANSYS/backup/hexapole-long2016/docs/coil-winding-sign-convention.md`（記載 raw FEM 的 sink/source 物理）
+相關規則：**`pole-coil-numbering.md`（編號 per-model；號誌錯常常是 map 抄錯造成的，兩者要一起查）**
 相關 memory：[[sensor-sign-convention-toward-wp]]、[[long2016-halfcut-KI-fit]]
+
+---
+
+## 🔴 各 model 的 raw FEM 現況（**per-model，不可互抄**；2026-07-17 實測建表）
+
+**raw FEM 是 sink 還 source 由該 deck 的電流方向決定，每個 model 不同。**
+
+| model | deck 激發 | **raw FEM 尖端** | 正確處理 | 實測佐證 |
+|---|---|---|---|---|
+| **long2016** | `R,N,1,TURNS*1`（+） | **下極 sink / 上極 source（混合）** | 對 Bstack 套 `s_source=[-1,+1,-1,+1,+1,-1]`（只翻下極） | doc coil-winding §2/§5 |
+| **hung** | `R,N,1,TURNS*1`（+） | **六極全 sink** | `load_coils_actuator.m:46` 的**全域 negate 一次到位**；**不得再 per-pole 翻號** | R700 六顆 coil 在 WP 的 raw B̂ 對各自 P k tip 方向內積**全 +0.999**；`diag(G)` 全正 |
+| **NTU** | `R,N,1,-TURNS*...`（−，deck 註「電流反向」） | **六極全 source** ✅ 已符合新 model 標準 | 不需翻號（loader 也不該全域 negate） | full_assembly coil1 在 WP 的 raw B 與 P1 tip→WP 方向內積 **+0.957** |
+
+⚠ **hung 的教訓**：`emit_model_results.m` 抄了 long2016 的 `coil_sign=[1 -1 1 -1 -1 1]` 去翻 hung 的上極 → 把已經正確的翻成錯的。**號誌處理必須依「該 model raw 的實測事實」，不是抄慣例。**
+
+## ✅ 驗證判準（使用者拍板 2026-07-17：**要嘛就是看 K̄_I 的正負號**）
+
+不要用眼睛猜、不要靠記憶。全 source + 正確 map ⇒ K̄_I 必須同時滿足：
+- **對角占優**（`argmax|row|` = identity）← 驗 **map**（見 `pole-coil-numbering.md`）
+- **對角全正**、**off-diag 全負**、**每列和 ≈ 0**（電荷中性，emergent） ← 驗 **號誌**
+- `K̄(1,1) = 5/6`（gauge）
+
+任何一條不過 ⇒ 停下來查 map 或號誌，**不要硬翻號把它壓成好看的樣子**。
+K̂ 是自由 LS 解（`solve_KI_bar_gain.m` 唯一 gauge 是純量 `5/(6·g11)`）→ 此檢驗非循環論證。
+
+**判準的獨立驗證法**（不靠擬合）：拿 raw `.dat`，在 WP 小球內取真實節點平均 B，與該極 tip 方向做內積 —— `>0` = B 指向尖端 = **sink**、`<0` = 從尖端射出 = **source**。
+⚠ 但**對極共軸**（`dhat(P2) = −dhat(P1)`）：光看 WP 場方向**無法區分「P1 sink」與「P2 source」**，要靠 `G` 的對角占優（電荷落在哪顆尖端）才能定出是哪顆被激發。
 
 ---
 
@@ -41,6 +69,9 @@ s_source = [ -1, +1, -1, +1, +1, -1 ]
 ⇒ 電荷對角全正、off-diag 全負、每列和 ≈ 0（電荷中性 `K̂ = I − ones/6` 結構），不需任何「補翻」。
 
 **legacy（等價但別再用）**：`load_coils_actuator` 回**全域 −B_FEM**（`s = [-1,-1,-1,-1,-1,-1]`）。在那 gauge 下下極對角正 ✓、**上極對角負 ✗**；要補回全 source 得**額外翻上極 P2/P4/P5 三欄**（或對 K̂/D 顯示時套 `coil_sign=[1 -1 1 -1 -1 1]`）。已驗證：legacy 補翻後 = canonical，**數值逐位相同**（field error 不變，純翻號）。
+
+> ⚠ 上面這段的 raw sink/source 描述**只適用 long2016**。hung = 全 sink、NTU = 全 source（見檔頭現況表）。
+> **新 model 一律在 deck 端就做成「raw 全 source」**，不靠後處理翻號（見 `pole-coil-numbering.md` 第 3 層）。
 
 ### 現況符合度（2026-06-30 更新）
 | 狀態 | 腳本 | 做法 |

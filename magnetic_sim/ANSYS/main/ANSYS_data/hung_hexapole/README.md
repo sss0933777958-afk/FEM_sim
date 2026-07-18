@@ -1,7 +1,12 @@
 # hung_hexapole — ANSYS_data
 
 Hung hexapole 的 ANSYS 幾何/模型資料。來源 CAD：`../../CAD_model/hung_hexapole/STEP/Full_Assembly.STEP`
-（mm 尺寸；檔案 inch 標籤視為誤標）。**純幾何階段**（尚無 FEM 場 `.dat`）。
+（mm 尺寸；檔案 inch 標籤視為誤標）。
+
+## data/（FEM 場 `.dat`，2026-07-14 結構＝`<variant>/coil<N>`）
+`data/<variant>/coil<N>/coil<N>_{coord,bfield}_{all,wp}.dat`。變體：`gap_200um`（μ_eff 氣隙）+ `no_gap`（無氣隙對照），
+各 coil1–6 自激 1A 解。**指紋/物理意義查 `RESULTS_MAP.md`**（讀取前必查，per `../../../.claude/rules/result-read-safety.md`）。
+> 2026-07-14 由 `coil<N>/<variant>` 翻轉為 `<variant>/coil<N>`（`ANSYS_data/` 全包統一）。
 
 > 交付檔白名單（照 `../../rules/db-folder-retention.md`）：`db/<case>/` 只留 `.db`（+主 `.rmg`）；
 > log/`.out`/`.err`/`.iges` 一律不留（IGES 交付檔在 `../../model_check/hung_hexapole/`）。

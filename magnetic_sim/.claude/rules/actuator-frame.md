@@ -50,15 +50,15 @@ Pa = Pw;                % 資料一進來就在 actuator frame，無需旋轉
 
 ---
 
-## 現況（四子夾全 actuator，已驗）
+## 現況（兩專案全 actuator，已驗；2026-07-15 四子夾合成 current_base/voltage_base）
 
-| 子夾 | 載入函式 | 進 actuator 的方式 |
+| 專案 | 載入函式 | 進 actuator 的方式 |
 |---|---|---|
-| `fix_dir`（六極） | `load_coils.m` | `R_act` 旋轉 P、B |
-| `fix_dir`（單極） | `load_singlepole.m` | +x 建模、不旋轉 |
-| `no_fix_dir` | `load_coils_actuator.m` | `R_act` 旋轉 P、B |
-| `Hall_sensor_base_fix_dir` | 沿用 `load_coils_actuator.m` | 同上 |
-| `Hall_sensor_base_no_fix_dir` | 沿用 `load_coils_actuator.m` | 同上 |
+| `current_base`（六極，USE_BIAS 統一 fix/no_fix） | `load_coils_actuator.m` | `R_act` 旋轉 P、B |
+| `current_base`（單極） | `load_singlepole.m` | +x 建模、不旋轉 |
+| `voltage_base`（USE_BIAS 統一） | 沿用 current_base `load_coils_actuator.m` | 同上 |
+
+> 註：舊 `fix_dir` 的 `load_coils.m`（measure-frame per-coil）已隨 Varpar 統一淘汰；current_base 六極一律 `load_coils_actuator`。
 
 ---
 

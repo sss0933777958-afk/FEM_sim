@@ -7,12 +7,12 @@
 !   cone (probe, r<16mm) + connecting rod + coil pillar (z[-7,0]/[2,9]) + yoke stay mu=280.
 !   mu_eff values from doc/effective_permeability/effective_permeability.pdf (2-segment, gap=200um).
 !   coil2 = +1 RAW (P1; all-source negate done in MATLAB post, same as baseline coil2/standard).
-!   Output -> data/coil2/gap_200um/ (OVERWRITES old coil-pillar/baseline gap200, user confirmed).
+!   Output -> data/gap_200um/coil2/ (OVERWRITES old coil-pillar/baseline gap200, user confirmed).
 ! ============================================================================
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\gap200_sb_graded'
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\sim\gap200_sb_graded'
 /CLEAR,NOSTART
 /TITLE, Long2016 halfcut graded gap200 mu_eff on support base (coil2)
-RESUME,'mesh_graded','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\mesh_graded'
+RESUME,'mesh_graded','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\geom\mesh_graded'
 
 /PREP7
 *afun,DEG
@@ -90,7 +90,7 @@ SAVE
 FINISH
 
 ! ====================================================================
-! POST1: export 4 .dat -> data/coil2/gap_200um (all + WP region)
+! POST1: export 4 .dat -> data/gap_200um/coil2 (all + WP region)
 ! ====================================================================
 /POST1
 SET,LAST
@@ -98,20 +98,20 @@ ALLSEL,ALL
 /HEADER,OFF,OFF,OFF,OFF,OFF,OFF
 /FORMAT,10,,20,12,,
 /PAGE,1000000,,1000000
-/OUTPUT,'coil2_coord_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil2\gap_200um'
+/OUTPUT,'coil2_coord_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\gap_200um\coil2'
 NLIST,ALL, , ,COORD
 /OUTPUT
-/OUTPUT,'coil2_bfield_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil2\gap_200um'
+/OUTPUT,'coil2_bfield_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\gap_200um\coil2'
 PRNSOL,B,COMP
 /OUTPUT
 LOCAL,12,2, 0, 0, SPH_OFST
 CSYS,12
 NSEL,S,LOC,X, 0, 2e-3
 CSYS,0
-/OUTPUT,'coil2_coord_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil2\gap_200um'
+/OUTPUT,'coil2_coord_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\gap_200um\coil2'
 NLIST,ALL, , ,COORD
 /OUTPUT
-/OUTPUT,'coil2_bfield_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil2\gap_200um'
+/OUTPUT,'coil2_bfield_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\gap_200um\coil2'
 PRNSOL,B,COMP
 /OUTPUT
 ALLSEL,ALL

@@ -20,6 +20,16 @@
 - ②**一任務一腳本、原地改**（不另開第二支腳本；一張圖對一支腳本）。
 - ③場圖**真實 FEM 節點、不內插**（除非使用者明示，且須在圖說標示為內插）。
 
+## Calibration：figures/ 依模型分子夾（2026-07-15）
+
+`Calibration_using_FEM_modeling/{current_base,voltage_base}/figures/` 底下再分三子夾：
+- **`single_param/`** — 純 fix（USE_BIAS=false、載 `fit_fixl`/single-parameter）的圖。
+- **`eighteen_param/`** — 純 18-param bias（USE_BIAS=true、載 `fit_bias`/`e_hat`）的圖。
+- **`shared/`** — 同時比較 fix+bias 的圖，或與模型無關的場/幾何/sensor 診斷圖。
+
+plot 腳本的 `figdir` 依該圖類別固定寫 `fullfile(<root>,'figures',<sub>)`；`figures/` root 只留子夾 + README
+（no-mixed-files）。（`results/` 另分 `single_param`/`eighteen_param`，見 `results-pdf-only.md`。）
+
 ## 小提醒
 
 - 輸出解析度要讓檔**能被直接開 / 被 `Read` 目視**（PNG 太大時可降 DPI，例如 ~150；

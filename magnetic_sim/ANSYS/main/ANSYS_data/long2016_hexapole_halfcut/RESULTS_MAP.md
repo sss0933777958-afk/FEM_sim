@@ -6,6 +6,14 @@
 本表凌駕 memory —— 若 memory 舊指標與本表衝突，以本表為準並更新 memory。
 最後核對：2026-06-12（用 `wc -l` + `import_ansys_data` + bsum 欄掃描，read-only）。
 
+> **⚠ 2026-07-14 資料夾結構已翻轉：`data/coil<N>/<variant>/` → `data/<variant>/coil<N>/`**（使用者拍板）。
+> 即 dir 現為 `data/<variant>/coil<N>/`（例 `data/standard/coil2`、`data/gap_calibrate/coil1`、`data/no_gap/coil6`）。
+> 下表各列的「dir」名（`coil1`、`coilN/gap_300um`、`coil2_gap_200um` …）為**舊順序寫法**，實際路徑請讀成 `<variant>/coil<N>`；
+> **指紋（matched 節點 / |B| max）不受改名影響、仍有效**。
+> 讀取碼一律 `import_ansys_data(fullfile(root,<variant>,'coil<N>'), <dataset>, 'coil<N>')`。
+> **未動**（非 hexapole-coil 場資料）：`data/singlepole/`（頂層單極）、`data/coil1/singlepole/`（單極形狀樹）、`data/mesh/`。
+> ⚠ baseline `standard` 只有 **coil2–6**（coil1 從未存 `standard` 子夾，屬既有缺口、非本次改名造成）。
+
 ---
 
 ## 怎麼用（層②核指紋）
@@ -44,6 +52,7 @@
 |---|---|---|---|---|
 | `coil2_gap_200um` … `coil6_gap_200um` | **舊 7mm 公式 μ_r 等效 200µm 氣隙**（protrusion 改 μ_r=31，單一材料）| 與 baseline **相同**（~390579/494873）| **比 baseline 低約 30%**（coil2 ~0.83 / coil5 ~0.25 T）| B̄ matrix v4 的 gap 對照（coil2–6 仍舊公式）|
 | `coil1/gap{0,50,100,150,200}um_mueq` | **新 2 段式 μ_eff gap sweep（2026-06-26）**：coil1(P1, +1 raw) 激發，effective_permeability.pdf 兩段式公式，**上極/下極分開**施加在 6 protrusion 支撐座（upper3 μ_up / lower3 μ_lo；EMODIF 2882 lower + 3147 upper）。⚠ **覆寫了 coil1 的舊 gap100/gap200**（舊 7mm 公式作廢）| 與 baseline **相同**（494871/all，490579/wp）| \|B\|max 隨 gap **遞減**：gap0 **1.1259**（=baseline 驗證）/ 50 **1.0833** / 100 **1.0448** / 150 **1.0102** / 200 **0.9785** T。μ_eff: 50→137/165, 100→95/114, 150→73/88, 200→59/71（up/lo）。比舊公式溫和（舊 200µm ~0.71 vs 新 0.978）| gap 對 WP 場衰減研究 |
+| `coilN/gap_300um` (N=1..6) | **300µm conformal REAL-slab base-gap**（2026-07-12）：6 極 base 各 **300µm 真實氣隙**（μ_r=1 實體 air slab，**非 μ_eff**；往 tip 移位、截面 conformal）。`graded_basegap` 網格（真 slab，有 sliver 但 magsolv 收斂）。6 極自激（no_gap 未做）| **`all`=1,213,785 / `wp`=357,704**（**unique**，≠ baseline 494873/390579、≠ `gap_200um`/mueq）→ 節點數即可辨識 | coil1 **0.9875** / coil6 **0.6442** T（WP 只比 baseline 低 ~3%：base gap 遠離 WP、影響溫和，**≠** μ_eff protrusion gap 的 ~30%）| 300µm 實體氣隙 gap vs baseline 比較。mesh `db/mesh_graded_basegap/mesh_graded.db`、deck `mesh/MT_Mesh_Graded_BaseGap.txt` + `sim/gap_200um/MT_Sim_P{1..6}_basegap.txt`（輸出 sed→`gap_300um`）|
 | `P1_graded` | graded 密 mesh，**P1 only**，charge-fit 用 | 與 baseline **不同**（graded mesh）| ~1.20 T | KI 電荷擬合密網格 |
 | `P2toP6_graded` | graded 密 mesh，P2–P6 | graded（不同）| ~1.21 T | KI 電荷擬合密網格 |
 | `data/singlepole` | **單極模型**（下極填回完整圓錐+支撐座+鐵柱、無 yoke/上極；**均勻鐵件 0.3mm**）1A 自激 | `all`=704744 行（704747 節點−3 coil）/ `tip`=2741 | ~0.147 T（|B|max @ 極尖）| 單極場研究；**非 hexapole** |

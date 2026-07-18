@@ -1,0 +1,319 @@
+! ============================================================================
+! MT_Mesh_Graded_Full.txt — NTU_hexapole FULL ASSEMBLY (6 poles + 6 posts + yoke + 6 sleeves)
+!   region-graded MESH-ONLY deck（比照 mesh/MT_Mesh_Graded_Upper.txt，擴成 6 極/世界座標）。
+!   **保留 5µm 尖端圓角（不簡化直線）** + 含空氣全模型 + SAVE 到 db/mesh/full_assembly_sleeve/full_assembly_sleeve.db。
+!   **無 /SOLU、無 MAG BC、無 coil**。之後 solve deck RESUME 此 db 加 6 SOURC36 線圈 + BC + magsolv。
+!
+!   ★ 圓角保留法（mm 建 → VLSCALE 縮公尺）：
+!     5µm 圓角公尺尺度 LARC 建不起（絕對 5e-6 near-tol），mm 尺度建得起。
+!     故 steel 幾何用 mm-magnitude 建（SCB=1.0，圓角 LARC OK）→ VLSCALE ×1e-3 對原點縮成公尺
+!     （只縮 keypoint、不重跑 LARC）→ 圓角變 5e-6m 小弧、幾何/單位皆正確。
+!     mesh 時圓角弧線給 1 元素 + ANSYS 局部漸變（不刪圓角＝沒簡化）。
+!   ★ 世界座標：下極 z[8.8,9.05]@0/120/240°、上極 z[9.55,9.8]@60/180/300°、導柱 r2.5→z26.8、yoke z[20.8,26.3]。
+!     [MODIFIED] 6 襯套（凸緣頂帽狀空心環）r=20.5 @0/60/…/300°：flange z[15.6,16.6](r7.5) + tube z[16.6,20.8](r3.5)、
+!     bore r2.5 貫穿套在導柱上；tube 頂 20.8 接 yoke 底 → 與導柱/yoke 同 VADD 進 return body、材料 MAT_MT(μr=280)。
+!     WP（6 尖端叢集中心）= (0,0,9.3)mm；VADD 導柱+yoke+襯套=連通 return body、6 薄板獨立。
+!   ★ 空氣（公尺，中心 WP）：內球 R7 + 中球 R48 + 外圓柱 R100×H110（內球+外圓柱照龍飛；中球/R100×H110 沿用 upper）。
+!   ★ 本輪不建 sensor 加密球。
+! ============================================================================
+
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\NTU_hexapole\db\mesh\full_assembly_sleeve'
+Finish
+/cle
+/CLEAR,NOSTART
+/TITLE, NTU_hexapole FULL ASSEMBLY + sleeves - region-graded mesh-only (keep 5um fillet; SAVE db/mesh)
+/FILNAME,meshfullslv,1
+/PREP7
+*afun, DEG
+/UNITS, MKS
+
+! ========================= STEEL 幾何：mm-magnitude 建（圓角 LARC 需 mm）=========================
+SCB = 1.0             ! build scale = mm（圓角建得起）
+BTOL, 1e-4            ! mm 尺度 boolean tol
+TH    = 0.25*SCB
+ZLO   = 8.80*SCB
+ZHI   = 9.55*SCB
+RPOST = 20.5*SCB
+RP    = 2.5*SCB
+ZTOP  = 26.80*SCB
+ZPLO  = 9.05*SCB
+ZPHI  = 9.80*SCB
+YRR   = 5.0*SCB
+ZYB   = 20.80*SCB
+ZYT   = 26.30*SCB
+THY   = ZYT - ZYB
+
+! ---- [ADDED] 襯套(sleeve/bushing)：尺寸取自總組合.STEP（比照 geom/export/MT_Geom_FullAssembly.txt 階段④）----
+!   ⚠ 單件 襯套.STEP 是舊版（外徑小 0.5mm：tube r3.0 / flange r7.0），不可用。
+SLV_ON = 1                ! 1=含襯套(canonical)；0=舊無襯套模型（需同步改 /CWD + /FILNAME + SAVE 名）
+SLV_RF = 7.5*SCB          ! flange 外徑
+SLV_RT = 3.5*SCB          ! tube 外徑（= COIL_IN_R，線圈繞在 tube 外）
+SLV_RB = 2.5*SCB          ! bore（貫穿，套在 r2.5 導柱上）
+SLV_ZB = 15.60*SCB        ! flange 底
+SLV_ZM = 16.60*SCB        ! flange 頂 / tube 底
+SLV_ZT = 20.80*SCB        ! tube 頂（= ZYB，接 yoke 底）
+
+! ---- PART A：6 磁極（兩層 WPROTA；**保留 5µm 尖端圓角 LARC**）----
+*do, layer, 1, 2
+    *if, layer, eq, 1, then
+        ZB = ZLO
+        A0 = 0
+    *else
+        ZB = ZHI
+        A0 = 60
+    *endif
+    *do, pole, 1, 3
+        ANG = A0 + (pole-1)*120
+        WPLANE, 1,0,0,0
+        WPCSYS, -1, 0
+        WPOFFS, 0, 0, ZB
+        WPROTA, ANG
+        CSYS, 4
+        *get, KB, KP, , NUM, MAX
+        K, KB+1,  0.357*SCB,  0.005*SCB, 0
+        K, KB+2,  0.353*SCB,  0.000*SCB, 0
+        K, KB+3,  0.357*SCB, -0.005*SCB, 0
+        K, KB+4,  4.509*SCB, -0.523*SCB, 0
+        K, KB+5,  6.175*SCB, -0.877*SCB, 0
+        K, KB+6, 19.048*SCB, -4.784*SCB, 0
+        K, KB+7, 19.048*SCB,  4.784*SCB, 0
+        K, KB+8,  6.175*SCB,  0.877*SCB, 0
+        K, KB+9,  4.509*SCB,  0.523*SCB, 0
+        K, KB+10,25.500*SCB,  0.000*SCB, 0
+        K, KB+11, 0.358*SCB,  0.000*SCB, 0        ! 尖端圓角中心
+        K, KB+12, 3.271*SCB,-10.446*SCB, 0        ! 下凹弧 r10 圓心
+        K, KB+13, 3.271*SCB, 10.446*SCB, 0        ! 上凹弧 r10 圓心
+        K, KB+14,20.500*SCB,  0.000*SCB, 0        ! 遠端凸弧 r5 圓心
+        *get, LB, LINE, , NUM, MAX
+        LARC, KB+1, KB+2, KB+11, 0.005*SCB        ! 尖端圓角上（保留）
+        LARC, KB+2, KB+3, KB+11, 0.005*SCB        ! 尖端圓角下（保留）
+        L,    KB+3, KB+4
+        LARC, KB+4, KB+5, KB+12, 10.0*SCB
+        L,    KB+5, KB+6
+        LARC, KB+6, KB+10, KB+14, 5.0*SCB
+        LARC, KB+10, KB+7, KB+14, 5.0*SCB
+        L,    KB+7, KB+8
+        LARC, KB+8, KB+9, KB+13, 10.0*SCB
+        L,    KB+9, KB+1
+        AL, LB+1, LB+2, LB+3, LB+4, LB+5, LB+6, LB+7, LB+8, LB+9, LB+10
+        *get, AB, AREA, , NUM, MAX
+        VEXT, AB, , , 0, 0, TH
+        KDELE, KB+11, KB+14, 1
+        CSYS, 0
+    *enddo
+*enddo
+
+! ---- PART B：6 導柱（full r2.5）----
+*do, layer, 1, 2
+    *if, layer, eq, 1, then
+        ZBP = ZPLO
+        A0  = 0
+    *else
+        ZBP = ZPHI
+        A0  = 60
+    *endif
+    *do, pole, 1, 3
+        ANG = A0 + (pole-1)*120
+        WPLANE, 1,0,0,0
+        WPCSYS, -1, 0
+        WPROTA, ANG
+        WPOFFS, RPOST, 0, 0
+        CYLIND, RP, , ZBP, ZTOP
+        CSYS, 0
+    *enddo
+*enddo
+
+! ---- PART C：yoke（rounded-rect r5 − cutout r5，無孔）----
+CSYS, 0
+*dim, YAX, , 2
+YAX(1) = 29.9*SCB $ YAX(2) = 15.5*SCB
+*dim, YAY, , 2
+YAY(1) = 26.9*SCB $ YAY(2) = 10.25*SCB
+*do, ir, 1, 2
+    AX = YAX(ir)
+    AY = YAY(ir)
+    *get, KB, KP, , NUM, MAX
+    K, KB+1,  AX,        -(AY-YRR),  ZYB
+    K, KB+2,  AX,         (AY-YRR),  ZYB
+    K, KB+3,  (AX-YRR),   AY,        ZYB
+    K, KB+4, -(AX-YRR),   AY,        ZYB
+    K, KB+5, -AX,         (AY-YRR),  ZYB
+    K, KB+6, -AX,        -(AY-YRR),  ZYB
+    K, KB+7, -(AX-YRR),  -AY,        ZYB
+    K, KB+8,  (AX-YRR),  -AY,        ZYB
+    K, KB+9,  (AX-YRR),   (AY-YRR),  ZYB
+    K, KB+10,-(AX-YRR),   (AY-YRR),  ZYB
+    K, KB+11,-(AX-YRR),  -(AY-YRR),  ZYB
+    K, KB+12, (AX-YRR),  -(AY-YRR),  ZYB
+    *get, LB, LINE, , NUM, MAX
+    L,    KB+1, KB+2
+    LARC, KB+2, KB+3, KB+9,  YRR
+    L,    KB+3, KB+4
+    LARC, KB+4, KB+5, KB+10, YRR
+    L,    KB+5, KB+6
+    LARC, KB+6, KB+7, KB+11, YRR
+    L,    KB+7, KB+8
+    LARC, KB+8, KB+1, KB+12, YRR
+    AL, LB+1, LB+2, LB+3, LB+4, LB+5, LB+6, LB+7, LB+8
+    *get, AB, AREA, , NUM, MAX
+    VEXT, AB, , , 0, 0, THY
+    KDELE, KB+9, KB+12, 1
+    *if, ir, eq, 1, then
+        *get, V_YOUT, VOLU, , NUM, MAX
+    *endif
+*enddo
+VSBV, V_YOUT, V_YOUT+1                          ! yoke = 外盤 − cutout（無孔）
+
+! ---- [ADDED] PART D：6 襯套（凸緣頂帽狀）----
+!   空心 CYLIND(外徑,內徑) 直接建環 → 免挖孔 VSBV。
+!   不做 per-sleeve VADD/NUMCMP（避開 geom deck 的「boolean 輸出取最低可用號、*GET MAX 抓錯」坑）：
+!   12 個環質心 z（flange 16.1 / tube 18.7）皆 > 10 → 由下方既有的 VSEL,R,LOC,Z + VADD,ALL 一次併進 return body。
+*if, SLV_ON, eq, 1, then
+    *do, slv, 1, 6
+        ANG = (slv-1)*60                        ! 6 導柱方位 0/60/…/300°（襯套全部同 z、不分層）
+        WPLANE, 1,0,0,0
+        WPCSYS, -1, 0
+        WPROTA, ANG
+        WPOFFS, RPOST, 0, 0
+        CYLIND, SLV_RF, SLV_RB, SLV_ZB, SLV_ZM  ! flange 環
+        CYLIND, SLV_RT, SLV_RB, SLV_ZM, SLV_ZT  ! tube 環
+        CSYS, 0
+    *enddo
+*endif
+
+! ---- [MODIFIED] fuse 6 導柱 + yoke + 6 襯套 → 連通 return body（6 薄板獨立）----
+ALLSEL, ALL
+VSEL, ALL
+VSEL, R, LOC, Z, 10.0*SCB, 1e6                  ! 導柱(質心~18)+yoke(~23.5)+襯套(flange 16.1/tube 18.7)；排除薄板(質心 8.9-9.7)
+VADD, ALL
+VSEL, ALL
+ALLSEL, ALL
+NUMCMP, VOLU
+
+! ========================= VLSCALE：mm → 公尺（圓角隨之縮成 5e-6m）=========================
+VLSCALE, ALL, , , 1e-3, 1e-3, 1e-3, , 0, 1      ! 對原點縮 ×1e-3（in-place）
+ALLSEL, ALL
+NUMCMP, VOLU
+BTOL, 1e-7                                       ! 公尺尺度 boolean tol
+
+! ========================= 空氣三層（公尺，中心 WP=(0,0,9.3mm)）=========================
+SC = 1.0e-3
+WPX = 0.0 $ WPY = 0.0 $ WPZ = 9.3*SC
+SPH_FINE_R = 7.0*SC
+MID_SPH_R  = 48.0*SC
+AIR_CYL_R  = 100.0*SC
+AIR_CYL_H  = 110.0*SC
+WPLANE, 1,0,0,0
+WPCSYS, -1, 0
+WPOFFS, WPX, WPY, WPZ
+SPHERE, 0, SPH_FINE_R, 0,360
+SPHERE, 0, MID_SPH_R,  0,360
+WPOFFS, 0, 0, -AIR_CYL_H/2
+CYL4, 0,0, AIR_CYL_R, ,,, AIR_CYL_H
+WPOFFS, 0, 0, AIR_CYL_H/2
+CSYS, 0
+
+ALLSEL, ALL
+VOVLAP, ALL
+NUMCMP, VOLU
+
+! ========================= 材料 + 元素型別 =========================
+MAT_AIR1    = 1
+MAT_MT      = 2
+MAT_AIR2    = 3
+MAT_AIR_MID = 4
+mp, murx, MAT_AIR1,    1
+mp, murx, MAT_MT,      280
+mp, murx, MAT_AIR2,    1
+mp, murx, MAT_AIR_MID, 1
+ET_nocurr = 1
+ET, ET_nocurr, SOLID96
+
+! ========================= VATT by loc+size（公尺門檻；dwp 量到 WP）=========================
+ALLSEL, ALL
+*get, VMAX, VOLU,, NUM, MAX
+*do, vi, 1, VMAX
+    VSEL, S, VOLU,, vi
+    VSUM
+    *get, vsz, VOLU, vi, VOLU
+    *if, vsz, GT, 0, then
+        *get, cx, VOLU, vi, CENT, X
+        *get, cy, VOLU, vi, CENT, Y
+        *get, cz, VOLU, vi, CENT, Z
+        dwp = sqrt( (cx-WPX)**2 + (cy-WPY)**2 + (cz-WPZ)**2 )
+        *if, vsz, GT, 5e-4, then
+            VATT, MAT_AIR2, 1, ET_nocurr
+        *elseif, vsz, GT, 5e-5, then
+            VATT, MAT_AIR_MID, 1, ET_nocurr
+        *elseif, dwp, GT, 8e-3, then
+            VATT, MAT_MT, 1, ET_nocurr
+        *elseif, vsz, GT, 5e-7, then
+            VATT, MAT_AIR1, 1, ET_nocurr
+        *else
+            VATT, MAT_MT, 1, ET_nocurr
+        *endif
+    *endif
+*enddo
+ALLSEL, ALL
+
+! ========================= graded mesh =========================
+MSHAPE,1,3D
+MSHKEY,0
+
+! Step1：6 薄板(+尖端含圓角) 固定 ESIZE 0.1mm
+VSEL, S, MAT, , MAT_MT
+VSEL, R, LOC, Z, 8.4e-3, 10.0e-3
+CM, POLE_VOLS, VOLU
+ESIZE, 0.1e-3
+VMESH, ALL
+ESIZE, 0
+ALLSEL, ALL
+
+! Step2：return body(導柱+yoke)+空氣 smrt5
+SMRTSIZE,5
+VSEL, S, VOLU, , 1, VMAX
+CMSEL, U, POLE_VOLS
+VMESH, ALL
+ALLSEL, ALL
+
+! Step3：6 尖端近 WP EREFINE +1
+ESEL,S,MAT,,MAT_MT
+ESEL,R,CENT,X, -3e-3, 3e-3
+ESEL,R,CENT,Y, -3e-3, 3e-3
+ESEL,R,CENT,Z, WPZ-1e-3, WPZ+1e-3
+EREFINE,ALL, , ,1, ,OFF
+ALLSEL, ALL
+
+! 元素 component（依材料）
+ESEL,S,MAT,,MAT_MT      $ CM,COMP_MT,ELEM     $ ALLSEL,ALL
+ESEL,S,MAT,,MAT_AIR1    $ CM,COMP_AIR1,ELEM   $ ALLSEL,ALL
+ESEL,S,MAT,,MAT_AIR_MID $ CM,COMP_AIRMID,ELEM $ ALLSEL,ALL
+ESEL,S,MAT,,MAT_AIR2    $ CM,COMP_AIR2,ELEM   $ ALLSEL,ALL
+
+! ========================= report + SAVE（覆蓋 db/mesh/full_assembly_sleeve/full_assembly_sleeve.db）=========================
+ALLSEL, ALL
+*GET, NE_TOT, ELEM, 0, COUNT
+*GET, NN_TOT, NODE, 0, COUNT
+ESEL,S,MAT,,MAT_MT      $ *GET, NE_MT,  ELEM, 0, COUNT $ ALLSEL,ALL
+ESEL,S,MAT,,MAT_AIR1    $ *GET, NE_A1,  ELEM, 0, COUNT $ ALLSEL,ALL
+ESEL,S,MAT,,MAT_AIR_MID $ *GET, NE_MID, ELEM, 0, COUNT $ ALLSEL,ALL
+ESEL,S,MAT,,MAT_AIR2    $ *GET, NE_A2,  ELEM, 0, COUNT $ ALLSEL,ALL
+VSEL,S,MAT,,MAT_MT      $ *GET, NV_MT,  VOLU, 0, COUNT $ ALLSEL,ALL
+VSEL,S,MAT,,MAT_MT $ VSUM $ *GET, VOL_MT, VOLU, 0, VOLU $ ALLSEL,ALL
+/com, ================= FULL MESH SUMMARY =================
+*VWRITE, NN_TOT, NE_TOT
+('TOTAL  nodes = ',F12.0,'   elements = ',F12.0)
+*VWRITE, NE_MT, NE_A1, NE_MID, NE_A2
+('ELEM   STEEL = ',F12.0,'  AIR1 = ',F12.0,'  MID = ',F12.0,'  AIR2 = ',F12.0)
+*VWRITE, NV_MT, VOL_MT
+('VOLU   STEEL = ',F8.0,'   STEEL volume [m^3] = ',E14.6)
+*if, NE_A2, LE, 0, then
+    /com, *** WARNING: AIR2 (outer cylinder) 0 elements — 中球/端蓋相切退化 ***
+*endif
+*if, NE_MT, LE, 0, then
+    /com, *** WARNING: STEEL 0 elements — VATT/幾何有誤 ***
+*endif
+/com, ====================================================
+
+SAVE, 'full_assembly_sleeve', 'db'
+FINISH

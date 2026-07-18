@@ -7,10 +7,10 @@
 ! param (SPH_OFST=0/AIR_CYL_R/AIR_CYL_H/TURNS/COIL_THK/COIL_H) 都存在 db、RESUME 帶回。
 ! mesh/solve 分離：mesh deck = ../../mesh/MT_Mesh_SinglePole_Filled.txt。
 ! ====================================================================
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\singlepole\halfcut'
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\sim\singlepole\halfcut'
 FINISH
 /CLEAR,NOSTART
-RESUME,'mesh_halfcut','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\singlepole\halfcut'
+RESUME,'mesh_halfcut','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\sim\singlepole\halfcut'
 /FILNAME,sim_halfcut,1
 
 ! ===== [MODIFIED] 重下 coil 電流 (翻向 1A，明確) =====

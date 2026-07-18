@@ -1,0 +1,64 @@
+! ============================================================================
+! MT_Render_SteelMesh.txt — batch 算 NTU_hexapole 鋼件網格 PNG（無 GUI、可靠）
+!   RESUME mesh db（唯讀、不 SAVE）→ 選鋼件 MAT=2 → 多視角 EPLOT → PNG。
+!   啟動：MAPDL -b -dir <figures 夾> -j vimg -i 本檔 -o vimg.out
+!   （db 路徑寫死在 RESUME；PNG 落 /CWD=figures 夾，名 vimg000.png…）
+! ============================================================================
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\figures\NTU_hexapole\full_assembly_mesh'
+/FILNAME,vimg,1
+RESUME,'full_assembly','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\NTU_hexapole\db\mesh\full_assembly\'
+/PREP7
+
+! 白底、深前景（報告風）
+/RGB,INDEX,100,100,100,0
+/RGB,INDEX, 80, 80, 80,13
+/RGB,INDEX, 60, 60, 60,14
+/RGB,INDEX,  0,  0,  0,15
+/GRAPHICS,POWER
+/PNUM,MAT,1
+/NUMBER,1
+/EDGE,1,0
+/SHOW,PNG,,,8
+/GFILE,1400
+
+! 只顯示鋼件（MAT_MT=2）= 6 磁極 + 6 導柱 + yoke
+ESEL,S,MAT,,2
+
+/TITLE,NTU full_assembly STEEL mesh (6 poles + 6 posts + yoke)  iso
+/VIEW,1,1,1,1
+/ANG,1
+/AUTO,1
+EPLOT
+
+/TITLE,NTU full_assembly STEEL mesh  front (x-z)
+/VIEW,1,0,-1,0
+/AUTO,1
+EPLOT
+
+/TITLE,NTU full_assembly STEEL mesh  top (x-y)
+/VIEW,1,0,0,1
+/AUTO,1
+EPLOT
+
+! 6 薄板層（近 WP，z 帶）
+ESEL,S,MAT,,2
+ESEL,R,CENT,Z, 8.4e-3, 10.0e-3
+/TITLE,NTU full_assembly STEEL mesh  6 pole plates (z-band)
+/VIEW,1,1,1,1
+/ANG,1
+/AUTO,1
+EPLOT
+
+! 尖端圓角加密區（近 WP 小盒）
+ESEL,S,MAT,,2
+ESEL,R,CENT,X, -1.5e-3, 1.5e-3
+ESEL,R,CENT,Y, -1.5e-3, 1.5e-3
+ESEL,R,CENT,Z, 8.5e-3, 10.1e-3
+/TITLE,NTU full_assembly STEEL mesh  tip fillet refine zone (near WP)
+/VIEW,1,1,0.4,0.3
+/AUTO,1
+EPLOT
+
+/SHOW,CLOSE
+FINISH
+/EXIT,NOSAVE

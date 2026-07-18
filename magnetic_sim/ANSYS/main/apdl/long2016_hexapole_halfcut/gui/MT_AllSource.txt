@@ -1,6 +1,6 @@
 !****/CWD,'C:\Users\feilong\Desktop\Fei Long Ansys\Magnetic Tweezers LowPermeability'
 !****/CWD,'D:\Fei Long ANSYS\Magnetic Tweezers LowPermeability'
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\allsource'   ! [MODIFIED] all-source build-only output (new db/ structure)
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\sim\allsource'   ! [MODIFIED] all-source build-only output (new db/ structure)
 
 Finish
 /cle

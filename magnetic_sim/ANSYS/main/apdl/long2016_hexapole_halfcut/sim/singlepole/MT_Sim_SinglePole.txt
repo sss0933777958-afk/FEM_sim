@@ -5,7 +5,7 @@
 !   BC, solves (magsolv,3 DSP), and exports B-field .dat to data/singlepole/.
 !   MKS metre. Excitation = 1 A (70 turns x 1 A).
 ! ============================================================================
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\singlepole'
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\sim\singlepole'
 Finish
 /cle
 /CLEAR,NOSTART
@@ -13,7 +13,7 @@ Finish
 /FILNAME,sim_singlepole,1
 
 ! ----- restore mesh-only model (geometry + mesh + materials + coil) -----
-RESUME,'mesh_singlepole','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\singlepole\'
+RESUME,'mesh_singlepole','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\sim\singlepole\'
 
 /PREP7
 *afun, DEG

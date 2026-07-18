@@ -65,7 +65,7 @@ FEM_sim/                   Git root — 通用 FEM 模擬容器
 │       │   ├── ANSYS_data/<model>/<case>/  FEM .dat/.db (gitignored)
 │       │   ├── MATLAB_data/<model>/<fn>/   MATLAB outputs (.mat/.csv)
 │       │   ├── figures/                 All figures (incl. reports)
-│       │   ├── IGES/ + model_check/  Geometry exports (must sync)
+│       │   ├── model_check/          Geometry deliverables (mm STEP; IGES/ removed 2026-07-13, IGES 中繼走 scratch)
 │       │   ├── CAD/                     SolidWorks/STEP originals
 │       │   ├── comsol/ + mph/          COMSOL LiveLink scripts + .mph models
 │       │   ├── semulator/               SEMulator process flow
@@ -126,7 +126,10 @@ All symbols and terms follow Fei Long's 2016 dissertation. See the full glossary
 Key conventions:
 - Use **paper pole names** (P1-P6) in all user-facing text, figures, and discussion
 - APDL coil indices (1-6) only in APDL code and raw data context
-- Mapping: APDL {1,2,3,4,5,6} = Paper {P1,P3,P6,P5,P2,P4}
+- **Mapping is PER-MODEL, not a global rule** — it is each deck's build order, not physics.
+  long2016 `[1,3,6,5,2,4]` / NTU `[1,3,6,5,2,4]` / **hung `identity`**; new models: identity (coil k = Pk).
+  Never copy another model's map — see `magnetic_sim/.claude/rules/pole-coil-numbering.md` (the old
+  global claim "APDL {1..6} = Paper {P1,P3,P6,P5,P2,P4}" was wrong and silently corrupted hung's K̄_I).
 - Physical quantities use dissertation symbols: B, Phi, q, K_I, R_hat, L_i, rho, R_a, g_I, N_c
 - Two meanings of rho: physical (500 um) vs fitted (900 um) — always clarify which
 - Units: ANSYS outputs Tesla; figures use mT for WP region; dissertation Fig. 2.4 uses Gauss

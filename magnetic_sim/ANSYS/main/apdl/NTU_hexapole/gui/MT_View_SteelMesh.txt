@@ -1,0 +1,29 @@
+! ============================================================================
+! MT_View_SteelMesh.txt  —  GUI 檢視 NTU_hexapole 鋼件網格（使用者檢查用；通用）
+!   RESUME 拋棄式 view.db 副本（避免覆蓋 canonical mesh db）→ 選鋼件(MAT=2) → EPLOT。
+!   **通用**：不硬寫 /CWD、不硬寫 mesh 路徑，改吃啟動 -dir（可看任一 mesh db）。
+!   🔴 **-dir 一定用獨立 scratch 夾，絕不可用真正的 mesh 夾**：互動 GUI 關閉時若按 Save，
+!      MAPDL 會把當下畫面模型寫回 -dir → 用 mesh 夾就會覆蓋掉 canonical mesh db
+!      （hung R700/R300 踩過，兩顆 mesh db 被覆蓋成 steel-only、只能重跑還原）。
+!   啟動：mkdir <scratch> ; cp <mesh 夾>\<mesh>.db <scratch>\view.db ; 再
+!         MAPDL -g -dir <scratch> -j view -i 本檔
+!   [MODIFIED] 目前用於 full_assembly_sleeve（含 6 襯套 μr=280）。
+! ============================================================================
+/FILNAME,view,1
+RESUME,'view','db'                  ! [MODIFIED] 無第三引數 → 吃啟動 -dir 的 view.db（拋棄式副本）
+/PREP7
+
+! 只顯示鋼件（MAT_MT=2）= 6 磁極 + 6 導柱 + yoke + 6 襯套
+ESEL,S,MAT,,2
+/TITLE, NTU_hexapole FULL steel mesh (6 poles + 6 posts + yoke + 6 sleeves)
+/VIEW,1,1,1,1
+/ANG,1
+/PNUM,DEFA
+/NUMBER,0
+EPLOT
+
+! 提示（GUI 內）：
+!   ALLSEL,ALL $ EPLOT                                 ! 全部(含空氣)
+!   ESEL,S,MAT,,2 $ ESEL,R,CENT,Z,8.4e-3,10e-3 $ EPLOT ! 只 6 薄板
+!   ESEL,S,MAT,,2 $ ESEL,R,CENT,X,-3e-3,3e-3 $ ESEL,R,CENT,Y,-3e-3,3e-3 $ EPLOT ! 尖端圓角加密區
+!   ESEL,S,MAT,,2 $ ESEL,R,CENT,Z,15.5e-3,20.9e-3 $ EPLOT ! [ADDED] 襯套帶（flange z[15.6,16.6] + tube→20.8；含導柱同段）

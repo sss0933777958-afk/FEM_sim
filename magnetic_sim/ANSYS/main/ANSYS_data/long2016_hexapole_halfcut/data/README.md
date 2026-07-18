@@ -3,8 +3,10 @@
 **用途**：半切 hexapole 各 coil 各變體的 FEM 解出來的**場 / 座標 `.dat`**（交付檔）。
 MATLAB 分析（Vmat / d / D_H / charge fit / 場圖）一律從這裡讀。
 
-**結構**：`coil<N>/<variant>/coil<N>_<kind>_<dataset>.dat`
-- `<N>` = 1..6（APDL coil；對照紙上極名 {P1,P3,P6,P5,P2,P4}）。
+**結構（2026-07-14 翻轉為 `<variant>/coil<N>`）**：`<variant>/coil<N>/coil<N>_<kind>_<dataset>.dat`
+- 例：`standard/coil2/coil2_bfield_wp.dat`、`gap_calibrate/coil1/coil1_coord_all.dat`、`no_gap/coil6/coil6_bfield_all.dat`。
+- **未納入翻轉**（非 hexapole-coil 場資料，維持原位）：`singlepole/`（頂層單極 `singlepole_*.dat`）、`coil1/singlepole/`（單極形狀樹 filled/halfcut/tipcut…）、`mesh/`（mesh 匯出）。
+- `<N>` = 1..6（APDL coil；對照紙上極名 {P1,P3,P6,P5,P2,P4}）。baseline `standard` 僅 coil2–6（coil1 無 `standard` 子夾，屬既有缺口）。
 - `<kind>` = `coord`（節點座標 NLIST）/ `bfield`（B 場 PRNSOL）。
 - `<dataset>` = `all`（全域 ~494,873 節點）/ `wp`（WP 區 ~390,579）/ `p2reg`（P2 整根極區域，graded 用）/ `circuit`（graded 的 P1 極區域）。
 

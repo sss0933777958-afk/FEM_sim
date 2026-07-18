@@ -1,0 +1,106 @@
+! ============================================================================
+! MT_Sim_FullAssembly.txt — NTU_hexapole full_assembly_sleeve solve deck（RESUME db/mesh/full_assembly_sleeve）
+!   [MODIFIED] 含 6 襯套（μr=280 鐵件，併入 return body）的變體 full_assembly_sleeve；線圈參數不變。
+!   mesh/solve 分離：RESUME mesh/MT_Mesh_Graded_Full.txt 產的 full_assembly_sleeve.db（含幾何+網格+材料+三層空氣），
+!   加 6 SOURC36 線圈（只 CN 那顆激發）+ D,ALL,MAG,0 遠場 BC，magsolv,3 求解，抽 B 場 → data/full_assembly_sleeve/coilCN/。
+!   公尺 MKS。**6 顆各別 solve**：CN 選 active coil（driver sed temp copy 的 CN 行到 '2'..'6'；coil1=預設）。
+!   線圈：內半徑3.5/外半徑7.5/徑厚4.0/高4.2mm、與導柱同軸、z 中心18.7(z[16.6,20.8])、1A×50匝反向。
+!   APDL coil 1-6 → 方位 0/120/240/60/180/300° → 紙名 P1/P3/P6/P5/P2/P4（同 long_fei）。
+! ============================================================================
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\NTU_hexapole\db\sim\full_assembly_sleeve'
+Finish
+
+! ----- RESUME mesh-only 模型（幾何+網格+材料+空氣；含 params SC 等）-----
+RESUME,'full_assembly_sleeve','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\NTU_hexapole\db\mesh\full_assembly_sleeve\'
+
+/PREP7
+*afun, DEG
+
+! ----- active coil 選擇（driver 對 temp copy sed 這兩行到 N / 'N'；coil1=預設）-----
+!   ⚠ 必須放 RESUME 之後（RESUME 會清掉 RESUME 前設的 params）
+COIL_ID = 1                       ! active coil 數字 index（CURR_ARRAY 用）
+CN = '1'                          ! 線圈 tag 字串（data 夾名 coil%CN%）
+
+! ----- RESUME-safe 常數（BC / coil / extract）-----
+SC = 1.0e-3
+WPZ = 9.3*SC                     ! WP z（空氣中心；mesh 建於此）
+AIR_CYL_R = 100.0*SC
+AIR_CYL_H = 110.0*SC
+AIR_CYL_Z_TOP = WPZ + AIR_CYL_H/2    ! +64.3mm 端蓋
+AIR_CYL_Z_BOT = WPZ - AIR_CYL_H/2    ! -45.7mm 端蓋
+RPOST     = 20.5*SC              ! 線圈/導柱徑向
+COIL_IN_R = 3.5*SC
+COIL_OUT_R= 7.5*SC
+COIL_R    = (COIL_IN_R + COIL_OUT_R)/2   ! 5.5mm 平均半徑
+COIL_THK  = COIL_OUT_R - COIL_IN_R       ! 4.0mm 徑向厚 (SOURC36 DY)
+COIL_H    = 4.2*SC                        ! 4.2mm 軸向高 (SOURC36 DZ)
+COILZ     = 18.7*SC                        ! 線圈中心 z（z[16.6,20.8]）
+TURNS     = 50
+CURR      = 1
+
+! ----- 6 線圈方位（APDL index → 方位角）-----
+*dim, PANG, , 6
+PANG(1)=0 $ PANG(2)=120 $ PANG(3)=240 $ PANG(4)=60 $ PANG(5)=180 $ PANG(6)=300
+! ----- CURR_ARRAY：只 active(COIL_ID) 那顆 = 1，其餘 0 -----
+*dim, CURR_ARRAY, , 6
+*do, k, 1, 6
+    CURR_ARRAY(k) = 0
+*enddo
+CURR_ARRAY(COIL_ID) = 1
+
+! ----- 6 SOURC36 線圈（mesh 未含 coil，於此加）-----
+ET_curr = 2
+ET, ET_curr, SOURC36
+*get, NODE_NUM, NODE, , NUM, MAX
+*do, N, 1, 6
+    CX = RPOST*cos(PANG(N))
+    CY = RPOST*sin(PANG(N))
+    ! [MODIFIED] 電流反向（磁路往磁極跑）→ R2 = -TURNS*CURR_ARRAY(N)（非 active 顆=0）
+    R, N, 1, -TURNS*CURR_ARRAY(N), COIL_THK, COIL_H
+    n1 = NODE_NUM + 3*(N-1) + 1
+    n2 = NODE_NUM + 3*(N-1) + 2
+    n3 = NODE_NUM + 3*(N-1) + 3
+    N, n1, CX + COIL_R, CY,          COILZ    ! 線圈 +x
+    N, n2, CX,          CY + COIL_R, COILZ    ! 線圈 +y
+    N, n3, CX,          CY,          COILZ    ! 中心
+    TYPE, ET_curr
+    REAL, N
+    E, n1, n2, n3
+*enddo
+
+! ----- 遠場 BC: MAG=0 於外圓柱側面(r≈100) + 上下端蓋(z≈WP±55) -----
+LOCAL,11,1,0,0,0                 ! 圓柱 CS @ 原點（軸=z，通過 WP xy=0）
+CSYS,11
+NSEL,S,LOC,X, AIR_CYL_R - 0.5e-3, AIR_CYL_R + 0.5e-3
+CSYS,0
+NSEL,A,LOC,Z, AIR_CYL_Z_TOP - 0.5e-3, AIR_CYL_Z_TOP + 0.5e-3
+NSEL,A,LOC,Z, AIR_CYL_Z_BOT - 0.5e-3, AIR_CYL_Z_BOT + 0.5e-3
+D,ALL,MAG,0
+ALLSEL,ALL
+FINISH
+
+! ----- solve -----
+/SOLU
+magsolv,3,,,,,1                  ! DSP;若 OOM 改 EQSLV,PCG（見 sim/README fallback）
+FINISH
+
+! ====================================================================
+! POST1: 抽 B 場全節點 → data/full_assembly/coil%CN%/
+! ====================================================================
+/POST1
+SET,LAST
+ALLSEL,ALL
+/HEADER,OFF,OFF,OFF,OFF,OFF,OFF
+/FORMAT,10,,20,12,,
+/PAGE,1000000,,1000000
+
+/OUTPUT,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\NTU_hexapole\data\full_assembly_sleeve\coil%CN%\full_assembly_sleeve_coord_all','dat'
+NLIST,ALL, , ,COORD
+/OUTPUT
+/OUTPUT,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\NTU_hexapole\data\full_assembly_sleeve\coil%CN%\full_assembly_sleeve_bfield_all','dat'
+PRNSOL,B,COMP
+/OUTPUT
+
+ALLSEL,ALL
+SAVE,'sim_coil%CN%','db'                          ! [MODIFIED] 交付 db/sim/full_assembly_sleeve/sim_coilN.db
+FINISH

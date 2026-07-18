@@ -17,12 +17,42 @@
 !   材料/網格分區一律 by location+size（VOVLAP/booleans 會清 VATT，volume 編號不可硬編）。
 ! ============================================================================
 
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\mesh_graded_basegap'
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\geom\mesh_graded_basegap'
 Finish
 /cle
 /CLEAR,NOSTART
-/TITLE, Long2016 halfcut - region-graded mesh-only (SAVE mesh_graded.db)
-/FILNAME,mesh_graded,1
+/TITLE, Long2016 halfcut - region-graded mesh-only (SAVE mesh_*.db)
+! [CONFIG 2026-07-13] gap preset — 改 GAP_CFG 切模型（同 geom deck）
+GAP_CFG = 5                          ! 0=gap_300um /1=gapdist /2=gap_400um /3=protgap_200um /4=protgap_t200b180 /5=gap_calibrate(逐極單gap)
+! [FIX 2026-07-13] 移除 /FILNAME —— BEGIN level 撞 -j 同名死結。jobname 由 -j 定：
+!   cfg1→mesh_gapdist、cfg2→mesh_gap400、cfg3→mesh_protgap、cfg4→mesh_protgap_t200b180、cfg5→mesh_gap_calibrate、cfg0→mesh_graded。
+! 開關：ADD_BASE=切base、ADD_PROT=切導柱兩端。導柱厚度：PROT_T_TOP=頂端(z大)、PROT_T_BOT=底端(z小)。
+! [ADDED 2026-07-13 cfg5] gap_calibrate：逐極「單一 disk」氣隙(總 g_i)→ 全部 ≥325µm(比 200µm 更厚、free-tet 保證過)、
+!   磁路上 1 個 g_i = 2 個 g_i/2 串聯同總磁阻。SINGLE_GAP=1 → 只切頂端 1 盤、PROT_T_BOT=0。厚度來自 PROT_T_ARR(gpl)。
+SINGLE_GAP = 0                        ! [ADDED] 預設雙盤(cfg0-4)；cfg5 設 1 = 單盤逐極
+*if, GAP_CFG, eq, 0, then
+    BASE_T = 0.3e-3 $ ADD_PROT = 0 $ ADD_BASE = 1 $ PROT_T_TOP = 200e-6 $ PROT_T_BOT = 200e-6
+*elseif, GAP_CFG, eq, 1, then
+    BASE_T = 0.1e-3 $ ADD_PROT = 1 $ ADD_BASE = 1 $ PROT_T_TOP = 78.6e-6 $ PROT_T_BOT = 86.87e-6
+*elseif, GAP_CFG, eq, 2, then
+    BASE_T = 0.4e-3 $ ADD_PROT = 0 $ ADD_BASE = 1 $ PROT_T_TOP = 200e-6 $ PROT_T_BOT = 200e-6
+*elseif, GAP_CFG, eq, 3, then
+    BASE_T = 0.2e-3 $ ADD_PROT = 1 $ ADD_BASE = 0 $ PROT_T_TOP = 200e-6 $ PROT_T_BOT = 200e-6
+*elseif, GAP_CFG, eq, 5, then
+    BASE_T = 0.2e-3 $ ADD_PROT = 1 $ ADD_BASE = 0 $ PROT_T_TOP = 200e-6 $ PROT_T_BOT = 0 $ SINGLE_GAP = 1
+*else
+    BASE_T = 0.2e-3 $ ADD_PROT = 1 $ ADD_BASE = 0 $ PROT_T_TOP = 200e-6 $ PROT_T_BOT = 190e-6
+*endif
+! [ADDED cfg5] 逐極單盤總氣隙 [m]，gpl 序 = APDL coil 序 = [P1,P3,P6,P5,P2,P4]（Step0 反解 no_gap+protgap 兩真實錨點）
+*if, GAP_CFG, eq, 5, then
+    *dim, PROT_T_ARR,, 6
+    PROT_T_ARR(1) = 340e-6            ! gpl1 = P1  [iter5]
+    PROT_T_ARR(2) = 371e-6            ! gpl2 = P3  [keep]
+    PROT_T_ARR(3) = 724e-6            ! gpl3 = P6  [iter5]
+    PROT_T_ARR(4) = 461e-6            ! gpl4 = P5  [iter5]
+    PROT_T_ARR(5) = 402e-6            ! gpl5 = P2  [keep]
+    PROT_T_ARR(6) = 518e-6            ! gpl6 = P4  [iter5]
+*endif
 /PREP7
 
 ! -------------------------------------------------------------------
@@ -68,6 +98,15 @@ POLE_CONE2_LEN  = L*cos(ANG2)
 POLE_TIP_R2     = POLE_TIP_R*cos(ANG2)
 POLE_TIP_FILLET_DROP = POLE_TIP_CENTER - POLE_TIP_R
 POLE_TIP_FILLET_PROT = (POLE_CONE2_LEN - POLE_TIP_FILLET_DROP)
+! [MODIFIED 2026-07-13] PROT_T_LOW/UP 已在上方 config 分支依 GAP_CFG 設定；此處只留 PROT_GAP_R
+PROT_GAP_R = PROT_R                  ! 導柱 gap 圓半徑 = 5mm（conformal；截面 π·5² = 78.54mm²）
+
+! [DIAG 2026-07-13] checkpoint 1 — 進幾何前（測是否過 config+params）
+ID=1 $ *GET,WTt,ACTIVE,0,TIME,WALL $ *CFOPEN,ckpt,txt,,APPEND
+*VWRITE,ID,WTt
+('CKPT ',F5.0,'  enter-geometry     wall_hr=',F12.6)
+*CFCLOS
+SAVE,gck1,db                    ! [DIAG] flush marker: reached enter-geometry
 
 ! ===== Yoke + 6 protrusions (VADD 合併成 V8，照 baseline) =====
 WPLANE, 1,0,0,0,,,,,,
@@ -91,6 +130,12 @@ FITEM,2, 1
 FITEM,2,-(1+POLE_NUM)
 VADD,P51X
 *get, vol_yoke_ind, VOLU,,NUM, MAX
+! [DIAG] checkpoint 2 — yoke+6prot VADD 完
+ID=2 $ *GET,WTt,ACTIVE,0,TIME,WALL $ *CFOPEN,ckpt,txt,,APPEND
+*VWRITE,ID,WTt
+('CKPT ',F5.0,'  yoke+prot VADD done wall_hr=',F12.6)
+*CFCLOS
+SAVE,gck2,db                    ! [DIAG] flush marker: yoke+prot VADD done
 
 ! ===== 3 lower poles (half-cut) =====
 X0_LOW = YOKE_MID_R*cos(0)
@@ -234,43 +279,85 @@ Z0_LOW = -PROT_H
 *enddo
 NUMCMP,VOLU
 
-! ===== [ADDED-BASEGAP] 6 極 base 200µm 氣隙 slab（finite BLOCK + VSBV,KEEP）=====
-!   mesh deck 在 air 前已把全鋼 VADD 成 1 顆 volume(NV_TOT=1) → 無限 VSBW 切面會切到全部極+yoke。
-!   改用「每極一個 finite BLOCK（z 限 base、WPROTA 旋轉到該極）」對 1 顆鋼 VSBV,KEEP：
-!   BLOCK 只覆該極 base(他極方位不同/yoke z 不同 → 不動) → 鋼在該極 base 挖 200µm 空洞、
-!   KEEP 的 BLOCK 留下當 slab(後面指派 air)。下極 local x[42.5,42.7] z[-17,-7]；上極 x[41,41.2] z[9,19]。
+! ===== [MODIFIED-BASEGAP 2026-07-12] 6 極 base 300µm 氣隙 conformal slab（都往 tip 移）=====
+!   與 geom/export/MT_Geom_BaseGap.txt 同款：全鋼 VADD 成 1 volume → 每極 WPROTA + 建「貼合該極
+!   base 截面的 conformal cutter」(cutter⊆鋼) + VSBV,vsteel,ALL,,,KEEP（鋼挖 conformal 空腔、KEEP cutter 當 slab）。
+!   都往 tip 移（local x 變小）：下極 gxa 48.0→42.5、上極 44.43→40.95；厚 200→300µm（gxb=gxa+0.3）。
+!   截面：下極 x42.5 = T 形 BLOCK1(y±5 z[-17,-7])∪BLOCK2(y±10 z[-17,-12])∪BLOCK3(y±5 z[-17,-9]) → 3 子塊 VADD；
+!         上極 x40.95 = BLOCK_C/B 皆 y±11 z[9,19] 矩形 → 單塊。slab 後段指派 MAT_AIR_SLAB=5。
 ALLSEL, ALL
 *GET, vsteel, VOLU, , NUM, MAX          ! 目前唯一鋼 volume(NV_TOT=1)
-*dim, gblk, , 6
 *do, gpl, 1, 6
-    *if, gpl, le, 3, then
-        gaz = 120*(gpl-1)
-        gxa = 48.0e-3
-        gxb = 48.2e-3
-        gza = -17e-3
-        gzb = -7e-3
-    *else
-        gaz = 60 + 120*(gpl-4)
-        gxa = 44.43e-3
-        gxb = 44.63e-3
-        gza = 9e-3
-        gzb = 19e-3
-    *endif
     WPLANE, 1,0,0,0,,,,,,
     WPcsys, -1, 0
+    *if, gpl, le, 3, then
+        gaz = 120*(gpl-1)               ! 下極 0/120/240
+        gxa = 42.5e-3                    ! 48.0 − 5.5（往 tip）
+        gxb = gxa + BASE_T               ! [MODIFIED] 厚 = BASE_T
+    *else
+        gaz = 60 + 120*(gpl-4)          ! 上極 60/180/300
+        gxa = 40.95e-3                   ! 44.43 − 3.48（往 tip）
+        gxb = gxa + BASE_T               ! [MODIFIED] 厚 = BASE_T
+    *endif
     WPROTA, gaz
-    BLOCK, gxa, gxb, -5e-3, 5e-3, gza, gzb
-    *GET, gblk(gpl), VOLU, , NUM, MAX
+    *if, ADD_BASE, eq, 1, then                    ! [ADDED 2026-07-13] cfg=3(protgap) 跳過 base gap
+    *if, gpl, le, 3, then
+        ! 下極 conformal T-cutter = BLOCK1∪2∪3 截面（thin x）→ VADD
+        VSEL, S, VOLU, , ALL
+        CM, GOLD, VOLU
+        BLOCK, gxa, gxb, -5e-3,  5e-3,  -17e-3, -7e-3      ! BLOCK1 截面
+        BLOCK, gxa, gxb, -10e-3, 10e-3, -17e-3, -12e-3     ! BLOCK2 截面
+        BLOCK, gxa, gxb, -5e-3,  5e-3,  -17e-3, -9e-3       ! BLOCK3 截面
+        VSEL, S, VOLU, , ALL
+        CMSEL, U, GOLD, VOLU             ! = 剛建的 3 塊
+        VADD, ALL                        ! → 該極 conformal T-slab cutter
+        ALLSEL, ALL
+    *else
+        ! 上極 conformal cutter = y±11 z[9,19] 矩形（thin x）
+        BLOCK, gxa, gxb, -11e-3, 11e-3, 9e-3, 19e-3
+    *endif
+    *endif                                         ! [ADDED] ADD_BASE 結束
+    ! [RESTORED 2026-07-13] 導柱兩端 gap 真實 CYL4 圓盤 slab（跟 geom deck 一致；VSBV KEEP、非 EMODIF）
+    !   之前誤把 hang 歸咎於 r=5 圓盤共面 → 改 EMODIF（厚度失控 3.1mm 失敗）。真兇是 /FILNAME 死結（已修）。
+    !   CYL4 r=5 圓盤 cutter 在幾何布林是 work 的（geom deck 已驗證產 12 導柱盤）。
+    *if, ADD_PROT, eq, 1, then
+        *if, SINGLE_GAP, eq, 1, then
+            PROT_T_TOP = PROT_T_ARR(gpl) $ PROT_T_BOT = 0     ! [cfg5] 逐極單盤總氣隙、只切頂端 1 盤
+        *endif
+        *if, gpl, le, 3, then
+            CYL4, YOKE_MID_R, 0, PROT_GAP_R, ,,, -PROT_T_TOP     ! 下極頂 z∈[-T_TOP,0]（z=0 接 yoke）
+            *if, PROT_T_BOT, GT, 0, then
+                WPOFFS, 0, 0, -PROT_H
+                CYL4, YOKE_MID_R, 0, PROT_GAP_R, ,,,  PROT_T_BOT ! 下極底 z∈[-7,-7+T_BOT]（z=-7 接 base）
+                WPOFFS, 0, 0,  PROT_H
+            *endif
+        *else
+            WPOFFS, 0, 0, (YOKE_H + PROT_H)
+            CYL4, YOKE_MID_R, 0, PROT_GAP_R, ,,, -PROT_T_TOP     ! 上極頂 z∈[9-T_TOP,9]（z=9 接 base）
+            WPOFFS, 0, 0, -(YOKE_H + PROT_H)
+            *if, PROT_T_BOT, GT, 0, then
+                WPOFFS, 0, 0, YOKE_H
+                CYL4, YOKE_MID_R, 0, PROT_GAP_R, ,,,  PROT_T_BOT ! 上極底 z∈[2,2+T_BOT]（z=2 接 yoke）
+                WPOFFS, 0, 0, -YOKE_H
+            *endif
+        *endif
+    *endif
 *enddo
 WPcsys, -1, 0
-! VSBV：鋼(vsteel) 減 6 個 BLOCK（號連續 gblk(1)..gblk(6)）、KEEP 保留 BLOCK 當 slab
-vblk_lo = gblk(1)
-vblk_hi = gblk(6)
-VSEL, S, VOLU, , vblk_lo, vblk_hi       ! 選 6 BLOCK
-VSBV, vsteel, ALL, , , KEEP             ! 鋼減 6 BLOCK、KEEP slab(=NV2 selected)
-ALLSEL, ALL
+! VSBV：鋼(vsteel) 減所有 cutter、KEEP 保留 cutter 當 conformal slab
+!   [RESTORED 2026-07-13] 選「全部 volume 除 vsteel」= 全部 cutter：
+!     ADD_BASE+ADD_PROT=gapdist 18(6base+12導柱)、cfg=3 protgap 只 12 導柱盤、cfg=0/2 只 6 base。
+VSEL, S, VOLU, , ALL
+VSEL, U, VOLU, , vsteel
+VSBV, vsteel, ALL, , , KEEP             ! 鋼減全部 cutter、KEEP slab(=selected)
 ALLSEL, ALL
 NUMCMP, VOLU
+! [DIAG] checkpoint 3 — poles built + 6 base VSBV done
+ID=3 $ *GET,WTt,ACTIVE,0,TIME,WALL $ *CFOPEN,ckpt,txt,,APPEND
+*VWRITE,ID,WTt
+('CKPT ',F5.0,'  poles+baseVSBV done wall_hr=',F12.6)
+*CFCLOS
+SAVE,gck3,db                    ! [DIAG] flush marker: poles built + 6 base VSBV done
 
 ! ===== 內球(7mm) + [ADDED] 中間球(25mm) + 外圓柱 =====
 SPH_FINE_R = 7e-3
@@ -291,6 +378,12 @@ CYL4,0,0,AIR_CYL_R, ,,,AIR_CYL_H        ! 外氣圓柱
 ALLSEL,ALL
 VOVLAP,ALL
 NUMCMP,VOLU
+! [DIAG] checkpoint 4 — single VOVLAP done
+ID=4 $ *GET,WTt,ACTIVE,0,TIME,WALL $ *CFOPEN,ckpt,txt,,APPEND
+*VWRITE,ID,WTt
+('CKPT ',F5.0,'  VOVLAP done        wall_hr=',F12.6)
+*CFCLOS
+SAVE,gck4,db                    ! [DIAG] flush marker: single VOVLAP done
 
 ! ===== 材料 + 元素型別 =====
 MAT_AIR1    = 1   ! inner air sphere (R<=7mm) @ESIZE_SHELL
@@ -347,20 +440,21 @@ ALLSEL,ALL
 !   VATT loop 依 dwp>10 把 slab 誤判成 MAT_MT steel；這裡在該極 slab band(radial R..R+0.2、該極 z-band) 覆蓋回 air。
 ! --- 指派：每極 base 區先全 MAT_MT、再 slab band 覆蓋成 MAT_AIR_SLAB(空氣) ---
 !     (先全鋼再覆蓋 → 防 VSBW 清 VATT 造成 base 片無材料)
+*if, ADD_BASE, eq, 1, then                    ! [ADDED 2026-07-13] cfg=3(protgap) 無 base slab、整段跳過
 *do, gpl, 1, 6
-    *if, gpl, le, 3, then
+    *if, gpl, le, 3, then                   ! [MODIFIED 2026-07-12] 下極 radial band 48.0→42.5（都往 tip）、厚 300µm
         gaz = 120*(gpl-1)
         gza = -17.5e-3
         gzb = -7.01e-3
-        gra = 48.0e-3
-        grb = 48.2e-3
+        gra = 42.4e-3                        ! slab 質心 x~42.65；band 42.4~42.9 含 300µm slab
+        grb = 42.9e-3
         grlo = 35e-3
-    *else
+    *else                                    ! [MODIFIED] 上極 radial band 44.43→40.95、厚 300µm
         gaz = 60 + 120*(gpl-4)
         gza = 9.01e-3
         gzb = 19.5e-3
-        gra = 44.43e-3
-        grb = 44.63e-3
+        gra = 40.85e-3                       ! slab 質心 x~41.10；band 40.85~41.35 含 300µm slab
+        grb = 41.35e-3
         grlo = 30e-3
     *endif
     ALLSEL, ALL
@@ -373,7 +467,22 @@ ALLSEL,ALL
     CSDELE, 15
     VATT, MAT_AIR_SLAB, 1, ET_nocurr
 *enddo
+*endif                                         ! [ADDED 2026-07-13] ADD_BASE 結束（cfg=3 跳過整段 base slab VATT）
 ALLSEL, ALL
+
+! [RESTORED 2026-07-13] 導柱 gap slab → MAT_AIR_SLAB(μ_r=1)：VOLUME 選擇（真實 slab volume，非 EMODIF）
+!   導柱盤質心 radial 47.5、z 在各端點；全域圓柱 CSYS,1、radial[45,50] 排除 base(42.5) → 只抓 12 導柱盤。
+!   z 帶 ±1mm 涵蓋各端 200µm 盤質心（下頂≈-0.1/底≈-6.9；上頂≈8.9/底≈2.1），不抓導柱中段(質心 z≈-3.5/5.5)。
+*if, ADD_PROT, eq, 1, then
+    ALLSEL, ALL
+    CSYS, 1                                   ! 全域圓柱：X=radial, Z=axial
+    VSEL, S, LOC, X, 45e-3, 50e-3 $ VSEL, R, LOC, Z, -1.0e-3,  1.0e-3 $ VATT, MAT_AIR_SLAB, 1, ET_nocurr  ! 下極頂 z≈0
+    VSEL, S, LOC, X, 45e-3, 50e-3 $ VSEL, R, LOC, Z, -8.0e-3, -6.0e-3 $ VATT, MAT_AIR_SLAB, 1, ET_nocurr  ! 下極底 z≈-7
+    VSEL, S, LOC, X, 45e-3, 50e-3 $ VSEL, R, LOC, Z,  8.0e-3, 10.0e-3 $ VATT, MAT_AIR_SLAB, 1, ET_nocurr  ! 上極頂 z≈9
+    VSEL, S, LOC, X, 45e-3, 50e-3 $ VSEL, R, LOC, Z,  1.0e-3,  3.0e-3 $ VATT, MAT_AIR_SLAB, 1, ET_nocurr  ! 上極底 z≈2
+    CSYS, 0
+    ALLSEL, ALL
+*endif
 
 ! ===== 線圈 SOURC36（照 graded；mesh-only，CURR 值不重要，solve deck 會覆寫）=====
 COIL_OUT_R = 8e-3
@@ -448,13 +557,25 @@ LOCAL,98,2,0,0,SPH_OFST
 ! [PURE smrt5 base 2026-06-25] 純 SMRTSIZE,5 + vmesh,all（= baseline 做法，實證 494k、不 thrash）。
 !   無任何 AESIZE/LESIZE 強制尺寸。smrt5 自動：尖端/邊角細、遠場粗。WP/磁極細網格 → Stage2 NREFINE。
 ! ============================================================================
-SMRTSIZE,5
+SMRTSIZE,5                ! [RESTORED] 純 smrt5（cfg=3 protgap_200 canonical）；⚠ 底盤<200µm 不對稱(cfg=4) free-tet 做不出(170/180/190 都 Volume mesh failure)、需 sweep mesh
 MSHAPE,1,3D
 MSHKEY,0
+
+! [DIAG] checkpoint 5 — 進 VMESH 前（幾何+材料全完成）
+ID=5 $ *GET,WTt,ACTIVE,0,TIME,WALL $ *CFOPEN,ckpt,txt,,APPEND
+*VWRITE,ID,WTt
+('CKPT ',F5.0,'  enter VMESH        wall_hr=',F12.6)
+*CFCLOS
+SAVE,gck5,db                    ! [DIAG] flush marker: geometry+materials done, entering VMESH
 
 ALLSEL,ALL
 VMESH,ALL
 ALLSEL,ALL
+! [DIAG] checkpoint 6 — VMESH done
+ID=6 $ *GET,WTt,ACTIVE,0,TIME,WALL $ *GET,NNv,NODE,0,COUNT $ *CFOPEN,ckpt,txt,,APPEND
+*VWRITE,ID,NNv,WTt
+('CKPT ',F5.0,'  VMESH done  nodes=',F12.0,'  wall_hr=',F12.6)
+*CFCLOS
 
 ! ============================================================================
 ! [ADDED 2026-06-25 folded] 磁極 cone 加密（在 smrt5 base 上 EREFINE，不重 mesh、不 thrash）
@@ -479,6 +600,18 @@ ESEL,R,CENT,X, 2e-3, 18e-3
 CSYS,0
 ESEL,R,CENT,Z, -1.0, -11.5e-3
 EREFINE,ALL, , ,1, ,OFF
+ALLSEL,ALL
+
+! [REMOVED 2026-07-13] 原 post-mesh EREFINE+EMODIF 導柱 gap（厚度失控 3.1mm 失敗）已移除。
+!   導柱 gap 改回「幾何段真實 CYL4 圓盤 slab（VSBV KEEP）+ 材料段 VATT」→ VMESH 直接 mesh 真實薄盤（厚度精確）。
+!   真兇是 /FILNAME 死結（已修），非 r5 圓盤共面。真實 slab 是正確做法（跟 base slab 同款、跟 geom deck 一致）。
+!   導柱盤診斷用 summary 的 NV_SLAB(=導柱盤 volume 數)+NE_PS(MAT_AIR_SLAB 元素數)。
+*if, ADD_PROT, eq, 1, then
+    CSYS,1
+    ESEL,S,MAT,,MAT_AIR_SLAB $ ESEL,R,CENT,X,45e-3,50e-3 $ *GET, NE_PS, ELEM, 0, COUNT   ! 導柱 slab 元素數
+    CSYS,0 $ ALLSEL,ALL
+    TPROT_um = PROT_T_TOP*1e6                   ! 診斷：頂盤厚度[µm]（=精確 PROT_T_TOP；底盤=PROT_T_BOT）
+*endif
 ALLSEL,ALL
 
 ! ===== 元素 component（依材料；給 solve/檢視用）=====
@@ -516,6 +649,10 @@ ALLSEL,ALL
 ('VOLU   AIR1 = ',F8.0,'   MID = ',F8.0,'   STEEL = ',F8.0,'   AIR2 = ',F8.0)
 *VWRITE, NE_SLAB, NV_SLAB
 ('SLAB   air-slab elements = ',F12.0,'   volumes = ',F8.0)
+*if, ADD_PROT, eq, 1, then
+    *VWRITE, NE_PS, TPROT_um
+('PROT   slab elements = ',F12.0,'   eff mean thickness = ',F10.2,' um  (target 78.6/86.87)')
+*endif
 *VWRITE, NN_CORE
 ('CORE   nodes (R < CORE_R) = ',F12.0)
 /com, ===============================================

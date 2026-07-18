@@ -19,7 +19,7 @@
 !   材料/網格分區一律 by location+size（VOVLAP/booleans 會清 VATT，volume 編號不可硬編）。
 ! ============================================================================
 
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\lower_filled'
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\geom\lower_filled'
 Finish
 /cle
 /CLEAR,NOSTART

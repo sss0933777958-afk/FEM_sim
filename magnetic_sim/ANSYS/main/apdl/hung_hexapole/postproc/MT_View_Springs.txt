@@ -13,7 +13,7 @@
 ! ====================================================================
 Finish
 /CLEAR,NOSTART
-RESUME,'mesh_graded','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\db\mesh_graded'
+RESUME,'mesh_graded','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\db\geom\mesh_graded'
 /PREP7
 
 mv_lo = 99            ! 下極支撐座 檢視材料

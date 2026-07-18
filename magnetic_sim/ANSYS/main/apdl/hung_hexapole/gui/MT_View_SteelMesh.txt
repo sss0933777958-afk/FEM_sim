@@ -1,0 +1,28 @@
+! ============================================================================
+! MT_View_SteelMesh.txt  —  GUI 檢視 hung_hexapole 鋼件網格（使用者檢查用；通用）
+!   RESUME 拋棄式 view.db 副本 → 選鋼件(MAT_MT=2) → EPLOT。**通用**：吃啟動 -dir。
+!   ⚠⚠ 一定要在「**獨立 scratch 夾**」開，**不可用 mesh 夾當 -dir**：
+!      互動 GUI 關閉時的「Save」會把 db 寫回 -dir，若 -dir=mesh 夾就會**覆蓋掉 mesh_graded.db**（踩過，慘）。
+!      在 scratch 夾裡即使誤存也只動到拋棄式 view.db，mesh_graded.db 安全。
+!   啟動：
+!     mkdir <scratch>；cp <mesh 夾>\mesh_graded.db <scratch>\view.db
+!     "G:\ANSYS Inc\v252\ansys\bin\winx64\MAPDL.exe" -g -dir <scratch> -j view -i 本檔
+!   例：scratch = ...\db\mesh\_gui_view_R700（cp mesh_graded_R700\mesh_graded.db → view.db）。
+! ============================================================================
+/FILNAME,view,1
+RESUME,'view','db'              ! 從 -dir 讀 view.db（mesh_graded.db 的拋棄式副本）
+/PREP7
+
+! 只顯示鋼件（MAT_MT=2）= 6 磁極 + 6 導柱/上核 + yoke
+ESEL,S,MAT,,2
+/TITLE, hung_hexapole STEEL mesh (6 poles + posts + yoke)
+/VIEW,1,1,1,1
+/ANG,1
+/PNUM,DEFA
+/NUMBER,0
+EPLOT
+
+! 提示（GUI 內可貼）：
+!   ALLSEL,ALL $ EPLOT                                                        ! 全部(含空氣)
+!   ESEL,S,MAT,,2 $ ESEL,R,CENT,X,-1.5e-3,1.5e-3 $ ESEL,R,CENT,Y,-1.5e-3,1.5e-3 $ ESEL,R,CENT,Z,-1.5e-3,1.5e-3 $ EPLOT  ! 近-WP 6 tip 加密區
+!   ESEL,S,MAT,,1 $ EPLOT                                                     ! 內層細空氣(MAT_AIR1, WP 區)

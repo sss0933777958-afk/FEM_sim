@@ -1,26 +1,23 @@
-# apdl/long2016_hexapole_halfcut/gui/ — GUI 檢視用建模腳本（非求解）
+# apdl/hung_hexapole/gui/ — GUI 檢視 / render 用腳本（非求解）
 
-**用途**：產生「**只建模、不求解**」的 `.db`，供使用者在 MAPDL GUI 開來**檢視整個鐵件幾何 + 每顆線圈的電流繞向**。與 `sim/`（求解）區別：不解（`/SOLU` 全移除），故快且不留求解副產物。
+**用途**：檢視 hung_hexapole **網格**（graded mesh 變體）的鋼件結構 —— 互動 GUI 或 batch 出 PNG。
+不求解（無 `/SOLU`）；RESUME **拋棄式 `view.db` 副本**（不覆蓋 canonical mesh db）。**通用**：吃啟動 `-dir`，
+可看任一 mesh 變體（如工作空間 R700 / R300）。
 
-**共同做法**（兩支 deck 都源自 `sim/baseline/MT_Sim_P1.txt` halfcut，只差 `CURR_ARRAY`）：建幾何（9 volumes 半切鐵件）+ 6 SOURC36 線圈後，**不 mesh**（vol 8/yoke 在此幾何 tet-mesh 會 choke，顯示也不需 FE mesh）；用幾何畫 6 條紅色「繞向弧+箭頭」（每顆 ~3/4 圈弧 + 箭頭，**方向依該線圈 `CURR_ARRAY` 正負**：+1 CCW / −1 CW），存成 component `ARROW_LN` 染紅；`/GTYPE VOLU+LINE`+`/SHADE` 讓鐵件以 solid-model 著色實體 + 紅箭頭疊上；`SAVE` 出 `.db`。**改 `CURR_ARRAY` 即可做任何組合**（箭頭方向自動跟著）。
+**內容**：
+- `MT_View_SteelMesh.txt` — **互動 GUI 檢視**：RESUME `view.db` → `ESEL,S,MAT,,2`（鋼件 MAT_MT=2）→ `EPLOT`；
+  header 含近-WP 6-tip 加密區 / 全域 / 內層細空氣的 hint。
+  ⚠ **一定在獨立 scratch 夾開、不可用 mesh 夾當 -dir**（互動 GUI「Save」會寫回 -dir → 用 mesh 夾會覆蓋
+  掉 `mesh_graded.db`，踩過）。啟動：`mkdir <scratch>`；`cp <mesh 夾>\mesh_graded.db <scratch>\view.db`；
+  `MAPDL -g -dir <scratch> -j view -i MT_View_SteelMesh.txt`。
+- `MT_Render_SteelMesh.txt` — **batch 多視角 PNG**（iso / front x-z / top x-y / 近-WP 6-tip 加密盒）→ 落 `-dir`。
+  啟動：目標圖夾放 `view.db`（mesh_graded.db 副本），`MAPDL -b -dir <圖夾> -j vimg -i MT_Render_SteelMesh.txt -o vimg.out`。
+  用於 `figures/hung_hexapole/mesh_R<tag>/`（`vimg000.png…`）。
 
-**內容（各組合一支 deck → 一個 db）**：
-- `MT_AllSource.txt` — `CURR_ARRAY=[−1,−1,−1,+1,+1,+1]`＝**all-source**（下極線圈 CW、上極 CCW，每極尖端皆射出；場在工作空間抵銷）。→ `db/allsource/allsource.db`，jobname `allsource`。
-- `MT_CoilsSameDir.txt` — `CURR_ARRAY=[−1,−1,−1,−1,−1,−1]`＝**6 線圈電流同向**（全 CW；工作空間場最強，即 field_cancellation sweep 的 max 端）。→ `db/coils_same_dir/coils_same_dir.db`，jobname `coils_same_dir`。
+**鋼件 = MAT_MT=2**（6 磁極 + 6 導柱/上核 + yoke）；空氣 = MAT_AIR1(內)/MAT_AIR_MID(中)/MAT_AIR2(外)。
+hung 幾何有傾角（非平面板），故近-WP 檢視用「小盒 ±1.5mm」涵蓋 6 tip 匯聚區（R=0.3~0.7mm tip 皆含）。
 
-**GUI 開法**（在指令列貼上，重現驗證過的視圖；`<job>` = `allsource` 或 `coils_same_dir`，於對應 `db/<job>/` 開）：
-```
-RESUME,<job>,db
-/GRAPHICS,POWER $ /SHADE,,1
-VSEL,S,VOLU,,1,6 $ VSEL,A,VOLU,,8      ! 只顯示鐵件(藏空氣 7/9)
-CMSEL,S,ARROW_LN                        ! 紅色繞向箭頭線
-/GTYPE,1,VOLU,1 $ /GTYPE,1,LINE,1 $ /GTYPE,1,ELEM,0
-/COLOR,LINE,RED                          ! 箭頭染紅(若已紅可略)
-/VIEW,1,1,-0.7,0.55 $ /ANG,1 $ /AUTO,1
-GPLOT                                     ! 鐵件實體 + 6 紅繞向箭頭
-```
-> 互動 GUI session 會自行產生 `.lock/.log/.err` 等暫存（正常，關閉後可自清）。
+**命名 / 慣例**：`MT_*`；不求解故無 `/SOLU`；互動 session 產的 `.lock/.log/.err` 為暫存（關閉後可清）。
 
-**命名 / 慣例**：`MT_*`；改動標 `[MODIFIED]`；不求解故無 `/SOLU`。
-
-**相關**：見 `../README.md`、`../sim/baseline/`（求解版源頭）。
+**相關**：`../README.md`、`../mesh/MT_Mesh_Graded.txt`（產 mesh_graded.db 的 graded mesh deck）、
+`apdl/NTU_hexapole/gui/`（同款範本）。

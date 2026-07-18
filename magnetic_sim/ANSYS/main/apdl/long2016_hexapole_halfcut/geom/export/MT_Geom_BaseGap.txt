@@ -1,0 +1,396 @@
+! ============================================================================
+! MT_Mesh_Graded.txt  —  Long2016 hexapole halfcut  region-graded MESH-ONLY deck（定案 2026-06-25）
+!   建幾何 + region-graded 網格 + SAVE 成 mesh_graded.db（**無 /SOLU、無 MAG BC**）。
+!   之後 solve deck `RESUME mesh_graded.db` → 加 D,ALL,MAG,0 + CURR + magsolv（mesh/solve 分離）。
+!
+!   ★ 定案 pipeline（一跑即產 ~656,163 節點 / 3,924,481 元素）：
+!     ① 純 SMRTSIZE,5 + VMESH,ALL（零強制尺寸）= 自適應 base（~511k 節點）。
+!        鐵律：此幾何任何硬性 ESIZE/AESIZE/LESIZE 都 sliver/thrash（試 ~12 次證實），只有純 smrt 能跑。
+!     ② EREFINE 全極 cone +1 級（base→~579k）：smrt5 各區量測，只磁極 cone ~0.6mm 比 PDF(0.3) 粗 → 加密。
+!     ③ EREFINE 下極 P1/P3/P6 cone 再 +1 級（→~656k）：下極比上極粗、再補一級（下極 2 級、其餘極 1 級）。
+!     支撐座 + coil 鐵柱(protrusion) 維持 smrt5 粗：far-field 厚鋼、磁通近均勻、不影響精度；
+!     且其鑲於超粗外圈空氣中，EREFINE 造不出合法過渡（無法局部細化，2 次含 DEPTH 皆失敗 → 放棄、不需要）。
+!     各區密度：內球~0.15 / 中球~1.2 / yoke~0.6 / 外圓柱~3.7 / 磁極 cone ~0.3(下極更細) mm。
+!
+!   [ADDED] 中間球(R=MID_SPH_R 30mm)：把空氣過渡拆成 內球->中球->外圓柱（避免外圓柱直接 conform 細內球面爆 OOM）。
+!   幾何 block = 照 sim/graded/MT_Sim_P1_graded.txt L26-358 verbatim（merged V8 保留）。
+!   材料/網格分區一律 by location+size（VOVLAP/booleans 會清 VATT，volume 編號不可硬編）。
+! ============================================================================
+
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\geom\geom_hexvariants'
+Finish
+/cle
+/CLEAR,NOSTART
+/TITLE, Long2016 halfcut - geom export (IGESOUT)
+! [FIX 2026-07-13] 移除 /FILNAME,geomhm,1（BEGIN-level 撞 -j 同名會死鎖）；jobname 改由啟動器 -j 決定
+/PREP7
+
+! -------------------------------------------------------------------
+! [ADDED] region-graded element sizes (參數化；改這裡即可重調，各模型可套)
+! -------------------------------------------------------------------
+ESIZE_CORE  = 0.1e-3    ! WP 細球 R<=CORE_R
+ESIZE_SHELL = 0.6e-3    ! [MODIFIED→base] 內球 base 0.6mm（Stage2 NREFINE 1 級→0.3mm；base 壓低元素量避 choke）
+ESIZE_MID   = 1.5e-3    ! [ADDED] 中間空氣球殼 (7mm..MID_SPH_R)：把 0.3->4mm 拆成 0.3->1.5->4 兩段過渡，避免單體積大跳爆 OOM
+ESIZE_POLE  = 0.6e-3    ! [MODIFIED→base] 極身 base 0.6mm（Stage2 NREFINE→0.3mm）
+ESIZE_YOKE  = 1.5e-3    ! yoke body
+ESIZE_OUTER = 8.0e-3    ! [MODIFIED 4->8] 外圓柱：4mm 在 R80mm 大域 free-tet 卡 8hr（瓶頸=外圓柱本身）；graded 重點是 WP 近場細、遠場不必細 → 放粗 8mm
+LSIZE_TIP   = 0.6e-3    ! [MODIFIED 20µm→base] 尖端 base 0.6mm（Stage2 NREFINE→~50µm；20µm base 太細爆量）
+LSIZE_PROT  = 0.6e-3    ! [MODIFIED 0.3→base] protrusion base 0.6mm（Stage2 NREFINE→0.3mm）
+CORE_R      = 0.4e-3    ! [MODIFIED 2.0->0.6->0.8->0.4] WP 細球半徑：R0.6 sliver / R0.8 爆炸（窗口太窄）。
+                        !   改 R<500µm 尖端距離 → core 純空氣、零鋼極相交(無 sliver) + 小而簡單(不爆)；尖端由 20µm LESIZE 解析
+
+MESH_SIZE = 5
+POLE_NUM  = 6
+*dim, POLE_ARRAY,,  POLE_NUM
+*dim, PROT_ARRAY,,  POLE_NUM
+*afun, DEG
+BTOL, 1e-6
+/UNITS, MKS
+
+R_norm    = 500e-6
+R_norm_xy = R_norm*sqrt(2.0/3.0)
+R_norm_z  = R_norm/sqrt(3.0)
+YOKE_IN_R  = 84e-3/2.0
+YOKE_OUT_R = 106e-3/2.0
+YOKE_MID_R = (YOKE_IN_R + YOKE_OUT_R)/2.0
+YOKE_H     = 2.0e-3
+PROT_R     = 10.0e-3/2.0
+PROT_H     = 7.0e-3
+POLE_R        = 6.0e-3/2
+POLE_TIP_R    = 40.0e-6
+POLE_CONE_LEN = 15e-3
+POLE_CONE_HYP = sqrt(POLE_CONE_LEN**2 + POLE_R**2)
+ANG1 = acos(POLE_R/POLE_CONE_HYP)
+ANG2 = 90 - ANG1
+L = POLE_CONE_LEN*POLE_TIP_R/POLE_R
+POLE_TIP_CENTER = L/cos(ANG2)
+POLE_CONE2_LEN  = L*cos(ANG2)
+POLE_TIP_R2     = POLE_TIP_R*cos(ANG2)
+POLE_TIP_FILLET_DROP = POLE_TIP_CENTER - POLE_TIP_R
+POLE_TIP_FILLET_PROT = (POLE_CONE2_LEN - POLE_TIP_FILLET_DROP)
+
+! ===== Yoke + 6 protrusions (VADD 合併成 V8，照 baseline) =====
+WPLANE, 1,0,0,0,,,,,,
+WPcsys,-1,0
+CYL4,0,0,YOKE_IN_R,0,YOKE_OUT_R,360,YOKE_H
+*do, prot_ind, 1, POLE_NUM,1
+	WPLANE,1,0,0,0,,,,,,
+	WPcsys,-1,0
+	*if, prot_ind,LE,3, then
+		temp_prot_h = -PROT_H
+		temp_prot_ang = 120*(prot_ind - 1)
+	*else
+		WPOFFS,0,0,YOKE_H
+		temp_prot_h = PROT_H
+		temp_prot_ang = 120*(prot_ind - 4) + 60
+	*endif
+	CYL4,YOKE_MID_R*cos(temp_prot_ang),YOKE_MID_R*sin(temp_prot_ang),PROT_R, ,,,temp_prot_h
+*enddo
+FLST,2, 1 + POLE_NUM, 6,ORDE, 2
+FITEM,2, 1
+FITEM,2,-(1+POLE_NUM)
+VADD,P51X
+*get, vol_yoke_ind, VOLU,,NUM, MAX
+
+! ===== 3 lower poles (half-cut) =====
+X0_LOW = YOKE_MID_R*cos(0)
+Y0_LOW = YOKE_MID_R*sin(0)
+Z0_LOW = -PROT_H
+*do, pole_ind,1,3,1
+	WPLANE, 1,0,0,0,,,,,,
+	WPcsys,-1,0
+	ROTA_ANG = 120*(pole_ind-1)
+	WPROTA, ROTA_ANG,
+	*get, VL_NUM, VOLU, ,NUM, MAX
+	VL_START = VL_NUM + 1
+	numstr, VOLU, VL_START
+	BLOCK, X0_LOW - 5e-3,  X0_LOW + 11e-3, Y0_LOW - 5e-3,  Y0_LOW + 5e-3,  Z0_LOW - 10e-3, Z0_LOW
+	BLOCK, X0_LOW - 5e-3,  X0_LOW - 2e-3,  Y0_LOW - 10e-3, Y0_LOW + 10e-3, Z0_LOW - 10e-3, Z0_LOW - 5e-3
+	BLOCK, X0_LOW - 10e-3, X0_LOW - 2e-3,  Y0_LOW - 5e-3,  Y0_LOW + 5e-3,  Z0_LOW - 10e-3, Z0_LOW - 2e-3
+	BLOCK, X0_LOW - 10e-3, X0_LOW - 5e-3,  Y0_LOW - 10e-3, Y0_LOW + 10e-3, Z0_LOW - 10e-3, Z0_LOW - 5e-3
+	*get, KP_NUM, KP  , ,NUM, MAX
+	*get, LI_NUM, LINE, ,NUM, MAX
+	KP_START = KP_NUM + 1
+	LI_START = LI_NUM + 1
+	numstr, KP,   KP_START
+	numstr, LINE, LI_START
+	l1 = R_norm_xy
+	l1_ang = atan2( 0 , R_norm_xy )
+	l2 = sqrt( (R_norm_xy + POLE_TIP_FILLET_PROT)**2 + POLE_TIP_R2**2 )
+	l2_ang = atan2( POLE_TIP_R2 , (R_norm_xy + POLE_TIP_FILLET_PROT) )
+	POLE_CONE_LEN_SHIFT = POLE_CONE_LEN + (R_norm_xy - POLE_TIP_FILLET_DROP)
+	l3 = sqrt( POLE_CONE_LEN_SHIFT**2 + POLE_R**2 )
+	l3_ang = atan2( POLE_R , POLE_CONE_LEN )
+	l4 = sqrt( (X0_LOW - 10e-3)**2 + POLE_R**2 )
+	l4_ang = atan2( POLE_R , (X0_LOW - 10e-3) )
+	l5 = abs( X0_LOW - 10e-3 )
+	l5_ang = atan2( 0 , (X0_LOW - 10e-3) )
+	l6 = abs( R_norm_xy + POLE_TIP_R )
+	l6_ang = atan2( 0, R_norm_xy + POLE_TIP_R )
+	K , , l1*cos(ROTA_ANG + l1_ang) , l1*sin(ROTA_ANG + l1_ang), Z0_LOW - 6e-3
+	K , , l2*cos(ROTA_ANG + l2_ang) , l2*sin(ROTA_ANG + l2_ang), Z0_LOW - 6e-3
+	K , , l3*cos(ROTA_ANG + l3_ang) , l3*sin(ROTA_ANG + l3_ang), Z0_LOW - 6e-3
+	K , , l4*cos(ROTA_ANG + l4_ang) , l4*sin(ROTA_ANG + l4_ang), Z0_LOW - 6e-3
+	K , , l5*cos(ROTA_ANG + l5_ang) , l5*sin(ROTA_ANG + l5_ang), Z0_LOW - 6e-3
+	K , , l6*cos(ROTA_ANG + l6_ang) , l6*sin(ROTA_ANG + l6_ang), Z0_LOW - 6e-3
+	LARC , KP_START , KP_START + 1 , KP_START + 5 , POLE_TIP_R
+	L , KP_START + 1 , KP_START + 2,,,,,,,,
+	L , KP_START + 2 , KP_START + 3,,,,,,,,
+	L , KP_START + 3 , KP_START + 4,,,,,,,,
+	L , KP_START + 4 , KP_START,,,,,,,,
+	*get, AR_NUM, AREA, ,NUM, MAX
+	AR_START = AR_NUM + 1
+	numstr, AREA, AR_START
+	AL, LI_START, LI_START + 1, LI_START + 2, LI_START + 3, LI_START + 4
+	VROTAT, AR_START, ,,,,,KP_START,KP_START + 4,,4
+	*get, vl_ind_temp, VOLU,,NUM,MAX
+	FLST,2,(vl_ind_temp - VL_START + 1),6,ORDE,2
+	FITEM,2,VL_START
+	FITEM,2,-vl_ind_temp
+	VADD,P51X
+	*get, vol_pole_ind, VOLU,,NUM,MAX
+	VADD, VL_NUM, vol_pole_ind
+	*get, vol_unite_ind, VOLU,,NUM,MAX
+	BLOCK,0,X0_LOW - 10e-3,Y0_LOW - 10e-3,Y0_LOW + 10e-3,Z0_LOW - 6e-3, Z0_LOW
+	VSBV, vol_unite_ind,vol_unite_ind + 1
+*enddo
+
+! ===== 3 upper poles =====
+	X0_HIGH = YOKE_MID_R*cos(0)
+	Y0_HIGH = YOKE_MID_R*sin(0)
+	Z0_HIGH = YOKE_H + PROT_H
+*do, pole_ind,4,6,1
+	WPLANE, 1,0,0,0,,,,,,
+	WPcsys,-1,0
+	ROTA_ANG = 120*(pole_ind-4) + 60
+	WPROTA, ROTA_ANG,
+	*get, VL_NUM, VOLU, ,NUM, MAX
+	VL_START = VL_NUM + 1
+	numstr, VOLU, VL_START
+	BLOCK, X0_HIGH - 3.5e-3,  X0_HIGH + 8.5e-3, Y0_HIGH - 5e-3,  Y0_HIGH + 5e-3,  Z0_HIGH, Z0_HIGH + 10e-3
+	BLOCK, X0_HIGH - 6.5e-3,  X0_HIGH - 3.5e-3, Y0_HIGH - 11e-3, Y0_HIGH + 11e-3, Z0_HIGH, Z0_HIGH + 10e-3
+	BLOCK, X0_HIGH - 16.5e-3, X0_HIGH - 6.5e-3, Y0_HIGH - 11e-3, Y0_HIGH + 11e-3, Z0_HIGH, Z0_HIGH + 10e-3
+	tip_upper_x = R_norm_xy*cos(ROTA_ANG)
+	tip_upper_y = R_norm_xy*sin(ROTA_ANG)
+	tip_upper_z = Z0_LOW - 6e-3 + R_norm_z*2
+	end_upper_x0 = X0_HIGH - 11.5e-3
+	end_upper_y0 = Y0_HIGH
+	end_upper_z0 = Z0_HIGH + 5e-3
+	end_upper_x = sqrt( end_upper_x0**2 + end_upper_y0**2 )*cos(ROTA_ANG)
+	end_upper_y = sqrt( end_upper_x0**2 + end_upper_y0**2 )*sin(ROTA_ANG)
+	end_upper_z = end_upper_z0
+	INCLINE_VECTORx = end_upper_x - tip_upper_x
+	INCLINE_VECTORy = end_upper_y - tip_upper_y
+	INCLINE_VECTORz = end_upper_z - tip_upper_z
+	INCLINE_ANG = atan2( INCLINE_VECTORz, sqrt(INCLINE_VECTORx**2+INCLINE_VECTORy**2) )
+	*get, KP_NUM, KP  , ,NUM, MAX
+	*get, LI_NUM, LINE, ,NUM, MAX
+	KP_START = KP_NUM + 1
+	LI_START = LI_NUM + 1
+	numstr, KP,   KP_START
+	numstr, LINE, LI_START
+	p1x = tip_upper_x
+	p1y = tip_upper_y
+	p1z = tip_upper_z
+	p2x = p1x + POLE_TIP_FILLET_PROT*cos(INCLINE_ANG)*cos(ROTA_ANG) - POLE_TIP_R2*sin(ROTA_ANG)
+	p2y = p1y + POLE_TIP_FILLET_PROT*cos(INCLINE_ANG)*sin(ROTA_ANG) + POLE_TIP_R2*cos(ROTA_ANG)
+	p2z = p1z + POLE_TIP_FILLET_PROT*sin(INCLINE_ANG)
+	POLE_CONE_LEN_SHIFT = POLE_CONE_LEN + (R_norm_xy - POLE_TIP_FILLET_DROP)
+	p3x = p1x + POLE_CONE_LEN_SHIFT*cos(INCLINE_ANG)*cos(ROTA_ANG) - POLE_R*sin(ROTA_ANG)
+	p3y = p1y + POLE_CONE_LEN_SHIFT*cos(INCLINE_ANG)*sin(ROTA_ANG) + POLE_R*cos(ROTA_ANG)
+	p3z = p1z + POLE_CONE_LEN_SHIFT*sin(INCLINE_ANG)
+	p4x = end_upper_x - POLE_R*sin(ROTA_ANG)
+	p4y = end_upper_y + POLE_R*cos(ROTA_ANG)
+	p4z = end_upper_z
+	p5x = end_upper_x
+	p5y = end_upper_y
+	p5z = end_upper_z
+	p6x = p1x + POLE_CONE_LEN*cos(INCLINE_ANG)*cos(ROTA_ANG)
+	p6y = p1y + POLE_CONE_LEN*cos(INCLINE_ANG)*sin(ROTA_ANG)
+	p6z = p1z + POLE_CONE_LEN*sin(INCLINE_ANG)
+	K,, p1x , p1y , p1z
+	K,, p2x , p2y , p2z
+	K,, p3x , p3y , p3z
+	K,, p4x , p4y , p4z
+	K,, p5x , p5y , p5z
+	K,, p6x , p6y , p6z
+	LARC , KP_START , KP_START + 1 , KP_START + 5 , POLE_TIP_R
+	L , KP_START + 1 , KP_START + 2,,,,,,,,
+	L , KP_START + 2 , KP_START + 3,,,,,,,,
+	L , KP_START + 3 , KP_START + 4,,,,,,,,
+	L , KP_START + 4 , KP_START,,,,,,,,
+	*get, AR_NUM, AREA, ,NUM, MAX
+	AR_START = AR_NUM + 1
+	numstr, AREA, AR_START
+	AL, LI_START, LI_START + 1, LI_START + 2, LI_START + 3, LI_START + 4
+	VROTAT, AR_START, ,,,,,KP_START,KP_START + 4,,4
+	*get, vl_ind_temp, VOLU,,NUM,MAX
+	FLST,2,(vl_ind_temp - VL_START + 1),6,ORDE,2
+	FITEM,2,VL_START
+	FITEM,2,-vl_ind_temp
+	VADD,P51X
+	*get, vol_pole_ind, VOLU,,NUM,MAX
+	VADD, VL_NUM, vol_pole_ind
+*enddo
+NUMCMP,VOLU
+
+! ============================================================================
+! [CONFIG 2026-07-13] gap 產生器 preset — 改 GAP_CFG 切模型（本 deck 已由 MT_Geom_gap_200um 改名）
+!   GAP_CFG=0 : gap_300um（舊）    base 300µm、無導柱 gap
+!   GAP_CFG=1 : gapdist（分布式）  base 100µm + 導柱兩端 gap（已廢 EMODIF 路線，值不重要）
+!   GAP_CFG=2 : gap_400um（均勻）  base 400µm、無導柱 gap
+!   GAP_CFG=3 : protgap_200um     導柱兩端各 200µm 真實氣隙、**無 base gap**（ADD_BASE=0）
+!   GAP_CFG=4 : protgap_t200b180  導柱**頂端 200µm / 底端 170µm**（不對稱）、無 base gap
+!   開關：ADD_BASE=切 base 極底氣隙、ADD_PROT=切導柱兩端氣隙。
+!   [MODIFIED 2026-07-13] 導柱厚度改「頂/底」維度：PROT_T_TOP=頂端(z 大端)、PROT_T_BOT=底端(z 小端)。
+! ============================================================================
+GAP_CFG = 5                          ! ← 改這個切 preset（0/1/2/3/4/5=gap_calibrate 逐極單盤）
+! [ADDED cfg5 2026-07-13] gap_calibrate：逐極「單一 disk」總氣隙(SINGLE_GAP=1、只切頂端 1 盤、PROT_T_BOT=0)、厚度=PROT_T_ARR(gpl)。鏡像 mesh deck。
+SINGLE_GAP = 0                        ! [ADDED] 預設雙盤；cfg5 設 1 = 單盤逐極
+*if, GAP_CFG, eq, 0, then
+    BASE_T = 0.3e-3 $ ADD_PROT = 0 $ ADD_BASE = 1 $ PROT_T_TOP = 200e-6 $ PROT_T_BOT = 200e-6
+*elseif, GAP_CFG, eq, 1, then
+    BASE_T = 0.1e-3 $ ADD_PROT = 1 $ ADD_BASE = 1 $ PROT_T_TOP = 78.6e-6 $ PROT_T_BOT = 86.87e-6
+*elseif, GAP_CFG, eq, 2, then
+    BASE_T = 0.4e-3 $ ADD_PROT = 0 $ ADD_BASE = 1 $ PROT_T_TOP = 200e-6 $ PROT_T_BOT = 200e-6
+*elseif, GAP_CFG, eq, 3, then
+    BASE_T = 0.2e-3 $ ADD_PROT = 1 $ ADD_BASE = 0 $ PROT_T_TOP = 200e-6 $ PROT_T_BOT = 200e-6
+*elseif, GAP_CFG, eq, 5, then
+    BASE_T = 0.2e-3 $ ADD_PROT = 1 $ ADD_BASE = 0 $ PROT_T_TOP = 200e-6 $ PROT_T_BOT = 0 $ SINGLE_GAP = 1
+*else
+    BASE_T = 0.2e-3 $ ADD_PROT = 1 $ ADD_BASE = 0 $ PROT_T_TOP = 200e-6 $ PROT_T_BOT = 180e-6
+*endif
+! [ADDED cfg5] 逐極單盤總氣隙 [m]，gpl 序=[P1,P3,P6,P5,P2,P4]（使用者指定 gap[P1..P6]=[332,402,371,507,451,739]µm）
+*if, GAP_CFG, eq, 5, then
+    *dim, PROT_T_ARR,, 6
+    PROT_T_ARR(1) = 332e-6            ! gpl1 = P1
+    PROT_T_ARR(2) = 371e-6            ! gpl2 = P3
+    PROT_T_ARR(3) = 739e-6            ! gpl3 = P6
+    PROT_T_ARR(4) = 451e-6            ! gpl4 = P5
+    PROT_T_ARR(5) = 402e-6            ! gpl5 = P2
+    PROT_T_ARR(6) = 507e-6            ! gpl6 = P4
+*endif
+PROT_GAP_R = PROT_R                  ! 導柱 gap 圓柱半徑 = 導柱半徑 5mm（conformal；slab 截面 = π·5² = 78.54mm²）
+
+! ===== [MODIFIED-BASEGAP 2026-07-12] 6 極 base 氣隙 conformal slab（厚 BASE_T；都往 tip 移）=====
+!   下極+上極 gap 都往 tip 端移動（local x 變小）、gap 截面 conformal(=該處鋼件截面)。
+!     下極 gxa 42.5（往 tip 5.5mm）；上極 gxa 40.95（往 tip 3.48mm）；厚 gxb=gxa+BASE_T。
+!   [2026-07-13] 加導柱(protrusion r=5mm 沿 z)兩端 gap：ADD_PROT=1 時每極切 2 顆薄-z 圓盤 cutter。
+!   全鋼已 VADD 成 1 volume → 無限 VSBW 會切全部極 → 沿用「finite cutter（WPROTA 到該極、z 限 base）VSBV,KEEP」。
+!   ★ conformal：cutter 貼合該極 base 截面（非固定 y±5 矩形），cutter⊆鋼 → VSBV,KEEP 後 void=截面、slab=截面（皆貼合）：
+!     下極 x42.5 截面 = T 形 BLOCK1(y±5,z[-17,-7]) ∪ BLOCK2(y±10,z[-17,-12]) ∪ BLOCK3(y±5,z[-17,-9]) → 3 子塊 VADD。
+!     上極 x40.95 截面 = BLOCK_C/B 皆 y±11 z[9,19] 矩形 → 單塊。
+ALLSEL, ALL
+*GET, vsteel, VOLU, , NUM, MAX          ! 目前唯一鋼 volume(NV_TOT=1)
+*do, gpl, 1, 6
+    WPLANE, 1,0,0,0,,,,,,
+    WPcsys, -1, 0
+    *if, gpl, le, 3, then
+        gaz = 120*(gpl-1)               ! 下極 0/120/240
+        gxa = 42.5e-3                    ! 48.0 − 5.5（往 tip）
+        gxb = gxa + BASE_T               ! [MODIFIED] 厚 = BASE_T
+    *else
+        gaz = 60 + 120*(gpl-4)          ! 上極 60/180/300
+        gxa = 40.95e-3                   ! 44.43 − 3.48（往 tip）
+        gxb = gxa + BASE_T               ! [MODIFIED] 厚 = BASE_T
+    *endif
+    WPROTA, gaz
+    *if, ADD_BASE, eq, 1, then                    ! [ADDED 2026-07-13] cfg=3(protgap) 跳過 base gap
+    *if, gpl, le, 3, then
+        ! 下極 conformal T-cutter = BLOCK1∪2∪3 截面（thin x）→ VADD
+        !   ⚠ VADD 會釋放 volume 號、下一極 BLOCK 會重用低號 → 不可用 gvb0+1..+3（會誤選/漏選）。
+        !   改用 component 快照：建塊前記 GOLD=現有 volume，建完 CMSEL,U 去掉 GOLD＝剛建 3 塊。
+        VSEL, S, VOLU, , ALL
+        CM, GOLD, VOLU
+        BLOCK, gxa, gxb, -5e-3,  5e-3,  -17e-3, -7e-3      ! BLOCK1 截面
+        BLOCK, gxa, gxb, -10e-3, 10e-3, -17e-3, -12e-3     ! BLOCK2 截面
+        BLOCK, gxa, gxb, -5e-3,  5e-3,  -17e-3, -9e-3       ! BLOCK3 截面
+        VSEL, S, VOLU, , ALL
+        CMSEL, U, GOLD, VOLU             ! = 剛建的 3 塊
+        VADD, ALL                        ! → 該極 conformal T-slab cutter
+        ALLSEL, ALL
+    *else
+        ! 上極 conformal cutter = y±11 z[9,19] 矩形（thin x）
+        BLOCK, gxa, gxb, -11e-3, 11e-3, 9e-3, 19e-3
+    *endif
+    *endif                                         ! [ADDED] ADD_BASE 結束
+    ! [ADDED 2026-07-13] 導柱(protrusion @ local(YOKE_MID_R,0), r=5mm 沿 z)兩端 gap（薄-z 圓盤 cutter）
+    !   WP 已 WPROTA 到本極 → 導柱在 local (YOKE_MID_R,0)。CYL4 depth 沿 WP +z；用 WPOFFS 定位 z 端。
+    *if, ADD_PROT, eq, 1, then
+        *if, SINGLE_GAP, eq, 1, then
+            PROT_T_TOP = PROT_T_ARR(gpl) $ PROT_T_BOT = 0     ! [cfg5] 逐極單盤、只切頂端
+        *endif
+        *if, gpl, le, 3, then
+            ! 下極 protrusion z∈[-7,0]：頂端 z∈[-PROT_T_TOP,0]（z=0 接 yoke）
+            CYL4, YOKE_MID_R, 0, PROT_GAP_R, ,,, -PROT_T_TOP
+            *if, PROT_T_BOT, GT, 0, then
+                WPOFFS, 0, 0, -PROT_H
+                CYL4, YOKE_MID_R, 0, PROT_GAP_R, ,,,  PROT_T_BOT
+                WPOFFS, 0, 0,  PROT_H
+            *endif
+        *else
+            ! 上極 protrusion z∈[2,9]：頂端 z∈[9-PROT_T_TOP,9]（z=9 接 base）
+            WPOFFS, 0, 0, (YOKE_H + PROT_H)
+            CYL4, YOKE_MID_R, 0, PROT_GAP_R, ,,, -PROT_T_TOP
+            WPOFFS, 0, 0, -(YOKE_H + PROT_H)
+            *if, PROT_T_BOT, GT, 0, then
+                WPOFFS, 0, 0, YOKE_H
+                CYL4, YOKE_MID_R, 0, PROT_GAP_R, ,,,  PROT_T_BOT
+                WPOFFS, 0, 0, -YOKE_H
+            *endif
+        *endif
+    *endif
+*enddo
+WPcsys, -1, 0
+! VSBV：鋼(vsteel) 減所有 cutter、KEEP 保留 cutter 當 conformal slab
+!   選「全部 volume 除 vsteel」= 全部 cutter（6 base；ADD_PROT 時 +12 導柱圓盤 = 18）
+VSEL, S, VOLU, , ALL
+VSEL, U, VOLU, , vsteel
+VSBV, vsteel, ALL, , , KEEP             ! 鋼減全部 cutter、KEEP slab(=selected)
+ALLSEL, ALL
+NUMCMP, VOLU
+
+
+! ===== [SELF-CHECK 2026-07-12] 6 gap conformal slabs（下極 T≈45mm³、上極 y±11≈66mm³；門檻抬到 120mm³）=====
+ALLSEL, ALL
+VSUM
+nsl = 0
+sltot = 0
+*GET, vmx, VOLU, 0, NUM, MAX
+*do, vi, 1, vmx
+  VSEL, S, VOLU, , vi
+  *GET, nc, VOLU, 0, COUNT
+  *if, nc, GT, 0, THEN
+    VSUM
+    *GET, vv, VOLU, vi, VOLU
+    *if, vv, LT, 120e-9, THEN            ! [MODIFIED 50→120] 上極 slab 66mm³＞50 會漏數
+      nsl = nsl + 1
+      sltot = sltot + vv
+    *endif
+  *endif
+*enddo
+ALLSEL, ALL
+/com, ===== GAP SLAB SELF-CHECK =====
+*MSG, INFO, nsl, sltot*1e9
+ SLABS count=%G  total=%G mm3  (base:6; ADD_PROT=1 ->+12 protrusion disks =18)
+
+! ===== [MODIFIED-IGES 2026-07-13] metre IGES → scratch（供 OCC 轉 mm STEP；main/IGES/ 已廢）=====
+!   交付走 STEP（deliver-step-for-check）：ANSYS 出 metre IGES 到 scratch db 夾 → OCC 讀+量 bbox 校 scale → mm STEP。
+!   輸出名依 GAP_CFG：0=gap_300um / 1=gapdist / 2=gap_400um。
+ALLSEL, ALL
+ALLSEL, BELOW, VOLU
+*if, GAP_CFG, eq, 0, then
+    IGESOUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\geom\geom_hexvariants\long2016_hexapole_gap_300um', 'iges'
+*elseif, GAP_CFG, eq, 1, then
+    IGESOUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\geom\geom_hexvariants\long2016_hexapole_gapdist', 'iges'
+*elseif, GAP_CFG, eq, 2, then
+    IGESOUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\geom\geom_hexvariants\long2016_hexapole_gap_400um', 'iges'
+*elseif, GAP_CFG, eq, 3, then
+    IGESOUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\geom\geom_hexvariants\long2016_hexapole_protgap_200um', 'iges'
+*elseif, GAP_CFG, eq, 5, then
+    IGESOUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\geom\geom_hexvariants\long2016_hexapole_gap_calibrate', 'iges'
+*else
+    IGESOUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\geom\geom_hexvariants\long2016_hexapole_protgap_t200b180', 'iges'
+*endif
+FINISH
+/EXIT, NOSAV

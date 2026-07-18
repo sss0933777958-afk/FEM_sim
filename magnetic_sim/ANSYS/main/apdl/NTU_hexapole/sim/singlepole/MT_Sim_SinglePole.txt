@@ -1,0 +1,119 @@
+! ============================================================================
+! MT_Sim_SinglePole.txt — NTU_hexapole 單極 solve deck（RESUME mesh_graded.db）
+!   mesh/solve 分離：RESUME ../../mesh/MT_Mesh_Graded.txt 產的 mesh_graded.db，
+!   加 SOURC36 線圈（1A×50匝，與短導柱同軸）+ D,ALL,MAG,0 遠場 BC，
+!   magsolv,3(DSP) 求解，抽 B 場 .dat（全節點 + 2 顆 sensor 加密球）到 data/singlepole/coil1/。
+!   MKS metre。比照 long2016_hexapole_halfcut/sim/singlepole/MT_Sim_SinglePole.txt。
+! ============================================================================
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\NTU_hexapole\db\sim\singlepole'
+Finish
+/cle
+/CLEAR,NOSTART
+/TITLE, NTU_hexapole single pole - solve 1A x 50 turns (RESUME mesh_graded.db)
+/FILNAME,sim_singlepole,1
+
+! ----- restore mesh-only model (geometry + mesh + materials + sensor spheres) -----
+RESUME,'mesh_graded','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\NTU_hexapole\db\geom\mesh_graded\'
+
+/PREP7
+*afun, DEG
+
+! ----- RESUME-safe 常數（BC / coil / extract 需要）-----
+SC = 1.0e-3
+! 外圓柱遠場（mesh 建於 z[-35,35]、中心 z=0）
+AIR_CYL_R = 80.0*SC
+AIR_CYL_H = 70.0*SC
+AIR_CYL_Z_TOP =  AIR_CYL_H/2          !  +35mm 端蓋
+AIR_CYL_Z_BOT = -AIR_CYL_H/2          !  -35mm 端蓋
+! 線圈（與短導柱同軸；使用者交付：內徑R3.5 外徑R7.5 高4.2 z7.05-11.25 半徑值）
+POSTX     = 20.5*SC                   ! 短導柱軸 x
+COIL_IN_R = 3.5*SC
+COIL_OUT_R= 7.5*SC
+COIL_R    = (COIL_IN_R + COIL_OUT_R)/2   ! 5.5mm 平均半徑
+COIL_THK  = COIL_OUT_R - COIL_IN_R       ! 4.0mm 徑向厚 (SOURC36 DY)
+COIL_H    = 4.2*SC                        ! 4.2mm 軸向高 (SOURC36 DZ)
+COILZ     = (7.05*SC + 11.25*SC)/2        ! 9.15mm node 平面（線圈 ±COIL_H/2 → z7.05-11.25）
+TURNS     = 50
+CURR      = 1
+! sensor 加密球中心（pole frame, metre）— extract 用
+S1X = 13.15*SC $ S1Y = -0.99*SC $ S1Z = -0.41*SC     ! n+ -> -z
+S2X = 13.15*SC $ S2Y = -0.99*SC $ S2Z =  0.66*SC     ! n+ -> +z
+SENS_R = 0.15*SC
+MAT_SENS = 5
+
+! ----- SOURC36 線圈（mesh_graded.db 未含 coil，於此加）-----
+ET_curr = 2
+ET, ET_curr, SOURC36
+! [MODIFIED] 電流反向（使用者：磁路要往磁極跑）→ CUR 取負，翻轉線圈激發磁通方向
+R, 1, 1, -TURNS*CURR, COIL_THK, COIL_H    ! R1=1(coil type) R2=-CUR(反向 50 A-turns) R3=DY R4=DZ
+*get, NODE_NUM, NODE, , NUM, MAX
+n1 = NODE_NUM + 1
+n2 = NODE_NUM + 2
+n3 = NODE_NUM + 3
+N, n1, POSTX + COIL_R, 0,          COILZ    ! 線圈上 +x
+N, n2, POSTX,          COIL_R,     COILZ    ! 線圈上 +y
+N, n3, POSTX,          0,          COILZ    ! 中心
+TYPE, ET_curr
+REAL, 1
+E, n1, n2, n3
+
+! ----- 遠場 BC: MAG=0 於外圓柱側面(r≈80) + 上下端蓋(z≈±35) -----
+LOCAL,11,1,0,0,0                          ! 圓柱 CS @ origin
+CSYS,11
+NSEL,S,LOC,X, AIR_CYL_R - 0.5e-3, AIR_CYL_R + 0.5e-3
+CSYS,0
+NSEL,A,LOC,Z, AIR_CYL_Z_TOP - 0.5e-3, AIR_CYL_Z_TOP + 0.5e-3
+NSEL,A,LOC,Z, AIR_CYL_Z_BOT - 0.5e-3, AIR_CYL_Z_BOT + 0.5e-3
+D,ALL,MAG,0
+ALLSEL,ALL
+FINISH
+
+! ----- solve -----
+/SOLU
+magsolv,3,,,,,1
+FINISH
+
+! ====================================================================
+! POST1: 抽 B 場 .dat → data/singlepole/coil1/（scratch 留 db/sim/singlepole/）
+! ====================================================================
+/POST1
+SET,LAST
+ALLSEL,ALL
+/HEADER,OFF,OFF,OFF,OFF,OFF,OFF
+/FORMAT,10,,20,12,,
+/PAGE,1000000,,1000000
+
+! ---- 全節點 ----
+/OUTPUT,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\NTU_hexapole\data\singlepole\coil1\singlepole_coord_all','dat'
+NLIST,ALL, , ,COORD
+/OUTPUT
+/OUTPUT,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\NTU_hexapole\data\singlepole\coil1\singlepole_bfield_all','dat'
+PRNSOL,B,COMP
+/OUTPUT
+
+! ---- S1 sensor 加密球（MAT_SENS 節點 ∩ S1 z 帶）----
+ESEL,S,MAT,,MAT_SENS
+NSLE,S
+NSEL,R,LOC,Z, S1Z-SENS_R, S1Z+SENS_R
+/OUTPUT,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\NTU_hexapole\data\singlepole\coil1\singlepole_coord_sensor_S1','dat'
+NLIST,ALL, , ,COORD
+/OUTPUT
+/OUTPUT,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\NTU_hexapole\data\singlepole\coil1\singlepole_bfield_sensor_S1','dat'
+PRNSOL,B,COMP
+/OUTPUT
+ALLSEL,ALL
+
+! ---- S2 sensor 加密球 ----
+ESEL,S,MAT,,MAT_SENS
+NSLE,S
+NSEL,R,LOC,Z, S2Z-SENS_R, S2Z+SENS_R
+/OUTPUT,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\NTU_hexapole\data\singlepole\coil1\singlepole_coord_sensor_S2','dat'
+NLIST,ALL, , ,COORD
+/OUTPUT
+/OUTPUT,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\NTU_hexapole\data\singlepole\coil1\singlepole_bfield_sensor_S2','dat'
+PRNSOL,B,COMP
+/OUTPUT
+
+ALLSEL,ALL
+SAVE
+FINISH

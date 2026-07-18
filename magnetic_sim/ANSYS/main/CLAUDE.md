@@ -46,8 +46,8 @@
 | 資料夾 | 是什麼 / 放什麼 | 要找資料去這裡 |
 |---|---|---|
 | `CAD_model/` | SolidWorks 原檔 + STEP（幾何 **source of truth**） | 量尺寸、出圖前對齊 CAD |
-| `IGES/` | ANSYS 匯出的 IGES（公尺 + mm 兩版） | 幾何匯出原件 |
-| `model_check/` | 單位轉換後給 ANSYS `IGESIN` 的 IGES | 建 mesh 前匯入用 |
+| ~~`IGES/`~~ | **已刪除（2026-07-13，使用者拍板）**：ANSYS 匯出 IGES 中繼庫。交付一律走 STEP（deliver-step-for-check）；需 IGES 中繼的走 scratch（`ANSYS_data/<model>/db/geom_hexvariants/`）。⚠ 部分舊 export deck 仍 `IGESOUT` 到此路徑（如 `MT_Geom_Export`→no_gap、NTU `UpperAssembly`）→ 重跑前需先建目錄或改指 scratch/model_check。舊內容可從 git 還原 | 交付看 `model_check/` STEP |
+| `model_check/` | 交付檢查用 mm STEP（+ 舊 IGES）；`IGESIN` 匯入用 | **交付幾何檢查、建 mesh 前匯入** |
 | `apdl/` | APDL 腳本：`<model>/{geom,sim,postproc}/`（+ sweep） | 改幾何/參數/重跑 sim 的 input |
 | `ANSYS_data/` | FEM 輸出 `<model>/<case>/`（`.dat` 場 / `.db` 模型 / `.cdb`） | **讀 FEM 結果**（.dat） |
 | `matlab/` | MATLAB 分析碼 `<model>/<功能組>/code/...` + `figures/` + `results/` + **`data/`（`.mat` 成果，規則 #2）** | 跑分析、畫圖、**讀/寫 `.mat`** |
@@ -59,7 +59,7 @@
 
 ```
 CAD_model (SLDPRT/STEP)
-   → IGES (ANSYS 匯出)  →  model_check (單位轉換)
+   → apdl geom → (IGES 中繼走 scratch) → OCC → model_check/*.step (交付檢查)
    → apdl/<model>/geom + sim (APDL input)
    → [ANSYS MAPDL 求解]
    → ANSYS_data/<model>/<case>/*.dat (場) + *.db (模型)
