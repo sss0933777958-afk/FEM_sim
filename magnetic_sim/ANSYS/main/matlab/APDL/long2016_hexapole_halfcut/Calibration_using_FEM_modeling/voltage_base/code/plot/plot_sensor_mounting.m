@@ -18,7 +18,7 @@ function plot_sensor_mounting(POLE, PREVIEW)
 
     %% ---- paths + 常數 / 幾何 ----
     addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');   % mt_constants
-    addpath(['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
+    addpath(['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\' ...
              'long2016_hexapole_halfcut\Calibration_using_FEM_modeling\voltage_base\code\main_function']);  % build_sensor_geometry
     cnst = mt_constants();
     [sensor_pos, sensor_n] = build_sensor_geometry(cnst);              % WP 框 [m]
@@ -61,7 +61,7 @@ function plot_sensor_mounting(POLE, PREVIEW)
 
     %% ---- tip 方塊 + 沿錐面 λ1 + air-gap λ2（安裝偏移，對照 PDF）----
     plot([T(1) foot(1)],[T(2) foot(2)],'-','Color',[.15 .35 .75],'LineWidth',1.8);   % tip→foot 沿錐面 = λ1·e1
-    lm = 0.5*(T(:)+foot);  text(lm(1),lm(2),'  \lambda_1=4.572 mm','FontSize',12.5, ...
+    lm = 0.5*(T(:)+foot);  text(lm(1),lm(2),'  4.572 mm','FontSize',12.5, ...
          'FontWeight','bold','Color',[.15 .35 .75],'Interpreter','tex');
     plot([foot(1) sx],[foot(2) sz],'-','Color',[.75 .35 .1],'LineWidth',1.8);        % foot→sensor = λ2·n+ (0.41)
     gm = 0.5*([foot(1);foot(2)]+[sx;sz]);  text(gm(1)+0.15,gm(2),'0.41 mm', ...
@@ -106,7 +106,7 @@ function plot_sensor_mounting(POLE, PREVIEW)
     if PREVIEW
         out = fullfile(tempdir, ['sensor_mounting_' POLE '_preview.png']);  res = 150;
     else
-        out = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
+        out = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\' ...
                'long2016_hexapole_halfcut\Calibration_using_FEM_modeling\voltage_base\figures\shared\' ...
                'sensor_mounting_' POLE '.png'];  res = 200;
     end
