@@ -24,6 +24,9 @@
 5. **tick 數量減半（x、y 兩軸都要）**：取現有 tick 每隔一個。
 6. **右邊 colorbar 同樣處理**：字加大加粗、colorbar tick 也減半。
 7. **單位用括號 `()`**：`x (mm)` / `z (mm)` / `|B| (T)`（**不是** `[]`）；座標一律用 **mm**。
+   - **字體分工（使用者拍板 2026-07-27，定案）**：**軸標題 / 刻度標題（axis label、colorbar label）一律用「標準數學字體」= LaTeX `\mathbf`（`Interpreter='latex'`，Computer Modern 粗體）**；如 `$\mathbf{|B|\;(mT)}$` / `$\mathbf{{}^{B}\hat{g}_{I}\;(mT/A)}$`。**刻度「數字」維持 Helvetica 粗體**（`FontWeight='bold'`，**不**套 `TickLabelInterpreter='latex'`）。即：標題數學字體、數字 sans-serif 粗體。⚠ 曾試把標題改 Helvetica（`\mathsf`/tex）**已被否決**——標題一律標準數學字體（且 `ᴮĝ_I` 的 hat/左上標**只有 latex 畫得出來**）。
+   - **字體大小統一 = 36（使用者拍板 2026-07-28，所有 paper 圖通用）**：刻度數字 `set(ax,'FontSize',36,'FontWeight','bold')`；軸標題/colorbar 標題同 36。不要各圖各用 28/30——一律 36。（3D box 圖本就 36，2D 圖也統一到 36。）
+8. **圖例每則的第一個字首字母大寫**（使用者拍板 2026-07-27）：legend 每一條的**開頭單字**要大寫（`Sampling range ≤ 150 µm`、`Mean = 0.250 mT`——不是 `sampling`/`mean`）。純符號/數學開頭（`|B|`、`ĝ_I`…）不受此限。範例：`plot_err_hist.m`。
 
 （補充慣例，沿用既有圖：通常**無標題**、圖上**不標「內插」**字樣——見交叉連結。）
 
@@ -77,10 +80,11 @@ xlim([-bh bh]); ylim([-bh bh]); zlim([-bh bh]);
 view(az,el);                                         % 先設 view（draw_box_edges 用 campos）
 set(gca,'FontSize',13,'FontWeight','bold','LineWidth',1.5);
 set(gca,'XTick',-2:1:2,'YTick',-2:1:2,'ZTick',-2:1:2);   % 三軸「同刻度」（z 跟 x/y 一致）
-draw_box_edges(bh, 1.5);                             % 手動畫框邊（省最遠角 3 邊）
+draw_box_edges(bh, 3.0);                             % 手動畫框邊（省最近角 3 邊；LineWidth 隨圖，3D paper 圖用 3.0）
 xlabel('x (mm)','FontWeight','bold'); ...
 ```
-`draw_box_edges`：立方 12 邊黑 `LineWidth 1.5`，**省略「離相機最遠角」相連 3 邊**（會橫穿內部變雜線）→ 剩 9 邊 = 外框 + 後方框邊，全黑等粗。用 `campos` 找最遠角（故 view 先設）。⚠ 若軸異質（z 範圍遠小於 x,y），`campos` 距離會被大範圍軸蓋掉、選錯角 → **這種就別用 A，改用 B**。
+`draw_box_edges`：立方 12 邊黑，**省略「離相機最近角（`min` campos 距離）」相連 3 邊**（＝前面 3 條，含那條會**橫穿內部**穿過資料的中間直邊）→ 剩 9 邊 = 外框輪廓 + **後方框邊**，全黑等粗（標準 3D 開口箱外觀）。用 `campos` 找最近角（故 view 先設）。
+⚠⚠ **2026-07-26 更正（別再犯）**：早期寫「省**最遠角**」是**錯的**——最遠角那 3 邊是**後方**框邊，使用者要它們**保留且加粗**；真正要省的是**最近角（前面）**的 3 邊（其中一條穿過球體/資料變雜線）。實作 = `cp=campos; [~,near]=min(sum((C-cp).^2,2)); 省 near 的 3 邊`。⚠ 若軸異質（z 範圍遠小於 x,y），`campos` 距離會被大範圍軸蓋掉、選錯角 → **這種就別用 A，改用 B**。
 
 **變體 B 配方**（異質軸 surf/山丘）：
 ```matlab
@@ -95,10 +99,17 @@ ax=gca; ax.Toolbar.Visible='off';                    % 匯出不帶 axes 工具�
 🔴 **踩過的坑（別重犯）**：
 - **不要 `axis equal`**（撐開 limits）；A 用 `daspect([1 1 1])`、B 用 `pbaspect([1 1 1])`。
 - **不要 `BoxStyle','full'`**（多畫細內邊）。
-- **`box on` vs 手動框邊不可混用**：A 幾何用 `box on` 在 el 負視角會前粗後細/最遠角橫穿雜線（故 A 才要手動）；**但 B（異質軸 surf）就是要 `box on`**——別硬套 A 的手動框邊（正規化 campos 也易選錯邊、被 X 掉）。
+- **`box on` vs 手動框邊不可混用**：A 幾何用 `box on` 會**前粗後細/後方 3 邊沒加粗到**（使用者打槍過）；故 A 要 `box off` + 手動 `draw_box_edges`（省最近角、9 邊全粗）；**但 B（異質軸 surf）就是要 `box on`**——別硬套 A 的手動框邊。
 - A 的**三軸刻度要一致**（z 常被設 0.5 間距）→ 明設 `ZTick` 跟 x/y 同；B 的 z 是別的量、各軸自然刻度即可。
 
 沿用①：`grid off`、單位 `()`、軸標粗體。
+
+**3D tick 放置（使用者拍板 2026-07-25；2026-07-26 補字體/框邊，A/B 皆適用）**：
+- **刻度數字字體 = 36 粗體**（3D paper box 圖統一；`set(ax,'FontSize',36,'FontWeight','bold')`）。合併多面板圖同此（見 `project_long2016_paper_figures`）。
+- **角落 / 三軸相交處不放 tick 與數字**：tick 取 xlim/ylim/zlim 內部、**不含 ±極值端點**（box 三軸在角落交會，端點數字會兩兩擠成一團）。做法 = tick 範圍比 limit 內縮一格（例：`±0.9` 框 → `XTick -0.5:0.5:0.5`，不要到 ±0.9）。
+- **tick 數量（含原點）取奇數**：讓 `0` 一定是 tick、且對稱（例 3 個 `[-0.5,0,0.5]`、5 個 `[-500,-250,0,250,500]`）。奇數 + 不含端點 → 乾淨對稱、角落不擠。
+- **框邊加粗**：變體 A 用 `box off` + `draw_box_edges(bh,3.0)`（省**最近角** 3 邊、留 9 邊全粗；**別用 BoxStyle full、別省最遠角**——見上「別再犯」）。
+- 範例：`figures/paper_fig_plot/plot_sphere_lattice_3d.m`（±0.9 框、三軸 `-0.5:0.5:0.5`、font 36、手動框邊省最近角）。
 
 範例圖：A＝`…/fix_dir/figures/charge_positions_P1P2_3d.png`（view −30/−20）；
 B＝`…/fix_dir/figures/svd_gain_3d.png`・`svd_iso_3d.png`（surf 山丘，view −40/30）、`…/Hall_sensor_base_fix_dir/figures/circuit_3d_*.png`。
@@ -111,8 +122,18 @@ B＝`…/fix_dir/figures/svd_gain_3d.png`・`svd_iso_3d.png`（surf 山丘，vie
 
 1. **小指數（|指數|≤1）一律乘進值裡、不抽因子**（使用者 2026-07-10 拍板擴充）：**10^-1 / 10^0 / 10^1 都不抽 `×10^n` 因子，直接顯示原值**（如 `0.4230` 不是 `4.230×10^-1`；`7.327 mT/A` 不是 `7.327×10^0`）。**只有 |指數|≥2 才抽 10^n 因子**（如 `7.154×10^-3`、`1.23×10^5`）。實作：auto-factor helper 的判準 = 矩陣 `if abs(e)>=2` 才抽（原 `if e~=0`）、純量 `if abs(ge)<=1` 印原值（原 `if ge==0`）。範例：`gen_B_matrix.m` 的 B 矩陣（對角 0.42 直接顯示）、各 `emit_model_results.m` 的 `emit_mat/emit_e/emit_scalar_unit`。
 2. **無單位 / 無因次不標**：dimensionless 的量（如 K̄_I）**不加**單位標記——不要 `[--]`、`[-]`、`[\text{--}]`；有單位才標（`[mT]`/`[A]`/`µm`/`mT/A`…，圖沿用①的 `()`）。
+3. **正值不標 `+` 號**（使用者拍板 2026-07-26）：矩陣 / 數值輸出**只有負值標 `−`、正值不加 `+`**（如 `7.0445` 不是 `+7.0445`；`-1.7016` 保留）。實作：`fprintf` 格式用 `%9.4f`（不是 `%+9.4f`）。範例：`Calibration_using_FEM_modeling/function/emit_tex.m` 的 `emit_mat`/`emit_e`。
+4. **矩陣用標準 bmatrix、不用欄位標籤表格**（使用者拍板 2026-07-26）：給使用者的矩陣（K̄_I / ᴮĤ / G / F…）一律 `\begin{bmatrix}` 標準矩陣（隱含 P1~P6 順序），**不要**帶 `P1..P6` 欄/列標籤的 `array{c|cccccc}` 表格。實作：`emit_tex.m` 的 `emit_mat` 已改 bmatrix。
+5. **水平軸「起點 + 終點」都要標數字；縱軸首末都不標**（使用者拍板 2026-07-26/27，2D 圖通用；直方圖 / 線圖皆適用）：
+   - 一張圖兩軸的端點值**只由水平軸負責標**——**x 軸起點與終點都要有數字**（起點如 `0`/線圖 `40`；終點如直方圖 `1`/線圖 `500`），**縱軸起點與末端都不標**（縱軸只留內縮 tick）。
+   - **起始點不進 `XTick`**（原點在角落、不畫刻度線）：`XTick` 只放內部值（如 `[2 4 6 8]`），起始 `0` 用 `text(ax,0,-0.022*ytop,'0',...,'VerticalAlignment','top','Clipping','off')` 在原點下方**補字**（有數字、無 tick mark）。線圖第一點若本就在軸內（如 x 從 40 起），該點可直接留在 `XTick`。
+   - **水平軸「終點」也一定要標數字**（使用者拍板 2026-07-27，**無例外**——直方圖也要）：水平軸的**起點與終點都要有數字**（縱軸則首末都不標）。兩種做法依情境：
+     - **線圖 / 端點是真 tick**（如掃描 40~500）：起點 + 終點都放進 `XTick`（`[40 100 200 300 400 500]`），正常刻度線。
+     - **直方圖 / 端點在角落**（起點在原點、終點在右緣，該處不畫 tick line）：`XTick` 只放內部值，**起點 + 終點各用 `text` 補在該端下方**（無 tick mark）：`xr=xlim(ax); text(ax,xr(1),-0.022*ytop,sprintf('%g',xr(1)),...); text(ax,xr(2),-0.022*ytop,sprintf('%g',xr(2)),...)`（`VerticalAlignment top`、`Clipping off`）。⚠ 之前「直方圖終點不標」是**錯的**，已更正。
+   - 連帶：講「tick 數量」時**不含起始/終點**（「x 軸 4 個內部 tick」= `[2 4 6 8]`，另加起點 0 + 終點 1；縱軸「3 個 tick」= 首末不標的 3 個內縮值）。
+   - 範例：`plot_err_hist.m`（`XTick=[0.2 0.4 0.6 0.8]` + `text` 補起點 0 + 終點 1、y 三內縮）、`plot_ell_gain_vs_R.m`（x 起點 40 + 終點 500 都在 XTick）。
 
-範例實作：`…/fix_dir/code/function/emit_model_results.m`（K̄_I 無單位、^Bĝ_I 的 `ge==0` 分支）。
+範例實作：`…/fix_dir/code/function/emit_model_results.m`（K̄_I 無單位、^Bĝ_I 的 `ge==0` 分支）、`Calibration_using_FEM_modeling/function/emit_tex.m`（bmatrix + 正值不標 +）。
 
 ## 分布 / 疊圖直方圖 bin 間距（histogram spacing）
 
@@ -121,6 +142,15 @@ B＝`…/fix_dir/figures/svd_gain_3d.png`・`svd_iso_3d.png`（surf 山丘，vie
 - **bin 數固定 `nb = 180`**：`edges = linspace(min(allData), max(allData), nb+1)`（bin 寬 ≈ 資料範圍/180，夠密）。兩組疊圖**共用同一 edges**。
 - bars 樣式：`FaceAlpha 0.55`、`EdgeColor 'w'`、`LineWidth 0.3`；mean 用 `xline` 虛線（同色）；legend 用 histogram handles；上方留 headroom（`ylim*1.20`）讓 legend 不壓 bar。
 - 範例：`plot_gain_iso_overlay.m` 的 `render_overlay`（gain 𝒞 / iso κ 疊圖）。
+
+## Colorbar 寬度（paper 合併圖，定案 2026-07-27）
+
+使用者拍板：**多 panel 合併 paper 圖（`plot_circuit_side.m` 的 P1|P2 側視、`plot_flux_arrows_merged.m` 的巨觀|zoom）的 colorbar 寬度，用「佔圖寬固定比例」控制、定案 `CBW_RATIO = 0.009`（= cbw / figW，細長條）**。
+
+- **做法**：manual pixel 佈局，colorbar `Units='pixels'`、`Position=[x y cbw H]`，其中 `cbw` 由 `cbw = CBW_RATIO·base/(1−n·CBW_RATIO)` 解出（`base` = 圖寬扣掉 colorbar 的部分、`n` = 該圖 colorbar 數）。這樣不論圖寬窄，**colorbar 佔圖比例一致**（各圖縮到同寬時視覺同粗）。
+- **為何用比例不用絕對 px**：不同圖 figW / 匯出解析度不同，固定 px 會讓縮放後粗細不一；比例法保證一致。
+- **改寬度**：只改腳本頂端 `CBW_RATIO` 常數（`plot_circuit_side.m` 與 `plot_flux_arrows_merged.m` 共用同值，改要同步）。
+- **P1/P2 共用單一 colorbar**（使用者拍板 2026-07-27，比照 `flux_arrows_merged`：一個 colorbar、shared clim = 兩 panel 全域 max；弱場 panel 顯冷色，如 flux 巨觀 panel 幾乎全藍）——**不是每 panel 各自 colorbar**（那是誤解，已改回）。合併圖靠「兩 panel 共用 box 高度 H + 同 y0」對齊上下邊框。
 
 ## 同類比較圖共用色階 / 軸尺度（shared color/axis scale for comparison）
 

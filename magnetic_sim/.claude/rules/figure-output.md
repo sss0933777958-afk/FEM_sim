@@ -20,15 +20,19 @@
 - ②**一任務一腳本、原地改**（不另開第二支腳本；一張圖對一支腳本）。
 - ③場圖**真實 FEM 節點、不內插**（除非使用者明示，且須在圖說標示為內插）。
 
-## Calibration：figures/ 依模型分子夾（2026-07-15）
+## Calibration：figures/ 佈局（2026-07-23 併入共用夾）
 
-`Calibration_using_FEM_modeling/{current_base,voltage_base}/figures/` 底下再分三子夾：
-- **`single_param/`** — 純 fix（USE_BIAS=false、載 `fit_fixl`/single-parameter）的圖。
-- **`eighteen_param/`** — 純 18-param bias（USE_BIAS=true、載 `fit_bias`/`e_hat`）的圖。
-- **`shared/`** — 同時比較 fix+bias 的圖，或與模型無關的場/幾何/sensor 診斷圖。
+三模型 figures 已併入**共用夾** `Calibration_using_FEM_modeling/figures/<model>/<base>/<param>/`：
+- `<model>` = long2016_hexapole_halfcut | hung_hexapole | NTU_hexapole；`<base>` = current | voltage。
+- `<param>` 三子夾：
+  - **`single/`** — 純 fix（USE_BIAS=false）的圖。
+  - **`eighteen/`** — 純 18-param bias（USE_BIAS=true）的圖。
+  - **`common/`** — 同時比較 fix+bias、或與模型無關的場/幾何/sensor 診斷圖。
+- plot 腳本併入 `Calibration_using_FEM_modeling/plot/<model>/<base>/`（**不分 param**）。
 
-plot 腳本的 `figdir` 依該圖類別固定寫 `fullfile(<root>,'figures',<sub>)`；`figures/` root 只留子夾 + README
-（no-mixed-files）。（`results/` 另分 `single_param`/`eighteen_param`，見 `results-pdf-only.md`。）
+plot 腳本的 `figdir` 寫 `fullfile(CAL,'figures',MODEL,BASE,<param>)`；各 `<param>/` 只放 `.png`。
+（舊命名 `{single_param,eighteen_param,shared}` → 新 `{single,eighteen,common}`；舊 per-model
+`<model>/Calibration_using_FEM_modeling/{current_base,voltage_base}/figures/` 已退役。`results/` 見 `results-pdf-only.md`。）
 
 ## 小提醒
 

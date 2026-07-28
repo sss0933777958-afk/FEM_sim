@@ -57,6 +57,12 @@ coil 編號純粹是 **deck 迴圈的建構順序**，各 model 不同：
 
 `solve_KI_bar_gain.m` 的 K̂ 是**自由 LS 解**，唯一的 gauge 是純量 `5/(6·g11)`（改不了任何相對號誌/結構）→ 此檢驗**非循環論證**。
 
+## 📐 對外顯示一律 P1~P6 排序（使用者拍板 2026-07-26）
+
+給使用者看 / 印**任何逐極矩陣**（裸 `G`、K̄_I、ᴮĤ、D…）一律照 **P1~P6** 排列，**不用 APDL coil 序**。
+- `G`（`solve_current` 回傳，6×6）：**列（電荷=Pc_base）本來就是 paper 序**，只需換**欄（激發=coil 序）** → 用 `apdl_to_paper_idx` 的**反排列** `paper2coil`（`for j, paper2coil(apdl_to_paper_idx(j))=j`；long2016/NTU `[1,5,2,6,4,3]`、hung `1:6`），`Gp = G(:,paper2coil)`。換完 R150 的 G 對角占優（~+7~8.4 / off-diag ~−1.4）。
+- K̄_I / ᴮĤ / D 等**已經過 F 重排**成 paper 序 → 直接印即可；**只有裸 `G` 要自己換欄**。
+
 ## 踩過的坑（2026-07-17，別重犯）
 
 `hung/current_base/main.m:44` 抄了 long2016 的 `[1,3,6,5,2,4]` 去解讀 hung 的 identity 資料，**又**疊上從 long2016 抄來的 `coil_sign=[1 -1 1 -1 -1 1]`（hung raw 全 sink、全域 negate 就到位，根本不需要）→ `model_results_R{700,300}.pdf` 的 K̄_I 有 3 個自激發變負。修正後對角占優、六個全正。
