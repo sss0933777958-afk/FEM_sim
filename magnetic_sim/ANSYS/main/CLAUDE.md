@@ -1,57 +1,84 @@
-# main/ — 工作目錄全域規則（給 Claude）
+# main/ — 活躍工作區權威規則（給 Claude）
 
-`magnetic_sim/ANSYS/main/` 是目前**唯一活躍的設計**：4-pole MEMS Quadrupole（原 `kuo/`，FEM 求解器 = ANSYS MAPDL）。
-本檔是 Claude 在此目錄工作的導覽 + 規則。動手前先讀：要找什麼資料、放哪、用哪支 resolver、繪圖怎麼做。
+`magnetic_sim/ANSYS/main/` 是 FEM 模擬的**活躍工作區**。第二層為 model topics：
+`long2016_hexapole_halfcut`（主力）/ `kuo_quadrupole`（4-pole MEMS Quadrupole，原 kuo/）/ `zhang_quadrupole`（CAD 用 `long_fei`）。
 
-> 補充規範（不在此重複）：輸出位置細表見 `../../.claude/rules/main-workspace.md`；
-> 操作 SOP（出 STEP / 跑 FEM / 抽場 / fit / 畫圖…）見 `doc/workflows/README.md`；
-> 讀 ANSYS 結果防呆見 `../../.claude/rules/result-read-safety.md`。
+**本檔 = 在 main/ 工作時的權威綱要**（cwd 在 main/ 或其子夾時自動載入）。
 
----
-
-## 📁 main/ 相關規則（已移到全域自動載入的 `.claude/rules/`）
-
-**原 `main/rules/` 的 6 條規則已於 2026-07-06 移到 `…/FEM_sim/.claude/rules/`，改為每 session 自動載入**（不必再手動「先讀」）。全文見 `../../.claude/rules/`（索引 `../../.claude/rules/README.md`）：
-1. **`db-folder-retention.md`** — `ANSYS_data/<model>/db/` 子夾只留 `.db` + 主 `.rmg`（無 digit），殘留禁留。
-2. **`matlab-output-layout.md`** — MATLAB `.mat` 放**產生它的程式旁 `data/`**（`matlab/<model>/<activity>[/<sub>]/data/`）。`MATLAB_data/` 已於 2026-06-26 全量遷移並**移除**。
-3. **`results-pdf-only.md`** — `…/Hall_sensor_base_fix_dir/results/` 只放 `.pdf`。
-4. **`figure-style.md` / `figure-output.md`** — 畫圖前**先問使用者要哪個風格選項**（①粗體框圖）；圖一律輸出實檔到 `figures/`、原地改覆蓋迭代到定案。
-5. **`read-rules-first.md`** — 保留為提醒（規則已自動載入，不必再手動先讀）。
+> 🗂 分層（都自動載入、由內而外疊加）：
+> - **本檔 `main/CLAUDE.md`** — 活躍工作區完整規則（權威）。
+> - `../../../CLAUDE.md`（`FEM_sim/`）— 容器架構 + **backup/ 樹**共通約束（跨設計規則兩邊鏡像，改一處要同步）。
+> - `../../.claude/rules/*.md`（28 條細則）— 觸發式細則；見下「Quick Triggers」索引，動到特定東西前**先讀全文**。
+> - memory（`~/.claude/projects/G--my-workspace/`）— Claude 跨 session 記憶（索引常駐、細節按需）。
+>
+> ⚠ **開新 session 請開在 `main/`（或子夾）**，才吃得到本檔 + 上面全部；開在更上層（FEM_sim / workspace 根）會漏掉本檔。
 
 ---
 
-## 🔒 鐵則：不擅自更動檔案架構
+## 🔒 鐵則
 
-**未經使用者明確指示，不得更動檔案／資料夾架構** —— 包含**移動、改名、刪除、新建資料夾、重組目錄、搬移檔案**。
-- 需要這類動作時 → **先問使用者**，得到明確同意才做。
-- **例外**：編輯既有檔案的**內文**（改程式/文件內容）不受此限；但**新建/刪除/移動檔案或資料夾**一律先問。
-- 繪圖時「新增功能組資料夾」也屬架構變動 → 依下方繪圖規則，**開新組前先問**。
+### 1. 不擅自更動檔案架構
+未經使用者明確指示，不得**移動 / 改名 / 刪除 / 新建資料夾 / 重組目錄 / 搬移檔案** → 一律**先問**。
+- **例外**：改既有檔的**內文**（程式 / 文件內容）不受此限。
+- 繪圖「新增功能組資料夾」也算架構變動 → 依繪圖規則，**開新組前先問**。
+
+### 2. 改動同步 README
+改了東西就把**受影響的** README 一起更新：改某夾內容 → 更新該夾 `README.md`；新增/改名/移動夾（須先問）→ 更新上層索引 README + 本檔「資料夾架構地圖」。範圍 = 受影響那幾份。
 
 ---
 
-## 📄 鐵則：改動同步 README
+## Hexapole Design Constraints (Mandatory)
+適用**所有** hexapole 設計、不可協商：
+1. **Orthogonal pair axes**：P1-P2 / P3-P4 / P5-P6 三對連線互相垂直。
+2. **Tips on common sphere**：6 尖端距 WP 中心 = R_norm（可調）。
+3. **60° azimuthal offset**：上層相對下層轉 60°。
+4. **alpha = arctan(√2) = 54.74° FIXED**（由 1–3 導出，非自由參數）：`R_norm_xy = R_norm·√(2/3)`、`R_norm_z = R_norm/√3` 公式鎖定；下極 0/120/240°、上極 60/180/300°。
 
-**改了東西，就把「受影響的」README 一起更新**（不必每次重掃全部）。
-- 改了某資料夾的**內容**（新增/刪除/修改裡面的檔）→ 更新**該夾的 `README.md`**（內容清單、用途若變）。
-- 若**新增/改名/移動資料夾**（依上方鐵則須先問使用者）→ 一併更新**上層的索引 README** 與本檔 **`## 資料夾架構地圖`**。
-- 範圍 = **受影響的那幾份**；整個 repo 每層都有 README（根到葉），別讓它們跟實況脫節。
+## APDL / 通用 Rules
+- 6 個 coil 腳本**同步**，只差 `CURR_ARRAY`（激發極=1、其餘=0）。
+- code 註解一律**英文**；對使用者解說一律**繁體中文**。
+- APDL 改動標 `[ADDED]` / `[MODIFIED]`；`/SOLU` 前必驗 `D,ALL,MAG,0` 邊界；保留 `!****` 註解碼（除非要求刪）；tab 縮排沿原樣。
+- 未經批准不改幾何參數 / 元素型別（SOLID96、SOURC36）/ 材料。
+- 用 dissertation notation；對外一律 **P1–P6**，APDL coil index 只在改 APDL code / raw 脈絡時提。
+
+## 🎨 繪圖（強制，畫任何圖前先讀）
+- **先問功能組 + 風格選項**（風格 preset 見 `figure-style.md`），不自己猜、不憑記憶。
+- **一任務一腳本、原地改**：同一支改到定案；**定案前不另開**；使用者沒說「新增」就不開第二支（一組可多支，但各對一張已定案的圖）。
+- **一律輸出實檔到該組 `figures/` → 覆蓋同檔迭代**到定案（不丟 temp preview 等定案才落地），見 `figure-output.md`。
+- 不屬於任何現有功能組 → 要新增功能組資料夾（`matlab/<model>/<新組>/code/plot/` + `figures/`）→ **先問**。
+- **場圖畫真實 FEM 節點原值，不用 scatteredInterpolant / 格點內插**（除非使用者明確要求 → 且圖說標「內插」）。減量用「每格挑最近 y=0 平面節點」（仍是節點原值）。見 memory `plot-real-nodes`。
+
+## Prohibitions
+- NEVER commit ANSYS 輸出（`*.rst / *.db / *.full` …）。
+- NEVER 未經批准改幾何參數 / 元素型別 / 材料屬性。
+- NEVER 改 alpha（54.74°）或 R_norm_xy / R_norm_z 公式；NEVER 產生違反對極正交的配置。
+- NEVER 移除 BC 區塊（`[ADDED]` block）。
+- NEVER 清 sim（rm intermediates / result dir）前沒讀 `sim-cleanup.md` 全文；NEVER 用 `--full` 除非使用者**明確同意**（預設 half-clean，保 `.db` + 主 `.rmg`）；NEVER 繞過 helper 手刻 `rm` ANSYS 檔。
+- NEVER 改 ANSYS 幾何 / `mt_constants` 前沒量對應 CAD；不一致**不自己選值**，通報使用者拍板（`ansys-cad-alignment.md`）。
+- NEVER 用內插畫場圖 / 把內插當 raw 呈現（除非明示）。
+
+## Notation Standard
+全依 Fei Long 2016 dissertation。canonical glossary：`backup/hexapole-long2016/docs/notation-glossary.md`。
+- 對外一律 **P1–P6**；APDL coil index 只在 APDL code / raw 脈絡。
+- **coil→paper map 是 per-model（非全域）**：long2016 `[1,3,6,5,2,4]` / NTU `[1,3,6,5,2,4]` / hung `identity`；新 model 用 identity。**別互抄**（`pole-coil-numbering.md`；舊全域宣稱是錯的、曾靜默污染 hung K̄_I）。
+- ρ 兩義：physical（500µm）vs fitted（900µm）—— 講清哪個。
+- 單位：ANSYS 出 Tesla；WP 場圖用 mT；dissertation Fig 2.4 用 Gauss。（完整單位表見 `unit-reference.md`。）
 
 ---
 
 ## 資料夾架構地圖（9 個頂層夾）
 
-每夾都有自己的 `README.md`，要動該夾前先讀。第二層幾乎都是 **model topic**：
-`long2016_hexapole_halfcut`（主力）/ `kuo_quadrupole` / `zhang_quadrupole`（CAD 用 `long_fei`）。
+每夾都有自己的 `README.md`，要動該夾前先讀。
 
 | 資料夾 | 是什麼 / 放什麼 | 要找資料去這裡 |
 |---|---|---|
 | `CAD_model/` | SolidWorks 原檔 + STEP（幾何 **source of truth**） | 量尺寸、出圖前對齊 CAD |
-| ~~`IGES/`~~ | **已刪除（2026-07-13，使用者拍板）**：ANSYS 匯出 IGES 中繼庫。交付一律走 STEP（deliver-step-for-check）；需 IGES 中繼的走 scratch（`ANSYS_data/<model>/db/geom_hexvariants/`）。⚠ 部分舊 export deck 仍 `IGESOUT` 到此路徑（如 `MT_Geom_Export`→no_gap、NTU `UpperAssembly`）→ 重跑前需先建目錄或改指 scratch/model_check。舊內容可從 git 還原 | 交付看 `model_check/` STEP |
+| ~~`IGES/`~~ | **已刪除（2026-07-13）**：交付一律走 STEP（`deliver-step-for-check`）；IGES 中繼走 scratch（`ANSYS_data/<model>/db/geom_hexvariants/`）。⚠ 部分舊 export deck 仍 `IGESOUT` 到此路徑 → 重跑前需先建目錄或改指 scratch/model_check | 交付看 `model_check/` STEP |
 | `model_check/` | 交付檢查用 mm STEP（+ 舊 IGES）；`IGESIN` 匯入用 | **交付幾何檢查、建 mesh 前匯入** |
 | `apdl/` | APDL 腳本：`<model>/{geom,sim,postproc}/`（+ sweep） | 改幾何/參數/重跑 sim 的 input |
 | `ANSYS_data/` | FEM 輸出 `<model>/<case>/`（`.dat` 場 / `.db` 模型 / `.cdb`） | **讀 FEM 結果**（.dat） |
-| `matlab/` | MATLAB 分析碼 `<model>/<功能組>/code/...` + `figures/` + `results/` + **`data/`（`.mat` 成果，規則 #2）** | 跑分析、畫圖、**讀/寫 `.mat`** |
-| ~~`MATLAB_data/`~~ | **已移除（2026-06-26）**：全量遷移到各活動 `matlab/<model>/<activity>/data/`（規則 `../../.claude/rules/matlab-output-layout.md`）；`matlab_path()` 已 deprecated | `.mat` 改去 `matlab/.../data/` |
+| `matlab/` | MATLAB 分析碼 `<model>/<功能組>/code/...` + `figures/` + `results/` + **`data/`（`.mat` 成果）** | 跑分析、畫圖、**讀/寫 `.mat`** |
+| ~~`MATLAB_data/`~~ | **已移除（2026-06-26）**：遷到各活動 `matlab/<model>/<activity>/data/`；`matlab_path()` deprecated | `.mat` 改去 `matlab/.../data/` |
 | `doc/` | LaTeX 原稿 + 編譯 PDF + `workflows/`(SOP) | 推導、報告、流程 SOP |
 | `.claude/` | Claude Code 本地設定（`settings.local.json`） | 非工作產物，通常不動 |
 
@@ -69,30 +96,56 @@ CAD_model (SLDPRT/STEP)
 ```
 
 ## Resolver（路徑解析，不要硬寫絕對路徑）
-
-都在 `matlab/<model>/common/`，相對自身定位（資料夾改名/搬移自動沿用）：
-- `ansys_path('<model>'[, 'coilN', ...])` → `ANSYS_data/<model>/...`（讀 FEM `.dat/.db`）
-- ~~`matlab_path(...)`~~ **已 deprecated**（`MATLAB_data/` 已移除）：`.mat` 一律放各活動 `matlab/<model>/<activity>/data/`，用腳本自身 root 變數算 `fullfile(<本組夾>,'data')`、不硬寫絕對路徑。
+在 `matlab/<model>/common/`，相對自身定位：
+- `ansys_path('<model>'[, 'coilN', ...])` → `ANSYS_data/<model>/...`（讀 FEM `.dat/.db`）。
+- ~~`matlab_path(...)`~~ **deprecated**：`.mat` 一律放各活動 `matlab/<model>/<activity>/data/`，用腳本自身 root 變數算 `fullfile(<本組夾>,'data')`。
 
 ## matlab/ 功能組 schema
-
-`matlab/<model>/` 第二層是**功能組**（activity），每組視性質含：
-- 單一主程式組 → `code/main/main.m`（如 `Calibration using FEM modeling/{fix_l,no_fix_l}`）
-- 多腳本組 → `code/scripts/`（如 `fixl_fit, bias_fit, sensor_d, validation`）
-- 純繪圖組 → `code/plot/`（如 `field_viz, field_cancellation`）
-- 每組另有 `figures/`（圖）、`results/`（PDF / auto-gen `.tex`）、**`data/`（該組 `.mat` 成果，規則 #2 `../../.claude/rules/matlab-output-layout.md`）**。
-  - `Calibration_using_FEM_modeling` 4 子夾一律有 `data/`；其他組有產 `.mat` 才有。
+`matlab/<model>/` 第二層是**功能組**（activity）：
+- 單一主程式組 → `code/main/main.m`；多腳本組 → `code/scripts/`；純繪圖組 → `code/plot/`。
+- 每組另有 `figures/`、`results/`（PDF）、**`data/`（`.mat` 成果，見 `matlab-output-layout.md`）**。
 
 ---
 
-## 🎨 繪圖腳本規則（強制，畫任何圖前先讀）
+## ANSYS 可用性 + 典型指令
+本機 MAPDL：`G:\ANSYS Inc\v252\ansys\bin\winx64\MAPDL.exe`（不存在則搜標準位置 `C:\Program Files\ANSYS Inc\<ver>\...`）。
 
-1. **動手畫圖前，先跟使用者確認這支繪圖腳本屬於哪個功能組**（`field_viz` / `field_cancellation` / …），不要自己猜。
-2. **不屬於任何現有功能組** → 要**新增一個功能組資料夾**（`matlab/<model>/<新組>/code/plot/` + `figures/`）；**開新組前也要先問使用者**。
-3. **每個圖 / 每個繪圖任務只維護「一支」腳本**：在同一支腳本上**原地反覆修改**到使用者定案；**定案前不可另開新腳本**。
-4. **使用者沒明講「新增（另一支）」就不開第二支腳本**（一個功能組底下可有多支，但各自對應一張已定案的圖）。
-5. **圖一律實際輸出到該組 `figures/`**（使用者要直接開檔）；**要改就原地改腳本→重跑→覆蓋同一個檔**，反覆覆寫到使用者定案（**不要**只丟 temp preview 等定案才落地）。詳見 `../../.claude/rules/figure-output.md`。
-6. 沿用 repo 既有 Figure Production 慣例：**場圖一律畫真實 FEM 節點原值，不用 scatteredInterpolant / 格點內插**（除非使用者明確要求，且須在圖說標示為內插）。
-7. **動手畫圖前（與確認功能組同時），先問使用者「要用哪個風格選項？」**——風格 preset 目錄見 `../../.claude/rules/figure-style.md`（目前：①粗體框圖）。不可自己預設風格、不可憑記憶猜。
+```bash
+ANSYS="G:\ANSYS Inc\v252\ansys\bin\winx64\MAPDL.exe"
+# 單顆 coil（batch，無 GUI）；long2016 從 backup/hexapole-long2016/ 跑
+cd magnetic_sim/ANSYS/backup/hexapole-long2016
+"$ANSYS" -b -np 4 -m 24000 -dir "results/coil1" -j "coil1" \
+  -i "$(pwd)/apdl/MT_Modeling_Geometry_Meshing_Solving_Coil1.txt" -o "results/coil1/solve.out"
+# 6 顆連續：for i in 1..6，改 coil${i}
+```
+> ⚠ long2016 的 APDL deck 在 `backup/hexapole-long2016/`，在那工作時載的是 `FEM_sim/CLAUDE.md`（非本檔）。
 
-> 一句話：**先問功能組 + 風格選項 → 一任務一腳本、原地改 → 每輪輸出實檔、覆蓋迭代到定案**。
+---
+
+## Quick Triggers → `.claude/rules/`（觸發式細則，動手前先讀全文）
+（全文在 `../../.claude/rules/`，索引 `../../.claude/rules/README.md`）
+
+| 觸發 | 規則檔 |
+|---|---|
+| 讀/載入 ANSYS 結果、抽 .dat、算矩陣/fit/畫場圖前 | `result-read-safety.md`（三層防呆 + `ANSYS_data/<topic>/RESULTS_MAP.md`） |
+| 清 sim / 清 results / 磁碟滿 | `sim-cleanup.md`（先讀全文；預設 half-clean） |
+| 清 `db/` 夾 | `db-folder-retention.md`（只留 `.db`+主 `.rmg`） |
+| 寫/搬 `.mat` | `matlab-output-layout.md`（放程式旁 `data/`） |
+| 動 `results/` | `results-pdf-only.md`（只放 PDF） |
+| 畫任何圖 | `figure-style.md`（先問風格）+ `figure-output.md`（輸出實檔覆蓋迭代） |
+| 改 ANSYS 幾何 / mt_constants / 對齊 CAD | `ansys-cad-alignment.md`（CAD=source of truth） |
+| 匯入 CAD/STEP 進 ANSYS | `cad-import-ansys.md`（STEP→x_t→ac4para→/INPUT） |
+| 交付幾何給使用者檢查 | `deliver-step-for-check.md`（一律出 STEP） |
+| 跑 COMSOL / LiveLink | `comsol-livelink.md`（拆兩 process） |
+| charge fit / 改 I_actual | `fit-current-matches-sim.md`（I = FEM 激發 1A） |
+| 貼 `model_check/*.iges` 路徑 | `iges-model-id.md`（從路徑認模型、不問） |
+| Calibration_using_FEM_modeling 結構 | `calibration-shared-structure.md`（結構凍結、改先問）、`calibration-transfer-matrix-output.md`、`actuator-frame.md`、`charge-model-source-convention.md`、`pole-coil-numbering.md`、`unit-reference.md` |
+| 建 hexapole | `hexapole-build.md`；在 `backup/hung/` 工作 | `hung-docs.md` |
+| 出 STEP / 解析 STEP / 建 APDL 幾何 / 檢查模型 等 SOP | `main-workflows.md` → `doc/workflows/` |
+| 產物落點細表 | `main-workspace.md` |
+
+## Detailed Docs（long2016 深技術）
+`backup/hexapole-long2016/docs/`：`fitting-methods.md`（[B-6x] 最終）、`model-validation.md`、`notation-glossary.md`、`coil-winding-sign-convention.md`、`charge-model-fitting.md`、`ansys-environment.md`、`simulation-parameters.md`、`workflow.md`、`troubleshooting.md`。
+
+## Compact Instructions（context 壓縮時保留）
+1. 6 腳本只差 `CURR_ARRAY`；2. `D,ALL,MAG,0` 對 DSP solver 必須；3. long2016 結果在 `backup/hexapole-long2016/results/coilN/`；4. 對使用者用繁體中文；5. 一律 P1–P6；6. notation 依 Long 2016（`notation-glossary.md`）；7. alpha=54.74° FIXED。

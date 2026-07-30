@@ -1,6 +1,12 @@
 # FEM Simulation Workspace
 
-`FEM_sim/` 是**通用 FEM 模擬容器**。磁學相關的模擬全部收在 `magnetic_sim/` 這一類底下，再依**求解器**分子層：目前為 `magnetic_sim/ANSYS/`（未來可並列 `COMSOL/` 等），其下 `main/` 為活躍設計（4-pole MEMS Quadrupole，原 `kuo/`），`backup/` 歸檔非活躍設計（`hexapole-long2016/`、`hung/`）；未來其他模擬類別（如靜電 / 結構 / 熱）會與 `magnetic_sim/` **並列**為 `FEM_sim/` 的兄弟資料夾。
+`FEM_sim/` 是**通用 FEM 模擬容器**。磁學相關的模擬全部收在 `magnetic_sim/` 這一類底下，再依**求解器**分子層：目前為 `magnetic_sim/ANSYS/`（未來可並列 `COMSOL/` 等），其下 `main/` 為活躍工作區（model topics：`long2016_hexapole_halfcut` 主力 / `kuo_quadrupole` / `zhang_quadrupole`），`backup/` 歸檔非活躍設計（`hexapole-long2016/`、`hung/`）；未來其他模擬類別（如靜電 / 結構 / 熱）會與 `magnetic_sim/` **並列**為 `FEM_sim/` 的兄弟資料夾。
+
+> 🗂 **本檔 = 容器級 + `backup/` 樹適用。活躍工作區 `main/` 的權威完整規則在 `magnetic_sim/ANSYS/main/CLAUDE.md`**
+> （在 `main/` 或其子夾工作時自動載入、為準）。在 `backup/hexapole-long2016`、`backup/hung` 工作時 `main/CLAUDE.md`
+> **不會**載入 → 本檔的跨設計約束（Hexapole Constraints / Rules / Figure Production / Prohibitions / Notation / Commands）
+> **就是 backup/ 的規則來源，故保留**。⚠ 這些跨設計約束**與 `main/CLAUDE.md` 鏡像**，改一處要同步另一處。
+> 開新 session 做 FEM：主力活在 `main/` → **開在 `main/`**（吃到 main/CLAUDE.md + 本檔 + rules）；只碰 backup/ 才靠本檔。
 
 ## Quick Triggers
 - 當使用者說「**建 hexapole**」時，參照 `magnetic_sim/.claude/rules/hexapole-build.md` 執行建模流程
