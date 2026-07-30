@@ -104,15 +104,41 @@ ax=gca; ax.Toolbar.Visible='off';                    % 匯出不帶 axes 工具�
 
 沿用①：`grid off`、單位 `()`、軸標粗體。
 
+**🔒 仰角<0(從下往上看)的框線(使用者拍板 2026-07-28)**：當 `view` 的**仰角 el<0**（相機在下、看到 box 底面），`draw_box_edges3` 改走此樣式（用 `[~,el]=view(ax)` 判斷、`el>=0` 維持上面「省最近角 3 邊」的標準開口箱）：
+- **判準 = 只保留「有刻度數字」的邊，沒刻度的框線不要**（使用者原話：「我不要的是底邊沒有數字刻度的框線」）。
+- **頂框(z=max) + 底框(z=min) 手動一律不畫**。有刻度數字的 x/y 底邊（例 x=2/4/6/8、y=−1/0/1）**由 MATLAB 座標軸 ruler 自己畫**（`set(ax,'LineWidth',3)` 讓 ruler 線一樣粗），不需 `draw_box_edges3` 補；沒刻度的底邊（遠端長邊、近端短邊）就此消失＝使用者要的效果。
+- **垂直邊只留遠端**：省掉「最近 2 個角」相連的垂直邊（前方 stub）；z 軸 ruler 由 MATLAB 畫（含 0/−1/−2）。
+- 實作 = 條件式 `draw_box_edges3`（`if el<0`：`istop||isbot → continue`（底/頂框都不手動畫）、垂直省最近 2 角；`else`：標準省最近角 3 邊）。三支 3D 腳本共用同版：`plot_p1_pole_full.m`（el=−20）、`plot_p2_pole_full.m`（el≥0 不受影響）、`plot_hexapole_sensors_3d.m`（下極 el=−25 套用、上極/合併 el>0 不受影響）。
+
 **3D tick 放置（使用者拍板 2026-07-25；2026-07-26 補字體/框邊，A/B 皆適用）**：
 - **刻度數字字體 = 36 粗體**（3D paper box 圖統一；`set(ax,'FontSize',36,'FontWeight','bold')`）。合併多面板圖同此（見 `project_long2016_paper_figures`）。
 - **角落 / 三軸相交處不放 tick 與數字**：tick 取 xlim/ylim/zlim 內部、**不含 ±極值端點**（box 三軸在角落交會，端點數字會兩兩擠成一團）。做法 = tick 範圍比 limit 內縮一格（例：`±0.9` 框 → `XTick -0.5:0.5:0.5`，不要到 ±0.9）。
 - **tick 數量（含原點）取奇數**：讓 `0` 一定是 tick、且對稱（例 3 個 `[-0.5,0,0.5]`、5 個 `[-500,-250,0,250,500]`）。奇數 + 不含端點 → 乾淨對稱、角落不擠。
+- **刻度間距一律等距（平均）（使用者拍板 2026-07-29）**：明設 `XTick`/`YTick` 時，**各 tick 間距必須相同（等差步長）**。做法 = 中心 ± 固定 nice 步長：`s=nice((hi-lo)/N)`（nice ∈ `[1 2 2.5 3 4 5 10]×10^k`）、`ctr=round(mid/s)*s`、`tk=ctr+[-1 0 1]*s`（N=3；見 local `ticks3`）。**不要用 `round(linspace(...))`**——四捨五入會破壞等距（例變成 0/2/6 而非 0/3/6）。R-sweep 趨勢圖（`ell_gain_vs_R`/`ell_gV_vs_R`）上下兩 panel 的 y-tick 皆須等距。適用 2D/3D 各軸。
 - **框邊加粗**：變體 A 用 `box off` + `draw_box_edges(bh,3.0)`（省**最近角** 3 邊、留 9 邊全粗；**別用 BoxStyle full、別省最遠角**——見上「別再犯」）。
 - 範例：`figures/paper_fig_plot/plot_sphere_lattice_3d.m`（±0.9 框、三軸 `-0.5:0.5:0.5`、font 36、手動框邊省最近角）。
 
 範例圖：A＝`…/fix_dir/figures/charge_positions_P1P2_3d.png`（view −30/−20）；
 B＝`…/fix_dir/figures/svd_gain_3d.png`・`svd_iso_3d.png`（surf 山丘，view −40/30）、`…/Hall_sensor_base_fix_dir/figures/circuit_3d_*.png`。
+
+### 方向箭頭(n+ 等)頭看不清 → 自畫箭頭、頭兩翼繞 n 自轉面向相機（方向不動）（使用者拍板 2026-07-28）
+
+當一個方向箭頭（sensor n+、法向…）幾乎**平行視線**、箭頭頭看不清時：**方向(n+)絕不改、視角(view)也不動**，改**自己畫箭頭**（別用 `quiver3`——它的頭方位不能控、平行視線時兩翼側對相機變一條線）：
+- 桿 = `plot3` 從 sc 到 `sc+n·Ln`；箭頭頭 = 兩條翼 `plot3`。
+- **兩翼展開方向 `w = normalize(cross(n, 視線))`**（⊥ n 且 ⊥ 視線）→ 兩翼**面向相機**、任何視角頭都清楚（＝把箭頭頭「繞 n 自轉」到面向相機，方向 n 完全不變）。
+- 翼：`b=-n; d1=cos(a)·b+sin(a)·w; d2=cos(a)·b−sin(a)·w`（`a≈24°`、翼長 `≈0.32·Ln`）。視線 `vd=[sind(az)cosd(el);-cosd(az)cosd(el);sind(el)]`。
+- ⚠ 踩過的坑（別再犯）：(1) 別改箭頭**方向**（曾轉離相機/歪出 y=0 平面 → 物理錯、使用者打槍）；(2) 別轉 **view 視角**（會把整個 pole 重定向 → 不是要的）。正解只有「自畫箭頭 + 兩翼 ⊥視線」。
+- 實作：local `draw_narrow(ax, sc, n, Ln, col, lw)`。範例：`plot_p1_pole_full.m` / `plot_p2_pole_full.m`（都用真實 n+）。
+
+### 3D 磁路場箭頭（quiver3，定案 2026-07-28）
+
+磁極磁路示意（錐內磁路 + 錐面外/尖端射出）的 3D 場箭頭，**定案畫法**：
+
+- **內部（鐵件，`steel_ids`）+ 尖端射出扇 = raw graded 真實節點**（不內插），`voxpick3` 取每格 `|B|max`（內部 0.30mm、尖端 0.22mm）。
+- **磁極表面（錐面）改用重心內插加密**（使用者要「整根均勻、後端也要密、但別像規則格那樣假」，2026-07-28）：**真實貼面節點（自然、優先）+ `scatteredInterpolant`（`linear`＝barycentric）在錐面細格（軸×方位）查詢點填補空隙 → 再用 `vsz≈0.22mm` 體素「每格留一、真實優先」**。這樣整根均勻密、graded 網格超密的尖端不成團、後端粗網格區靠內插填滿，且位置以真實節點為主（非純規則格 → 不假）。半切下極只取鋼側（`z<z_tip`）phi 0..π；全錐上極 phi 0..2π。**所有箭頭(內部+表面)一律限制在磁極軸長度 L 內**（`(P−tip)·axk ≤ L`），超過 L（根部寬端外）不畫。使用者明示**此圖表面內插不必標示**。
+- **turbo 依 `|B|(mT)` 分 bin（28 bin）**上色（同 `plot_p2_charge_merged` 右圖）。此類全極示意圖使用者要**不放顏色表**。
+- **箭頭長度依 `|B|` 變化，但最大長度不誇張（🔒 定案）**：用壓縮映射 `len = lmin + (lmax−lmin)·(|B|/|B|max)^0.35`，方向 = 單位 `B`×`len`（`quiver3(...,0,'AutoScale','off')` 隱含用實 len）。**`lmax` 取相對圖幅的適度上限**——**最大箭頭不可長到橫跨大半視野**（例：全極 8mm box 用 `lmin=0.15 / lmax=0.55mm`）。**不要**用單位化固定長度（全部等長、看不出大小），也**不要**線性 raw×大比例（最大箭頭爆掉）。
+- 範例：`figures/paper_fig_plot/plot_p2_pole_full.m`（全極 P2，`lmin/lmax=0.15/0.55`）、`plot_p2_charge_merged.m` 的 `render_3d`（尖端 zoom，`0.014/0.060`）。
 
 ---
 
@@ -142,6 +168,16 @@ B＝`…/fix_dir/figures/svd_gain_3d.png`・`svd_iso_3d.png`（surf 山丘，vie
 - **bin 數固定 `nb = 180`**：`edges = linspace(min(allData), max(allData), nb+1)`（bin 寬 ≈ 資料範圍/180，夠密）。兩組疊圖**共用同一 edges**。
 - bars 樣式：`FaceAlpha 0.55`、`EdgeColor 'w'`、`LineWidth 0.3`；mean 用 `xline` 虛線（同色）；legend 用 histogram handles；上方留 headroom（`ylim*1.20`）讓 legend 不壓 bar。
 - 範例：`plot_gain_iso_overlay.m` 的 `render_overlay`（gain 𝒞 / iso κ 疊圖）。
+
+## |B| 場 colorbar 標準樣式（使用者拍板 2026-07-29）
+
+**所有磁路 / |B| 場圖的 colorbar 一律照此標準**（source of truth = `plot_circuit_side.m` 的 `style_cbar`）：
+- **colormap = `turbo`**；`clim([0 CLIM])`，`CLIM = ceil(max(|B|_mT)/50)*50`（進位到 50mT）。
+- **標題** = LaTeX 數學粗體 `cb.Label.String = '$\mathbf{|B|\;(mT)}$'`、`cb.Label.Interpreter='latex'`、`cb.Label.FontSize=36`。
+- **刻度數字** `cb.FontSize=36; cb.FontWeight='bold'`。
+- **箭頭配色**：nb=28 個 turbo bin、`edges=linspace(0,CLIM,nb+1)`，逐 bin `quiver(...,'Color',cmap(k,:))`（箭頭自帶 truecolor，colormap/clim 只驅動 colorbar 圖例）。
+- **貼近 panel**：colorbar 緊靠圖框、不要留大白邊（2D 圖用預設 east 即可；合併圖用下方寬度比例法）。3D 透視圖若預設 colorbar 離框太遠或標題被裁 → 手動 `set(ax,'Position',...)` 縮軸 + `cb.Position` 明確定位，把標題留在圖內。
+- 直接呼叫 `style_cbar(cb, 36)`（`plot_circuit_side.m` / `plot_p1p2_poles_3d.m` 都用這支）即符合。
 
 ## Colorbar 寬度（paper 合併圖，定案 2026-07-27）
 
