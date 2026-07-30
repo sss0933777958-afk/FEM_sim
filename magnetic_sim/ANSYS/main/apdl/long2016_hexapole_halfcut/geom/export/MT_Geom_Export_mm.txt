@@ -40,7 +40,8 @@ PROT_R     = 10.0/2.0
 PROT_H     = 7.0
 
 POLE_R        = 6.0/2
-POLE_TIP_R    = 40.0e-3
+POLE_TIP_R    = 40.0e-3      ! [TIP VARIANT] fillet radius [mm]; CNC=0.4 / EDM=0.015 / baseline=40.0e-3
+POLE_TIP_R_REF = 40.0e-3     ! [ADDED] fixed design ref: flank+base frozen at 40 µm (scenario A)
 POLE_CONE_LEN = 15
 POLE_CONE_HYP = sqrt(POLE_CONE_LEN**2 + POLE_R**2)
 ANG1 = acos(POLE_R/POLE_CONE_HYP)
@@ -51,6 +52,14 @@ POLE_CONE2_LEN  = L*cos(ANG2)
 POLE_TIP_R2     = POLE_TIP_R*cos(ANG2)
 POLE_TIP_FILLET_DROP = POLE_TIP_CENTER - POLE_TIP_R
 POLE_TIP_FILLET_PROT = (POLE_CONE2_LEN - POLE_TIP_FILLET_DROP)
+! [ADDED] scenario A: reference-fillet quantities drive the FIXED flank/base (use POLE_TIP_R_REF)
+L_REF                    = POLE_CONE_LEN*POLE_TIP_R_REF/POLE_R
+POLE_TIP_CENTER_REF      = L_REF/cos(ANG2)
+POLE_TIP_FILLET_DROP_REF = POLE_TIP_CENTER_REF - POLE_TIP_R_REF
+! [ADDED] tip-most retreat of the VARIANT fillet along the pole axis (0 at R = R_REF)
+POLE_TIP_RETREAT         = POLE_TIP_FILLET_DROP - POLE_TIP_FILLET_DROP_REF
+! [ADDED] 正交修正：上極尖端後退仰角 = arccos(1/3) = 70.5288 deg（Δ 無關；3 對連線→54.74°→兩兩正交、6 尖端共球）
+POLE_TIP_RET_ANG         = acos(1.0/3.0)
 
 ! ===== Yoke ring + 6 protrusions =====
 WPLANE, 1,0,0,0,,,,,,
@@ -102,19 +111,19 @@ Z0_LOW = -PROT_H
     numstr, KP,   KP_START
     numstr, LINE, LI_START
 
-    l1 = R_norm_xy
-    l1_ang = atan2( 0 , R_norm_xy )
-    l2 = sqrt( (R_norm_xy + POLE_TIP_FILLET_PROT)**2 + POLE_TIP_R2**2 )
-    l2_ang = atan2( POLE_TIP_R2 , (R_norm_xy + POLE_TIP_FILLET_PROT) )
-    POLE_CONE_LEN_SHIFT = POLE_CONE_LEN + (R_norm_xy - POLE_TIP_FILLET_DROP)
+    l1 = R_norm_xy + POLE_TIP_RETREAT                                                                    ! [MODIFIED] scenario A: tip retreats (variant)
+    l1_ang = atan2( 0 , R_norm_xy + POLE_TIP_RETREAT )
+    l2 = sqrt( (R_norm_xy + POLE_TIP_RETREAT + POLE_TIP_FILLET_PROT)**2 + POLE_TIP_R2**2 )               ! [MODIFIED] blend on retreated tip, variant fillet
+    l2_ang = atan2( POLE_TIP_R2 , (R_norm_xy + POLE_TIP_RETREAT + POLE_TIP_FILLET_PROT) )
+    POLE_CONE_LEN_SHIFT = POLE_CONE_LEN + (R_norm_xy - POLE_TIP_FILLET_DROP_REF)                         ! [MODIFIED] base FIXED via REF drop
     l3 = sqrt( POLE_CONE_LEN_SHIFT**2 + POLE_R**2 )
     l3_ang = atan2( POLE_R , POLE_CONE_LEN )
     l4 = sqrt( (X0_LOW - 10)**2 + POLE_R**2 )
     l4_ang = atan2( POLE_R , (X0_LOW - 10) )
     l5 = abs( X0_LOW - 10 )
     l5_ang = atan2( 0 , (X0_LOW - 10) )
-    l6 = abs( R_norm_xy + POLE_TIP_R )
-    l6_ang = atan2( 0, R_norm_xy + POLE_TIP_R )
+    l6 = abs( R_norm_xy + POLE_TIP_RETREAT + POLE_TIP_R )                                                ! [MODIFIED] arc center follows retreated tip, variant R
+    l6_ang = atan2( 0, R_norm_xy + POLE_TIP_RETREAT + POLE_TIP_R )
 
     K , , l1*cos(ROTA_ANG + l1_ang) , l1*sin(ROTA_ANG + l1_ang), Z0_LOW - 6
     K , , l2*cos(ROTA_ANG + l2_ang) , l2*sin(ROTA_ANG + l2_ang), Z0_LOW - 6
@@ -199,18 +208,24 @@ Z0_HIGH = YOKE_H + PROT_H
     numstr, KP,   KP_START
     numstr, LINE, LI_START
 
-    p1x = tip_upper_x
-    p1y = tip_upper_y
-    p1z = tip_upper_z
+    p1x = tip_upper_x + POLE_TIP_RETREAT*cos(POLE_TIP_RET_ANG)*cos(ROTA_ANG) ! [MODIFIED] 正交修正：尖端沿 arccos(1/3)=70.53° 後退（非 INCLINE_ANG）
+    p1y = tip_upper_y + POLE_TIP_RETREAT*cos(POLE_TIP_RET_ANG)*sin(ROTA_ANG) ! [MODIFIED]
+    p1z = tip_upper_z + POLE_TIP_RETREAT*sin(POLE_TIP_RET_ANG)              ! [MODIFIED]
 
-    p2x = p1x + POLE_TIP_FILLET_PROT*cos(INCLINE_ANG)*cos(ROTA_ANG) - POLE_TIP_R2*sin(ROTA_ANG)
-    p2y = p1y + POLE_TIP_FILLET_PROT*cos(INCLINE_ANG)*sin(ROTA_ANG) + POLE_TIP_R2*cos(ROTA_ANG)
-    p2z = p1z + POLE_TIP_FILLET_PROT*sin(INCLINE_ANG)
+    ! [ADDED] 錐體軸 = 後退尖端 p1 → 固定 end_upper（保 yoke 連接、子午線共面；Δ=0 時 = INCLINE_ANG）
+    CONE_VECx = end_upper_x - p1x
+    CONE_VECy = end_upper_y - p1y
+    CONE_VECz = end_upper_z - p1z
+    CONE_ANG  = atan2( CONE_VECz, sqrt(CONE_VECx**2 + CONE_VECy**2) )
 
-    POLE_CONE_LEN_SHIFT = POLE_CONE_LEN + (R_norm_xy - POLE_TIP_FILLET_DROP)
-    p3x = p1x + POLE_CONE_LEN_SHIFT*cos(INCLINE_ANG)*cos(ROTA_ANG) - POLE_R*sin(ROTA_ANG)
-    p3y = p1y + POLE_CONE_LEN_SHIFT*cos(INCLINE_ANG)*sin(ROTA_ANG) + POLE_R*cos(ROTA_ANG)
-    p3z = p1z + POLE_CONE_LEN_SHIFT*sin(INCLINE_ANG)
+    p2x = p1x + POLE_TIP_FILLET_PROT*cos(CONE_ANG)*cos(ROTA_ANG) - POLE_TIP_R2*sin(ROTA_ANG)   ! [MODIFIED] 沿 CONE_ANG
+    p2y = p1y + POLE_TIP_FILLET_PROT*cos(CONE_ANG)*sin(ROTA_ANG) + POLE_TIP_R2*cos(ROTA_ANG)   ! [MODIFIED]
+    p2z = p1z + POLE_TIP_FILLET_PROT*sin(CONE_ANG)                                             ! [MODIFIED]
+
+    POLE_CONE_LEN_SHIFT = POLE_CONE_LEN + (R_norm_xy - POLE_TIP_FILLET_DROP_REF)                 ! base length（REF drop 固定）
+    p3x = p1x + POLE_CONE_LEN_SHIFT*cos(CONE_ANG)*cos(ROTA_ANG) - POLE_R*sin(ROTA_ANG)   ! [MODIFIED] 錨 p1、沿 CONE_ANG（子午線共面）
+    p3y = p1y + POLE_CONE_LEN_SHIFT*cos(CONE_ANG)*sin(ROTA_ANG) + POLE_R*cos(ROTA_ANG)   ! [MODIFIED]
+    p3z = p1z + POLE_CONE_LEN_SHIFT*sin(CONE_ANG)                                        ! [MODIFIED]
 
     p4x = end_upper_x - POLE_R*sin(ROTA_ANG)
     p4y = end_upper_y + POLE_R*cos(ROTA_ANG)
@@ -220,9 +235,9 @@ Z0_HIGH = YOKE_H + PROT_H
     p5y = end_upper_y
     p5z = end_upper_z
 
-    p6x = p1x + POLE_CONE_LEN*cos(INCLINE_ANG)*cos(ROTA_ANG)
-    p6y = p1y + POLE_CONE_LEN*cos(INCLINE_ANG)*sin(ROTA_ANG)
-    p6z = p1z + POLE_CONE_LEN*sin(INCLINE_ANG)
+    p6x = p1x + POLE_CONE_LEN*cos(CONE_ANG)*cos(ROTA_ANG)     ! [MODIFIED] 沿 CONE_ANG
+    p6y = p1y + POLE_CONE_LEN*cos(CONE_ANG)*sin(ROTA_ANG)     ! [MODIFIED]
+    p6z = p1z + POLE_CONE_LEN*sin(CONE_ANG)                   ! [MODIFIED]
 
     K,, p1x , p1y , p1z
     K,, p2x , p2y , p2z
@@ -278,6 +293,12 @@ VPLOT
 /SHOW, CLOSE
 
 ! ===== IGES export =====
+ALLSEL, ALL
+! [ADDED] SolidWorks 相容：座標縮成 inch-magnitude（×1/25.4）→ 配 flag 6→1（INCH）；SW 忽略 flag 當 inch 讀，
+!   inch 座標 + inch flag = 正確 mm（mm-magnitude+flag2 會被讀成 ×25.4 太大）。per kuo-iges-export 2026-07-06 更正。
+CSYS,0                    ! [ADDED] 對全域原點縮放（deck 可能留著 local WP CS → VLSCALE 會對錯原點縮）
+IGES_SC = 1.0/25.4
+VLSCALE, ALL, , , IGES_SC, IGES_SC, IGES_SC, , 0, 1
 ALLSEL, ALL
 ! [MODIFIED] Absolute path so IGES lands in magnetic_sim/ANSYS/main/model_check/ even though /CWD is elsewhere
 IGESOUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\model_check\long_fei\long2016_hexapole_no_gap', 'iges'

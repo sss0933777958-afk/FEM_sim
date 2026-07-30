@@ -15,7 +15,7 @@
 - `fit-current-matches-sim.md` — 擬合電流必須等於 FEM 激發電流（目前 1A），不可把操作電流 0.6A 灌進 fit。
 - `charge-model-source-convention.md` — 電荷模型符號慣例：每顆極激發時 B 一律從尖端射出（全 source）。
 - `actuator-frame.md` — `Calibration_using_FEM_modeling/` 整包一律用 actuator（磁極軸）座標系；六極 `R_act` 旋轉、單極 +x 建模，不可停在 measure/WP frame。
-- `calibration-transfer-matrix-output.md` — current_base / voltage_base 結果 PDF 除 K̄_I / D̄（無因次），一律加印 gauge 前物理轉移矩陣 ᴮH̄_I [mT/A] = ĝ_I·K̄_I 與 ᴮH̄_V [mT/mV] = ĝ_V·D̄。
+- `calibration-transfer-matrix-output.md` — current_base / voltage_base 結果 PDF 除 K̄_I / D̄（無因次），一律加印 gauge 前物理轉移矩陣 ᴮH̄_I [mT/A] = ĝ_I·K̄_I 與 ᴮH̄_V [mT/mV] = ĝ_V·D̄；**附則**：USE_BIAS 時偏移一律「物理 `e [µm]`」+「無因次 `e/ℓ̂`」兩張都印。
 - `calibration-shared-structure.md` — `matlab/APDL/Calibration_using_FEM_modeling/` 三模型通用校正的 canonical 結構**凍結**（config/function/main/data/results 依 model 分層 + 檔案切分固定）；新增/改名/移動/刪除資料夾或檔、重組切分、加校正模型**一律先問**；改既有檔內文不受限。
 - `hung-docs.md` — 涉及 `magnetic_sim/ANSYS/backup/hung/` 時的必讀文件清單（troubleshooting、build workflow…）。
 - `hexapole-build.md` — 「建 hexapole」觸發流程：依序收集 4 個參數、嚴格照 build-workflow 執行。

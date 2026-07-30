@@ -52,7 +52,8 @@ function emit_results(matfile)
 
     if rec.USE_BIAS
         E36 = e2E36(rec.e);
-        T.e(fid, 'e~[\mu\mathrm{m}]', (rec.l_hat*1e6) .* E36, pole, '');
+        T.e(fid, 'e~[\mu\mathrm{m}]', (rec.l_hat*1e6) .* E36, pole, '');   % 物理偏移 [µm] = (e/ℓ̂)·ℓ̂
+        T.mat(fid, 'e/\hat{\ell}',    E36,                    pole, '');   % [ADDED] 無因次偏移(求解器內部單位)：標準 bmatrix、不標單位
     end
     fprintf(fid, '\\[ \\mathcal{C}_{mean} = %.4g~(\\mathrm{%s})^{3}, \\quad \\kappa_{mean} = %.4f \\]\n', ...
             rec.C_mean, cunit, rec.kappa_mean);

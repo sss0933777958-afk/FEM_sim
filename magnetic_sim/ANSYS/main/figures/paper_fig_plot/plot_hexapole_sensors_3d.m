@@ -46,6 +46,7 @@ function draw_layer(ax, layer, c)
     gap  = rf*(1 - sin(beta));  SOFF = 4.572;  AIR = 0.41;          % mm（tip40 幾何）
     dir3 = @(el,az)[cos(el)*cos(az); cos(el)*sin(az); sin(el)];
     L    = 8;
+    SEP  = 0.6;   % [USER] 圖示用:每根極沿自身軸往外推,分開中間匯聚的尖端(mm)
     colP = [0.62 0.65 0.70];  colS = [0.10 0.60 0.20];
     switch layer
         case 'upper', sel=~c.pole_is_lower(:); VW=[70 30];
@@ -64,6 +65,7 @@ function draw_layer(ax, layer, c)
             a=dir3(inc,th); u=cross(a,[0;0;1]); u=u/norm(u); v=cross(a,u); half=false;
             e2=dir3(inc+beta,th);   nh=dir3(inc+beta+pi/2,th);
         end
+        tip = tip + SEP*a;   % [USER] 沿自身軸外推,分開中間匯聚尖端(sensor sp 依 tip 一起移)
         [X,Y,Z] = draw_pole(ax, tip,a,u,v, rf,beta,Rcyl, L, half, colP, 1.0);
         allP = [allP; X(:) Y(:) Z(:)]; %#ok<AGROW>
         sp = tip + SOFF*e2 + (gap+AIR)*nh;   sn = nh;
@@ -154,14 +156,25 @@ end
 
 % ============================================================================
 function draw_box_edges3(ax, XL, YL, ZL, lw)
+% 框線(使用者拍板 2026-07-28)：
+%   仰角<0(從下往上看)：頂框不畫；底框只留近端 2 條(去掉最遠 2 條)；垂直邊只留遠端(省最近 2 角)。
+%   仰角>=0：標準開口箱(12 邊省「最近角」相連 3 邊 → 9 邊)。
     [Xc,Yc,Zc]=ndgrid(XL,YL,ZL); C=[Xc(:) Yc(:) Zc(:)];
     E=[]; for i=1:8, for j=i+1:8
         if nnz(abs(C(i,:)-C(j,:))>1e-9)==1, E=[E; i j]; end
     end, end
-    cp=campos(ax); dd=sum((C-cp).^2,2); [~,near]=min(dd);
-    E=E(~(E(:,1)==near | E(:,2)==near), :);
+    cp=campos(ax); dd=sum((C-cp).^2,2); [~,order]=sort(dd);  near=order(1); near2=order(1:2);
+    [~,el]=view(ax); zmin=min(ZL); zmax=max(ZL);
+    isbot=@(k) C(E(k,1),3)<zmin+1e-9 & C(E(k,2),3)<zmin+1e-9;
+    istop=@(k) C(E(k,1),3)>zmax-1e-9 & C(E(k,2),3)>zmax-1e-9;
     for k=1:size(E,1)
-        p1=C(E(k,1),:); p2=C(E(k,2),:);
+        a=E(k,1); b=E(k,2); p1=C(a,:); p2=C(b,:);
+        if el<0
+            if istop(k) || isbot(k), continue; end                               % 頂框+底框：手動都不畫(刻度底邊由 ruler 提供)
+            if any(a==near2)||any(b==near2), continue; end                       % 垂直邊：省最近兩角
+        else
+            if a==near || b==near, continue; end                                 % 標準：省最近角 3 邊
+        end
         plot3(ax,[p1(1) p2(1)],[p1(2) p2(2)],[p1(3) p2(3)],'k-','LineWidth',lw);
     end
 end

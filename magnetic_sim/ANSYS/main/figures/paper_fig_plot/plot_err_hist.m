@@ -51,7 +51,7 @@ function plot_err_hist(USE_BIAS)
     ctr = (edg(1:end-1) + edg(2:end)) / 2;
 
     FS = 28;
-    fig = figure('Color','w','Position',[100 100 1100 720]);  ax = axes(fig);  hold(ax,'on');
+    fig = figure('Color','w','Position',[100 100 1100 790]);  ax = axes(fig);  hold(ax,'on');   % [MODIFIED] 加高補償外置圖例佔的縱向空間
     hb = bar(ax, ctr, pct, 1, 'FaceColor',[0.10 0.35 1.00], 'FaceAlpha',0.95, ...
              'EdgeColor','k', 'LineWidth',0.3);                       % 亮藍 + 細黑邊(密)
     ml = xline(ax, mu, '--', 'Color',[0.85 0.10 0.10], 'LineWidth',3.0);  % mean 虛線
@@ -71,11 +71,17 @@ function plot_err_hist(USE_BIAS)
          'VerticalAlignment','top', 'FontSize',FS,'FontWeight','bold','Clipping','off');   % 起點
     text(ax, xr(2), -0.022*ytop, sprintf('%g',xr(2)), 'HorizontalAlignment','center', ...
          'VerticalAlignment','top', 'FontSize',FS,'FontWeight','bold','Clipping','off');   % 終點
-    lg = legend([hb ml], {sprintf('Sampling range \\leq %d {\\mu}m', Rum), sprintf('Mean = %.3f mT', mu)}, ...
-                'Interpreter','tex', 'Location','northeast');
-    lg.FontSize = 24;  lg.FontWeight = 'bold';
-    xlabel(ax, '$\mathbf{\| b_{FEM} - S_i\, {}^{B}\hat{g}_{I}\, \bar{K}\, I_{j} \|\;(mT)}$', ...
+    % [MODIFIED] 圖例移到圖框外「上方」、水平一列（比照 Bode_Surface 參考圖）
+    %   兩則之間的間隔:用白色(隱形)字元墊寬第一則。MATLAB 會修掉尾端空白、
+    %   dummy 條目又固定佔 ~105px 太寬;白字每個 'M' 約 +27px,可精準調(現用 MM ≈ +53px)。
+    GAP = '{\color{white}MM}';
+    lg = legend([hb ml], {[sprintf('Sampling range \\leq %d {\\mu}m', Rum) GAP], sprintf('Mean = %.3f mT', mu)}, ...
+                'Interpreter','tex', 'Location','northoutside', 'Orientation','horizontal');
+    lg.FontSize = 24;  lg.FontWeight = 'bold';  lg.Box = 'on';  lg.EdgeColor = 'k';  lg.LineWidth = 2.5;
+    xlabel(ax, '$\mathbf{Residual\;(mT)}$', ...
            'Interpreter','latex', 'FontSize',36);      % 絕對殘差軸標題(標準數學字體、36 粗)
+    ylabel(ax, '$\mathbf{Percentage\;(\%)}$', ...
+           'Interpreter','latex', 'FontSize',36);      % [ADDED] 百分比縱軸標題(同風格)
     ax.Toolbar.Visible = 'off';  hold(ax,'off');       % 刻度數字保留
 
     bstr = ''; if USE_BIAS, bstr = '_bias'; end

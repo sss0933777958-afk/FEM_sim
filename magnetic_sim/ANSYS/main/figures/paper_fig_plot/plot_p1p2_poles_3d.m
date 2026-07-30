@@ -1,29 +1,44 @@
-function plot_p1p2_poles_3d()
+function plot_p1p2_poles_3d(SOURCE, FLD, XLin, ZLin, YHW)
 % plot_p1p2_poles_3d -- long2016 P1+P2 磁路「側視圖」(x-z, y=0) + sensor + n+ + WP 十字
 % =========================================================================
-%   側視(x-z, y=0)單一 panel：P1(下極半切、水平+x)與 P2(上極傾斜全錐)共尖端於 WP(原點)。
-%   磁路 = coil1(=P1)激發、每 (x,z) 格取最近 y=0 真實節點(不內插)、turbo 依 |B|(mT)、限 R=7mm 球內
-%   （P3–P6 azimuth 60/120/240/300° 不在 y=0 面 → 自動只剩 P1&P2）。磁極 y=0 截面輪廓灰填+深邊。
-%   colorbar 樣式同 circuit_side（style_cbar：粗體 + $\mathbf{|B|\;(mT)}$）。奇數等距 tick、無軸標題、字體 36。
-%   輸出 → figures/paper_fig/Section3_A/p1p2_poles_3d.png（覆蓋迭代）。
+%   側視(x-z, y=0)：P1(下極半切、水平+x)與 P2(上極傾斜全錐)共尖端於 WP(原點)。
+%   每 (x,z) 格取最近 y=0 真實節點(不內插)、turbo 依 |B|(mT)。磁極 y=0 截面輪廓灰填+深邊。
+%   colorbar 樣式同 circuit_side（style_cbar：粗體 + $\mathbf{|B|\;(mT)}$）。字體 36、無軸標題。
+%   場源 SOURCE：
+%     'apdl'（預設）— coil1(=P1) graded .dat；限 R=7mm 球內 → p1p2_poles_3d.png
+%     'maxwell'     — P1 激發的 Maxwell .fld（給 FLD 路徑）；矩形視野 XLin/ZLin、y 帶 |y|<=YHW
+%                     → p1_maxwell_side.png（用 import_maxwell_fld 讀 .fld）
 % =========================================================================
     clc;
+    if nargin<1 || isempty(SOURCE), SOURCE='apdl'; end
+    if nargin<2, FLD=''; end
     here   = fileparts(mfilename('fullpath'));
     figdir = fullfile(fileparts(here), 'paper_fig', 'Section3_A');
     if ~exist(figdir,'dir'); mkdir(figdir); end
     addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');
     addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling\common_path');
+    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Maxwell\function');   % import_maxwell_fld
     c = mt_constants();
 
     rf = c.POLE_TIP_R*1e3;  beta = atan2(c.POLE_R, c.POLE_CONE_LEN);
-    L  = 8;  R_SPH = 7;                                   % 磁極畫長 / WP 球殼半徑 (mm)
-    XL = [-8 8];  ZL = [-2.5 6.5];                        % x-z 視野
-    XT = [-6 -3 0 3 6];  ZT = [-2 0 2 4 6];              % 奇數、等距、含原點、內縮
-    FS = 36;
-    GREEN=[0.10 0.60 0.20];  RED=[0.85 0.10 0.10];
+    L  = 8;
+    switch lower(SOURCE)
+        case 'apdl'
+            XL=[-8 8]; ZL=[-2.5 6.5]; YHW=7; R_SPH=7;               % 限 R=7mm 球（|y|<7 由球隱含）
+            XT=[-6 -3 0 3 6]; ZT=[-2 0 2 4 6];  outname='p1p2_poles_3d.png';
+        case 'maxwell'
+            if isempty(FLD), error('SOURCE=maxwell 需給 .fld 路徑 FLD'); end
+            if nargin<3||isempty(XLin), XLin=[-6 6]; end
+            if nargin<4||isempty(ZLin), ZLin=[-3 5]; end
+            if nargin<5||isempty(YHW),  YHW=4;       end
+            XL=XLin; ZL=ZLin; R_SPH=Inf;                            % 矩形視野、不限球
+            XT=[-6 -3 0 3 6]; ZT=[-2 0 2 4];  outname='p1_maxwell_side.png';
+        otherwise, error('SOURCE 必為 ''apdl'' | ''maxwell''');
+    end
+    FS = 36;  GREEN=[0.10 0.60 0.20];  RED=[0.85 0.10 0.10];
 
-    % ---- coil1 y=0 切面場（回 grid-sample 真實節點 + 縮放好的箭頭分量）----
-    [Xs,Zs,Uq,Wq,Bm_mT,CLIM] = field_slice(c, XL, ZL, R_SPH);
+    % ---- P1 y=0 切面場（每 (x,z) 格取最近 y=0 真實節點 + 縮放好的箭頭分量）----
+    [Xs,Zs,Uq,Wq,Bm_mT,CLIM] = field_slice(c, XL, ZL, R_SPH, SOURCE, FLD, YHW);
 
     % ---- P1 / P2 的 y=0 截面輪廓 ----
     [p1x,p1z] = pole_outline(c, 1, rf, beta, L);
@@ -62,26 +77,36 @@ function plot_p1p2_poles_3d()
     set(ax,'XTick',XT,'YTick',ZT);                       % 奇數等距、無軸標題（不設 xlabel/ylabel）
     colormap(ax,turbo);  clim(ax,[0 CLIM]);
     cb = colorbar(ax);  style_cbar(cb, FS);
+    % --- 手動版面：留右側空間給 colorbar 旋轉標題，避免被 figure 右緣裁掉 ---
+    set(ax,'Units','normalized','Position',[0.075 0.11 0.70 0.86]);
+    set(cb,'Units','normalized','Position',[0.795 0.13 0.028 0.82]);
     ax.Toolbar.Visible='off';  hold(ax,'off');
 
-    out = fullfile(figdir,'p1p2_poles_3d.png');
+    out = fullfile(figdir, outname);
     exportgraphics(fig, out, 'Resolution', 150);
     fprintf('wrote %s  (CLIM=%d mT)\n', out, CLIM);
 end
 
 % ============================================================================
-function [Xs,Zs,Uq,Wq,Bm_mT,CLIM] = field_slice(c, XL, ZL, R_SPH)
-% coil1(=P1) y=0 切面：每 (x,z) 格取最近 y=0 的真實節點(不內插)、限 R=7mm 球內。回箭頭分量(mm)。
-    ddir = ansys_path('long2016_hexapole_halfcut','data','graded','coil1');
-    d = import_ansys_data(ddir, 'all', 'coil1');
-    fprintf('P1 = coil1 (graded/all): matched=%d, |B|max=%.4f T\n', numel(d.x), max(d.bsum));
-    s = 1 - 2*c.pole_is_lower(1);                         % P1 lower → -1（全 source）
+function [Xs,Zs,Uq,Wq,Bm_mT,CLIM] = field_slice(c, XL, ZL, R_SPH, SOURCE, FLD, YHW)
+% P1 y=0 切面：每 (x,z) 格取最近 y=0 的真實節點(不內插)。回箭頭分量(mm)。
+%   SOURCE='apdl' → coil1 graded .dat；'maxwell' → import_maxwell_fld(FLD)。
+    switch lower(SOURCE)
+        case 'apdl'
+            d = import_ansys_data(ansys_path('long2016_hexapole_halfcut','data','graded','coil1'), 'all','coil1');
+            fprintf('P1 = coil1 (graded/all): matched=%d, |B|max=%.4f T\n', numel(d.x), max(d.bsum));
+            s = 1 - 2*c.pole_is_lower(1);                    % P1 lower → -1（全 source）
+        case 'maxwell'
+            d = import_maxwell_fld(FLD);
+            fprintf('P1 = Maxwell .fld: %d pts, |B|max=%.4f T\n', numel(d.x), max(d.bsum));
+            s = 1;                                           % Maxwell 場方向（待驗；若與 APDL 反向改 -1）
+    end
     zoff = -c.SPH_OFST*1e3;
     x=d.x*1e3; y=d.y*1e3; z=d.z*1e3+zoff;                 % mm, WP frame
     rWP = sqrt(x.^2+y.^2+z.^2);
 
     cell = 0.20;                                          % (x,z) 格邊 (mm)
-    inwin = x>=XL(1)&x<=XL(2) & z>=ZL(1)&z<=ZL(2) & rWP<R_SPH;
+    inwin = x>=XL(1)&x<=XL(2) & z>=ZL(1)&z<=ZL(2) & abs(y)<=YHW & rWP<R_SPH;
     gi = find(inwin);
     xe = XL(1):cell:XL(2);  ze = ZL(1):cell:ZL(2);
     ix = discretize(x(gi),xe);  iz = discretize(z(gi),ze);
@@ -92,6 +117,11 @@ function [Xs,Zs,Uq,Wq,Bm_mT,CLIM] = field_slice(c, XL, ZL, R_SPH)
     keep = d.bsum(sel)>1e-4;  sel=sel(keep);
 
     Xs=x(sel);  Zs=z(sel);
+    if strcmpi(SOURCE,'maxwell')                         % 打散規則格「格子感」：位置微抖動(場向量仍為真實格點值、不內插)
+        rng(7);  J=0.45*cell;
+        Xs = Xs + (2*rand(size(Xs))-1)*J;
+        Zs = Zs + (2*rand(size(Zs))-1)*J;
+    end
     Bx=s*d.bx(sel);  Bz=s*d.bz(sel);  Bm=d.bsum(sel);
     arrow_max=0.30;  bmax=max(Bm);                        % 箭頭長度 ∝ |B|^0.25 (mm)
     bxz=hypot(Bx,Bz);  bxz(bxz==0)=1e-12;

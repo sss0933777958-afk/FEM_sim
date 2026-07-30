@@ -38,7 +38,7 @@ function plot_err_hist_overlay()
 
     cB = [0.10 0.35 1.00];   cR = [0.85 0.10 0.10];     % 藍=無bias / 紅=有bias
     FS = 28;
-    fig = figure('Color','w','Position',[100 100 1100 720]);  ax = axes(fig);  hold(ax,'on');
+    fig = figure('Color','w','Position',[100 100 1100 830]);  ax = axes(fig);  hold(ax,'on');   % [MODIFIED] 加高補償外置兩列圖例
     h0 = bar(ax, ctr0, pct0, 1, 'FaceColor',cB, 'FaceAlpha',0.60, 'EdgeColor','k', 'LineWidth',0.3);   % 亮藍(single) + 黑細邊
     h1 = bar(ax, ctr1, pct1, 1, 'FaceColor',cR, 'FaceAlpha',0.60, 'EdgeColor','none');                 % 紅(eighteen) 無邊；帶透明看得到交錯
     % 紅色：沿輪廓畫連續黑線(silhouette)+ 挑幾根 bar 從上到下畫垂直黑邊
@@ -66,13 +66,28 @@ function plot_err_hist_overlay()
     text(ax, xr(2), -0.022*ytop, sprintf('%g',xr(2)), 'HorizontalAlignment','center', ...
          'VerticalAlignment','top', 'FontSize',FS,'FontWeight','bold','Clipping','off');
     hLegR = bar(ax, NaN, NaN, 'FaceColor',cR, 'FaceAlpha',0.60, 'EdgeColor','k', 'LineWidth',1.2);   % 只給圖例：紅框加黑邊(實際紅 bar 仍無邊)
+    % [MODIFIED] 圖例移到圖框外「上方」、**兩列**(NumColumns=2 為欄優先填充 → 條目 1,2 = 左欄兩列、
+    %   3,4 = 右欄兩列，故 [h0 hLegR ml0 ml1] 恰為「第一列 Single、第二列 Eighteen」)。
+    %   欄距不用白字墊 —— 下面會強制圖例寬度 = 座標軸寬度，兩欄自動平均散開。
     lg = legend([h0 hLegR ml0 ml1], {'Single parameter', 'Eighteen parameters', ...
                 sprintf('Single mean = %.3f mT', mu0), sprintf('Eighteen mean = %.3f mT', mu1)}, ...
-                'Interpreter','tex', 'Location','northeast');
-    lg.FontSize = 24;  lg.FontWeight = 'bold';
-    xlabel(ax, '$\mathbf{\| b_{FEM} - S_i\, {}^{B}\hat{g}_{I}\, \bar{K}\, I_{j} \|\;(mT)}$', ...
+                'Interpreter','tex', 'Location','northoutside', 'NumColumns',2);
+    lg.FontSize = 24;  lg.FontWeight = 'bold';  lg.Box = 'on';  lg.EdgeColor = 'k';  lg.LineWidth = 2.5;
+    xlabel(ax, '$\mathbf{Residual\;(mT)}$', ...
            'Interpreter','latex', 'FontSize',36);      % 絕對殘差軸標題(標準數學字體、36 粗)
-    ax.Toolbar.Visible = 'off';  hold(ax,'off');       % 無平均線
+    ylabel(ax, '$\mathbf{Percentage\;(\%)}$', ...
+           'Interpreter','latex', 'FontSize',36);      % [ADDED] 百分比縱軸標題(同 err_hist 風格)
+    ax.Toolbar.Visible = 'off';  hold(ax,'off');
+
+    % [ADDED] 圖例框:①左右邊界對齊圖框(寬度=ax 寬、x 起點同 ax，兩欄自動平均散開)
+    %                ②壓低 ax 上緣，讓圖例底線與圖框上緣「留明確間隙」、不相黏
+    drawnow;
+    axp = get(ax,'Position');  lgh = get(lg,'Position');  lgh = lgh(4);
+    GAPN   = 0.022;                          % 圖例底線 ↔ 圖框上緣的間隙(normalized)
+    newTop = 1 - lgh - GAPN - 0.006;         % ax 新上緣(頂端留 0.006 給圖例外框)
+    axp(4) = newTop - axp(2);                % 只壓上緣、下緣不動
+    set(ax, 'Position', axp);
+    set(lg, 'Position', [axp(1), newTop + GAPN, axp(3), lgh]);
 
     out = fullfile(figdir,'err_hist_overlay.png');
     exportgraphics(fig, out, 'Resolution', 200);

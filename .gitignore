@@ -76,6 +76,13 @@ file0.bat
 magnetic_sim/ANSYS/main/LTspice/**/*.raw
 magnetic_sim/ANSYS/main/LTspice/**/*.net
 
+# Office / SolidWorks lock files (~$Foo.docx / ~$Foo.pptx / ~$Foo.SLDPRT) — 檔案開啟時自動產生
+~$*
+
+# ANSYS scratch left under ANSYS_data/**/db/ (per db-folder-retention: db/ 只留 .db + 主 .rmg + 主 log)
+magnetic_sim/ANSYS/main/ANSYS_data/**/*mpitest*
+magnetic_sim/ANSYS/main/ANSYS_data/**/_classify.txt
+
 # OS files
 Thumbs.db
 desktop.ini

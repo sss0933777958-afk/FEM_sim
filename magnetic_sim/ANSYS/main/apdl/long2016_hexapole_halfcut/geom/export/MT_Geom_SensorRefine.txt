@@ -1,0 +1,347 @@
+! ============================================================================
+! MT_Geom_SensorRefine.txt  —  Long2016 hexapole halfcut  GEOM-ONLY（sensor 加密球位置檢查）
+!   = graded 幾何（verbatim）+ 6 顆 sensor 加密**幾何球 R0.3**（= mesh deck 真實用的球，非 marker）。
+!   目的：交付使用者疊 CAD 檢查——6 顆 R0.3 球是否對準 sensor 圓柱中心、是否清過磁極（不吃鋼）。
+!   ⚠ 不 mesh、不 solve；只建幾何 + SAVE db + 匯出給檢查。
+!   ⚠ 交付檢查一律 STEP（deliver-step 規則）：ANSYS IGESOUT → OCC 讀（×25.4）→ ÷25.4 → 寫 mm STEP。
+!     本 deck 只 IGESOUT 到 scratch（中繼）；STEP 由 make_sensor_refine_step.py 產到 model_check/long_fei/。
+!   幾何 block = 照 mesh/MT_Mesh_Graded.txt verbatim（yoke+6極 VADD、內/中球+外圓柱、VOVLAP、VATT）。
+! ============================================================================
+
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\geom\sensor_refine'
+Finish
+/cle
+/CLEAR,NOSTART
+/TITLE, Long2016 halfcut - geom + 6 sensor R0.3 spheres (position check)
+/FILNAME,geom_sensorref,1
+/PREP7
+
+! -------------------------------------------------------------------
+! [ADDED] region-graded element sizes (參數化；改這裡即可重調，各模型可套)
+! -------------------------------------------------------------------
+ESIZE_CORE  = 0.1e-3    ! WP 細球 R<=CORE_R
+ESIZE_SHELL = 0.6e-3    ! [MODIFIED→base] 內球 base 0.6mm（Stage2 NREFINE 1 級→0.3mm；base 壓低元素量避 choke）
+ESIZE_MID   = 1.5e-3    ! [ADDED] 中間空氣球殼 (7mm..MID_SPH_R)：把 0.3->4mm 拆成 0.3->1.5->4 兩段過渡，避免單體積大跳爆 OOM
+ESIZE_POLE  = 0.6e-3    ! [MODIFIED→base] 極身 base 0.6mm（Stage2 NREFINE→0.3mm）
+ESIZE_YOKE  = 1.5e-3    ! yoke body
+ESIZE_OUTER = 8.0e-3    ! [MODIFIED 4->8] 外圓柱：4mm 在 R80mm 大域 free-tet 卡 8hr（瓶頸=外圓柱本身）；graded 重點是 WP 近場細、遠場不必細 → 放粗 8mm
+LSIZE_TIP   = 0.6e-3    ! [MODIFIED 20µm→base] 尖端 base 0.6mm（Stage2 NREFINE→~50µm；20µm base 太細爆量）
+LSIZE_PROT  = 0.6e-3    ! [MODIFIED 0.3→base] protrusion base 0.6mm（Stage2 NREFINE→0.3mm）
+CORE_R      = 0.4e-3    ! [MODIFIED 2.0->0.6->0.8->0.4] WP 細球半徑：R0.6 sliver / R0.8 爆炸（窗口太窄）。
+                        !   改 R<500µm 尖端距離 → core 純空氣、零鋼極相交(無 sliver) + 小而簡單(不爆)；尖端由 20µm LESIZE 解析
+
+MESH_SIZE = 5
+POLE_NUM  = 6
+*dim, POLE_ARRAY,,  POLE_NUM
+*dim, PROT_ARRAY,,  POLE_NUM
+*afun, DEG
+BTOL, 1e-6
+/UNITS, MKS
+
+R_norm    = 500e-6
+R_norm_xy = R_norm*sqrt(2.0/3.0)
+R_norm_z  = R_norm/sqrt(3.0)
+YOKE_IN_R  = 84e-3/2.0
+YOKE_OUT_R = 106e-3/2.0
+YOKE_MID_R = (YOKE_IN_R + YOKE_OUT_R)/2.0
+YOKE_H     = 2.0e-3
+PROT_R     = 10.0e-3/2.0
+PROT_H     = 7.0e-3
+POLE_R        = 6.0e-3/2
+POLE_TIP_R    = 40.0e-6
+POLE_CONE_LEN = 15e-3
+POLE_CONE_HYP = sqrt(POLE_CONE_LEN**2 + POLE_R**2)
+ANG1 = acos(POLE_R/POLE_CONE_HYP)
+ANG2 = 90 - ANG1
+L = POLE_CONE_LEN*POLE_TIP_R/POLE_R
+POLE_TIP_CENTER = L/cos(ANG2)
+POLE_CONE2_LEN  = L*cos(ANG2)
+POLE_TIP_R2     = POLE_TIP_R*cos(ANG2)
+POLE_TIP_FILLET_DROP = POLE_TIP_CENTER - POLE_TIP_R
+POLE_TIP_FILLET_PROT = (POLE_CONE2_LEN - POLE_TIP_FILLET_DROP)
+
+! ===== Yoke + 6 protrusions (VADD 合併成 V8，照 baseline) =====
+WPLANE, 1,0,0,0,,,,,,
+WPcsys,-1,0
+CYL4,0,0,YOKE_IN_R,0,YOKE_OUT_R,360,YOKE_H
+*do, prot_ind, 1, POLE_NUM,1
+	WPLANE,1,0,0,0,,,,,,
+	WPcsys,-1,0
+	*if, prot_ind,LE,3, then
+		temp_prot_h = -PROT_H
+		temp_prot_ang = 120*(prot_ind - 1)
+	*else
+		WPOFFS,0,0,YOKE_H
+		temp_prot_h = PROT_H
+		temp_prot_ang = 120*(prot_ind - 4) + 60
+	*endif
+	CYL4,YOKE_MID_R*cos(temp_prot_ang),YOKE_MID_R*sin(temp_prot_ang),PROT_R, ,,,temp_prot_h
+*enddo
+FLST,2, 1 + POLE_NUM, 6,ORDE, 2
+FITEM,2, 1
+FITEM,2,-(1+POLE_NUM)
+VADD,P51X
+*get, vol_yoke_ind, VOLU,,NUM, MAX
+
+! ===== 3 lower poles (half-cut) =====
+X0_LOW = YOKE_MID_R*cos(0)
+Y0_LOW = YOKE_MID_R*sin(0)
+Z0_LOW = -PROT_H
+*do, pole_ind,1,3,1
+	WPLANE, 1,0,0,0,,,,,,
+	WPcsys,-1,0
+	ROTA_ANG = 120*(pole_ind-1)
+	WPROTA, ROTA_ANG,
+	*get, VL_NUM, VOLU, ,NUM, MAX
+	VL_START = VL_NUM + 1
+	numstr, VOLU, VL_START
+	BLOCK, X0_LOW - 5e-3,  X0_LOW + 11e-3, Y0_LOW - 5e-3,  Y0_LOW + 5e-3,  Z0_LOW - 10e-3, Z0_LOW
+	BLOCK, X0_LOW - 5e-3,  X0_LOW - 2e-3,  Y0_LOW - 10e-3, Y0_LOW + 10e-3, Z0_LOW - 10e-3, Z0_LOW - 5e-3
+	BLOCK, X0_LOW - 10e-3, X0_LOW - 2e-3,  Y0_LOW - 5e-3,  Y0_LOW + 5e-3,  Z0_LOW - 10e-3, Z0_LOW - 2e-3
+	BLOCK, X0_LOW - 10e-3, X0_LOW - 5e-3,  Y0_LOW - 10e-3, Y0_LOW + 10e-3, Z0_LOW - 10e-3, Z0_LOW - 5e-3
+	*get, KP_NUM, KP  , ,NUM, MAX
+	*get, LI_NUM, LINE, ,NUM, MAX
+	KP_START = KP_NUM + 1
+	LI_START = LI_NUM + 1
+	numstr, KP,   KP_START
+	numstr, LINE, LI_START
+	l1 = R_norm_xy
+	l1_ang = atan2( 0 , R_norm_xy )
+	l2 = sqrt( (R_norm_xy + POLE_TIP_FILLET_PROT)**2 + POLE_TIP_R2**2 )
+	l2_ang = atan2( POLE_TIP_R2 , (R_norm_xy + POLE_TIP_FILLET_PROT) )
+	POLE_CONE_LEN_SHIFT = POLE_CONE_LEN + (R_norm_xy - POLE_TIP_FILLET_DROP)
+	l3 = sqrt( POLE_CONE_LEN_SHIFT**2 + POLE_R**2 )
+	l3_ang = atan2( POLE_R , POLE_CONE_LEN )
+	l4 = sqrt( (X0_LOW - 10e-3)**2 + POLE_R**2 )
+	l4_ang = atan2( POLE_R , (X0_LOW - 10e-3) )
+	l5 = abs( X0_LOW - 10e-3 )
+	l5_ang = atan2( 0 , (X0_LOW - 10e-3) )
+	l6 = abs( R_norm_xy + POLE_TIP_R )
+	l6_ang = atan2( 0, R_norm_xy + POLE_TIP_R )
+	K , , l1*cos(ROTA_ANG + l1_ang) , l1*sin(ROTA_ANG + l1_ang), Z0_LOW - 6e-3
+	K , , l2*cos(ROTA_ANG + l2_ang) , l2*sin(ROTA_ANG + l2_ang), Z0_LOW - 6e-3
+	K , , l3*cos(ROTA_ANG + l3_ang) , l3*sin(ROTA_ANG + l3_ang), Z0_LOW - 6e-3
+	K , , l4*cos(ROTA_ANG + l4_ang) , l4*sin(ROTA_ANG + l4_ang), Z0_LOW - 6e-3
+	K , , l5*cos(ROTA_ANG + l5_ang) , l5*sin(ROTA_ANG + l5_ang), Z0_LOW - 6e-3
+	K , , l6*cos(ROTA_ANG + l6_ang) , l6*sin(ROTA_ANG + l6_ang), Z0_LOW - 6e-3
+	LARC , KP_START , KP_START + 1 , KP_START + 5 , POLE_TIP_R
+	L , KP_START + 1 , KP_START + 2,,,,,,,,
+	L , KP_START + 2 , KP_START + 3,,,,,,,,
+	L , KP_START + 3 , KP_START + 4,,,,,,,,
+	L , KP_START + 4 , KP_START,,,,,,,,
+	*get, AR_NUM, AREA, ,NUM, MAX
+	AR_START = AR_NUM + 1
+	numstr, AREA, AR_START
+	AL, LI_START, LI_START + 1, LI_START + 2, LI_START + 3, LI_START + 4
+	VROTAT, AR_START, ,,,,,KP_START,KP_START + 4,,4
+	*get, vl_ind_temp, VOLU,,NUM,MAX
+	FLST,2,(vl_ind_temp - VL_START + 1),6,ORDE,2
+	FITEM,2,VL_START
+	FITEM,2,-vl_ind_temp
+	VADD,P51X
+	*get, vol_pole_ind, VOLU,,NUM,MAX
+	VADD, VL_NUM, vol_pole_ind
+	*get, vol_unite_ind, VOLU,,NUM,MAX
+	BLOCK,0,X0_LOW - 10e-3,Y0_LOW - 10e-3,Y0_LOW + 10e-3,Z0_LOW - 6e-3, Z0_LOW
+	VSBV, vol_unite_ind,vol_unite_ind + 1
+*enddo
+
+! ===== 3 upper poles =====
+	X0_HIGH = YOKE_MID_R*cos(0)
+	Y0_HIGH = YOKE_MID_R*sin(0)
+	Z0_HIGH = YOKE_H + PROT_H
+*do, pole_ind,4,6,1
+	WPLANE, 1,0,0,0,,,,,,
+	WPcsys,-1,0
+	ROTA_ANG = 120*(pole_ind-4) + 60
+	WPROTA, ROTA_ANG,
+	*get, VL_NUM, VOLU, ,NUM, MAX
+	VL_START = VL_NUM + 1
+	numstr, VOLU, VL_START
+	BLOCK, X0_HIGH - 3.5e-3,  X0_HIGH + 8.5e-3, Y0_HIGH - 5e-3,  Y0_HIGH + 5e-3,  Z0_HIGH, Z0_HIGH + 10e-3
+	BLOCK, X0_HIGH - 6.5e-3,  X0_HIGH - 3.5e-3, Y0_HIGH - 11e-3, Y0_HIGH + 11e-3, Z0_HIGH, Z0_HIGH + 10e-3
+	BLOCK, X0_HIGH - 16.5e-3, X0_HIGH - 6.5e-3, Y0_HIGH - 11e-3, Y0_HIGH + 11e-3, Z0_HIGH, Z0_HIGH + 10e-3
+	tip_upper_x = R_norm_xy*cos(ROTA_ANG)
+	tip_upper_y = R_norm_xy*sin(ROTA_ANG)
+	tip_upper_z = Z0_LOW - 6e-3 + R_norm_z*2
+	end_upper_x0 = X0_HIGH - 11.5e-3
+	end_upper_y0 = Y0_HIGH
+	end_upper_z0 = Z0_HIGH + 5e-3
+	end_upper_x = sqrt( end_upper_x0**2 + end_upper_y0**2 )*cos(ROTA_ANG)
+	end_upper_y = sqrt( end_upper_x0**2 + end_upper_y0**2 )*sin(ROTA_ANG)
+	end_upper_z = end_upper_z0
+	INCLINE_VECTORx = end_upper_x - tip_upper_x
+	INCLINE_VECTORy = end_upper_y - tip_upper_y
+	INCLINE_VECTORz = end_upper_z - tip_upper_z
+	INCLINE_ANG = atan2( INCLINE_VECTORz, sqrt(INCLINE_VECTORx**2+INCLINE_VECTORy**2) )
+	*get, KP_NUM, KP  , ,NUM, MAX
+	*get, LI_NUM, LINE, ,NUM, MAX
+	KP_START = KP_NUM + 1
+	LI_START = LI_NUM + 1
+	numstr, KP,   KP_START
+	numstr, LINE, LI_START
+	p1x = tip_upper_x
+	p1y = tip_upper_y
+	p1z = tip_upper_z
+	p2x = p1x + POLE_TIP_FILLET_PROT*cos(INCLINE_ANG)*cos(ROTA_ANG) - POLE_TIP_R2*sin(ROTA_ANG)
+	p2y = p1y + POLE_TIP_FILLET_PROT*cos(INCLINE_ANG)*sin(ROTA_ANG) + POLE_TIP_R2*cos(ROTA_ANG)
+	p2z = p1z + POLE_TIP_FILLET_PROT*sin(INCLINE_ANG)
+	POLE_CONE_LEN_SHIFT = POLE_CONE_LEN + (R_norm_xy - POLE_TIP_FILLET_DROP)
+	p3x = p1x + POLE_CONE_LEN_SHIFT*cos(INCLINE_ANG)*cos(ROTA_ANG) - POLE_R*sin(ROTA_ANG)
+	p3y = p1y + POLE_CONE_LEN_SHIFT*cos(INCLINE_ANG)*sin(ROTA_ANG) + POLE_R*cos(ROTA_ANG)
+	p3z = p1z + POLE_CONE_LEN_SHIFT*sin(INCLINE_ANG)
+	p4x = end_upper_x - POLE_R*sin(ROTA_ANG)
+	p4y = end_upper_y + POLE_R*cos(ROTA_ANG)
+	p4z = end_upper_z
+	p5x = end_upper_x
+	p5y = end_upper_y
+	p5z = end_upper_z
+	p6x = p1x + POLE_CONE_LEN*cos(INCLINE_ANG)*cos(ROTA_ANG)
+	p6y = p1y + POLE_CONE_LEN*cos(INCLINE_ANG)*sin(ROTA_ANG)
+	p6z = p1z + POLE_CONE_LEN*sin(INCLINE_ANG)
+	K,, p1x , p1y , p1z
+	K,, p2x , p2y , p2z
+	K,, p3x , p3y , p3z
+	K,, p4x , p4y , p4z
+	K,, p5x , p5y , p5z
+	K,, p6x , p6y , p6z
+	LARC , KP_START , KP_START + 1 , KP_START + 5 , POLE_TIP_R
+	L , KP_START + 1 , KP_START + 2,,,,,,,,
+	L , KP_START + 2 , KP_START + 3,,,,,,,,
+	L , KP_START + 3 , KP_START + 4,,,,,,,,
+	L , KP_START + 4 , KP_START,,,,,,,,
+	*get, AR_NUM, AREA, ,NUM, MAX
+	AR_START = AR_NUM + 1
+	numstr, AREA, AR_START
+	AL, LI_START, LI_START + 1, LI_START + 2, LI_START + 3, LI_START + 4
+	VROTAT, AR_START, ,,,,,KP_START,KP_START + 4,,4
+	*get, vl_ind_temp, VOLU,,NUM,MAX
+	FLST,2,(vl_ind_temp - VL_START + 1),6,ORDE,2
+	FITEM,2,VL_START
+	FITEM,2,-vl_ind_temp
+	VADD,P51X
+	*get, vol_pole_ind, VOLU,,NUM,MAX
+	VADD, VL_NUM, vol_pole_ind
+*enddo
+NUMCMP,VOLU
+
+! ===== 內球(7mm) + [ADDED] 中間球(25mm) + 外圓柱 =====
+SPH_FINE_R = 7e-3
+! [MODIFIED 25->30] R25 切過 yoke(R21-26mm) 產生 sliver thrash；放大到 R30>26 讓 yoke 全包進中球 → 外圓柱內界面=乾淨球面、無 sliver
+MID_SPH_R  = 30e-3                       ! 中間氣球半徑
+SPH_OFST = Z0_LOW - 6e-3 + R_norm_z
+AIR_CYL_R = 80e-3
+AIR_CYL_H = 70e-3
+WPLANE, 1,0,0,0,,,,,,
+WPcsys,-1,0
+WPOFFS,0,0,SPH_OFST
+SPHERE, 0, SPH_FINE_R, 0,360            ! 內氣球 7mm（內球統一 ESIZE_SHELL；無 0.1 細 core）
+SPHERE, 0, MID_SPH_R, 0,360             ! [ADDED] 中間氣球 25mm（VOVLAP 後成 7..25mm 殼，@ESIZE_MID 1.5mm）
+WPOFFS,0,0, -SPH_OFST + YOKE_H/2 - AIR_CYL_H/2
+CYL4,0,0,AIR_CYL_R, ,,,AIR_CYL_H        ! 外氣圓柱
+
+! ===== 單一 VOVLAP（含 core 球）=====
+ALLSEL,ALL
+VOVLAP,ALL
+NUMCMP,VOLU
+
+! ===== 材料 + 元素型別 =====
+MAT_AIR1    = 1   ! inner air sphere (R<=7mm) @ESIZE_SHELL
+MAT_MT      = 2   ! 1018 steel (poles + protrusion + yoke)
+MAT_AIR2    = 3   ! outer cylinder air @ESIZE_OUTER
+MAT_AIR_MID = 4   ! [ADDED] mid air shell (7..25mm) @ESIZE_MID
+mp , murx , MAT_AIR1    , 1
+mp , murx , MAT_MT      , 280
+mp , murx , MAT_AIR2    , 1
+mp , murx , MAT_AIR_MID , 1
+ET_nocurr = 1
+ET_curr   = 2
+ET , ET_nocurr , SOLID96
+ET , ET_curr   , SOURC36
+
+! ===== [ADDED] VATT by location+size（booleans 清屬性 → 不可硬編 volume 號）=====
+!   判據（順序重要）：dwp = centroid 到 WP 距離[m]；vsz = volume 體積[m^3]
+!     1) vsz>5e-4         -> 外圓柱氣 MAT_AIR2 (~1.27e-3)
+!     2) dwp>10mm         -> 鋼 cone/yoke/prot 連通塊 MAT_MT (含 dwp 15-22mm、vsz 可達 3e-5 的鋼塊)
+!     3) vsz>1e-5         -> 中間球殼氣 MAT_AIR_MID (R30 後 ~1.03e-4，質心在 WP dwp~0；必在內球判斷前)
+!     4) vsz>5e-7         -> 內球氣 MAT_AIR1 (~1.4e-6)
+!     5) 其餘             -> 內球內鋼極尖段 MAT_MT (vsz~1e-8、dwp~5mm)
+!   實測(R30 DIAG)：內球 1.4e-6 < 中球殼 1.03e-4 < 外圓柱 1.27e-3；門檻 5e-4 介於中球殼與外圓柱之間。
+!   鋼塊 dwp 5-22mm（近 WP 尖段 dwp~5mm vsz<5e-7、遠塊 dwp>10mm）。R30>yoke26mm → 鋼不被中球切。
+ALLSEL,ALL
+*get, VMAX, VOLU,, NUM, MAX
+*do, vi, 1, VMAX
+	VSEL,S,VOLU,,vi
+	VSUM
+	*get, vsz, VOLU, vi, VOLU                ! 體積(若不存在回 0)
+	*if, vsz, GT, 0, then
+		*get, cx, VOLU, vi, CENT, X
+		*get, cy, VOLU, vi, CENT, Y
+		*get, cz, VOLU, vi, CENT, Z
+		dwp = sqrt( cx*cx + cy*cy + (cz-SPH_OFST)*(cz-SPH_OFST) )
+		*if, vsz, GT, 5e-4, then
+			VATT, MAT_AIR2, 1, ET_nocurr       ! 外圓柱空氣 (~1.27e-3)；門檻 5e-4 介於 mid(R30 後 ~1.03e-4) 與 outer(1.27e-3) 之間
+		*elseif, dwp, GT, 10e-3, then
+			VATT, MAT_MT, 1, ET_nocurr         ! [FIX] 鋼連通塊/cone/yoke (dwp>10mm；含 VOL17 vsz=3.1e-5 鋼，必在中球判斷前先抓)
+		*elseif, vsz, GT, 1e-5, then
+			VATT, MAT_AIR_MID, 1, ET_nocurr    ! [FIX 移上來] 中間球殼空氣 (~6.1e-5，質心在 WP dwp~0)；原被 dwp<CORE_R 誤判成內球
+		*elseif, vsz, GT, 5e-7, then
+			VATT, MAT_AIR1, 1, ET_nocurr       ! 內球空氣 (~1.4e-6)
+		*else
+			VATT, MAT_MT, 1, ET_nocurr         ! 內球內的鋼極尖段 (tiny vsz ~1e-8，dwp~5mm)
+		*endif
+	*endif
+*enddo
+ALLSEL,ALL
+
+! ===== [ADDED 2026-07-19] 6 加密球 R=0.3mm @ sensor 圓柱幾何中心（= mesh deck 真實球；供檢查是否清過鋼）=====
+!   球心 = 圓柱中心 = sensor_pos(底面) + (H/2)*n+；離磁極面 0.46mm、R0.3 → 清過鋼 0.16mm；含取樣圓柱 R0.158。
+!   不 VOVLAP、不改材料（純檢查用實體球；mesh deck 才 VOVLAP 進氣球）。
+*dim, SCX, ARRAY, 6
+*dim, SCY, ARRAY, 6
+*dim, SCZ, ARRAY, 6
+SCX(1) =   4.8012e-3,  -3.1322e-3,  -2.4006e-3,   1.5661e-3,   1.5661e-3,  -2.4006e-3
+SCY(1) =   0.0000e-3,   0.0000e-3,   4.1580e-3,  -2.7125e-3,   2.7125e-3,  -4.1580e-3
+SCZ(1) = -14.3477e-3,  -8.7220e-3, -14.3477e-3,  -8.7220e-3,  -8.7220e-3, -14.3477e-3
+SPH_MARK_R = 0.3e-3
+*get, V_B4, VOLU,, NUM, MAX
+*do, si, 1, 6
+	WPLANE,1,0,0,0 $ WPCSYS,-1,0 $ WPOFFS, SCX(si), SCY(si), SCZ(si)
+	SPHERE, 0, SPH_MARK_R, 0, 360
+*enddo
+CSYS,0
+*get, V_AFT, VOLU,, NUM, MAX
+VSEL,S,VOLU,, V_B4+1, V_AFT
+CM, SPH_MARK, VOLU
+ALLSEL,ALL
+
+! ===== SAVE geom db → db/geom/sensor_refine/geom_sensorref.db =====
+SAVE
+
+! ===== IGESOUT 鋼極(MAT_MT=2) + 6 球 → scratch（中繼；STEP 才交付 model_check）=====
+!   ⚠ ANSYS IGES 被 SW/OCC 讀成英吋 ×25.4 → 不可直接給使用者；由 OCC 讀回 ÷25.4 寫 mm STEP。
+VSEL,S,MAT,,2
+CMSEL,A,SPH_MARK
+ALLSEL,BELOW,VOLU
+IGESOUT,sensor_refine,iges,'C:\Users\Kuo\AppData\Local\Temp\claude\G--my-workspace\b77e29dd-bd9c-479e-93f7-d3abb6bbd5e1\scratchpad\'
+ALLSEL,ALL
+
+! ===== render PNG：鋼極 + 6 球（iso + zoom P1 + zoom P2）供目視檢查球位/是否吃鋼 =====
+/RGB,INDEX,100,100,100, 0
+/RGB,INDEX, 80, 80, 80,13
+/RGB,INDEX, 60, 60, 60,14
+/RGB,INDEX,  0,  0,  0,15
+/GRAPHICS,POWER
+/PNUM,VOLU,0
+/NUMBER,1
+VSEL,S,MAT,,2 $ CMSEL,A,SPH_MARK $ ALLSEL,BELOW,VOLU
+/VIEW,1,1,1,1 $ /ANG,1 $ /AUTO,1
+/SHOW,PNG,,,8
+VPLOT
+/FOCUS,1, 4.8012e-3, 0.0, -14.3477e-3 $ /DIST,1,1.6e-3 $ /VIEW,1,0,-1,0.3
+VPLOT
+/FOCUS,1, -3.1322e-3, 0.0, -8.7220e-3 $ /DIST,1,1.6e-3 $ /VIEW,1,0,-1,0.3
+VPLOT
+/SHOW,CLOSE
+ALLSEL,ALL
+FINISH

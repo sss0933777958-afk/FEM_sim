@@ -1,0 +1,97 @@
+! ============================================================================
+! MT_Sim_graded_all.txt — Long2016 halfcut ORIGINAL graded (NO gap), coil XCOILX
+!   目的：重解原始 graded（無氣隙、支撐座實心鋼=MAT2、無 slab），統一補上**全域 all** 場
+!   （當初 graded 只匯 WP、all dump 被關掉 → sensor/電壓側做不了；本次補齊）。
+!
+!   RESUME db/mesh/graded/mesh_graded.db（原始 graded 網格，同底 geom）
+!     → coil XCOILX = +1 raw、其餘 0（**照 MT_Sim_P*_basegap 慣例，不可自創**）
+!     → D,ALL,MAG,0 → magsolv,3 → POST 抽 all + wp .dat → data/graded/coilXCOILX/
+!     → SAVE solve db（sim_coilXCOILX.db）供日後 re-extract，不再重解。
+!
+!   coil↔pole = long2016 [1,3,6,5,2,4]（baked in mesh 的 SOURC36 REAL set；= NTU 同 map）。
+!   deck **不做號誌翻轉**：raw = 下極 sink / 上極 source（混合，long2016 事實）；
+!     all-source 的全域 negate + flip-sink 由 MATLAB load_coils_actuator 統一處理。
+!   ⚠ 由 run_graded_all.sh sed XCOILX→coil 編號、XVARIANTX→variant tag（預設 graded）；勿手改。
+!     [MODIFIED] variant tag：RESUME mesh_XVARIANTX @ db\mesh\XVARIANTX、/CWD db\sim\XVARIANTX、
+!     輸出 data\XVARIANTX\coilXCOILX。VARIANT=graded 時完全等價原 graded；tip 變體傳 VARIANT=tip400um 等。
+!   ⚠ TURNS/几何常數 /CWD /RESUME /export 路徑皆與 basegap 一致，只差 RESUME 網格 + 輸出夾。
+! ============================================================================
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\sim\XVARIANTX'
+/CLEAR,NOSTART
+/TITLE, Long2016 halfcut ORIGINAL graded (no gap) - coil XCOILX
+RESUME,'mesh_XVARIANTX','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\mesh\XVARIANTX'
+
+/PREP7
+*afun,DEG
+! ---- geom consts (APDL scalars not stored in .db；POST 用 SPH_OFST) ----
+PROT_H     = 7.0e-3
+YOKE_H     = 2.0e-3
+R_norm     = 500e-6
+R_norm_z   = R_norm/sqrt(3.0)
+SPH_OFST   = -PROT_H - 6e-3 + R_norm_z
+AIR_CYL_R  = 80e-3
+AIR_CYL_H  = 70e-3
+COIL_OUT_R = 8e-3
+COIL_IN_R  = 5e-3
+COIL_THK   = COIL_OUT_R - COIL_IN_R
+COIL_H     = PROT_H
+TURNS      = 70
+
+! ---- coil currents: coil XCOILX = +1 raw, others 0 ----
+R,1,1,TURNS*0,COIL_THK,COIL_H
+R,2,1,TURNS*0,COIL_THK,COIL_H
+R,3,1,TURNS*0,COIL_THK,COIL_H
+R,4,1,TURNS*0,COIL_THK,COIL_H
+R,5,1,TURNS*0,COIL_THK,COIL_H
+R,6,1,TURNS*0,COIL_THK,COIL_H
+R,XCOILX,1,TURNS*1,COIL_THK,COIL_H
+
+! ---- far-field BC: MAG=0 on outer cyl lateral + caps ----
+AIR_CYL_Z_CTR = YOKE_H/2
+AIR_CYL_Z_BOT = AIR_CYL_Z_CTR - AIR_CYL_H/2
+AIR_CYL_Z_TOP = AIR_CYL_Z_CTR + AIR_CYL_H/2
+LOCAL,11,1,0,0,0
+CSYS,11
+NSEL,S,LOC,X, AIR_CYL_R-0.5e-3, AIR_CYL_R+0.5e-3
+CSYS,0
+NSEL,A,LOC,Z, AIR_CYL_Z_TOP-0.5e-3, AIR_CYL_Z_TOP+0.5e-3
+NSEL,A,LOC,Z, AIR_CYL_Z_BOT-0.5e-3, AIR_CYL_Z_BOT+0.5e-3
+D,ALL,MAG,0
+ALLSEL,ALL
+FINISH
+
+! ---- solve (DSP scalar potential) ----
+/SOLU
+magsolv,3,,,,,1
+FINISH
+
+! ====================================================================
+! POST1: all + WP region -> data/graded/coilXCOILX/
+! ====================================================================
+/POST1
+SET,LAST
+ALLSEL,ALL
+/HEADER,OFF,OFF,OFF,OFF,OFF,OFF
+/FORMAT,10,,20,12,,
+/PAGE,1000000,,1000000
+/OUTPUT,'coilXCOILX_coord_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\XVARIANTX\coilXCOILX'
+NLIST,ALL, , ,COORD
+/OUTPUT
+/OUTPUT,'coilXCOILX_bfield_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\XVARIANTX\coilXCOILX'
+PRNSOL,B,COMP
+/OUTPUT
+LOCAL,12,2, 0, 0, SPH_OFST
+CSYS,12
+NSEL,S,LOC,X, 0, 2e-3
+CSYS,0
+/OUTPUT,'coilXCOILX_coord_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\XVARIANTX\coilXCOILX'
+NLIST,ALL, , ,COORD
+/OUTPUT
+/OUTPUT,'coilXCOILX_bfield_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\XVARIANTX\coilXCOILX'
+PRNSOL,B,COMP
+/OUTPUT
+ALLSEL,ALL
+CSYS,0
+FINISH
+SAVE                   ! [ADDED] 存 solve db → db/sim/graded/sim_coilXCOILX.db（交付 db/sim；日後 re-extract 不再重解）
+/EXIT

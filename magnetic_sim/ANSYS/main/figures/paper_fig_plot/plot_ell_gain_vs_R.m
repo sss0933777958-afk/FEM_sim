@@ -16,26 +16,38 @@ function plot_ell_gain_vs_R(USE_BIAS)
     CAL = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
     addpath(fullfile(CAL,'function'));  addpath(fullfile(CAL,'common_path'));
 
-    % ---- 前段 pipeline(只做一次):graded / current / actuator frame ----
-    cfg = model_config('long2016_hexapole_halfcut','tip40um');
-    raw = extract_ansys_data(cfg, 'all', 'graded');     % 印 Matched N(指紋核對)
-    ad  = build_actuator_data(raw, cfg);   Pc_base = ad.Pc_base;
-    F   = zeros(6, cfg.N_I);
-    for j = 1:cfg.N_I, F(cfg.apdl_to_paper_idx(j), j) = 1; end
+    bstr = ''; if USE_BIAS, bstr = '_bias'; end
+    % [ADDED] 掃描結果快取:R-sweep 要 24 次擬合(每次還得先讀 656k 節點 .dat)、數分鐘;
+    %   純改樣式(軸標題/tick/顏色)不需重算 → 有快取就載入。要強制重算把此 .mat 刪掉。
+    cachef = fullfile(here, sprintf('ell_gain_sweep%s.mat', bstr));
 
-    % ---- 掃描 R(fix 模型;每 20µm 一點;從 ĝ_I 正值起 R=40µm;R≤20 病態非物理)----
-    Rum = 40:20:500;                                    % 取樣半徑 [µm](固定 20µm 間距)
-    nR  = numel(Rum);
-    ell_R = nan(1,nR);  gI_R = nan(1,nR);  npts_R = zeros(1,nR);
-    fprintf('\n  R[um]   npts    ell_hat[um]   gI_hat[mT/A]\n');
-    for i = 1:nR
-        [P, Bstack, npts] = cfg.select_ball(ad, Rum(i)*1e-6);
-        npts_R(i) = npts;
-        if npts < 3, fprintf('  %5d  %6d   (skip: npts<3)\n', Rum(i), npts); continue; end
-        [e, l_hat, ~] = fitting(P, Bstack, Pc_base, 0.5e-3, USE_BIAS);   % fix / bias 由旗標切
-        [~, gI_hat]   = solve_current(l_hat, e, Pc_base, P, Bstack, F);
-        ell_R(i) = l_hat*1e6;  gI_R(i) = gI_hat;
-        fprintf('  %5d  %6d   %10.2f   %11.4f\n', Rum(i), npts, ell_R(i), gI_R(i));
+    if exist(cachef, 'file')
+        S = load(cachef);   Rum = S.Rum;  ell_R = S.ell_R;  gI_R = S.gI_R;
+        fprintf('loaded cache %s  (delete it to force recompute)\n', cachef);
+    else
+        % ---- 前段 pipeline(只做一次):graded / current / actuator frame ----
+        cfg = model_config('long2016_hexapole_halfcut','tip40um');
+        raw = extract_ansys_data(cfg, 'all', 'graded');     % 印 Matched N(指紋核對)
+        ad  = build_actuator_data(raw, cfg);   Pc_base = ad.Pc_base;
+        F   = zeros(6, cfg.N_I);
+        for j = 1:cfg.N_I, F(cfg.apdl_to_paper_idx(j), j) = 1; end
+
+        % ---- 掃描 R(fix 模型;每 20µm 一點;從 ĝ_I 正值起 R=40µm;R≤20 病態非物理)----
+        Rum = 40:20:500;                                    % 取樣半徑 [µm](固定 20µm 間距)
+        nR  = numel(Rum);
+        ell_R = nan(1,nR);  gI_R = nan(1,nR);  npts_R = zeros(1,nR);
+        fprintf('\n  R[um]   npts    ell_hat[um]   gI_hat[mT/A]\n');
+        for i = 1:nR
+            [P, Bstack, npts] = cfg.select_ball(ad, Rum(i)*1e-6);
+            npts_R(i) = npts;
+            if npts < 3, fprintf('  %5d  %6d   (skip: npts<3)\n', Rum(i), npts); continue; end
+            [e, l_hat, ~] = fitting(P, Bstack, Pc_base, 0.5e-3, USE_BIAS);   % fix / bias 由旗標切
+            [~, gI_hat]   = solve_current(l_hat, e, Pc_base, P, Bstack, F);
+            ell_R(i) = l_hat*1e6;  gI_R(i) = gI_hat;
+            fprintf('  %5d  %6d   %10.2f   %11.4f\n', Rum(i), npts, ell_R(i), gI_R(i));
+        end
+        save(cachef, 'Rum', 'ell_R', 'gI_R', 'npts_R', 'USE_BIAS');
+        fprintf('saved cache %s\n', cachef);
     end
 
     % ---- 畫圖(2×1 panel,選項①粗體框)----
@@ -54,7 +66,8 @@ function plot_ell_gain_vs_R(USE_BIAS)
     else
         ylim(ax1,[750 870]);  set(ax1,'YTick',[770 800 830 860]);   % bias:ℓ̂ 765.8~864.4，4 內縮 tick
     end
-    ax1.XTickLabel = {};                                % 上 panel x 數字隱藏(共用軸);無軸標題
+    ax1.XTickLabel = {};                                % 上 panel x 數字隱藏(共用軸)
+    ylabel(ax1, '$\mathbf{\hat{\ell}\;(\mu m)}$', 'Interpreter','latex', 'FontSize',36);   % [ADDED] 上 panel y 軸標題（標準數學字體 \mathbf CM，同下 panel）
     hold(ax1,'off');
 
     % 下:ĝ_I(R)
@@ -68,10 +81,10 @@ function plot_ell_gain_vs_R(USE_BIAS)
         ylim(ax2,[9.5 10.5]);  set(ax2,'YTick',[9.7 9.9 10.1 10.3]);   % bias:ĝ_I 9.54~10.41，4 內縮 tick
     end
     ylabel(ax2, '$\mathbf{{}^{B}\hat{g}_{I}\;(mT/A)}$', 'Interpreter','latex', 'FontSize',36);   % 下 panel y 軸標題（標準數學字體 \mathbf CM）
+    xlabel(ax2, '$\mathbf{Sampling\;range\;(\mu m)}$', 'Interpreter','latex', 'FontSize',36);   % [ADDED] 共用 x 軸標題（掃描半徑 R）
     hold(ax2,'off');
 
-    bstr = ''; if USE_BIAS, bstr = '_bias'; end
-    out = fullfile(figdir, sprintf('ell_gain_vs_R%s.png', bstr));
+    out = fullfile(figdir, sprintf('ell_gain_vs_R%s.png', bstr));   % bstr 已在頂部定義(快取用)
     exportgraphics(fig, out, 'Resolution', 200);
     fprintf('\nwrote %s\n', out);
 end

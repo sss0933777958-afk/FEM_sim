@@ -58,6 +58,7 @@ PROT_R     = 10.0e-3/2.0
 PROT_H     = 7.0e-3
 POLE_R        = 6.0e-3/2
 POLE_TIP_R    = 40.0e-6
+POLE_TIP_R_REF = 40.0e-6     ! [ADDED] scenario-A: fixed design ref (flank+base frozen at 40 um tip)
 POLE_CONE_LEN = 15e-3
 POLE_CONE_HYP = sqrt(POLE_CONE_LEN**2 + POLE_R**2)
 ANG1 = acos(POLE_R/POLE_CONE_HYP)
@@ -68,6 +69,14 @@ POLE_CONE2_LEN  = L*cos(ANG2)
 POLE_TIP_R2     = POLE_TIP_R*cos(ANG2)
 POLE_TIP_FILLET_DROP = POLE_TIP_CENTER - POLE_TIP_R
 POLE_TIP_FILLET_PROT = (POLE_CONE2_LEN - POLE_TIP_FILLET_DROP)
+! [ADDED] scenario A: reference-fillet quantities drive the FIXED flank/base (use POLE_TIP_R_REF)
+L_REF                    = POLE_CONE_LEN*POLE_TIP_R_REF/POLE_R
+POLE_TIP_CENTER_REF      = L_REF/cos(ANG2)
+POLE_TIP_FILLET_DROP_REF = POLE_TIP_CENTER_REF - POLE_TIP_R_REF
+! [ADDED] tip-most retreat of the VARIANT fillet along the pole axis (0 at R = R_REF)
+POLE_TIP_RETREAT         = POLE_TIP_FILLET_DROP - POLE_TIP_FILLET_DROP_REF
+! [ADDED] 正交修正：上極尖端後退仰角 = arccos(1/3) = 70.5288 deg（Δ 無關；3 對連線→54.74°→兩兩正交、6 尖端共球）
+POLE_TIP_RET_ANG         = acos(1.0/3.0)
 
 ! ===== Yoke + 6 protrusions (VADD 合併成 V8，照 baseline) =====
 WPLANE, 1,0,0,0,,,,,,
@@ -114,19 +123,19 @@ Z0_LOW = -PROT_H
 	LI_START = LI_NUM + 1
 	numstr, KP,   KP_START
 	numstr, LINE, LI_START
-	l1 = R_norm_xy
-	l1_ang = atan2( 0 , R_norm_xy )
-	l2 = sqrt( (R_norm_xy + POLE_TIP_FILLET_PROT)**2 + POLE_TIP_R2**2 )
-	l2_ang = atan2( POLE_TIP_R2 , (R_norm_xy + POLE_TIP_FILLET_PROT) )
-	POLE_CONE_LEN_SHIFT = POLE_CONE_LEN + (R_norm_xy - POLE_TIP_FILLET_DROP)
+	l1 = R_norm_xy + POLE_TIP_RETREAT
+	l1_ang = atan2( 0 , R_norm_xy + POLE_TIP_RETREAT )
+	l2 = sqrt( (R_norm_xy + POLE_TIP_RETREAT + POLE_TIP_FILLET_PROT)**2 + POLE_TIP_R2**2 )
+	l2_ang = atan2( POLE_TIP_R2 , (R_norm_xy + POLE_TIP_RETREAT + POLE_TIP_FILLET_PROT) )
+	POLE_CONE_LEN_SHIFT = POLE_CONE_LEN + (R_norm_xy - POLE_TIP_FILLET_DROP_REF)
 	l3 = sqrt( POLE_CONE_LEN_SHIFT**2 + POLE_R**2 )
 	l3_ang = atan2( POLE_R , POLE_CONE_LEN )
 	l4 = sqrt( (X0_LOW - 10e-3)**2 + POLE_R**2 )
 	l4_ang = atan2( POLE_R , (X0_LOW - 10e-3) )
 	l5 = abs( X0_LOW - 10e-3 )
 	l5_ang = atan2( 0 , (X0_LOW - 10e-3) )
-	l6 = abs( R_norm_xy + POLE_TIP_R )
-	l6_ang = atan2( 0, R_norm_xy + POLE_TIP_R )
+	l6 = abs( R_norm_xy + POLE_TIP_RETREAT + POLE_TIP_R )
+	l6_ang = atan2( 0, R_norm_xy + POLE_TIP_RETREAT + POLE_TIP_R )
 	K , , l1*cos(ROTA_ANG + l1_ang) , l1*sin(ROTA_ANG + l1_ang), Z0_LOW - 6e-3
 	K , , l2*cos(ROTA_ANG + l2_ang) , l2*sin(ROTA_ANG + l2_ang), Z0_LOW - 6e-3
 	K , , l3*cos(ROTA_ANG + l3_ang) , l3*sin(ROTA_ANG + l3_ang), Z0_LOW - 6e-3
@@ -189,25 +198,30 @@ Z0_LOW = -PROT_H
 	LI_START = LI_NUM + 1
 	numstr, KP,   KP_START
 	numstr, LINE, LI_START
-	p1x = tip_upper_x
-	p1y = tip_upper_y
-	p1z = tip_upper_z
-	p2x = p1x + POLE_TIP_FILLET_PROT*cos(INCLINE_ANG)*cos(ROTA_ANG) - POLE_TIP_R2*sin(ROTA_ANG)
-	p2y = p1y + POLE_TIP_FILLET_PROT*cos(INCLINE_ANG)*sin(ROTA_ANG) + POLE_TIP_R2*cos(ROTA_ANG)
-	p2z = p1z + POLE_TIP_FILLET_PROT*sin(INCLINE_ANG)
-	POLE_CONE_LEN_SHIFT = POLE_CONE_LEN + (R_norm_xy - POLE_TIP_FILLET_DROP)
-	p3x = p1x + POLE_CONE_LEN_SHIFT*cos(INCLINE_ANG)*cos(ROTA_ANG) - POLE_R*sin(ROTA_ANG)
-	p3y = p1y + POLE_CONE_LEN_SHIFT*cos(INCLINE_ANG)*sin(ROTA_ANG) + POLE_R*cos(ROTA_ANG)
-	p3z = p1z + POLE_CONE_LEN_SHIFT*sin(INCLINE_ANG)
+	p1x = tip_upper_x + POLE_TIP_RETREAT*cos(POLE_TIP_RET_ANG)*cos(ROTA_ANG)   ! [MODIFIED] 正交修正：尖端沿 arccos(1/3)=70.53° 後退
+	p1y = tip_upper_y + POLE_TIP_RETREAT*cos(POLE_TIP_RET_ANG)*sin(ROTA_ANG)   ! [MODIFIED]
+	p1z = tip_upper_z + POLE_TIP_RETREAT*sin(POLE_TIP_RET_ANG)                 ! [MODIFIED]
+	! [ADDED] 錐體軸 = 後退尖端 p1 → 固定 end_upper（保 yoke 連接、子午線共面；Δ=0 時 = INCLINE_ANG）
+	CONE_VECx = end_upper_x - p1x
+	CONE_VECy = end_upper_y - p1y
+	CONE_VECz = end_upper_z - p1z
+	CONE_ANG  = atan2( CONE_VECz, sqrt(CONE_VECx**2 + CONE_VECy**2) )
+	p2x = p1x + POLE_TIP_FILLET_PROT*cos(CONE_ANG)*cos(ROTA_ANG) - POLE_TIP_R2*sin(ROTA_ANG)   ! [MODIFIED] 沿 CONE_ANG
+	p2y = p1y + POLE_TIP_FILLET_PROT*cos(CONE_ANG)*sin(ROTA_ANG) + POLE_TIP_R2*cos(ROTA_ANG)   ! [MODIFIED]
+	p2z = p1z + POLE_TIP_FILLET_PROT*sin(CONE_ANG)                                             ! [MODIFIED]
+	POLE_CONE_LEN_SHIFT = POLE_CONE_LEN + (R_norm_xy - POLE_TIP_FILLET_DROP_REF)
+	p3x = p1x + POLE_CONE_LEN_SHIFT*cos(CONE_ANG)*cos(ROTA_ANG) - POLE_R*sin(ROTA_ANG)   ! [MODIFIED] 錨 p1、沿 CONE_ANG
+	p3y = p1y + POLE_CONE_LEN_SHIFT*cos(CONE_ANG)*sin(ROTA_ANG) + POLE_R*cos(ROTA_ANG)   ! [MODIFIED]
+	p3z = p1z + POLE_CONE_LEN_SHIFT*sin(CONE_ANG)                                        ! [MODIFIED]
 	p4x = end_upper_x - POLE_R*sin(ROTA_ANG)
 	p4y = end_upper_y + POLE_R*cos(ROTA_ANG)
 	p4z = end_upper_z
 	p5x = end_upper_x
 	p5y = end_upper_y
 	p5z = end_upper_z
-	p6x = p1x + POLE_CONE_LEN*cos(INCLINE_ANG)*cos(ROTA_ANG)
-	p6y = p1y + POLE_CONE_LEN*cos(INCLINE_ANG)*sin(ROTA_ANG)
-	p6z = p1z + POLE_CONE_LEN*sin(INCLINE_ANG)
+	p6x = p1x + POLE_CONE_LEN*cos(CONE_ANG)*cos(ROTA_ANG)   ! [MODIFIED] 沿 CONE_ANG
+	p6y = p1y + POLE_CONE_LEN*cos(CONE_ANG)*sin(ROTA_ANG)   ! [MODIFIED]
+	p6z = p1z + POLE_CONE_LEN*sin(CONE_ANG)                 ! [MODIFIED]
 	K,, p1x , p1y , p1z
 	K,, p2x , p2y , p2z
 	K,, p3x , p3y , p3z
@@ -408,6 +422,18 @@ CSYS,0
 ESEL,R,CENT,Z, -1.0, -11.5e-3
 EREFINE,ALL, , ,1, ,OFF
 ALLSEL,ALL
+
+! [ADDED 2026-07-21] 變體 WP-region refine（整顆內球 MAT_AIR1 uniform +N）— 補鈍尖變體的 WP 場解析度。
+!   baseline WP_REF_LVL=0（關閉；baseline WP 已被尖端奇異點鋪密，不需也不該再加）。
+!   tip 變體（鈍尖無奇異點 → smrt5 把 WP 鋪很粗，R<=150um 只剩 ~11 節點 < 18 參數）由 driver sed 成 1（或更高）。
+!   ⚠ 局部 WP-core refine 在此幾何一定 fail（"poor solid model description" / "bad element shape"，
+!     帶幾何關聯與 MODMSH,DETACH 都試過）→ 只能整顆內球 uniform refine（tune 驗證 0 error）。
+WP_REF_LVL = 0
+*if, WP_REF_LVL, GT, 0, then
+	ESEL,S,MAT,,MAT_AIR1
+	EREFINE,ALL, , ,WP_REF_LVL, ,OFF
+	ALLSEL,ALL
+*endif
 
 ! ===== 元素 component（依材料；給 solve/檢視用）=====
 ESEL,S,MAT,,MAT_MT      $ CM,COMP_MT,ELEM     $ ALLSEL,ALL

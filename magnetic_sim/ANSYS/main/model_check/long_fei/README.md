@@ -8,6 +8,12 @@
 - **`long2016_hexapole_gap_400um.step`（2026-07-13，均勻對照）**：只 base 磁隙、厚 **400µm**、無導柱 gap。7 solids（鋼 + 3 下極 T 60mm³ + 3 上極 88mm³）。
 - gapdist 與 gap_400um 總磁阻等價（使用者串聯磁阻設計）；μ_r=1 屬 sim 階段（STEP 不帶材料）。
 
+**極尖倒圓半徑變體 IGES（交付檢查用；研究「加工尖端半徑 → lumped 模型預測能力」；scenario A＝錐體固定、尖端隨半徑後退）**：
+- **`long2016_hexapolehalfcut_tip400um_cnc.iges`**：極尖倒圓 **400µm**（一般 CNC 車削，鈍尖）。尖端後退 → tip-to-WP=1.90mm、tip-to-tip≈3.8mm。
+- **`long2016_hexapolehalfcut_tip20um_edm.iges`**：極尖倒圓 **20µm**（微 EDM，尖）。tip-to-WP≈0.44mm、尖端略前進。⚠ 原要 15µm，但 15µm 倒圓弧僅 19µm（模型 1.4 萬分之一）→ metre-deck boolean 建不出、IGES 匯出退化（SolidWorks 看破碎）；**放寬到 20µm** 兼顧「代表 EDM 尖尖」+ 乾淨可檢查可 mesh。
+- 由 `apdl/.../geom/export/MT_Geom_Export_mm.txt` 改 `POLE_TIP_R`（0.4 / 0.020）重建（scenario A：flank/base 用 `POLE_TIP_R_REF=40µm` 凍結、尖端 kp 後退 `(R−REF)×4.099`；40µm 重現 baseline）。flag 6→2 patch（同 no_gap.iges，SolidWorks 讀）。`.db`（FEM-ready）在 `ANSYS_data/.../db/geom/tip_variants/tip{400,20}um.db`（+ tip40um baseline，皆只留 .db）。
+- ⚠ **不出 STEP**：ANSYS IGESOUT → OCC 對此模型（大量 WPLANE/WPROTA）會**非均勻變形**（xy×1.411、z 另比例）；現有 gap `*.step`（make_gap_step 產）**同樣 xy=149.58mm 錯**（只驗過 z/體積、沒量 xy）。ANSYS .db 幾何本身已驗證正確（scenario A：40µm tip@0.5mm、400µm 後退到 1.90mm、15µm 0.42mm）。要 mm STEP 須走 OCC-primitive 重建（deliver-step 規則），不可用 ANSYS IGES→OCC。
+
 **內容**：`long2016_hexapole_no_gap.iges`（主）、`..._Geom_HollowProt.iges`、`..._Geom_HollowProt_Plain.iges`、`..._Geom_gap200um.iges`、`..._Geom_sphtip.iges`、`..._Geom_WPsphere.iges`（鐵件總成 ＋ WP 7mm 空氣球殼，raw 重疊、CAD 檢視用；mm/flag-2），另含 `Geom_WithCoil.iges`（6 coil rings）、`Geom_hp_split.iges`、`SinglePoleFilled.iges`（**單一下極：削平半錐填回完整圓錐** ＋ 4 塊支撐座 ＋ 1 根 protrusion 鐵柱；無 yoke / 無上極 / 無 coil 實體；mm/flag-2）。
 
 **`..._Geom_WPsphere.iges` 出處**：由 `apdl/long2016_hexapole_halfcut/geom/export/MT_Geom_Export_mm_WPsphere.txt`（＝ `MT_Geom_Export_mm.txt` 鐵件 mm 建構 ＋ APDL `SPHERE` 加 WP 球，不做布林）`IGESOUT` → flag 6→2 patch。球心 z = −12.71 mm、R = 7 mm，與 FEM `V7` 同。
