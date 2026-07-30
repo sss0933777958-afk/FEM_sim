@@ -61,7 +61,7 @@ function c = mt_constants()
         end
     end
 
-    % actuator frame（供 build_D「消費」；與 build_D 原式一致：magic-angle 尖端 → canonical 電荷格）
+    % actuator frame（供 build_actuator_data「消費」；與其原式一致：magic-angle 尖端 → canonical 電荷格）
     tip   = [c.pole_tip_x; c.pole_tip_y; c.pole_tip_z_wp];
     dhat  = tip ./ vecnorm(tip);
     c.R_act   = [dhat(:,1), dhat(:,3), dhat(:,5)].';

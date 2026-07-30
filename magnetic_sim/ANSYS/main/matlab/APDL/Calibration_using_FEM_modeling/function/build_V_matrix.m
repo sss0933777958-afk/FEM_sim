@@ -52,7 +52,7 @@ function [V, exc_sign] = build_V_matrix(cfg, variant, raw, S_hall, SOFF_upper, n
             error('build_V_matrix: V_METHOD 必為 ''csv-tet'' | ''scattered''（得 ''%s''）', V_METHOD);
     end
 
-    % ④ all-source：翻下極激發欄（= cfg.s_source 對應激發極；與 build_D 一致）
+    % ④ all-source：翻下極激發欄（= cfg.s_source 對應激發極；與 build_actuator_data 一致）
     exc_sign = cfg.s_source(cfg.apdl_to_paper_idx);   % 1×N_I
     V = V .* exc_sign;
 end

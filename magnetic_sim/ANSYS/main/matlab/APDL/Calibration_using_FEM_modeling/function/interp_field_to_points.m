@@ -27,7 +27,7 @@ function Bstack_t = interp_field_to_points(cfg, variant, R_act, P_target, R_loc)
     near = sum(Pw.^2, 2) < R_loc^2;                   % WP 鄰域源節點（同 select_ball 的 r2 判準）
     Xs   = (R_act * Pw(near,:).').';                  % → actuator frame
 
-    col_sign = cfg.s_source(cfg.apdl_to_paper_idx);   % all-source：翻下極 sink（與 build_D 一致）
+    col_sign = cfg.s_source(cfg.apdl_to_paper_idx);   % all-source：翻下極 sink（與 build_actuator_data 一致）
     Np  = size(P_target, 1);
     N_I = cfg.N_I;
     Bstack_t = zeros(3*Np, N_I);

@@ -17,10 +17,10 @@ function plot_err_hist_overlay()
     % ---- 前段 pipeline(只做一次)----
     cfg = model_config('long2016_hexapole_halfcut','tip40um');
     raw = extract_ansys_data(cfg, 'all', 'graded');
-    D   = build_D(raw, cfg);   Pc_base = D.Pc_base;
+    ad  = build_actuator_data(raw, cfg);   Pc_base = ad.Pc_base;
     F   = zeros(6, cfg.N_I);  for j = 1:cfg.N_I, F(cfg.apdl_to_paper_idx(j), j) = 1; end
     Rum = 150;
-    [P, Bstack, npts] = cfg.select_ball(D, Rum*1e-6);
+    [P, Bstack, npts] = cfg.select_ball(ad, Rum*1e-6);
 
     % ---- 兩模型各擬合一次 → 逐節點×激發 絕對殘差 (mT) ----
     err0 = fit_abs_resid(P, Bstack, Pc_base, F, npts, false);   % single_param (無 bias)

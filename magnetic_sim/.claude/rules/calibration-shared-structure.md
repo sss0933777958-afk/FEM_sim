@@ -24,7 +24,7 @@ Calibration_using_FEM_modeling/
                                        （long2016 分 tip40um/tip400um 子夾；hung/NTU flat。<model>=long2016.../hung.../NTU...）
   function/
     extract_ansys_data.m   純讀 .dat（raw, measure frame, Tesla）
-    build_D.m              raw → actuator frame（讀 cfg.R_act/Pc_base；**不再假設魔術角/canonical**）
+    build_actuator_data.m  raw → actuator frame 資料包 ad（讀 cfg.R_act/Pc_base；**不再假設魔術角/canonical**；非 D̄ 矩陣）
     fitting.m              優化器（e 開關 USE_BIAS；build_S / make_Pc 為 local；幾何無關）
     solve_current.m        current 解 K̄_I / ĝ_I / 𝒞κ
     solve_voltage.m        voltage 解 D̄ / ĝ_V / 𝒞κ
@@ -32,7 +32,7 @@ Calibration_using_FEM_modeling/
     model_config.m         dispatcher（model_config(model,geom)；variant 子夾+flat fallback；clear mt_constants 防快取）
     emit_tex.m / emit_results.m   低階 LaTeX helper / 讀自描述 .mat → PDF
     interp_field_to_points.m  變體 WP 場內插到參考 geom 點雲（INTERP_TO；2026-07-23 由 utils 移入）
-    import_ansys_data.m / filter_iron_nodes.m   extract/build_D 的 helper（2026-07-23 由 backup copy 入）
+    import_ansys_data.m / filter_iron_nodes.m   extract/build_actuator_data 的 helper（2026-07-23 由 backup copy 入）
   main/main.m              driver（頂部 per-run 調參 + BASE = current | voltage 開關）
   common_path/ansys_path.m           共用路徑 resolver（model-agnostic；2026-07-23 由 long2016/common 搬入）
   data/<model>/{.mat,csv}/           結果存放（.mat 自描述：結果 + 設定條件與參數；含保存的 single-pole .mat）
@@ -47,7 +47,7 @@ Calibration_using_FEM_modeling/
 > `matlab/APDL/{long2016,hung,NTU}_hexapole*/`；`backup/` 樹不刪（本夾已 copy 所需、不再依賴）。
 >
 > **2026-07-23 幾何通用化**：pipeline 不再假設魔術角。幾何（`R_act`/`Pc_base`/per-pole `sensor_pos/n`）+ 方法旗標
-> （`v_method`/`interp_to`/`r_loc`/`sensor_r_loc`）**全由 `config/<model>/<geom>/mt_constants.m` 提供**，`build_D`/`build_V`
+> （`v_method`/`interp_to`/`r_loc`/`sensor_r_loc`）**全由 `config/<model>/<geom>/mt_constants.m` 提供**，`build_actuator_data`/`build_V`
 > 只消費。新增「幾何變體」= 加 `config/<model>/<geom>/`（照樣 mt_constants，提供 R_act/Pc_base/sensor/旗標）——**仍先問**。
 > tip400 已由 bespoke driver（run_tip_calib，已刪）折成 `config/.../tip400um/` + main.m 旗標（`GEOM='tip400um'`）。
 >
@@ -68,7 +68,7 @@ Calibration_using_FEM_modeling/
    —— 任何**新增/改名/移動/刪除資料夾或檔案、重組切分**都要**先問使用者**。
 2. **新增模型**：照既定 pattern 加 `config/<model>/mt_constants.m` + `data/<model>/{.mat,csv}/` +
    `results/<model>/{eighteen,single}/` —— 這是既定樣式，但**仍先跟使用者確認**再建。
-3. **檔名 / 職責已定案**（別自作主張改名或搬邏輯）：`extract_ansys_data` 只純讀、`build_D` 只轉 actuator frame、
+3. **檔名 / 職責已定案**（別自作主張改名或搬邏輯）：`extract_ansys_data` 只純讀、`build_actuator_data` 只轉 actuator frame、
    優化器 = `fitting`（含 build_S/make_Pc local）、解參數分 `solve_current`/`solve_voltage`、電壓提取 = 一支
    `build_V_matrix`（sensor 幾何當內部 local）、輸出獨立 `emit_tex`+`emit_results`。
 4. **落點固定**：`.mat` → `data/<model>/.mat/`、PDF → `results/<model>/{eighteen,single}/model_results_<base>_<variant>.pdf`。

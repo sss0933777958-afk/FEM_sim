@@ -18,10 +18,10 @@ function plot_err_hist(USE_BIAS)
     % ---- 前段 + R=150 fix 擬合 ----
     cfg = model_config('long2016_hexapole_halfcut','tip40um');
     raw = extract_ansys_data(cfg, 'all', 'graded');
-    D   = build_D(raw, cfg);   Pc_base = D.Pc_base;
+    ad  = build_actuator_data(raw, cfg);   Pc_base = ad.Pc_base;
     F   = zeros(6, cfg.N_I);  for j = 1:cfg.N_I, F(cfg.apdl_to_paper_idx(j), j) = 1; end
     Rum = 150;
-    [P, Bstack, npts] = cfg.select_ball(D, Rum*1e-6);
+    [P, Bstack, npts] = cfg.select_ball(ad, Rum*1e-6);
     [e, l_hat, ~] = fitting(P, Bstack, Pc_base, 0.5e-3, USE_BIAS);
     [~, ~, G] = solve_current(l_hat, e, Pc_base, P, Bstack, F);
 

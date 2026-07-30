@@ -2,7 +2,7 @@ function c = mt_constants()
 %MT_CONSTANTS  long2016_hexapole_halfcut / tip400um（CNC 400µm 鈍尖、正交修正 scenario-A）幾何 config。
 %   相對 tip40um：尖端沿錐軸後退 → 用「尖端到尖端」R_act、Pc_base 非 canonical、sensor 幾何後退 +
 %   上極 CONE_ANG=35.49° + 鈍尖 gap；voltage 用 scattered（sensor_local CSV 與 solve mesh 不符）、
-%   WP fit 內插到 tip40um 點雲。build_D/build_V/main 只「消費」本檔提供的 R_act/Pc_base/sensor/旗標。
+%   WP fit 內插到 tip40um 點雲。build_actuator_data/build_V/main 只「消費」本檔提供的 R_act/Pc_base/sensor/旗標。
 %   幾何常數 = deck MT_Mesh_Graded.txt @POLE_TIP_R=400e-6 評值、實測對齊 solved mesh 0µm（見 memory
 %   project_long2016_tip400_sensor_calib）。跑法：main.m 設 GEOM='tip400um', BASE='voltage'（interp_to/v_method 自動）。
 

@@ -1,5 +1,5 @@
 %% main.m -- 共用校正 driver（current + voltage）
-%  cfg=model_config → extract_ansys_data(純讀) → build_D(轉 actuator+all-source) →
+%  cfg=model_config → extract_ansys_data(純讀) → build_actuator_data(轉 actuator+all-source) →
 %  select_ball → fitting → [current: solve_current(F)] / [voltage: build_V_matrix→solve_voltage(V)] →
 %  存 .mat(結果+設定) → emit_results 出 PDF。改頂部 per-run 調參即可切模型/變體/base/半徑。
 
@@ -40,15 +40,15 @@ if isempty(V_METHOD),  V_METHOD  = getdef(cfg, 'v_method', 'csv-tet'); end
 
 raw = extract_ansys_data(cfg, DATASET, VARIANT);            % 純讀 .dat（measure, T）
 if isempty(INTERP_TO)
-    D = build_D(raw, cfg);                                  % → actuator frame, mT, all-source
-    [P, Bstack, npts] = cfg.select_ball(D, R_select);
-    Pc_base = D.Pc_base;
+    ad = build_actuator_data(raw, cfg);                     % → actuator frame, mT, all-source
+    [P, Bstack, npts] = cfg.select_ball(ad, R_select);
+    Pc_base = ad.Pc_base;
 else
     % 特例：把本 variant 場內插到「參考 geom」的點雲（同數量同分布，公平比較，如 tip400→tip40）
     cfg_ref = model_config(MODEL, INTERP_TO);
     raw_ref = extract_ansys_data(cfg_ref, DATASET, cfg_ref.default_variant);
-    D_ref   = build_D(raw_ref, cfg_ref);
-    [P, ~, npts] = cfg_ref.select_ball(D_ref, R_select);    % 參考點雲
+    ad_ref  = build_actuator_data(raw_ref, cfg_ref);
+    [P, ~, npts] = cfg_ref.select_ball(ad_ref, R_select);   % 參考點雲
     Bstack  = interp_field_to_points(cfg, VARIANT, cfg.R_act, P, getdef(cfg,'r_loc',0.6e-3));
     Pc_base = cfg.Pc_base;                                   % 本 variant 的電荷格（非 canonical）
 end

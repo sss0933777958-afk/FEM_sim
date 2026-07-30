@@ -4,7 +4,7 @@ function plot_ell_gain_vs_R(USE_BIAS)
 %   graded FEM 資料 + current_base 校正(fix 單一 ℓ,USE_BIAS=false)。
 %   掃描取樣半徑 R = 40~500 µm,每點:select_ball → fitting(fix) → solve_current。
 %   上 panel = ℓ̂(R) [µm]、下 panel = ĝ_I(R) [mT/A](尺度差大 → 分兩 panel)。
-%   前段(讀 .dat + build_D)只做一次;loop R 只重跑 select_ball/fitting/solve_current。
+%   前段(讀 .dat + build_actuator_data)只做一次;loop R 只重跑 select_ball/fitting/solve_current。
 %   風格 = 選項①粗體框 @ paper scale(font 粗體、LineWidth3、box on、grid off、tick 減半、單位 ())。
 %   輸出 → figures/paper_fig/Section2_E/ell_gain_vs_R.png(覆蓋迭代)。
 % =========================================================================
@@ -19,7 +19,7 @@ function plot_ell_gain_vs_R(USE_BIAS)
     % ---- 前段 pipeline(只做一次):graded / current / actuator frame ----
     cfg = model_config('long2016_hexapole_halfcut','tip40um');
     raw = extract_ansys_data(cfg, 'all', 'graded');     % 印 Matched N(指紋核對)
-    D   = build_D(raw, cfg);   Pc_base = D.Pc_base;
+    ad  = build_actuator_data(raw, cfg);   Pc_base = ad.Pc_base;
     F   = zeros(6, cfg.N_I);
     for j = 1:cfg.N_I, F(cfg.apdl_to_paper_idx(j), j) = 1; end
 
@@ -29,7 +29,7 @@ function plot_ell_gain_vs_R(USE_BIAS)
     ell_R = nan(1,nR);  gI_R = nan(1,nR);  npts_R = zeros(1,nR);
     fprintf('\n  R[um]   npts    ell_hat[um]   gI_hat[mT/A]\n');
     for i = 1:nR
-        [P, Bstack, npts] = cfg.select_ball(D, Rum(i)*1e-6);
+        [P, Bstack, npts] = cfg.select_ball(ad, Rum(i)*1e-6);
         npts_R(i) = npts;
         if npts < 3, fprintf('  %5d  %6d   (skip: npts<3)\n', Rum(i), npts); continue; end
         [e, l_hat, ~] = fitting(P, Bstack, Pc_base, 0.5e-3, USE_BIAS);   % fix / bias 由旗標切

@@ -38,7 +38,7 @@ function c = mt_constants()
     % 極軸（hung 慣例：單位徑向穿過 tip）
     c.pole_axis = [c.pole_tip_x; c.pole_tip_y; c.pole_tip_z_wp] / c.R_norm;
 
-    % actuator frame（供 build_D「消費」；magic-angle 尖端 → canonical 電荷格，與 build_D 原式一致）
+    % actuator frame（供 build_actuator_data「消費」；magic-angle 尖端 → canonical 電荷格，與其原式一致）
     tip   = [c.pole_tip_x; c.pole_tip_y; c.pole_tip_z_wp];
     dhat  = tip ./ vecnorm(tip);
     c.R_act   = [dhat(:,1), dhat(:,3), dhat(:,5)].';

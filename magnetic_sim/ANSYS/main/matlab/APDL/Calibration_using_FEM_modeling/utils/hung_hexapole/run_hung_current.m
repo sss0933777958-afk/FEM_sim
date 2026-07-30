@@ -1,6 +1,6 @@
 %% run_hung_current.m -- hung R700 + R300 current(bias) 校正 + gain/iso 疊圖
 % =========================================================================
-%  用共用管線（extract_ansys_data / build_D / fitting / solve_current / emit_results）對 hung 的
+%  用共用管線（extract_ansys_data / build_actuator_data / fitting / solve_current / emit_results）對 hung 的
 %  兩個工作半徑變體 R700 / R300 做 current 側 18-param(bias) 校正：
 %    ① 校正結果 PDF → Calibration_using_FEM_modeling/results/hung_hexapole/eighteen/
 %    ② R≤150µm 的逐節點 gain 𝒞 / iso κ（均勻 3D 網格連續取樣，非 FEM 節點；避免密度偏差）
@@ -38,13 +38,13 @@ S = struct('variant',{},'ell',{},'Hhat',{},'Pc',{});
 for c = 1:numel(VARIANTS)
     variant = VARIANTS{c};
     raw = extract_ansys_data(cfg, 'all', variant);
-    D   = build_D(raw, cfg);
-    [P, Bstack, npts] = cfg.select_ball(D, R_select);
+    ad  = build_actuator_data(raw, cfg);
+    [P, Bstack, npts] = cfg.select_ball(ad, R_select);
 
-    [e, l_hat, J] = fitting(P, Bstack, D.Pc_base, l0, USE_BIAS);
+    [e, l_hat, J] = fitting(P, Bstack, ad.Pc_base, l0, USE_BIAS);
     F = zeros(6, cfg.N_I);
     for j = 1:cfg.N_I, F(cfg.apdl_to_paper_idx(j), j) = 1; end
-    [KI_bar, gI_hat, G, rm] = solve_current(l_hat, e, D.Pc_base, P, Bstack, F);
+    [KI_bar, gI_hat, G, rm] = solve_current(l_hat, e, ad.Pc_base, P, Bstack, F);
 
     rec = struct('base','current', 'l_hat',l_hat, 'e',e, 'J',J, 'npts',npts, ...
                  'model',MODEL, 'VARIANT',variant, 'DATASET','all', 'USE_BIAS',USE_BIAS, ...
@@ -62,7 +62,7 @@ for c = 1:numel(VARIANTS)
             variant, l_hat*1e6, gI_hat, KI_bar(1,1), sprintf('%.3f ',diag(KI_bar)), errpct, npts);
     emit_results(matfile);
 
-    Pc = make_Pc_local(e, D.Pc_base);
+    Pc = make_Pc_local(e, ad.Pc_base);
     S(c) = struct('variant',variant, 'ell',l_hat, 'Hhat',gI_hat*KI_bar, 'Pc',Pc);
 end
 

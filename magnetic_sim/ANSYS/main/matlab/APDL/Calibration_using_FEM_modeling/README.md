@@ -12,7 +12,7 @@
 main/main.m
   cfg = model_config(MODEL, GEOM)        載 config/<MODEL>/[<GEOM>/]mt_constants.m（幾何全在 config：R_act/Pc_base/sensor）
   raw = extract_ansys_data(cfg,DATASET,VARIANT)   純讀 .dat（measure, T）
-  ── INTERP_TO='' ──  D=build_D(raw,cfg)（讀 cfg.R_act/Pc_base）→ [P,Bstack]=select_ball → Pc_base=D.Pc_base
+  ── INTERP_TO='' ──  ad=build_actuator_data(raw,cfg)（讀 cfg.R_act/Pc_base）→ [P,Bstack]=select_ball → Pc_base=ad.Pc_base
   ── INTERP_TO≠'' ──  載參考 geom 點雲 → Bstack=interp_field_to_points(cfg,VARIANT,cfg.R_act,P,r_loc)；Pc_base=cfg.Pc_base
   [e,l_hat,J] = fitting(P,Bstack,Pc_base,l0,USE_BIAS)      優化器（e 開關；幾何無關）
   ── BASE=current ──  [KI_bar,gI_hat,G,rm] = solve_current(l_hat,e,Pc_base,P,Bstack,F)
@@ -22,7 +22,7 @@ main/main.m
   emit_results(matfile)  → results/<model>/{eighteen|single}/model_results_<base>_<variant>.pdf
 ```
 > **幾何通用化（2026-07-23）**：pipeline **不再假設魔術角**。幾何（`R_act`、`Pc_base`、per-pole `sensor_pos/n`）與
-> 特例方法旗標（`v_method`、`interp_to`、`r_loc`、`sensor_r_loc`）**全部由 config 提供**，`build_D`/`build_V_matrix`
+> 特例方法旗標（`v_method`、`interp_to`、`r_loc`、`sensor_r_loc`）**全部由 config 提供**，`build_actuator_data`/`build_V_matrix`
 > 只「消費」。換一個 model / 角度 = 加一筆 `config/<model>/<geom>/mt_constants.m`，**零改 pipeline code**。
 
 ## 目錄結構（凍結）
@@ -32,7 +32,7 @@ config/<model>/[<geom>/]mt_constants.m   per-model[/幾何變體] 設定 + 幾�
                                          （long2016 分 tip40um/tip400um；hung/NTU 為 flat）
 function/
   extract_ansys_data.m   純讀 .dat（raw, measure, T）
-  build_D.m              raw → actuator frame（讀 cfg.R_act/Pc_base；不再假設魔術角）
+  build_actuator_data.m  raw → actuator frame 資料包 ad（讀 cfg.R_act/Pc_base；不再假設魔術角；非 D̄ 矩陣）
   fitting.m              優化器（e 開關；build_S / make_Pc 為 local；幾何無關）
   solve_current.m        current：K̄_I / ĝ_I / 𝒞κ
   solve_voltage.m        voltage：D̄ / ĝ_V / 𝒞κ
@@ -42,7 +42,7 @@ function/
   emit_results.m         讀自描述 .mat → LaTeX → PDF（current/voltage 兩分支）
   interp_field_to_points.m  把某變體 WP 場內插到參考 geom 的點雲（INTERP_TO；2026-07-23 由 utils 移入）
   import_ansys_data.m    純讀 coord/bfield .dat → struct（extract 的 helper；2026-07-23 由 backup 併入）
-  filter_iron_nodes.m    幾何錐體濾鐵、回 air mask（build_D 的 helper；2026-07-23 由 backup 併入）
+  filter_iron_nodes.m    幾何錐體濾鐵、回 air mask（build_actuator_data 的 helper；2026-07-23 由 backup 併入）
 main/main.m              driver（頂部 per-run 調參 + BASE 開關）
 common_path/ansys_path.m           共用路徑 resolver（model-agnostic；三模型載 FEM 場都經此，2026-07-23 由
                                    long2016/common 搬入，讓本夾自足、per-model 專案可退役）
@@ -82,7 +82,7 @@ voltage-only：`SOFF_upper`(4.572mm) / `n_uniform`(1e4) / `sensor_r`(0.15mm) / `
 ## 三模型差異的收法
 
 - 純數值 / 幾何常數 / map / strategy → `config/<model>/mt_constants.m`。
-- 檔名已正規化（NTU→coilN）。frame 物理（六極 magic-angle vs NTU 扁平板）→ `cfg.strategy`（`hex_magic`/`ntu_flat`，在 build_D/extract）。
+- 檔名已正規化（NTU→coilN）。frame 物理（六極 magic-angle vs NTU 扁平板）→ `cfg.strategy`（`hex_magic`/`ntu_flat`，在 build_actuator_data/extract）。
 - ✅ **本夾已完全自足、無跨專案相依**（2026-07-23）：pipeline 用到的 `import_ansys_data`/`filter_iron_nodes`
   已 copy 入 `function/`、`ansys_path` 入 `common_path/`，**不再 addpath `backup/…/analysis`**。
 - ⚠ 三模型舊的 `<model>/Calibration_using_FEM_modeling/{current_base,voltage_base}/` 是**待刪除的 per-model 副本**。
