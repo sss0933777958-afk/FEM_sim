@@ -69,7 +69,12 @@ switch BASE
         [KI_bar, gI_hat, G, rm] = solve_current(l_hat, e, Pc_base, P, Bstack, F);
         rec.KI_bar = KI_bar;  rec.gI_hat = gI_hat;  rec.G = G;  rec.Fmap = F;
     case 'voltage'
-        [V, ~] = build_V_matrix(cfg, VARIANT, raw, cfg.S_hall, SOFF_upper, n_uniform, sensor_r, axial_tol, [], V_METHOD);
+        % [MODIFIED] Maxwell 的 sensor 場是**另一組匯出**（WP 細格框 ±0.6mm 涵蓋不到
+        %   WP 外 ~4.5mm 的 sensor）→ 這裡另載 dataset='voltage' 的粗格，只餵 build_V_matrix；
+        %   上面的電荷擬合仍用 WP 細格 raw。兩者同一個 Maxwell 座標框，可直接並用。
+        raw_v = extract_maxwell_data(cfg, 'voltage', VARIANT);
+        fprintf('[voltage] sensor 場格點 %d（WP 擬合場格點 %d）\n', numel(raw_v.x), numel(raw.x));
+        [V, ~] = build_V_matrix(cfg, VARIANT, raw_v, cfg.S_hall, SOFF_upper, n_uniform, sensor_r, axial_tol, [], V_METHOD);
         [D_bar, gV_hat, G, rm] = solve_voltage(l_hat, e, Pc_base, P, Bstack, V);
         rec.D_bar = D_bar;  rec.gV_hat = gV_hat;  rec.G = G;  rec.V = V;
     otherwise

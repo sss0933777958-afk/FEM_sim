@@ -15,10 +15,20 @@ function c = mt_constants()
     c.regions           = {'all'};                    % Maxwell 一個 .fld = 一個場（無 all/wp/circuit 之分）
     c.R_load            = [];                         % hex 不用 WP 預篩球
 
-    % Maxwell .fld 路由（extract_maxwell_data 用）
+    % Maxwell .fld 路由（extract_maxwell_data 用）；**兩組匯出、用途不同**：
+    %   dataset='all'（預設）→ WP 細格，供電荷擬合（R≤150µm 球內 ~1767 格點）
+    %   dataset='voltage'    → sensor 粗格，供 build_V_matrix（sensor 在 WP 外 4.5mm，細格框涵蓋不到）
     c.fld_dir           = 'D:\Maxwell_sim\long2016_hexapole_halfcut\export';
     c.fld_files         = {'B_p1.fld','B_p2.fld','B_p3.fld','B_p4.fld','B_p5.fld','B_p6.fld'};
+    %   ↑ 步距 0.02mm、框 x,y∈±0.6mm z∈[-13.31,-12.11]mm、61³=226,981 格點
+    c.fld_files_voltage = {'B_voltage_p1.fld','B_voltage_p2.fld','B_voltage_p3.fld', ...
+                           'B_voltage_p4.fld','B_voltage_p5.fld','B_voltage_p6.fld'};
+    %   ↑ 步距 0.1mm、框 x∈±15.23 y∈±14 z∈[-16.1,0]mm、306×281×162=13,929,732 格點（含兩層 sensor）
     c.fld_variant_subdir = false;                     % .fld 直接放 fld_dir，不再進 variant 子夾
+
+    % Maxwell 無 ANSYS 的 sensor_local tet CSV → V 矩陣一律走座標式 scatteredInterpolant
+    c.v_method          = 'scattered';
+    c.sensor_r_loc      = 1.5e-3;                     % scattered 取源鄰域半徑 [m]（0.1mm 格 → 約 1.4 萬點/sensor）
 
     % ===== ② 幾何 / 物理常數（與 APDL 版逐行等價）=====
     % 工作半徑（magic-angle 鎖死公式）

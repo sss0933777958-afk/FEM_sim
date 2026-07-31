@@ -7,7 +7,7 @@
 ! Pole 尺寸來自 Mag_Pole_Bottom.STEP
 ! =======================================
 
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\db\geom\mesh_graded'
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\db\mesh\mesh_graded_R500'   ! [MODIFIED] mesh-only 產物進 db/mesh/（db-folder-retention）；R500 = 本 deck 原始 R_sphere=0.5mm，與 db/mesh/mesh_graded_R{300,700} 同家族
 
 /PREP7
 /UNITS, MKS

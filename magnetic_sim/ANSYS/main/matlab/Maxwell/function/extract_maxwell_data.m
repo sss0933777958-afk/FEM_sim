@@ -25,13 +25,13 @@ function raw = extract_maxwell_data(cfg, dataset, variant)
     N_I   = cfg.N_I;
     fdir  = fld_dir_for(cfg, variant);
 
-    d1 = import_maxwell_fld(fullfile(fdir, coil_fname(cfg,1)));
+    d1 = import_maxwell_fld(fullfile(fdir, coil_fname(cfg,1,dataset)));
     N  = numel(d1.x);
     B  = zeros(N, 3, N_I);
     B(:,:,1) = [d1.bx, d1.by, d1.bz];
     tol = 1e-9;
     for k = 2:N_I
-        dk = import_maxwell_fld(fullfile(fdir, coil_fname(cfg,k)));
+        dk = import_maxwell_fld(fullfile(fdir, coil_fname(cfg,k,dataset)));
         assert(numel(dk.x)==N, ...
                'extract_maxwell_data:gridN', 'coil%d 格點數 %d ≠ coil1 %d（不同匯出格）', k, numel(dk.x), N);
         assert(max(abs(dk.x-d1.x))<tol && max(abs(dk.y-d1.y))<tol && max(abs(dk.z-d1.z))<tol, ...
@@ -54,9 +54,17 @@ function fdir = fld_dir_for(cfg, variant)
     end
 end
 
-% ---- local：第 k 個 coil 的 .fld 檔名 ----
-function nm = coil_fname(cfg, k)
-    if isfield(cfg,'fld_files') && ~isempty(cfg.fld_files)
+% ---- local：第 k 個 coil 的 .fld 檔名（dataset 決定用哪一組匯出）----
+%   dataset='voltage' → cfg.fld_files_voltage（sensor 區粗格；sensor 在 WP 外 ~4.5mm，
+%                        WP 細格框涵蓋不到，故 voltage 路徑必須另載一組）
+%   其餘（'all' 等）  → cfg.fld_files（WP 細格，供電荷擬合）
+function nm = coil_fname(cfg, k, dataset)
+    if nargin >= 3 && strcmpi(dataset,'voltage')
+        assert(isfield(cfg,'fld_files_voltage') && ~isempty(cfg.fld_files_voltage), ...
+               'extract_maxwell_data:noVoltageFld', ...
+               'dataset=''voltage'' 需 cfg.fld_files_voltage（sensor 區 .fld 清單）');
+        nm = cfg.fld_files_voltage{k};
+    elseif isfield(cfg,'fld_files') && ~isempty(cfg.fld_files)
         nm = cfg.fld_files{k};
     else
         nm = sprintf('coil%d.fld', k);
