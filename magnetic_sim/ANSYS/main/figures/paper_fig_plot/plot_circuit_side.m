@@ -1,4 +1,4 @@
-function plot_circuit_side(USE_BIAS, WITH_DIST)
+function plot_circuit_side(USE_BIAS, WITH_DIST, CHARGE_SRC, DUAL)
 % plot_circuit_side -- long2016 半切六極 P1|P2 磁路箭頭「側視合併圖」(x-z, y=0)+ 電荷位置
 % =========================================================================
 %   左右合併:左 P1(coil1)、右 P2(coil5),側視(x-z, y=0)畫尖端區磁路箭頭 + 粉色電荷點。
@@ -15,26 +15,47 @@ function plot_circuit_side(USE_BIAS, WITH_DIST)
         plot_circuit_side(false,true);   plot_circuit_side(true,true);       % 距離標註版(另存)
         return;
     end
+    % 用法:plot_circuit_side(USE_BIAS, WITH_DIST, 'maxwell') → 電荷改 Maxwell、場仍 APDL
     if nargin < 2, WITH_DIST = false; end
+    if nargin < 3, CHARGE_SRC = 'apdl'; end
+    if nargin < 4, DUAL = false; end
+    % [ADDED] DUAL=true：一張圖同時畫「有 e(bias,粉)」+「沒 e(fix,深藍)」電荷 + x_a 虛線軸、視野含 WP 中心、無文字標籤。
+    % [ADDED] CHARGE_SRC 只換「電荷位置(粉紅點)」的來源校正 .mat:'apdl' | 'maxwell'。
+    %   ⚠ **場(箭頭/輪廓/colorbar)一律用 APDL 的 graded .dat,不隨 CHARGE_SRC 改**——
+    %   使用者拍板:磁路箭頭要 APDL 資料,只有磁荷位置改用 Maxwell 校正結果。
     clc;
     here   = fileparts(mfilename('fullpath'));
     figdir = fullfile(fileparts(here), 'paper_fig', 'Section2_E');
     if ~exist(figdir,'dir'); mkdir(figdir); end
-    CAL = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    CAL = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';   % 場來源固定 APDL
     addpath(fullfile(CAL,'function'));  addpath(fullfile(CAL,'common_path'));
     addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');
     c = mt_constants();
     FS = 30;
     bstr = ''; if USE_BIAS, bstr = '_bias'; end
+    cstr = ''; if strcmpi(CHARGE_SRC,'maxwell'), cstr = '_maxwell'; end   % [ADDED] 電荷來源後綴
     % ---- 佈局（manual pixel；兩 panel 共用 box 高度 H → 邊框對齊；各自 colorbar）----
     H=680; y0=130; leftm=110; cbgap=22; cblab=140; midgap=120; rightm=30;
     CBW_RATIO = 0.009;                                  % colorbar 寬度佔比(cbw/figW)，定案；與 flux 共用同值
 
-    S1 = load_panel(1, USE_BIAS, c, CAL, WITH_DIST);
-    S2 = load_panel(2, USE_BIAS, c, CAL, WITH_DIST);
+    useWin = WITH_DIST || DUAL;                         % DUAL 用擴大視野(含 WP 中心)
+    S1 = load_panel(1, USE_BIAS, c, CAL, useWin, CHARGE_SRC);
+    S2 = load_panel(2, USE_BIAS, c, CAL, useWin, CHARGE_SRC);
+    if DUAL                                             % [ADDED] 同時算 有e(bias)+沒e(fix) 兩電荷位置(Maxwell)
+        qb1=charge_xz(1,true ,c,CAL,CHARGE_SRC); qf1=charge_xz(1,false,c,CAL,CHARGE_SRC);
+        qb2=charge_xz(2,true ,c,CAL,CHARGE_SRC); qf2=charge_xz(2,false,c,CAL,CHARGE_SRC);
+        S1.qbx=qb1(1)*1e3; S1.qbz=qb1(3)*1e3; S1.qfx=qf1(1)*1e3; S1.qfz=qf1(3)*1e3;
+        S2.qbx=qb2(1)*1e3; S2.qbz=qb2(3)*1e3; S2.qfx=qf2(1)*1e3; S2.qfz=qf2(3)*1e3;
+        tip=[c.pole_tip_x;c.pole_tip_y;c.pole_tip_z_wp]; dh=tip(:,1)/norm(tip(:,1));  % dhat(P1)=+x_a
+        axd=[dh(1);dh(3)]; axd=axd/norm(axd);          % actuator x_a 軸方向(x-z 投影,單位)
+        S1.axd=axd; S2.axd=axd;
+        % [MODIFIED 2026-08-03] 右圖(P1)右邊內縮 x→0.9，框寬≈左圖(P2)；tick 奇數(縱橫皆 3)、等距、留白 ≲ 間距
+        S1.XL=[-0.1 0.9];                                          % P1 右邊內縮(1.2→0.9)；場超出部分由 xlim 裁掉
+        S1.XT=[0 0.4 0.8];  S1.ZT=[-0.5 -0.3 -0.1];               % P1 (3/3 奇數)
+        S2.XT=[-1 -0.5 0];  S2.ZT=[0 0.5 1];                       % P2 (3/3 奇數)
+    end
     CMAX = max(S1.CLIM, S2.CLIM);                       % P1/P2 共用色階(同 flux 合併圖;弱場 panel 顯冷色)
-    if WITH_DIST, SL = S2;  SR = S1;                    % 距離版:P2 在左、P1 在右(左右對調)
-    else,         SL = S1;  SR = S2;  end               % 原圖:P1 在左、P2 在右
+    SL = S2;  SR = S1;                                  % [MODIFIED] 左右對調：P2 在左、P1 在右（merged/dist 一致）
     w1 = H*diff(SL.XL)/diff(SL.ZL);   w2 = H*diff(SR.XL)/diff(SR.ZL);
     base = leftm + w1 + midgap + w2 + cbgap + cblab + rightm;
     cbw  = CBW_RATIO*base/(1-CBW_RATIO);               % 單一 colorbar，解 cbw/figW = ratio
@@ -42,14 +63,17 @@ function plot_circuit_side(USE_BIAS, WITH_DIST)
     x1 = leftm;   x2 = x1 + w1 + midgap;
 
     fig = figure('Color','w','Units','pixels','Position',[20 40 figW figH]);
-    ax1 = axes(fig,'Units','pixels');  render_panel_into(ax1, SL, CMAX, FS, WITH_DIST);  ax1.Position=[x1 y0 w1 H];
-    ax2 = axes(fig,'Units','pixels');  render_panel_into(ax2, SR, CMAX, FS, WITH_DIST);  ax2.Position=[x2 y0 w2 H];
+    ax1 = axes(fig,'Units','pixels');  render_panel_into(ax1, SL, CMAX, FS, WITH_DIST, DUAL);  ax1.Position=[x1 y0 w1 H];
+    ax2 = axes(fig,'Units','pixels');  render_panel_into(ax2, SR, CMAX, FS, WITH_DIST, DUAL);  ax2.Position=[x2 y0 w2 H];
     cb  = colorbar(ax2,'Units','pixels');  cb.Position=[x2+w2+cbgap y0 cbw H];  ax2.Position=[x2 y0 w2 H];  style_cbar(cb, FS);
+    if DUAL, cb.Label.String = ''; end   % [MODIFIED 2026-08-03] DUAL 拿掉 colorbar 標題(只留色階+數字)
 
-    if WITH_DIST
-        outp = fullfile(figdir, sprintf('circuit_side_dist%s.png', bstr));      % 距離標註版(另存,不覆蓋原圖)
+    if DUAL
+        outp = fullfile(figdir, sprintf('circuit_side_dualcharge%s.png', cstr));         % [ADDED] 有e+沒e 雙電荷 + x_a 軸
+    elseif WITH_DIST
+        outp = fullfile(figdir, sprintf('circuit_side_dist%s%s.png', bstr, cstr));      % 距離標註版(另存,不覆蓋原圖)
     else
-        outp = fullfile(figdir, sprintf('circuit_side_merged%s.png', bstr));    % 原圖
+        outp = fullfile(figdir, sprintf('circuit_side_merged%s%s.png', bstr, cstr));    % 原圖
     end
     exportgraphics(fig, outp, 'Resolution', 150);
     fprintf('wrote %s\n', outp);
@@ -78,7 +102,7 @@ function [XL,ZL,XT,ZT] = win(pidx, WITH_DIST)
 end
 
 % ============================================================================
-function S = load_panel(pidx, USE_BIAS, c, CAL, WITH_DIST)
+function S = load_panel(pidx, USE_BIAS, c, CAL, WITH_DIST, CHARGE_SRC)
 % 載入單極場 + grid-sample(不內插) + 電荷位置 + 磁極輪廓；回傳繪圖用結構(含自然 CLIM)。
 % [ADDED] 抽稀後的繪圖結構快取:載一份 .dat 要數分鐘,純改樣式不需重載 → 有快取就用。
 %   要強制重算把 circuit_side_panel*.mat 刪掉。
@@ -88,11 +112,15 @@ function S = load_panel(pidx, USE_BIAS, c, CAL, WITH_DIST)
     here   = fileparts(mfilename('fullpath'));   % 快取鍵含視野模式（grid-sample 隨 XL/ZL 而異）
     cachef = fullfile(here, sprintf('circuit_side_panel%d_%s_%s.mat', pidx, ...
                       ternary(USE_BIAS,'bias','fix'), ternary(WITH_DIST,'dist','base')));
+                      % 快取只存「場」(APDL graded,與 CHARGE_SRC 無關);電荷每次現算後覆寫,
+                      % 這樣換電荷來源不必重讀大 .dat。
     if exist(cachef,'file')
         L = load(cachef,'S');  S = L.S;
         if isequal(S.XL,XL) && isequal(S.ZL,ZL)          % 視野一致才可用(grid-sample 綁 XL/ZL)
             S.XT=XT; S.ZT=ZT;                            % 刻度可直接更新(不影響取樣)
-            fprintf('P%d loaded cache %s  (charge r=%.1f um)\n', pidx, cachef, S.qcr_um);
+            [qc, qcr_um] = charge_xz(pidx, USE_BIAS, c, CAL, CHARGE_SRC);   % [ADDED] 電荷現算(可切來源)
+            S.qcx=qc(1)*1e3; S.qcz=qc(3)*1e3; S.qcr_um=qcr_um;
+            fprintf('P%d loaded cache %s  (charge src=%s, r=%.1f um)\n', pidx, cachef, CHARGE_SRC, S.qcr_um);
             return;
         end
         fprintf('P%d cache 視野不符(舊 x[%g %g] vs 新 x[%g %g]) → 重算\n', pidx, S.XL, XL);
@@ -128,20 +156,7 @@ function S = load_panel(pidx, USE_BIAS, c, CAL, WITH_DIST)
     scl=arrow_max.*(Bm./bmax).^0.25./bxz;
 
     % ---- 電荷位置(single = l_hat·dhat；eighteen = l_hat·R_actᵀ·(Pc_base+E))----
-    tip=[c.pole_tip_x; c.pole_tip_y; c.pole_tip_z_wp]; dhat=tip./vecnorm(tip);   % WP frame
-    if USE_BIAS
-        M = load(fullfile(CAL,'data','long2016_hexapole_halfcut','.mat','calib_current_graded_R150_eighteen.mat'),'l_hat','e');
-        R_act = [dhat(:,1),dhat(:,3),dhat(:,5)].';       % actuator frame 旋轉
-        Pc_base = R_act*dhat;                            % 理想電荷格(actuator, 正規化)
-        Pc = make_Pc(M.e, Pc_base);                      % + 18-param 偏移
-        qc = M.l_hat * (R_act.' * Pc(:,pidx));           % 轉回 measure/WP frame(m)
-    else
-        M = load(fullfile(CAL,'data','long2016_hexapole_halfcut','.mat','calib_current_graded_R150_single.mat'),'l_hat');
-        qc = M.l_hat*dhat(:,pidx);
-    end
-    qcr_um = norm(qc)*1e6;                              % [ADDED] 電荷到 WP 中心的「3D 總距離」[µm]（含 y 分量）
-    fprintf('  charge WP = (%.3f, %.3f) mm   l_hat=%.1f um   |r|=%.1f um\n', ...
-            qc(1)*1e3, qc(3)*1e3, M.l_hat*1e6, qcr_um);
+    [qc, qcr_um] = charge_xz(pidx, USE_BIAS, c, CAL, CHARGE_SRC);   % [MODIFIED] 抽成 local(快取命中時也要算)
 
     % ---- 磁極 y=0 截面輪廓(下極水平半切平頂、上極傾斜全錐;龍飛模型)----
     th=c.pole_angles(pidx)*pi/180;
@@ -164,13 +179,43 @@ function S = load_panel(pidx, USE_BIAS, c, CAL, WITH_DIST)
 end
 
 % ============================================================================
+function [qc, qcr_um] = charge_xz(pidx, USE_BIAS, c, CAL, CHARGE_SRC)
+% [ADDED] 電荷位置(single = l̂·d̂；eighteen = l̂·R_actᵀ·(Pc_base+E))。
+%   CHARGE_SRC='apdl'|'maxwell' 只換讀哪一份 R150 校正 .mat——**場永遠是 APDL,不受此影響**。
+%   兩分支幾何(tip40um)完全相同 → d̂ / R_act / Pc_base 共用;e 的欄一律 paper 序 P1..P6。
+    if strcmpi(CHARGE_SRC,'maxwell')
+        CDIR  = fullfile('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Maxwell', ...
+                         'data','long2016_hexapole_halfcut','.mat');
+        cfile = @(tag) fullfile(CDIR, sprintf('calib_current_maxwell_R150_%s.mat', tag));
+    else
+        cfile = @(tag) fullfile(CAL,'data','long2016_hexapole_halfcut','.mat', ...
+                         sprintf('calib_current_graded_R150_%s.mat', tag));
+    end
+    tip = [c.pole_tip_x; c.pole_tip_y; c.pole_tip_z_wp];  dhat = tip./vecnorm(tip);   % WP frame
+    if USE_BIAS
+        M = load(cfile('eighteen'),'l_hat','e');
+        R_act   = [dhat(:,1),dhat(:,3),dhat(:,5)].';     % actuator frame 旋轉
+        Pc_base = R_act*dhat;                            % 理想電荷格(actuator, 正規化)
+        Pc      = make_Pc(M.e, Pc_base);                 % + 18-param 偏移
+        qc      = M.l_hat * (R_act.' * Pc(:,pidx));      % 轉回 measure/WP frame(m)
+    else
+        M  = load(cfile('single'),'l_hat');
+        qc = M.l_hat*dhat(:,pidx);
+    end
+    qcr_um = norm(qc)*1e6;                               % 電荷到 WP 中心的 3D 總距離 [µm]（含 y 分量）
+    fprintf('  [charge src=%s] WP = (%.3f, %.3f) mm   l_hat=%.1f um   |r|=%.1f um\n', ...
+            CHARGE_SRC, qc(1)*1e3, qc(3)*1e3, M.l_hat*1e6, qcr_um);
+end
+
+% ============================================================================
 function o = ternary(cond, a, b)
     if cond, o = a; else, o = b; end
 end
 
 % ============================================================================
-function render_panel_into(ax, S, CLIM, FS, WITH_DIST)
+function render_panel_into(ax, S, CLIM, FS, WITH_DIST, DUAL)
 % 把 load_panel 的結構畫進 ax（quiver 依給定 CLIM 分 bin）。
+    if nargin < 6, DUAL = false; end
     hold(ax,'on');
     patch(ax, S.pox, S.poz, [0.82 0.84 0.88], 'FaceAlpha',0.30, 'EdgeColor',[0.28 0.30 0.36], 'LineWidth',2.2);
     nb=28; edges=linspace(0,CLIM,nb+1); cmap=turbo(nb); lw=linspace(0.5,2.2,nb);
@@ -178,15 +223,22 @@ function render_panel_into(ax, S, CLIM, FS, WITH_DIST)
         if k<nb, m=S.Bm_mT>=edges(k)&S.Bm_mT<edges(k+1); else, m=S.Bm_mT>=edges(k); end
         if any(m), quiver(ax,S.Xs(m),S.Zs(m),S.Uq(m),S.Wq(m),0,'Color',cmap(k,:),'LineWidth',lw(k),'MaxHeadSize',0.35); end
     end
-    plot(ax, S.qcx, S.qcz, 'o', 'MarkerFaceColor',[1 0.30 0.65], 'MarkerEdgeColor','k', 'MarkerSize',22, 'LineWidth',1.6);
+    if DUAL
+        draw_axis_line(ax, S);                           % x_a 虛線軸(過 WP、+x_a 端箭頭；無文字)
+        plot(ax, 0, 0, '+', 'Color','k', 'MarkerSize',24, 'LineWidth',3.0);   % WP 中心十字
+        plot(ax, S.qfx, S.qfz, 'o', 'MarkerFaceColor',[0.12 0.24 0.45], 'MarkerEdgeColor','k', 'MarkerSize',20, 'LineWidth',1.6);  % 沒 e (fix) 深藍
+        plot(ax, S.qbx, S.qbz, 'o', 'MarkerFaceColor',[1 0.30 0.65],   'MarkerEdgeColor','k', 'MarkerSize',20, 'LineWidth',1.6);  % 有 e (bias) 粉
+    else
+        plot(ax, S.qcx, S.qcz, 'o', 'MarkerFaceColor',[1 0.30 0.65], 'MarkerEdgeColor','k', 'MarkerSize',22, 'LineWidth',1.6);
+    end
     axis(ax,'equal'); xlim(ax,S.XL); ylim(ax,S.ZL);
-    if nargin >= 5 && WITH_DIST
+    if nargin >= 5 && WITH_DIST && ~DUAL
         plot(ax, 0, 0, '+', 'Color','k', 'MarkerSize',26, 'LineWidth',3.0);   % WP 中心(視野內)
         draw_center_dist(ax, S, FS);                     % 虛線指向 WP 中心 + 3D 總距離數值
     end
     box(ax,'on'); grid(ax,'off');
     set(ax,'FontSize',FS,'FontWeight','bold','LineWidth',3.0,'TickLength',[.018 .018]);
-    set(ax,'XTick',S.XT,'YTick',S.ZT);                 % 刻度數字維持 Helvetica(不改字體)
+    set(ax,'XTick',S.XT,'YTick',S.ZT);                 % 刻度數字 Helvetica 粗體(維持原字體)
     colormap(ax,turbo); clim(ax,[0 CLIM]);
     ax.Toolbar.Visible='off'; hold(ax,'off');
 end
@@ -225,9 +277,38 @@ function draw_center_dist(ax, S, FS)
 end
 
 % ============================================================================
+function draw_axis_line(ax, S)
+% [ADDED] actuator x_a 軸虛線：過 WP 原點、沿 dhat(P1) 的 x-z 投影,裁到框內;+x_a 端畫箭頭;無文字。
+    d = S.axd(:);                                        % 單位方向(+x_a)
+    ts = [];
+    if abs(d(1))>1e-9, ts=[ts S.XL(1)/d(1) S.XL(2)/d(1)]; end
+    if abs(d(2))>1e-9, ts=[ts S.ZL(1)/d(2) S.ZL(2)/d(2)]; end
+    tin = [];
+    for t = ts
+        p = t*d;
+        if p(1)>=S.XL(1)-1e-6 && p(1)<=S.XL(2)+1e-6 && p(2)>=S.ZL(1)-1e-6 && p(2)<=S.ZL(2)+1e-6
+            tin(end+1) = t; %#ok<AGROW>
+        end
+    end
+    if numel(tin) < 2, return; end
+    tlo=min(tin); thi=max(tin);
+    % 箭頭放「近 WP 原點」那端(含中心的角落)、朝外指向該角落 → 兩 panel 都朝中心;內縮不貼框。
+    if abs(thi) <= abs(tlo), tn=thi; tf=tlo; else, tn=tlo; tf=thi; end
+    t_arr = 0.62*tn;                                     % 內縮(往原點)
+    plo=tf*d; phi=t_arr*d;
+    col=[0.20 0.30 0.45];
+    plot(ax,[plo(1) phi(1)],[plo(2) phi(2)],'--','Color',col,'LineWidth',2.5);
+    pe = phi;  hl=0.06*diff(S.XL); a=26*pi/180; b=-sign(tn)*d;   % 箭頭朝外(sign(tn)*d)
+    Rm=@(th)[cos(th) -sin(th); sin(th) cos(th)];
+    for w=[Rm(a)*b, Rm(-a)*b]
+        plot(ax,[pe(1) pe(1)+w(1)*hl],[pe(2) pe(2)+w(2)*hl],'-','Color',col,'LineWidth',2.5);
+    end
+end
+
+% ============================================================================
 function style_cbar(cb, FS)
 % colorbar 樣式：軸標題標準數學字體(\mathbf CM)、刻度數字 Helvetica 粗體。
-    cb.FontSize=FS; cb.FontWeight='bold';
+    cb.FontSize=FS; cb.FontWeight='bold';   % colorbar 數字 Helvetica 粗體(維持原字體)
     cb.Label.Interpreter='latex'; cb.Label.String='$\mathbf{|B|\;(mT)}$'; cb.Label.FontSize=FS;
 end
 

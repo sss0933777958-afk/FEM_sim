@@ -19,9 +19,10 @@ function emit_mat(fid, name, M, collab, fmode)
             if abs(ex) >= 2, Ms = M/10^ex; fac = sprintf('10^{%d}\\,', ex); end
         end
     end
+    [nr, nc] = size(Ms);                                         % [MODIFIED] 任意尺寸(原寫死 6×6);6×6 呼叫輸出不變
     fprintf(fid, '\\[\n%s = %s\\begin{bmatrix}\n', name, fac);   % 標準矩陣(不用欄位/標籤表格);正值不標 + 號
-    for i = 1:6
-        for j = 1:6
+    for i = 1:nr
+        for j = 1:nc
             if j > 1, fprintf(fid, ' & '); end
             fprintf(fid, '%9.4f', Ms(i,j));
         end

@@ -57,21 +57,26 @@
 
 ## 實作要點
 1. **兩張都印、上下相鄰**：先 `e [µm]`（物理），緊接 `e/\hat{\ell}`（無因次）。
-2. **呈現形式不同**（使用者拍板 2026-07-31）：
-   - `e [µm]` → **`T.e`**（帶 `P1..P6` 欄標 + `e_x/e_y/e_z` 列標的表格），給人讀。
-   - **`e/ℓ̂` → `T.mat`**（**標準 `bmatrix`、無任何標籤**），照 `figure-style.md` 數值標註慣例 #4「矩陣用標準
-     bmatrix、不用欄位標籤表格」——這張是要直接搬進算式 / 程式的矩陣。
+2. **兩張都用標準 bmatrix**（使用者拍板 **2026-07-31 修訂**，取代同日稍早「µm 版用標籤表格」的版本）：
+   - `e [µm]` → **`T.mat`**（標準 `bmatrix`、無任何標籤）。⚠ **不再用 `T.e`**（帶 `P1..P6` 欄標 +
+     `e_x/e_y/e_z` 列標的表格）——已改。
+   - `e/ℓ̂` → **`T.mat`**（同樣標準 `bmatrix`、無標籤）。
+   - 兩張都照 `figure-style.md` 數值標註慣例 #4「矩陣用標準 bmatrix、不用欄位標籤表格」——這兩張都是
+     要直接搬進算式 / 程式的矩陣。
    - ⚠ `emit_tex.m` 的 `emit_mat` 已改成**任意尺寸**（`[nr,nc]=size(Ms)`，原寫死 6×6）才能吃 3×6 的 E36；
-     既有 6×6 呼叫輸出**逐字不變**。
+     既有 6×6 呼叫輸出**逐字不變**。**APDL 與 Maxwell 兩個分支都要改**（各有一份 `emit_tex.m`）。
 3. **標籤**：`e~[\mu\mathrm{m}]` / `e/\hat{\ell}`。**無因次那張不標單位**（照 `figure-style.md`「無單位不標」）。
 4. **不加 auto-factor**：兩張 fmode 都留空 `''`，維持 `%9.4f` 原值——`e/ℓ̂` 量級 ~10⁻¹~10⁻³，
    抽因子反而難跟上面的 µm 版逐格對照。
 5. **不動 .mat / solve**：`rec.e` 存的本來就是無因次 e，µm 版是 emit 端乘 `ℓ̂·1e6` 得到；只在 emit 端多印一張。
-6. 實作位置：`Calibration_using_FEM_modeling/function/emit_results.m` 的 `if rec.USE_BIAS` 區塊（current / voltage 共用）。
+6. 實作位置：**兩個分支各一份**——`matlab/APDL/Calibration_using_FEM_modeling/function/emit_results.m` 與
+   `matlab/Maxwell/function/emit_results.m` 的 `if rec.USE_BIAS` 區塊（current / voltage 共用）。
+   Maxwell 分支是附則實作前複製的骨架，**改動要兩邊同步**。
 
 ## 驗證
 - 兩張的每個元素必滿足 **`e[µm] = (e/ℓ̂) × ℓ̂[µm]`**（ℓ̂ 印在同頁）。
   例（long2016 R150 eighteen current，ℓ̂=857.3 µm）：P1 `e_x` 19.6024 µm ÷ 857.3 = **0.0229** ✓
+- 兩張都必須是 `\begin{bmatrix}`（3×6），**PDF 裡不該再出現 `P1..P6` 欄標的 e 表格**。
 - `USE_BIAS=false`（single）**不印**這兩張（e ≡ 0）。
 
 ## 觸發片語

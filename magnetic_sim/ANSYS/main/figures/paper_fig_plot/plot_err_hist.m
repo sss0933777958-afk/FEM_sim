@@ -1,4 +1,4 @@
-function plot_err_hist(USE_BIAS)
+function plot_err_hist(USE_BIAS, SRC)
 % plot_err_hist -- long2016 半切六極 R=150µm 校正的「絕對殘差直方圖」
 % =========================================================================
 %   graded / current、R=150µm 校正球。逐節點(每 node×每激發)絕對殘差 (mT):
@@ -9,15 +9,16 @@ function plot_err_hist(USE_BIAS)
 % =========================================================================
     clc;
     if nargin < 1, USE_BIAS = false; end   % false = fix → err_hist.png；true = bias → err_hist_bias.png
+    if nargin < 2, SRC = 'apdl';    end    % [ADDED] 'apdl'(ANSYS .dat) | 'maxwell'(.fld) → 檔名加 _maxwell
     here   = fileparts(mfilename('fullpath'));
     figdir = fullfile(fileparts(here), 'paper_fig', 'Section2_E');
     if ~exist(figdir,'dir'); mkdir(figdir); end
-    CAL = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
-    addpath(fullfile(CAL,'function'));  addpath(fullfile(CAL,'common_path'));
+    CAL = solver_path(SRC);                                          % [ADDED] 依 SRC 切分支(內含 rmpath 另一分支防遮蔽)
+    sstr = ''; if strcmpi(SRC,'maxwell'), sstr = '_maxwell'; end     % [ADDED] 來源後綴
 
     % ---- 前段 + R=150 fix 擬合 ----
     cfg = model_config('long2016_hexapole_halfcut','tip40um');
-    raw = extract_ansys_data(cfg, 'all', 'graded');
+    raw = load_raw(SRC, cfg);                                        % [MODIFIED] apdl='graded' .dat / maxwell=.fld
     ad  = build_actuator_data(raw, cfg);   Pc_base = ad.Pc_base;
     F   = zeros(6, cfg.N_I);  for j = 1:cfg.N_I, F(cfg.apdl_to_paper_idx(j), j) = 1; end
     Rum = 150;
@@ -52,17 +53,18 @@ function plot_err_hist(USE_BIAS)
 
     FS = 28;
     fig = figure('Color','w','Position',[100 100 1100 790]);  ax = axes(fig);  hold(ax,'on');   % [MODIFIED] 加高補償外置圖例佔的縱向空間
-    hb = bar(ax, ctr, pct, 1, 'FaceColor',[0.10 0.35 1.00], 'FaceAlpha',0.95, ...
-             'EdgeColor','k', 'LineWidth',0.3);                       % 亮藍 + 細黑邊(密)
-    ml = xline(ax, mu, '--', 'Color',[0.85 0.10 0.10], 'LineWidth',3.0);  % mean 虛線
+    % [MODIFIED] 配色與 err_hist_overlay 對齊：single=亮藍/黑虛線、eighteen=紅/綠虛線
+    if USE_BIAS, cBar = [0.85 0.10 0.10];  cMean = [0.00 0.60 0.00];   % 紅長條 + 深綠 mean（同 overlay 的 eighteen）
+    else,        cBar = [0.10 0.35 1.00];  cMean = [0.85 0.10 0.10];   % 亮藍長條 + 紅 mean（維持原樣）
+    end
+    hb = bar(ax, ctr, pct, 1, 'FaceColor',cBar, 'FaceAlpha',0.95, ...
+             'EdgeColor','k', 'LineWidth',0.3);                       % + 細黑邊(密)
+    ml = xline(ax, mu, '--', 'Color',cMean, 'LineWidth',3.0);         % mean 虛線
 
     box(ax,'on');  grid(ax,'off');
     set(ax,'FontSize',FS,'FontWeight','bold','LineWidth',2.5,'TickLength',[.015 .015],'TickDir','out');
-    if ~USE_BIAS
-        xlim(ax,[0 1.0]);   set(ax,'XTick',[0.2 0.4 0.6 0.8]);       % fix:橫軸 mT，稍超 range(0.88)、tick 0.2~0.8（起始點不畫 tick）
-    else
-        xlim(ax,[0 0.25]);  set(ax,'XTick',[0.05 0.10 0.15 0.20]);   % bias:橫軸 mT，稍超 range(0.21)、tick 0.05~0.20（起始點不畫 tick）
-    end
+    [xr_, xt_] = xlim_pick(SRC, USE_BIAS, maxE);   % [MODIFIED] apdl 沿用定案值;maxwell 依實際殘差自動(等距 4 內縮 tick)
+    xlim(ax, xr_);  set(ax,'XTick', xt_);
     ymax = max(pct);  ytop = ceil(ymax*10)/10;  ylim(ax,[0 ytop]);
     yd = round(linspace(0, ytop, 5), 1);  set(ax,'YTick', yd(2:4));  % 3 內縮 tick(首末端點不標)
     % 起始點 0 + 終點：只標數字、不畫 tick（左右角落補字，text）
@@ -85,9 +87,76 @@ function plot_err_hist(USE_BIAS)
     ax.Toolbar.Visible = 'off';  hold(ax,'off');       % 刻度數字保留
 
     bstr = ''; if USE_BIAS, bstr = '_bias'; end
-    out = fullfile(figdir, sprintf('err_hist%s.png', bstr));
+    out = fullfile(figdir, sprintf('err_hist%s%s.png', bstr, sstr));
     exportgraphics(fig, out, 'Resolution', 200);
     fprintf('wrote %s\n', out);
+end
+
+% ============================================================================
+function CAL = solver_path(SRC)
+% [ADDED] 依 SRC 掛上對應分支、並「移除另一分支」——兩分支有同名函式，只 addpath 會被遮蔽。
+    APDL = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    MW   = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Maxwell';
+    switch lower(SRC)
+        case 'apdl',    CAL = APDL;  OTHER = MW;
+        case 'maxwell', CAL = MW;    OTHER = APDL;
+        otherwise, error('SRC 必為 ''apdl'' | ''maxwell''');
+    end
+    warning('off','MATLAB:rmpath:DirNotFound');
+    rmpath(fullfile(OTHER,'function'));  rmpath(fullfile(OTHER,'common_path'));
+    warning('on','MATLAB:rmpath:DirNotFound');
+    addpath(fullfile(CAL,'function'));   addpath(fullfile(CAL,'common_path'));
+    fprintf('[SRC=%s] model_config -> %s\n', SRC, which('model_config'));
+end
+
+% ============================================================================
+function raw = load_raw(SRC, cfg)
+% [ADDED] apdl = graded .dat / maxwell = .fld（cfg.default_variant='maxwell'）
+    if strcmpi(SRC,'maxwell')
+        raw = extract_maxwell_data(cfg, 'all', cfg.default_variant);
+    else
+        raw = extract_ansys_data(cfg, 'all', 'graded');
+    end
+end
+
+% ============================================================================
+function [xr, xt] = xlim_pick(SRC, USE_BIAS, maxE)
+% [ADDED] 橫軸(殘差 mT)範圍/刻度：apdl 沿用定案值；maxwell 依實際 max 殘差自動取等距 4 內縮 tick。
+    if strcmpi(SRC,'apdl')
+        if USE_BIAS, xr = [0 0.25];  xt = [0.05 0.10 0.15 0.20];
+        else,        xr = [0 1.0];   xt = [0.2 0.4 0.6 0.8];   end
+        return;
+    end
+    % [FIXED 2026-08-03] 同 plot_err_hist_overlay：原 `while xr(2)<maxE, s=nice_step(s*1.3); end`
+    %   會無窮迴圈（nice_step 把 s*1.3 吸附回同一格：1→1.3→1、2.5→3.25→2.5、5→6.5→5）。
+    %   改成在候選清單上直接往上找，保證終止。
+    cand = [1 2 2.5 5 10];
+    k0 = floor(log10(max(maxE, realmin)/5));   s = [];
+    for k = k0:(k0+3)
+        for c = cand
+            if 5*c*10^k >= maxE, s = c*10^k; break; end
+        end
+        if ~isempty(s), break; end
+    end
+    if isempty(s), s = maxE/5; end             % 保險（理論上不會走到）
+    xr = [0, 5*s];
+    xt = (1:4)*s;
+    % [ADDED 2026-08-03] 同 overlay：上界 >1.25×maxE 才收緊，避免長尾資料右端留白過大。
+    if xr(2) > 1.25*maxE
+        s2 = nice_step(maxE/3.5);
+        n  = max(3, floor(maxE/s2));
+        up = (n + 0.5)*s2;
+        while up < maxE, n = n + 1;  up = (n + 0.5)*s2;  end   % n 遞增，必終止
+        xr = [0, up];   xt = (1:n)*s2;
+    end
+end
+
+function s = nice_step(x)
+% [ADDED] nice 等距步長（1/2/2.5/5/10 × 10^k）
+    k = floor(log10(x));   m = x/10^k;
+    cand = [1 2 2.5 5 10];
+    [~,i] = min(abs(cand - m));
+    s = cand(i)*10^k;
 end
 
 % ---- 電荷格 Pc = Pc_base + E(e)（含 e6z 約束；與 solve_current 內 make_Pc 一致）----

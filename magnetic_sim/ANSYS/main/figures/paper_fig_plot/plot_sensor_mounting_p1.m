@@ -1,4 +1,6 @@
-function plot_sensor_mounting_p1()
+function plot_sensor_mounting_p1(SOFF)
+%   [ADDED] SOFF = 藍線長度（tip→foot 沿錐面直線距, mm）；省略 = 4.572（定案值）。
+%   非預設值時輸出檔名自動加 _soff<值>mm 後綴，不覆蓋原圖。
 % plot_sensor_mounting_p1 -- Section3_A paper figure: P1 (下磁極,半切) Hall-sensor
 % mounting side view (x-z), tip40µm geometry (幾何取自 mt_constants，非硬寫)。
 % Clean paper style (同 plot_sensor_mounting_p2)：每軸 3 根等距 tick、tick 朝外、
@@ -15,7 +17,8 @@ function plot_sensor_mounting_p1()
     beta   = atan2(cnst.POLE_R, cnst.POLE_CONE_LEN);        % 半錐角 β ≈ 11.31°
     Lsl    = hypot(cnst.POLE_CONE_LEN, cnst.POLE_R)*1e3;    % 錐面斜長 ≈ 15.30 mm
     rf     = cnst.POLE_TIP_R*1e3;                           % 尖端倒圓半徑 [mm]（40µm = 0.04）
-    SOFF   = 4.572;  AIR = 0.41;                            % 沿錐面直線距 / 離面 [mm]
+    if nargin < 1 || isempty(SOFF), SOFF = 4.572; end       % [MODIFIED] 沿錐面直線距(藍線長)可調
+    AIR = 0.41;                                             % 離面 [mm]
     dir = @(el,az)[cos(el)*cos(az); sin(el)];
     rot = @(v,a)[cos(a)*v(1)-sin(a)*v(2); sin(a)*v(1)+cos(a)*v(2)];
 
@@ -75,7 +78,8 @@ function plot_sensor_mounting_p1()
     set(ax,'FontSize',36,'FontWeight','bold','LineWidth',3.5,'TickLength',[.02 .02],'TickDir','out');
     ax.Toolbar.Visible = 'off';
 
-    out = fullfile(figdir,'sensor_mounting_tip40_P1.png');
+    sfx = ''; if abs(SOFF-4.572) > 1e-9, sfx = sprintf('_soff%gmm', SOFF); end   % [ADDED] 非預設值另存
+    out = fullfile(figdir, sprintf('sensor_mounting_tip40_P1%s.png', sfx));
     exportgraphics(gcf,out,'Resolution',200);
     fprintf('saved %s\n',out);
 end

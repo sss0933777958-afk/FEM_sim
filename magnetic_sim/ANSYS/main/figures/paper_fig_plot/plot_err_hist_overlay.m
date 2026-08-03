@@ -1,4 +1,4 @@
-function plot_err_hist_overlay()
+function plot_err_hist_overlay(SRC, Rsel_um)
 % plot_err_hist_overlay -- long2016 半切六極 R=150µm：fix vs bias 絕對殘差「疊圖」
 % =========================================================================
 %   同一取樣球(R=150µm)、同一絕對殘差定義 |b_FEM − S·ĝ_I·K̄·I| (mT)：
@@ -8,19 +8,22 @@ function plot_err_hist_overlay()
 %   輸出 → figures/paper_fig/Section2_E/err_hist_overlay.png(覆蓋迭代)。
 % =========================================================================
     clc;
+    if nargin < 1, SRC = 'apdl'; end       % [ADDED] 'apdl'(ANSYS .dat) | 'maxwell'(.fld) → 檔名加 _maxwell
+    if nargin < 2 || isempty(Rsel_um), Rsel_um = 150; end   % [ADDED] 取樣球半徑 [µm]；≠150 時檔名加 _R<NNN>
     here   = fileparts(mfilename('fullpath'));
     figdir = fullfile(fileparts(here), 'paper_fig', 'Section2_E');
     if ~exist(figdir,'dir'); mkdir(figdir); end
-    CAL = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
-    addpath(fullfile(CAL,'function'));  addpath(fullfile(CAL,'common_path'));
+    CAL = solver_path(SRC);                                          % [ADDED] 依 SRC 切分支(內含 rmpath 另一分支防遮蔽)
+    sstr = ''; if strcmpi(SRC,'maxwell'), sstr = '_maxwell'; end     % [ADDED] 來源後綴
 
     % ---- 前段 pipeline(只做一次)----
     cfg = model_config('long2016_hexapole_halfcut','tip40um');
-    raw = extract_ansys_data(cfg, 'all', 'graded');
+    raw = load_raw(SRC, cfg);                                        % [MODIFIED] apdl='graded' .dat / maxwell=.fld
     ad  = build_actuator_data(raw, cfg);   Pc_base = ad.Pc_base;
     F   = zeros(6, cfg.N_I);  for j = 1:cfg.N_I, F(cfg.apdl_to_paper_idx(j), j) = 1; end
-    Rum = 150;
+    Rum = Rsel_um;                                          % [MODIFIED] 取樣半徑可調（原寫死 150）
     [P, Bstack, npts] = cfg.select_ball(ad, Rum*1e-6);
+    fprintf('取樣範圍 R <= %d um：npts = %d\n', Rum, npts);
 
     % ---- 兩模型各擬合一次 → 逐節點×激發 絕對殘差 (mT) ----
     err0 = fit_abs_resid(P, Bstack, Pc_base, F, npts, false);   % single_param (無 bias)
@@ -56,7 +59,8 @@ function plot_err_hist_overlay()
 
     box(ax,'on');  grid(ax,'off');
     set(ax,'FontSize',FS,'FontWeight','bold','LineWidth',2.5,'TickLength',[.015 .015],'TickDir','out');
-    xlim(ax,[0 1.0]);   set(ax,'XTick',[0.2 0.4 0.6 0.8]);          % 用 fix 刻度
+    [xr_, xt_] = xlim_pick(SRC, max(err0));   % [MODIFIED] 用 single(fix) 的殘差定刻度;apdl 沿用定案值
+    xlim(ax, xr_);  set(ax,'XTick', xt_);
     ymax = max([pct0 pct1]);  ytop = ceil(ymax*10)/10;  ylim(ax,[0 ytop]);
     yd = round(linspace(0, ytop, 5), 1);  set(ax,'YTick', yd(2:4));  % 3 內縮 tick(首末端點不標)
     % 起點 0 + 終點：只標數字、不畫 tick(左右角落補字)
@@ -89,9 +93,74 @@ function plot_err_hist_overlay()
     set(ax, 'Position', axp);
     set(lg, 'Position', [axp(1), newTop + GAPN, axp(3), lgh]);
 
-    out = fullfile(figdir,'err_hist_overlay.png');
+    rstr = ''; if Rum ~= 150, rstr = sprintf('_R%d', Rum); end   % [ADDED] 非預設半徑另存,不覆蓋 R150 版
+    out = fullfile(figdir, sprintf('err_hist_overlay%s%s.png', rstr, sstr));
     exportgraphics(fig, out, 'Resolution', 200);
     fprintf('wrote %s\n', out);
+end
+
+% ============================================================================
+function CAL = solver_path(SRC)
+% [ADDED] 依 SRC 掛上對應分支、並「移除另一分支」——兩分支有同名函式，只 addpath 會被遮蔽。
+    APDL = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    MW   = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Maxwell';
+    switch lower(SRC)
+        case 'apdl',    CAL = APDL;  OTHER = MW;
+        case 'maxwell', CAL = MW;    OTHER = APDL;
+        otherwise, error('SRC 必為 ''apdl'' | ''maxwell''');
+    end
+    warning('off','MATLAB:rmpath:DirNotFound');
+    rmpath(fullfile(OTHER,'function'));  rmpath(fullfile(OTHER,'common_path'));
+    warning('on','MATLAB:rmpath:DirNotFound');
+    addpath(fullfile(CAL,'function'));   addpath(fullfile(CAL,'common_path'));
+    fprintf('[SRC=%s] model_config -> %s\n', SRC, which('model_config'));
+end
+
+% ============================================================================
+function raw = load_raw(SRC, cfg)
+% [ADDED] apdl = graded .dat / maxwell = .fld
+    if strcmpi(SRC,'maxwell')
+        raw = extract_maxwell_data(cfg, 'all', cfg.default_variant);
+    else
+        raw = extract_ansys_data(cfg, 'all', 'graded');
+    end
+end
+
+% ============================================================================
+function [xr, xt] = xlim_pick(SRC, maxE)
+% [ADDED] 橫軸(殘差 mT)：apdl 沿用定案 fix 刻度；maxwell 依 single 殘差最大值自動等距 4 內縮 tick。
+    if strcmpi(SRC,'apdl'), xr = [0 1.0];  xt = [0.2 0.4 0.6 0.8];  return; end
+    % [FIXED 2026-08-03] 原本用 `while xr(2)<maxE, s=nice_step(s*1.3); end` 找上界 —— **無窮迴圈**：
+    %   nice_step 會把 s*1.3 吸附回同一格（1→1.3→1、2.5→3.25→2.5、5→6.5→5），s 永遠不變。
+    %   R=300 踩到此路徑 → MATLAB 空轉數小時、無輸出。改成在候選清單上直接往上找，保證終止。
+    cand = [1 2 2.5 5 10];
+    k0 = floor(log10(max(maxE, realmin)/5));   s = [];
+    for k = k0:(k0+3)
+        for c = cand
+            if 5*c*10^k >= maxE, s = c*10^k; break; end
+        end
+        if ~isempty(s), break; end
+    end
+    if isempty(s), s = maxE/5; end             % 保險（理論上不會走到）
+    xr = [0, 5*s];
+    xt = (1:4)*s;
+    % [ADDED 2026-08-03] 長尾資料時 5×步長 會讓右端留白過大（違反 figure-style「留白不可大於間距」）：
+    %   上界 >1.25×maxE 才收緊 → 改「n 個等距 tick + 半格留白」。R150 等既有圖不受影響（比值僅 1.05）。
+    if xr(2) > 1.25*maxE
+        s2 = nice_step(maxE/3.5);
+        n  = max(3, floor(maxE/s2));
+        up = (n + 0.5)*s2;
+        while up < maxE, n = n + 1;  up = (n + 0.5)*s2;  end   % n 遞增，必終止
+        xr = [0, up];   xt = (1:n)*s2;
+    end
+end
+
+function s = nice_step(x)
+% [ADDED] nice 等距步長（1/2/2.5/5/10 × 10^k）
+    k = floor(log10(x));   m = x/10^k;
+    cand = [1 2 2.5 5 10];
+    [~,i] = min(abs(cand - m));
+    s = cand(i)*10^k;
 end
 
 % ---- 擬合 + 逐節點×激發 絕對殘差 |S·G − Bstack| (mT) ----

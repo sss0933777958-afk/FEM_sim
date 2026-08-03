@@ -14,6 +14,8 @@ function [D_bar, gV_hat, G, rm] = solve_voltage(l_hat, e, Pc_base, P, Bstack, V)
     gV_hat = (6/5) * H_V(1,1);                       % ĝ_V [mT/mV]
     D_bar  = (5/(6*H_V(1,1))) * H_V;                 % D̄，gauge D̄(1,1)=5/6
     rm     = control_metrics(P, gV_hat*D_bar, l_hat, Pc);   % 𝒞/κ（物理 Ĥ_V=ĝ·D̄）
+    resid    = A*G - Bstack;                          % [ADDED] 擬合殘差 ε [mT]（與 solve_current 同定義）
+    rm.RMSPE = sqrt(sum(resid(:).^2) / sum(Bstack(:).^2)) * 100;   % RMSPE [%] = sqrt(Σε²/Σb²)·100
 end
 
 % ---- 控制範圍指標：逐節點 svd(S·Ĥ) → 𝒞=∏σ、κ=σ₃/σ₁ ----

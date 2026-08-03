@@ -24,7 +24,7 @@
 5. **tick 數量減半（x、y 兩軸都要）**：取現有 tick 每隔一個。
 6. **右邊 colorbar 同樣處理**：字加大加粗、colorbar tick 也減半。
 7. **單位用括號 `()`**：`x (mm)` / `z (mm)` / `|B| (T)`（**不是** `[]`）；座標一律用 **mm**。
-   - **字體分工（使用者拍板 2026-07-27，定案）**：**軸標題 / 刻度標題（axis label、colorbar label）一律用「標準數學字體」= LaTeX `\mathbf`（`Interpreter='latex'`，Computer Modern 粗體）**；如 `$\mathbf{|B|\;(mT)}$` / `$\mathbf{{}^{B}\hat{g}_{I}\;(mT/A)}$`。**刻度「數字」維持 Helvetica 粗體**（`FontWeight='bold'`，**不**套 `TickLabelInterpreter='latex'`）。即：標題數學字體、數字 sans-serif 粗體。⚠ 曾試把標題改 Helvetica（`\mathsf`/tex）**已被否決**——標題一律標準數學字體（且 `ᴮĝ_I` 的 hat/左上標**只有 latex 畫得出來**）。
+   - **字體分工（使用者拍板 2026-07-27，定案）**：**軸標題 / 刻度標題（axis label、colorbar label）一律用「標準數學字體」= LaTeX `\mathbf`（`Interpreter='latex'`，Computer Modern 粗體）**；如 `$\mathbf{|B|\;(mT)}$` / `$\mathbf{{}^{B}\hat{g}_{I}\;(mT/A)}$`。**刻度「數字」維持 Helvetica 粗體**（`FontWeight='bold'`，**不**套 `TickLabelInterpreter='latex'`）。即：標題數學字體、數字 sans-serif 粗體。⚠ 曾試把標題改 Helvetica（`\mathsf`/tex）**已被否決**——標題一律標準數學字體（且 `ᴮĝ_I` 的 hat/左上標**只有 latex 畫得出來**）。（2026-08-03 曾試把刻度數字改 Computer Modern，使用者否決、換回 Helvetica 粗體。）
    - **字體大小統一 = 36（使用者拍板 2026-07-28，所有 paper 圖通用）**：刻度數字 `set(ax,'FontSize',36,'FontWeight','bold')`；軸標題/colorbar 標題同 36。不要各圖各用 28/30——一律 36。（3D box 圖本就 36，2D 圖也統一到 36。）
 8. **圖例每則的第一個字首字母大寫**（使用者拍板 2026-07-27）：legend 每一條的**開頭單字**要大寫（`Sampling range ≤ 150 µm`、`Mean = 0.250 mT`——不是 `sampling`/`mean`）。純符號/數學開頭（`|B|`、`ĝ_I`…）不受此限。範例：`plot_err_hist.m`。
 
@@ -97,6 +97,11 @@ ax=gca; ax.Toolbar.Visible='off';                    % 匯出不帶 axes 工具�
 ```
 
 🔴 **踩過的坑（別重犯）**：
+- **`draw_box_edges` 必須在 `hold(ax,'off')` 之前呼叫**（2026-07-31 踩過）：它內部用 `plot3`，
+  hold 已關掉時**每畫一條邊就 cla 清空座標軸**，結果整張圖只剩最後一條線（資料、colorbar 全沒了）。
+  正確順序：`…畫資料 → 設 view/limits/ticks → draw_box_edges → hold off`。
+- **colorbar 的 `Label.Interpreter` 要在 `Label.String` 之前設**：先設 String 會用預設 tex 解譯
+  `\mathbf` 而報 `Error in state of SceneNode`（圖仍會存檔但標題是壞的）。
 - **不要 `axis equal`**（撐開 limits）；A 用 `daspect([1 1 1])`、B 用 `pbaspect([1 1 1])`。
 - **不要 `BoxStyle','full'`**（多畫細內邊）。
 - **`box on` vs 手動框邊不可混用**：A 幾何用 `box on` 會**前粗後細/後方 3 邊沒加粗到**（使用者打槍過）；故 A 要 `box off` + 手動 `draw_box_edges`（省最近角、9 邊全粗）；**但 B（異質軸 surf）就是要 `box on`**——別硬套 A 的手動框邊。
@@ -115,6 +120,9 @@ ax=gca; ax.Toolbar.Visible='off';                    % 匯出不帶 axes 工具�
 - **角落 / 三軸相交處不放 tick 與數字**：tick 取 xlim/ylim/zlim 內部、**不含 ±極值端點**（box 三軸在角落交會，端點數字會兩兩擠成一團）。做法 = tick 範圍比 limit 內縮一格（例：`±0.9` 框 → `XTick -0.5:0.5:0.5`，不要到 ±0.9）。
 - **tick 數量（含原點）取奇數**：讓 `0` 一定是 tick、且對稱（例 3 個 `[-0.5,0,0.5]`、5 個 `[-500,-250,0,250,500]`）。奇數 + 不含端點 → 乾淨對稱、角落不擠。
 - **刻度間距一律等距（平均）（使用者拍板 2026-07-29）**：明設 `XTick`/`YTick` 時，**各 tick 間距必須相同（等差步長）**。做法 = 中心 ± 固定 nice 步長：`s=nice((hi-lo)/N)`（nice ∈ `[1 2 2.5 3 4 5 10]×10^k`）、`ctr=round(mid/s)*s`、`tk=ctr+[-1 0 1]*s`（N=3；見 local `ticks3`）。**不要用 `round(linspace(...))`**——四捨五入會破壞等距（例變成 0/2/6 而非 0/3/6）。R-sweep 趨勢圖（`ell_gain_vs_R`/`ell_gV_vs_R`）上下兩 panel 的 y-tick 皆須等距。適用 2D/3D 各軸。
+- **🔒 tick 兩端留白不可比間距大很多（大忌，使用者拍板 2026-08-03）**：外側 tick 到框邊的留白，**不可明顯大於相鄰 tick 的間距**——否則 tick 擠在中間、兩旁一大片空，看起來不均勻（醜、被打槍過）。判準：`(外側 tick 到框邊距離) ≲ (tick 間距)`，理想 ≈ 半個間距。**視野若為了含某點（如 WP 中心）而放大導致某端留白過大 → 補一個 tick 到那端**（例：`ZL=[-0.1,1]` 卻只 `[0.25 0.5 0.75]`，下端留白 0.35 > 間距 0.25 → 補成 `[0 0.25 0.5 0.75]`，下端留白降到 0.1）。也適用 2D 線圖 x 軸（例：range 80–500 不可 `[80 200 300 400 500]`（首段 120≠100）→ 改等距 `[100 200 300 400 500]`）。小留白（＜間距）OK，只忌**過大**。
+- **🔒 tick 不可太擠（使用者拍板 2026-08-03）**：tick 數量不可過多、間距不可過小——尤其**短 panel（如 2×1 tiled 的上下子圖）y-tick 不要塞 4 個以上，取 3 個等距**即可（例：npts_cost 上 panel y 由 4 個 `1.5/2.5/3.5/4.5` → 3 個）。與「兩端留白不可過大」一起看：**均勻、疏密適中**——tick 間距 ≈ 外側留白量級、且一軸約 3–5 個 tick，不擠不空。做法：`ylim_auto` 類產 tick 用 `(-1:1:1)*s`（3 個）而非 `(-1.5:1:1.5)*s`（4 個）。
+- **🔒 tick 數量一律奇數（使用者拍板 2026-08-03）**：每根軸（縱軸、水平軸都是）的 tick **數量取奇數**（3、5、…），**不要偶數**（如 4 個 `-1.5/-1/-0.5/0` → 改 3 或 5）。奇數含中心對稱、視覺較穩。與上面兩條合看：**奇數個、等距、疏密適中、兩端留白 ≲ 間距**。3D box 圖本就慣用 3/5（見 sphere/box 規則），2D 圖同此。
 - **框邊加粗**：變體 A 用 `box off` + `draw_box_edges(bh,3.0)`（省**最近角** 3 邊、留 9 邊全粗；**別用 BoxStyle full、別省最遠角**——見上「別再犯」）。
 - 範例：`figures/paper_fig_plot/plot_sphere_lattice_3d.m`（±0.9 框、三軸 `-0.5:0.5:0.5`、font 36、手動框邊省最近角）。
 

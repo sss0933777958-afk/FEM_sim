@@ -12,7 +12,12 @@ function emit_results(matfile)
     sub  = 'single'; if rec.USE_BIAS, sub = 'eighteen'; end
     out_dir = fullfile(CAL, 'results', rec.model, sub);
     if ~exist(out_dir,'dir'), mkdir(out_dir); end
-    stem     = sprintf('model_results_%s_%s', rec.base, rec.VARIANT);
+    % [ADDED] voltage 且 sensor 距非定案 4.572mm → 檔名加 _soff<N>mm，不覆蓋既有結果
+    soffsfx = '';
+    if strcmp(rec.base,'voltage') && isfield(rec,'SOFF_upper') && abs(rec.SOFF_upper-4.572e-3) > 1e-9
+        soffsfx = sprintf('_soff%gmm', rec.SOFF_upper*1e3);
+    end
+    stem     = sprintf('model_results_%s_%s%s', rec.base, rec.VARIANT, soffsfx);
     tex_path = fullfile(out_dir, [stem '.tex']);
     pdf_path = fullfile(out_dir, [stem '.pdf']);
     pole = {'P1','P2','P3','P4','P5','P6'};
@@ -45,6 +50,9 @@ function emit_results(matfile)
             T.mat(fid, 'G~[\mathrm{mT}]', rec.G(:,p2a), pole, '');
             T.mat(fid, 'V~[\mathrm{mV}]', rec.V(:,p2a), pole, '');
             T.scalar_unit(fid, '{}^{B}\hat{g}_{V}', rec.gV_hat, 'mT/mV');
+            if isfield(rec,'RMSPE')                            % [ADDED] voltage 也印 RMSPE（同 current 定義與版式）
+                fprintf(fid, '\\[ \\mathrm{RMSPE} = \\sqrt{\\dfrac{\\sum_i \\varepsilon_i^{2}}{\\sum_i b_i^{2}}}\\cdot 100 = %.2f\\%% \\]\n', rec.RMSPE);
+            end
             cunit = 'mT/mV';
         otherwise
             fclose(fid); error('emit_results: unknown base ''%s''', rec.base);
@@ -52,7 +60,8 @@ function emit_results(matfile)
 
     if rec.USE_BIAS
         E36 = e2E36(rec.e);
-        T.e(fid, 'e~[\mu\mathrm{m}]', (rec.l_hat*1e6) .* E36, pole, '');
+        T.mat(fid, 'e~[\mu\mathrm{m}]', (rec.l_hat*1e6) .* E36, pole, '');  % [MODIFIED] 物理偏移 [µm] = (e/ℓ̂)·ℓ̂：標準 bmatrix
+        T.mat(fid, 'e/\hat{\ell}',      E36,                    pole, '');  % [ADDED] 無因次偏移(求解器內部單位)：標準 bmatrix、不標單位
     end
     fprintf(fid, '\\[ \\mathcal{C}_{mean} = %.4g~(\\mathrm{%s})^{3}, \\quad \\kappa_{mean} = %.4f \\]\n', ...
             rec.C_mean, cunit, rec.kappa_mean);

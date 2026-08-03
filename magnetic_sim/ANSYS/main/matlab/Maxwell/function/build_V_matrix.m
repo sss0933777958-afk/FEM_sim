@@ -1,4 +1,6 @@
-function [V, exc_sign] = build_V_matrix(cfg, variant, raw, S_hall, SOFF_upper, n_uniform, sensor_r, axial_tol, sensor_override, V_METHOD)
+function [V, exc_sign] = build_V_matrix(cfg, variant, raw, S_hall, SOFF_upper, n_uniform, sensor_r, axial_tol, sensor_override, V_METHOD, SOFF_lower)
+%   [ADDED] SOFF_lower（可選，預設 4.572e-3）：下極 sensor 沿錐面距極尖 [m]。
+%   原本下極寫死 4.572e-3、只有上極可調；要「兩層同時移動」時必須一起給。
 %BUILD_V_MATRIX  電壓提取：sensor 幾何 → 每 sensor 圓柱撒點 → 內插 raw 場 → 6×6 V[mV]。
 %   [V, exc_sign] = BUILD_V_MATRIX(cfg, variant, raw, S_hall, SOFF_upper, n_uniform, sensor_r, axial_tol, sensor_override, V_METHOD)
 %   sensor 幾何來源優先序：
@@ -14,6 +16,7 @@ function [V, exc_sign] = build_V_matrix(cfg, variant, raw, S_hall, SOFF_upper, n
     if nargin < 8  || isempty(axial_tol),  axial_tol  = 0.10e-3;  end
     if nargin < 9,  sensor_override = []; end
     if nargin < 10 || isempty(V_METHOD),   V_METHOD   = 'csv-tet'; end
+    if nargin < 11 || isempty(SOFF_lower), SOFF_lower = 4.572e-3;  end   % [ADDED]
     N_I = cfg.N_I;
 
     % ① sensor 幾何（WP 框）：override > config 提供 > 內建 baseline 錐面
@@ -22,7 +25,7 @@ function [V, exc_sign] = build_V_matrix(cfg, variant, raw, S_hall, SOFF_upper, n
     elseif isfield(cfg,'sensor_pos') && isfield(cfg,'sensor_n') && ~isempty(cfg.sensor_pos)
         sensor_pos = cfg.sensor_pos;  sensor_n = cfg.sensor_n;
     else
-        [sensor_pos, sensor_n] = sensor_geometry(cfg, SOFF_upper);
+        [sensor_pos, sensor_n] = sensor_geometry(cfg, SOFF_upper, SOFF_lower);   % [MODIFIED] 兩層都可調
     end
 
     % ② 每 sensor 圓柱內均勻撒 n_uniform 點（ANSYS 框、rng 可重現）——兩法共用
@@ -115,12 +118,13 @@ function V = vmat_scattered(raw, samp, cen, sensor_n, S_hall, N_I, R_loc)
 end
 
 % ---- local：6 顆 Hall 中心+法線 n+（WP 框；long2016 錐面幾何）----
-function [sensor_pos, sensor_n] = sensor_geometry(cfg, SOFF_upper)
+function [sensor_pos, sensor_n] = sensor_geometry(cfg, SOFF_upper, SOFF_lower)
     beta   = atan2(cfg.POLE_R, cfg.POLE_CONE_LEN);    % 半錐角 ≈ 11.31°
     psi0   = atan2(cfg.R_norm_z, cfg.R_norm_xy);      % 仰角 ≈ 35.26°（magic-angle；只進 e1）
     inc_up = cfg.upper_incline;                       % 上極真實錐軸傾角 ≈ 36.59°
     ell    = cfg.R_norm;
-    SOFF_lower = 4.572e-3;  AIR = 0.41e-3;
+    if nargin < 3 || isempty(SOFF_lower), SOFF_lower = 4.572e-3; end   % [MODIFIED] 原寫死，改為可傳入
+    AIR = 0.41e-3;
     dir = @(el,az) [cos(el)*cos(az); cos(el)*sin(az); sin(el)];
     sensor_pos = zeros(3,6);  sensor_n = zeros(3,6);
     for i = 1:6

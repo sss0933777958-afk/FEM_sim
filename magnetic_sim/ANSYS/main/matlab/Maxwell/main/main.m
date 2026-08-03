@@ -10,8 +10,8 @@ MODEL    = 'long2016_hexapole_halfcut';
 GEOM     = 'tip40um';       % config 幾何變體：long2016 用 tip40um|tip400um；hung/NTU 用 ''（flat config）
 VARIANT  = '';              % '' = 用該 geom 的 default_variant（data 變體）
 DATASET  = 'all';
-BASE     = 'current';       % 'current' | 'voltage'
-USE_BIAS = false;           % e 開關：false=fix(single)、true=18-param(eighteen)
+BASE     = 'voltage';       % 'current' | 'voltage'
+USE_BIAS = true;            % e 開關：false=fix(single)、true=18-param(eighteen)
 R_select = 150e-6;          % 取點球半徑 [m]
 l0       = 0.5e-3;          % l_hat 初值 [m]
 I_actual = 1;               % 驅動電流 [A]（= FEM 激發）
@@ -19,7 +19,8 @@ I_actual = 1;               % 驅動電流 [A]（= FEM 激發）
 INTERP_TO = '';             % '' 正常；否則把本 variant 場內插到此參考 geom 的 R≤R_select 點雲（公平比較）
 V_METHOD  = '';             % '' → cfg.v_method（'csv-tet' 預設 / 'scattered'）
 % voltage-only 取樣調參
-SOFF_upper = 4.572e-3;      % 上極 sensor 沿錐面距極尖 [m]
+SOFF_upper = 6.0e-3;        % 上極 sensor 沿錐面距極尖 [m]（定案值 4.572e-3）
+SOFF_lower = 6.0e-3;        % [ADDED] 下極 sensor 沿錐面距極尖 [m]（原寫死 4.572e-3；兩層要一起移才與示意圖一致）
 n_uniform  = 1e4;           % 每 sensor 圓柱撒點數
 sensor_r   = 0.15e-3;       % sensor 圓柱半徑 [m]
 axial_tol  = 0.10e-3;       % sensor 圓柱高（沿 n+）[m]
@@ -74,7 +75,8 @@ switch BASE
         %   上面的電荷擬合仍用 WP 細格 raw。兩者同一個 Maxwell 座標框，可直接並用。
         raw_v = extract_maxwell_data(cfg, 'voltage', VARIANT);
         fprintf('[voltage] sensor 場格點 %d（WP 擬合場格點 %d）\n', numel(raw_v.x), numel(raw.x));
-        [V, ~] = build_V_matrix(cfg, VARIANT, raw_v, cfg.S_hall, SOFF_upper, n_uniform, sensor_r, axial_tol, [], V_METHOD);
+        [V, ~] = build_V_matrix(cfg, VARIANT, raw_v, cfg.S_hall, SOFF_upper, n_uniform, sensor_r, axial_tol, [], V_METHOD, SOFF_lower);
+        rec.SOFF_upper = SOFF_upper;  rec.SOFF_lower = SOFF_lower;   % [ADDED] 記進 .mat（emit_results 據此加檔名後綴）
         [D_bar, gV_hat, G, rm] = solve_voltage(l_hat, e, Pc_base, P, Bstack, V);
         rec.D_bar = D_bar;  rec.gV_hat = gV_hat;  rec.G = G;  rec.V = V;
     otherwise
@@ -87,7 +89,11 @@ if isfield(rm,'RMSPE'), rec.RMSPE = rm.RMSPE; end     % 擬合 RMSPE [%]（curre
 tag = 'single'; if USE_BIAS, tag = 'eighteen'; end
 matdir = fullfile(CAL, 'data', MODEL, '.mat');
 if ~exist(matdir, 'dir'), mkdir(matdir); end
-matfile = fullfile(matdir, sprintf('calib_%s_%s_R%03d_%s.mat', BASE, VARIANT, round(R_select*1e6), tag));
+soffsfx = '';   % [ADDED] voltage 且 sensor 距非定案 4.572mm → 檔名加後綴，不覆蓋既有結果
+if strcmp(BASE,'voltage') && (abs(SOFF_upper-4.572e-3) > 1e-9 || abs(SOFF_lower-4.572e-3) > 1e-9)
+    soffsfx = sprintf('_soff%gmm', SOFF_upper*1e3);
+end
+matfile = fullfile(matdir, sprintf('calib_%s_%s%s_R%03d_%s.mat', BASE, VARIANT, soffsfx, round(R_select*1e6), tag));
 save(matfile, '-struct', 'rec');
 fprintf('saved %s\n', matfile);
 if strcmp(BASE,'current')
