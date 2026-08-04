@@ -8,7 +8,8 @@ function c = mt_constants()
     % ===== ① 提取識別 / 資料路由 =====
     c.strategy          = 'hex_magic';
     c.apdl_to_paper_idx = [1, 2, 3, 4, 5, 6];        % hung = identity（deck 照 paper 序）
-    c.default_variant   = 'R700';                    % R700/R300 六 coil mesh 一致（no_gap/gap_200um 不一致→crash）
+    c.default_variant   = 'R500';                    % [MODIFIED] R500 = 原始設計（R_sphere=0.5mm），與下方 R_norm=500e-6 對齊
+                                                     %   R300/R500/R700 六 coil mesh 各自一致；no_gap/gap_200um 不一致→crash
     c.regions           = {'all', 'wp'};
     c.R_load            = [];
 

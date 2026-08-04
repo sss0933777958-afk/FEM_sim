@@ -39,7 +39,7 @@ function plot_err_hist_overlay(SRC, Rsel_um)
     pct0 = histcounts(err0, edg0) / numel(err0) * 100;
     pct1 = histcounts(err1, edg1) / numel(err1) * 100;
 
-    cB = [0.10 0.35 1.00];   cR = [0.85 0.10 0.10];     % 藍=無bias / 紅=有bias
+    [cB, cR] = pick_bar_colors(Rum);   % [MODIFIED] 長條配色依取樣半徑分組（同 plot_err_hist 的 pick_colors）
     FS = 28;
     fig = figure('Color','w','Position',[100 100 1100 830]);  ax = axes(fig);  hold(ax,'on');   % [MODIFIED] 加高補償外置兩列圖例
     h0 = bar(ax, ctr0, pct0, 1, 'FaceColor',cB, 'FaceAlpha',0.60, 'EdgeColor','k', 'LineWidth',0.3);   % 亮藍(single) + 黑細邊
@@ -61,6 +61,8 @@ function plot_err_hist_overlay(SRC, Rsel_um)
     set(ax,'FontSize',FS,'FontWeight','bold','LineWidth',2.5,'TickLength',[.015 .015],'TickDir','out');
     [xr_, xt_] = xlim_pick(SRC, max(err0));   % [MODIFIED] 用 single(fix) 的殘差定刻度;apdl 沿用定案值
     xlim(ax, xr_);  set(ax,'XTick', xt_);
+    % [REVERTED 2026-08-03] 縱軸維持原作法（使用者拍板；同 plot_err_hist）：
+    %   ylim 貼齊資料最大值(進位到 0.1)、tick 取 linspace 的 3 個內縮值。
     ymax = max([pct0 pct1]);  ytop = ceil(ymax*10)/10;  ylim(ax,[0 ytop]);
     yd = round(linspace(0, ytop, 5), 1);  set(ax,'YTick', yd(2:4));  % 3 內縮 tick(首末端點不標)
     % 起點 0 + 終點：只標數字、不畫 tick(左右角落補字)
@@ -93,10 +95,23 @@ function plot_err_hist_overlay(SRC, Rsel_um)
     set(ax, 'Position', axp);
     set(lg, 'Position', [axp(1), newTop + GAPN, axp(3), lgh]);
 
-    rstr = ''; if Rum ~= 150, rstr = sprintf('_R%d', Rum); end   % [ADDED] 非預設半徑另存,不覆蓋 R150 版
-    out = fullfile(figdir, sprintf('err_hist_overlay%s%s.png', rstr, sstr));
+    % [MODIFIED 2026-08-03] 檔名一律明確標「求解器_半徑」（overlay 本身含 single+eighteen，不標模型）
+    out = fullfile(figdir, sprintf('err_hist_overlay_%s_R%d.png', lower(SRC), Rum));
     exportgraphics(fig, out, 'Resolution', 200);
     fprintf('wrote %s\n', out);
+end
+
+% ============================================================================
+function [c0, c1] = pick_bar_colors(Rum)
+% [ADDED 2026-08-03] 長條配色每個取樣半徑一組（使用者拍板，與 plot_err_hist 的 pick_colors 同組）：
+%   R150：藍(single) / 紅(eighteen)
+%   其他(R300…)：紫 #7B52AB (single) / 橘 #E69F00 (eighteen)
+%   ⚠ mean 虛線不隨之改——一律黑(single)/深綠(eighteen)，中性色在兩組長條上都看得清。
+    if Rum == 150
+        c0 = [0.10 0.35 1.00];      c1 = [0.85 0.10 0.10];
+    else
+        c0 = [0.482 0.322 0.671];   c1 = [0.902 0.624 0.000];
+    end
 end
 
 % ============================================================================
@@ -162,6 +177,7 @@ function s = nice_step(x)
     [~,i] = min(abs(cand - m));
     s = cand(i)*10^k;
 end
+
 
 % ---- 擬合 + 逐節點×激發 絕對殘差 |S·G − Bstack| (mT) ----
 function err = fit_abs_resid(P, Bstack, Pc_base, F, npts, USE_BIAS)

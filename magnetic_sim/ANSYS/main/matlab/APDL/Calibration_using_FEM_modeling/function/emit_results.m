@@ -12,7 +12,12 @@ function emit_results(matfile)
     sub  = 'single'; if rec.USE_BIAS, sub = 'eighteen'; end
     out_dir = fullfile(CAL, 'results', rec.model, sub);
     if ~exist(out_dir,'dir'), mkdir(out_dir); end
-    stem     = sprintf('model_results_%s_%s', rec.base, rec.VARIANT);
+    % [ADDED 2026-08-03] 取樣半徑非定案 150µm → 檔名加 _R<NNN>，不覆蓋既有 R150 結果（與 Maxwell 分支同步）
+    rsfx = '';
+    if isfield(rec,'R_select') && abs(rec.R_select - 150e-6) > 1e-12
+        rsfx = sprintf('_R%d', round(rec.R_select*1e6));
+    end
+    stem     = sprintf('model_results_%s_%s%s', rec.base, rec.VARIANT, rsfx);
     tex_path = fullfile(out_dir, [stem '.tex']);
     pdf_path = fullfile(out_dir, [stem '.pdf']);
     pole = {'P1','P2','P3','P4','P5','P6'};
@@ -45,6 +50,9 @@ function emit_results(matfile)
             T.mat(fid, 'G~[\mathrm{mT}]', rec.G(:,p2a), pole, '');
             T.mat(fid, 'V~[\mathrm{mV}]', rec.V(:,p2a), pole, '');
             T.scalar_unit(fid, '{}^{B}\hat{g}_{V}', rec.gV_hat, 'mT/mV');
+            if isfield(rec,'RMSPE')                            % [ADDED] voltage 也印 RMSPE（同 current 定義與版式）
+                fprintf(fid, '\\[ \\mathrm{RMSPE} = \\sqrt{\\dfrac{\\sum_i \\varepsilon_i^{2}}{\\sum_i b_i^{2}}}\\cdot 100 = %.2f\\%% \\]\n', rec.RMSPE);
+            end
             cunit = 'mT/mV';
         otherwise
             fclose(fid); error('emit_results: unknown base ''%s''', rec.base);
@@ -52,8 +60,8 @@ function emit_results(matfile)
 
     if rec.USE_BIAS
         E36 = e2E36(rec.e);
-        T.e(fid, 'e~[\mu\mathrm{m}]', (rec.l_hat*1e6) .* E36, pole, '');   % 物理偏移 [µm] = (e/ℓ̂)·ℓ̂
-        T.mat(fid, 'e/\hat{\ell}',    E36,                    pole, '');   % [ADDED] 無因次偏移(求解器內部單位)：標準 bmatrix、不標單位
+        % [MODIFIED 2026-08-04] 只印無因次 e/ℓ̂（校正解出來的原生量）；不再印物理 e [µm]（那是 emit 端乘 ℓ̂ 的衍生量）
+        T.mat(fid, 'e/\hat{\ell}', E36, pole, '');   % 無因次偏移(求解器內部單位)：標準 bmatrix、不標單位
     end
     fprintf(fid, '\\[ \\mathcal{C}_{mean} = %.4g~(\\mathrm{%s})^{3}, \\quad \\kappa_{mean} = %.4f \\]\n', ...
             rec.C_mean, cunit, rec.kappa_mean);

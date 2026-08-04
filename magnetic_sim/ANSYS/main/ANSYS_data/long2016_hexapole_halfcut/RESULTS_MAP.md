@@ -57,6 +57,7 @@
 | `P2toP6_graded` | graded 密 mesh，P2–P6 | graded（不同）| ~1.21 T | KI 電荷擬合密網格 |
 | `data/singlepole` | **單極模型**（下極填回完整圓錐+支撐座+鐵柱、無 yoke/上極；**均勻鐵件 0.3mm**）1A 自激 | `all`=704744 行（704747 節點−3 coil）/ `tip`=2741 | ~0.147 T（|B|max @ 極尖）| 單極場研究；**非 hexapole** |
 | `coil1/lower_filled` | **下極填圓 hexapole**（完整 6 極 hexapole，但 3 下極填回完整圓錐、無 half-cut；coil1=−1 → P1 SOURCE）。**2026-06-26 改用 baseline smrt5 重 mesh + 重解**（取代舊 graded 1.39M）| `all`=845581（mesh 845599 節點）；節點數**與所有 halfcut 結果都不同**、易辨 | **0.8413 T**（與舊 graded 版一致 → mesh 無關、互validates）| 下極填圓場研究；y=0 場圖 `field_viz/figures/lowerfilled_P1_raw.png`。mesh `db/lower_filled/mesh_lowerfilled_smrt5.db`，deck `mesh/MT_Mesh_LowerFilled_smrt5.txt` + `sim/lower_filled/MT_Sim_LowerFilled_smrt5_coil1.txt` |
+| `graded_rsp/coil1` | **公式化交叉測試（2026-08-04）**：與 `graded/coil1` **完全同一張網格、同一線圈、同一 BC**，只把 `magsolv` 由 **3(DSP)** 換成 **2(RSP)**（`MAGSOLV.MAC:47` 對應表）。P1 only | 與 `graded` **完全相同**（`all`=656235 / `wp`=371709 行，節點座標逐一相同）→ **節點數不可辨識，只能靠 dir 名** | `\|B\|max` **1.1414 T = 與 graded 逐位相同** | **結論：RSP ≡ DSP。** r≤150µm 平均場 DSP 8.821822 / RSP 8.821823 mT（差 **7.5e-6 %**）、逐點 \|ΔB\|max 1.07e-6 mT。→ 純量位家族自洽，**APDL-vs-Maxwell 的 14% 差距與公式化選擇無關**。deck 同 `sim/graded/MT_Sim_graded_all.txt`（`MAGOPT=2`）|
 
 > ⚠ `data/singlepole` 命名異於 coilN：檔名 `singlepole_{coord,bfield}_{all,tip}.dat`（prefix=`singlepole`、dataset∈{all,tip}）。是**獨立單極幾何**（非 6 極 hexapole），節點數 704744 與所有 hexapole 結果都不同、易辨。mesh/solve 分離：`apdl/.../mesh/MT_Mesh_SinglePole.txt` + `sim/singlepole/MT_Sim_SinglePole.txt`，db `db/singlepole/{mesh,sim}_singlepole.db`。
 

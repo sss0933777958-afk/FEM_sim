@@ -105,7 +105,9 @@ function plot_ell_gain_vs_R(USE_BIAS, SRC, SAMPLING)
     xlabel(ax2, '$\mathbf{Sampling\;range\;(\mu m)}$', 'Interpreter','latex', 'FontSize',36);   % [ADDED] 共用 x 軸標題（掃描半徑 R）
     hold(ax2,'off');
 
-    out = fullfile(figdir, sprintf('ell_gain_vs_R%s%s.png', bstr, sstr));   % bstr/sstr 已在頂部定義
+    % [MODIFIED 2026-08-03] 檔名一律明確標「求解器_模型」，不留隱含預設（使用者拍板）
+    mstr = 'single'; if USE_BIAS, mstr = 'eighteen'; end
+    out = fullfile(figdir, sprintf('ell_gain_vs_R_%s_%s.png', lower(SRC), mstr));
     exportgraphics(fig, out, 'Resolution', 200);
     fprintf('\nwrote %s\n', out);
 end

@@ -17,7 +17,12 @@ function emit_results(matfile)
     if strcmp(rec.base,'voltage') && isfield(rec,'SOFF_upper') && abs(rec.SOFF_upper-4.572e-3) > 1e-9
         soffsfx = sprintf('_soff%gmm', rec.SOFF_upper*1e3);
     end
-    stem     = sprintf('model_results_%s_%s%s', rec.base, rec.VARIANT, soffsfx);
+    % [ADDED 2026-08-03] 取樣半徑非定案 150µm → 檔名加 _R<NNN>，不覆蓋既有 R150 結果（同 soffsfx 慣例）
+    rsfx = '';
+    if isfield(rec,'R_select') && abs(rec.R_select - 150e-6) > 1e-12
+        rsfx = sprintf('_R%d', round(rec.R_select*1e6));
+    end
+    stem     = sprintf('model_results_%s_%s%s%s', rec.base, rec.VARIANT, soffsfx, rsfx);
     tex_path = fullfile(out_dir, [stem '.tex']);
     pdf_path = fullfile(out_dir, [stem '.pdf']);
     pole = {'P1','P2','P3','P4','P5','P6'};
@@ -60,7 +65,7 @@ function emit_results(matfile)
 
     if rec.USE_BIAS
         E36 = e2E36(rec.e);
-        T.mat(fid, 'e~[\mu\mathrm{m}]', (rec.l_hat*1e6) .* E36, pole, '');  % [MODIFIED] 物理偏移 [µm] = (e/ℓ̂)·ℓ̂：標準 bmatrix
+        % [MODIFIED 2026-08-04] 只印無因次 e/ℓ̂（校正解出來的原生量）；不再印物理 e [µm]（那是 emit 端乘 ℓ̂ 的衍生量）
         T.mat(fid, 'e/\hat{\ell}',      E36,                    pole, '');  % [ADDED] 無因次偏移(求解器內部單位)：標準 bmatrix、不標單位
     end
     fprintf(fid, '\\[ \\mathcal{C}_{mean} = %.4g~(\\mathrm{%s})^{3}, \\quad \\kappa_{mean} = %.4f \\]\n', ...

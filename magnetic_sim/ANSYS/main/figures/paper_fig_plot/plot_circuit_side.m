@@ -38,9 +38,10 @@ function plot_circuit_side(USE_BIAS, WITH_DIST, CHARGE_SRC, DUAL)
     H=680; y0=130; leftm=110; cbgap=22; cblab=140; midgap=120; rightm=30;
     CBW_RATIO = 0.009;                                  % colorbar 寬度佔比(cbw/figW)，定案；與 flux 共用同值
 
-    useWin = WITH_DIST || DUAL;                         % DUAL 用擴大視野(含 WP 中心)
-    S1 = load_panel(1, USE_BIAS, c, CAL, useWin, CHARGE_SRC);
-    S2 = load_panel(2, USE_BIAS, c, CAL, useWin, CHARGE_SRC);
+    % [MODIFIED 2026-08-03] 視野模式三選一：base / dist(含 WP 中心) / dual(DUAL 專用，見 win())
+    MODE = 'base';  if WITH_DIST, MODE = 'dist'; end;  if DUAL, MODE = 'dual'; end
+    S1 = load_panel(1, USE_BIAS, c, CAL, MODE, CHARGE_SRC);
+    S2 = load_panel(2, USE_BIAS, c, CAL, MODE, CHARGE_SRC);
     if DUAL                                             % [ADDED] 同時算 有e(bias)+沒e(fix) 兩電荷位置(Maxwell)
         qb1=charge_xz(1,true ,c,CAL,CHARGE_SRC); qf1=charge_xz(1,false,c,CAL,CHARGE_SRC);
         qb2=charge_xz(2,true ,c,CAL,CHARGE_SRC); qf2=charge_xz(2,false,c,CAL,CHARGE_SRC);
@@ -49,10 +50,7 @@ function plot_circuit_side(USE_BIAS, WITH_DIST, CHARGE_SRC, DUAL)
         tip=[c.pole_tip_x;c.pole_tip_y;c.pole_tip_z_wp]; dh=tip(:,1)/norm(tip(:,1));  % dhat(P1)=+x_a
         axd=[dh(1);dh(3)]; axd=axd/norm(axd);          % actuator x_a 軸方向(x-z 投影,單位)
         S1.axd=axd; S2.axd=axd;
-        % [MODIFIED 2026-08-03] 右圖(P1)右邊內縮 x→0.9，框寬≈左圖(P2)；tick 奇數(縱橫皆 3)、等距、留白 ≲ 間距
-        S1.XL=[-0.1 0.9];                                          % P1 右邊內縮(1.2→0.9)；場超出部分由 xlim 裁掉
-        S1.XT=[0 0.4 0.8];  S1.ZT=[-0.5 -0.3 -0.1];               % P1 (3/3 奇數)
-        S2.XT=[-1 -0.5 0];  S2.ZT=[0 0.5 1];                       % P2 (3/3 奇數)
+        % 視野/刻度已由 win(pidx,'dual') 給定（兩 panel 等框寬 + 對稱留白，見該函式）。
     end
     CMAX = max(S1.CLIM, S2.CLIM);                       % P1/P2 共用色階(同 flux 合併圖;弱場 panel 顯冷色)
     SL = S2;  SR = S1;                                  % [MODIFIED] 左右對調：P2 在左、P1 在右（merged/dist 一致）
@@ -68,50 +66,69 @@ function plot_circuit_side(USE_BIAS, WITH_DIST, CHARGE_SRC, DUAL)
     cb  = colorbar(ax2,'Units','pixels');  cb.Position=[x2+w2+cbgap y0 cbw H];  ax2.Position=[x2 y0 w2 H];  style_cbar(cb, FS);
     if DUAL, cb.Label.String = ''; end   % [MODIFIED 2026-08-03] DUAL 拿掉 colorbar 標題(只留色階+數字)
 
+    % [MODIFIED 2026-08-03] 檔名明確標「電荷來源_模型」（場固定 APDL → 只標電荷來源；使用者拍板）。
+    %   dualcharge 同時畫有 e / 沒 e 兩顆電荷 → 不標模型。
+    mstr = 'single'; if USE_BIAS, mstr = 'eighteen'; end
+    csrc = lower(CHARGE_SRC);
     if DUAL
-        outp = fullfile(figdir, sprintf('circuit_side_dualcharge%s.png', cstr));         % [ADDED] 有e+沒e 雙電荷 + x_a 軸
+        outp = fullfile(figdir, sprintf('circuit_side_dualcharge_charge-%s.png', csrc));
     elseif WITH_DIST
-        outp = fullfile(figdir, sprintf('circuit_side_dist%s%s.png', bstr, cstr));      % 距離標註版(另存,不覆蓋原圖)
+        outp = fullfile(figdir, sprintf('circuit_side_dist_charge-%s_%s.png', csrc, mstr));
     else
-        outp = fullfile(figdir, sprintf('circuit_side_merged%s%s.png', bstr, cstr));    % 原圖
+        outp = fullfile(figdir, sprintf('circuit_side_merged_charge-%s_%s.png', csrc, mstr));
     end
     exportgraphics(fig, outp, 'Resolution', 150);
     fprintf('wrote %s\n', outp);
 end
 
 % ============================================================================
-function [XL,ZL,XT,ZT] = win(pidx, WITH_DIST)
+function [XL,ZL,XT,ZT] = win(pidx, MODE)
 % per-pole 視野 + 刻度（WP frame；z 已平移）。x 起終點都標；z 只留內縮 tick。
-% WITH_DIST=true：視野必須含 WP 中心(0,0)。P1 左界由 0.2 → 0（中心落在左上角）；
-%   P2 原本 XL=[-1.2 0]、ZL=[0 1]，中心已在右下角，不必改。
-    if nargin < 2, WITH_DIST = false; end
+% MODE = 'base' | 'dist' | 'dual'
+%   'dist'：視野必須含 WP 中心(0,0)。P1 左界由 0.2 → 0（中心落在左上角）；
+%           P2 原本 XL=[-1.2 0]、ZL=[0 1]，中心已在右下角，不必改。
+%   'dual'：[ADDED 2026-08-03] DUAL 專用。兩 panel **等框寬**（w=H·Δx/Δz，z 各自不動）
+%           + **兩端留白對稱**；tick 3/3 奇數、步長 0.4。P2 的 Δx 由 P1 反推，
+%           右界因此推到 x≈+0.39（超出 'dist' 取樣範圍 → 自己一份快取）。
+    if nargin < 2, MODE = 'base'; end
     switch pidx
         case 1
-            if WITH_DIST                                 % 原點在左上角 → x 左、z 上各留 0.1mm 讓「+」完整
-                XL=[-0.1 1.2]; ZL=[-0.6 0.1]; XT=[0 0.4 0.8 1.2];    ZT=[-0.5 -0.3 -0.1];
-            else
-                XL=[0.2 0.9]; ZL=[-0.6 0];  XT=[0.2 0.4 0.6 0.9];    ZT=[-0.5 -0.3 -0.1];
+            switch MODE
+                case 'dual'                              % P1 右邊內縮(1.2→0.9)：留白 0.1/0.1
+                    % [MODIFIED 2026-08-03] z 刻度改含 0：-0.5/-0.25/0（3 個奇數、步長 0.25、上下留白 0.1/0.1）
+                    XL=[-0.1 0.9]; ZL=[-0.6 0.1]; XT=[0 0.4 0.8];        ZT=[-0.5 -0.25 0];
+                case 'dist'                              % 原點在左上角 → x 左、z 上各留 0.1mm 讓「+」完整
+                    XL=[-0.1 1.2]; ZL=[-0.6 0.1]; XT=[0 0.4 0.8 1.2];    ZT=[-0.5 -0.3 -0.1];
+                otherwise
+                    XL=[0.2 0.9]; ZL=[-0.6 0];  XT=[0.2 0.4 0.6 0.9];    ZT=[-0.5 -0.3 -0.1];
             end
         case 2
-            if WITH_DIST                                 % 原點在右下角 → x 右、z 下各留 0.1mm
-                XL=[-1.5 0.1]; ZL=[-0.1 1];  XT=[-1.5 -1 -0.5 0];    ZT=[0.25 0.5 0.75];
-            else
-                XL=[-1.2 0];  ZL=[0 1];     XT=[-1.2 -0.8 -0.4 0];   ZT=[0.25 0.5 0.75];
+            switch MODE
+                case 'dual'
+                    ZL=[-0.1 1];  XT=[-0.8 -0.4 0];  ZT=[0 0.5 1];
+                    [X1,Z1] = win(1,'dual');             % 框寬對齊 P1：Δx = (Δx₁/Δz₁)·Δz
+                    dx = diff(X1)/diff(Z1)*diff(ZL);
+                    m  = (dx - (XT(end)-XT(1)))/2;       % 兩端留白對稱(≈0.386，接近 tick 步長 0.4)
+                    XL = [XT(1)-m, XT(end)+m];
+                case 'dist'                              % 原點在右下角 → x 右、z 下各留 0.1mm
+                    XL=[-1.5 0.1]; ZL=[-0.1 1];  XT=[-1.5 -1 -0.5 0];    ZT=[0.25 0.5 0.75];
+                otherwise
+                    XL=[-1.2 0];  ZL=[0 1];     XT=[-1.2 -0.8 -0.4 0];   ZT=[0.25 0.5 0.75];
             end
     end
 end
 
 % ============================================================================
-function S = load_panel(pidx, USE_BIAS, c, CAL, WITH_DIST, CHARGE_SRC)
+function S = load_panel(pidx, USE_BIAS, c, CAL, MODE, CHARGE_SRC)
 % 載入單極場 + grid-sample(不內插) + 電荷位置 + 磁極輪廓；回傳繪圖用結構(含自然 CLIM)。
 % [ADDED] 抽稀後的繪圖結構快取:載一份 .dat 要數分鐘,純改樣式不需重載 → 有快取就用。
 %   要強制重算把 circuit_side_panel*.mat 刪掉。
     switch pidx, case 1, cname='coil1'; case 2, cname='coil5'; end
-    [XL,ZL,XT,ZT] = win(pidx, WITH_DIST);
+    [XL,ZL,XT,ZT] = win(pidx, MODE);
 
     here   = fileparts(mfilename('fullpath'));   % 快取鍵含視野模式（grid-sample 隨 XL/ZL 而異）
     cachef = fullfile(here, sprintf('circuit_side_panel%d_%s_%s.mat', pidx, ...
-                      ternary(USE_BIAS,'bias','fix'), ternary(WITH_DIST,'dist','base')));
+                      ternary(USE_BIAS,'bias','fix'), MODE));
                       % 快取只存「場」(APDL graded,與 CHARGE_SRC 無關);電荷每次現算後覆寫,
                       % 這樣換電荷來源不必重讀大 .dat。
     if exist(cachef,'file')
@@ -292,15 +309,26 @@ function draw_axis_line(ax, S)
     end
     if numel(tin) < 2, return; end
     tlo=min(tin); thi=max(tin);
-    % 箭頭放「近 WP 原點」那端(含中心的角落)、朝外指向該角落 → 兩 panel 都朝中心;內縮不貼框。
-    if abs(thi) <= abs(tlo), tn=thi; tf=tlo; else, tn=tlo; tf=thi; end
-    t_arr = 0.62*tn;                                     % 內縮(往原點)
-    plo=tf*d; phi=t_arr*d;
+    % [MODIFIED 2026-08-03 依參考圖] 虛線**畫滿整個視野**：從 -x_a 端邊界(tlo)一路拉到 +x_a 端；
+    %   箭頭固定放 **+x_a 端(thi，右下角附近)**、朝 +x_a。
+    %   原作法(頭放「近 WP 原點」那端 + 0.62 內縮)會讓 P1 的頭跑到左上、線在該端被截短 → 與參考圖相反。
+    tn = thi;  tf = tlo;                                 % 頭在 +x_a 端；線起於 -x_a 端邊界
+    plo = tf*d;  phi = tn*d;                             % 先放到邊界，下方防裁迴圈再往內退
     col=[0.20 0.30 0.45];
-    plot(ax,[plo(1) phi(1)],[plo(2) phi(2)],'--','Color',col,'LineWidth',2.5);
-    pe = phi;  hl=0.06*diff(S.XL); a=26*pi/180; b=-sign(tn)*d;   % 箭頭朝外(sign(tn)*d)
+    pe = phi;  hl=0.06*diff(S.XL); a=26*pi/180; b=-d;   % [MODIFIED] 固定 -d：wings 沿 b 張開 ⇒ 視覺箭頭指 -b = +x_a
     Rm=@(th)[cos(th) -sin(th); sin(th) cos(th)];
-    for w=[Rm(a)*b, Rm(-a)*b]
+    Wg = [Rm(a)*b, Rm(-a)*b];                            % 2×2：每欄一支翼的方向
+    % [MODIFIED 2026-08-03] 箭頭整顆(頂點 + 兩翼端)都不可被框裁掉：頭起於 +x_a 邊界，沿 -x_a 往框內退到全露。
+    mg = 0.012*diff(S.XL);                               % 離框的最小留白
+    for it = 1:400
+        tp = [pe, pe + Wg*hl];                           % 2×3：頂點 + 兩支翼端
+        if all(tp(1,:) >= S.XL(1)+mg) && all(tp(1,:) <= S.XL(2)-mg) && ...
+           all(tp(2,:) >= S.ZL(1)+mg) && all(tp(2,:) <= S.ZL(2)-mg), break; end
+        pe = pe - 0.01*hl*d;                             % 沿 -x_a 往框內退
+    end
+    plot(ax,[plo(1) pe(1)],[plo(2) pe(2)],'--','Color',col,'LineWidth',2.5);   % 虛線收在(調整後的)箭頭底
+    for k = 1:2
+        w = Wg(:,k);
         plot(ax,[pe(1) pe(1)+w(1)*hl],[pe(2) pe(2)+w(2)*hl],'-','Color',col,'LineWidth',2.5);
     end
 end

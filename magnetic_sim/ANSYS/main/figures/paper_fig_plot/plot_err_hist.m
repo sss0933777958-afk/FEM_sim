@@ -1,5 +1,5 @@
-function plot_err_hist(USE_BIAS, SRC)
-% plot_err_hist -- long2016 半切六極 R=150µm 校正的「絕對殘差直方圖」
+function plot_err_hist(USE_BIAS, SRC, Rsel_um)
+% plot_err_hist -- long2016 半切六極「絕對殘差直方圖」(取樣半徑可調，預設 R=150µm)
 % =========================================================================
 %   graded / current、R=150µm 校正球。逐節點(每 node×每激發)絕對殘差 (mT):
 %     |b_FEM − Sᵢ·ᴮĝ_I·K̄·I_j| = ||S·G − Bstack||_node   (S 用擬合後電荷位置 Pc)。
@@ -10,6 +10,7 @@ function plot_err_hist(USE_BIAS, SRC)
     clc;
     if nargin < 1, USE_BIAS = false; end   % false = fix → err_hist.png；true = bias → err_hist_bias.png
     if nargin < 2, SRC = 'apdl';    end    % [ADDED] 'apdl'(ANSYS .dat) | 'maxwell'(.fld) → 檔名加 _maxwell
+    if nargin < 3, Rsel_um = 150;   end    % [ADDED] 取樣球半徑 [µm]（原寫死 150；同 plot_err_hist_overlay）
     here   = fileparts(mfilename('fullpath'));
     figdir = fullfile(fileparts(here), 'paper_fig', 'Section2_E');
     if ~exist(figdir,'dir'); mkdir(figdir); end
@@ -21,8 +22,9 @@ function plot_err_hist(USE_BIAS, SRC)
     raw = load_raw(SRC, cfg);                                        % [MODIFIED] apdl='graded' .dat / maxwell=.fld
     ad  = build_actuator_data(raw, cfg);   Pc_base = ad.Pc_base;
     F   = zeros(6, cfg.N_I);  for j = 1:cfg.N_I, F(cfg.apdl_to_paper_idx(j), j) = 1; end
-    Rum = 150;
+    Rum = Rsel_um;                                                   % [MODIFIED] 取樣半徑可調（原寫死 150）
     [P, Bstack, npts] = cfg.select_ball(ad, Rum*1e-6);
+    fprintf('取樣範圍 R <= %d um：npts = %d\n', Rum, npts);
     [e, l_hat, ~] = fitting(P, Bstack, Pc_base, 0.5e-3, USE_BIAS);
     [~, ~, G] = solve_current(l_hat, e, Pc_base, P, Bstack, F);
 
@@ -53,10 +55,7 @@ function plot_err_hist(USE_BIAS, SRC)
 
     FS = 28;
     fig = figure('Color','w','Position',[100 100 1100 790]);  ax = axes(fig);  hold(ax,'on');   % [MODIFIED] 加高補償外置圖例佔的縱向空間
-    % [MODIFIED] 配色與 err_hist_overlay 對齊：single=亮藍/黑虛線、eighteen=紅/綠虛線
-    if USE_BIAS, cBar = [0.85 0.10 0.10];  cMean = [0.00 0.60 0.00];   % 紅長條 + 深綠 mean（同 overlay 的 eighteen）
-    else,        cBar = [0.10 0.35 1.00];  cMean = [0.85 0.10 0.10];   % 亮藍長條 + 紅 mean（維持原樣）
-    end
+    [cBar, cMean] = pick_colors(USE_BIAS, Rum);   % [MODIFIED] 配色依取樣半徑分組（見 pick_colors）
     hb = bar(ax, ctr, pct, 1, 'FaceColor',cBar, 'FaceAlpha',0.95, ...
              'EdgeColor','k', 'LineWidth',0.3);                       % + 細黑邊(密)
     ml = xline(ax, mu, '--', 'Color',cMean, 'LineWidth',3.0);         % mean 虛線
@@ -65,6 +64,9 @@ function plot_err_hist(USE_BIAS, SRC)
     set(ax,'FontSize',FS,'FontWeight','bold','LineWidth',2.5,'TickLength',[.015 .015],'TickDir','out');
     [xr_, xt_] = xlim_pick(SRC, USE_BIAS, maxE);   % [MODIFIED] apdl 沿用定案值;maxwell 依實際殘差自動(等距 4 內縮 tick)
     xlim(ax, xr_);  set(ax,'XTick', xt_);
+    % [REVERTED 2026-08-03] 縱軸維持原作法（使用者拍板：原本的刻度就可以）：
+    %   ylim 貼齊資料最大值(進位到 0.1)、tick 取 linspace 的 3 個內縮值。
+    %   ⚠ 曾改成「等距 nice 步長 + ylim 由 tick 反推」，雖然完全等距，卻讓長條縮小、上方空一大塊 → 已退回。
     ymax = max(pct);  ytop = ceil(ymax*10)/10;  ylim(ax,[0 ytop]);
     yd = round(linspace(0, ytop, 5), 1);  set(ax,'YTick', yd(2:4));  % 3 內縮 tick(首末端點不標)
     % 起始點 0 + 終點：只標數字、不畫 tick（左右角落補字，text）
@@ -86,10 +88,35 @@ function plot_err_hist(USE_BIAS, SRC)
            'Interpreter','latex', 'FontSize',36);      % [ADDED] 百分比縱軸標題(同風格)
     ax.Toolbar.Visible = 'off';  hold(ax,'off');       % 刻度數字保留
 
-    bstr = ''; if USE_BIAS, bstr = '_bias'; end
-    out = fullfile(figdir, sprintf('err_hist%s%s.png', bstr, sstr));
+    % [MODIFIED 2026-08-03] 檔名一律明確標「求解器_模型_半徑」，不留隱含預設（使用者拍板）
+    out = fullfile(figdir, sprintf('err_hist_%s_%s_R%d.png', ...
+                   lower(SRC), ternary_str(USE_BIAS,'eighteen','single'), Rum));
     exportgraphics(fig, out, 'Resolution', 200);
     fprintf('wrote %s\n', out);
+end
+
+% ============================================================================
+function s = ternary_str(cond, a, b)
+    if cond, s = a; else, s = b; end
+end
+
+% ============================================================================
+function [cBar, cMean] = pick_colors(USE_BIAS, Rum)
+% [ADDED 2026-08-03] 每個取樣半徑一組配色（使用者拍板），組內 bar/mean 兩色互換：
+%   R150：single = 亮藍 bar / 紅 mean； eighteen = 紅 bar / 深綠 mean（與 err_hist_overlay 對齊）
+%   其他(R300…)：single = 紫 bar / 橘 mean； eighteen = 橘 bar / 紫 mean
+%     紫 #7B52AB / 橘 #E69F00（Okabe-Ito 系）——色相與 R150 的藍/紅分得最開、色盲安全
+    PUR = [0.482 0.322 0.671];      % #7B52AB
+    ORG = [0.902 0.624 0.000];      % #E69F00
+    if Rum == 150
+        if USE_BIAS, cBar = [0.85 0.10 0.10];  cMean = [0.00 0.60 0.00];
+        else,        cBar = [0.10 0.35 1.00];  cMean = [0.85 0.10 0.10];
+        end
+    else
+        if USE_BIAS, cBar = ORG;  cMean = PUR;
+        else,        cBar = PUR;  cMean = ORG;
+        end
+    end
 end
 
 % ============================================================================
@@ -158,6 +185,7 @@ function s = nice_step(x)
     [~,i] = min(abs(cand - m));
     s = cand(i)*10^k;
 end
+
 
 % ---- 電荷格 Pc = Pc_base + E(e)（含 e6z 約束；與 solve_current 內 make_Pc 一致）----
 function Pc = make_Pc(e17, Pc_base)

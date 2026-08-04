@@ -11,15 +11,17 @@
 !   coil↔pole = long2016 [1,3,6,5,2,4]（baked in mesh 的 SOURC36 REAL set；= NTU 同 map）。
 !   deck **不做號誌翻轉**：raw = 下極 sink / 上極 source（混合，long2016 事實）；
 !     all-source 的全域 negate + flip-sink 由 MATLAB load_coils_actuator 統一處理。
-!   ⚠ 由 run_graded_all.sh sed XCOILX→coil 編號、XVARIANTX→variant tag（預設 graded）；勿手改。
-!     [MODIFIED] variant tag：RESUME mesh_XVARIANTX @ db\mesh\XVARIANTX、/CWD db\sim\XVARIANTX、
-!     輸出 data\XVARIANTX\coilXCOILX。VARIANT=graded 時完全等價原 graded；tip 變體傳 VARIANT=tip400um 等。
+!   ⚠ 由 run_graded_all.sh sed 四個佔位符；勿手改：
+!     XCOILX→coil 編號、XVARIANTX→輸出 tag、XMESHVARX→RESUME 網格 tag、XMAGOPTX→magsolv 公式化。
+!     [MODIFIED] /CWD db\sim\XVARIANTX、輸出 data\XVARIANTX\coilXCOILX 用**輸出 tag**；
+!     RESUME mesh_XMESHVARX @ db\mesh\XMESHVARX 用**網格 tag**（兩者拆開，才能「換公式化沿用同一張網格」）。
+!     driver 預設 MESH_VARIANT=$VARIANT、MAGOPT=3 → VARIANT=graded 時逐字等價原 deck（baseline 不變）。
 !   ⚠ TURNS/几何常數 /CWD /RESUME /export 路徑皆與 basegap 一致，只差 RESUME 網格 + 輸出夾。
 ! ============================================================================
 /CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\sim\XVARIANTX'
 /CLEAR,NOSTART
 /TITLE, Long2016 halfcut ORIGINAL graded (no gap) - coil XCOILX
-RESUME,'mesh_XVARIANTX','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\mesh\XVARIANTX'
+RESUME,'mesh_XMESHVARX','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\mesh\XMESHVARX'
 
 /PREP7
 *afun,DEG
@@ -60,9 +62,13 @@ D,ALL,MAG,0
 ALLSEL,ALL
 FINISH
 
-! ---- solve (DSP scalar potential) ----
+! ---- solve (scalar potential; formulation = XMAGOPTX) ----
+!   [MODIFIED] OPT 由 driver 的 MAGOPT 傳入（原寫死 3=DSP）。對應見 ANSYS 巨集
+!   G:\ANSYS Inc\v252\ansys\apdl\MAGSOLV.MAC:47 → 0=MVP | 1=MVP-RSP | 2=RSP | 3=DSP | 4=GSP。
+!   ⚠ 0/1(MVP 系) 需 AX/AY/AZ 自由度元素(SOLID97/117)，本網格是 SOLID96 → 只可用 2/3/4。
+!   末參數 1 = ARG6 → 重算 Biot-Savart 積分（各公式化條件對等，不可改）。
 /SOLU
-magsolv,3,,,,,1
+magsolv,XMAGOPTX,,,,,1
 FINISH
 
 ! ====================================================================

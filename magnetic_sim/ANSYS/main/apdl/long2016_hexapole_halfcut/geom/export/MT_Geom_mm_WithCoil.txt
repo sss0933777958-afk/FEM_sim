@@ -13,7 +13,9 @@
 ! Output: magnetic_sim/ANSYS/main/model_check/long2016_hexapole_halfcut/Geom_WithCoil.iges
 ! ====================================================================
 
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\geom_mm_withcoil'
+! [MODIFIED 2026-08-04] 原 /CWD 指向 ANSYS_data\...\geom_mm_withcoil（從未建立、deck 無法執行）。
+!   改指既有的 IGES 中繼 scratch（per main/CLAUDE.md：IGES 中繼走 db/geom/geom_hexvariants）。
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\geom\geom_hexvariants'
 
 Finish
 /cle
@@ -43,9 +45,14 @@ PROT_H     = 7.0
 ! 100 um gap: 3.4% volume loss, magnetic field impact <1%, also realistic
 ! physical insulation thickness for solenoid wire-to-pole separation.
 COIL_GAP   = 0.5                  ! mm, radial+axial air gap (was 0.1, enlarged for COMSOL AC mesh-ability — 100µm gap caused sliver tets making solver grind)
-COIL_IN_R  = PROT_R + COIL_GAP    ! = 5.1 mm (was: = PROT_R = 5 mm, coincident)
+COIL_IN_R  = PROT_R + COIL_GAP    ! [MODIFIED comment] = 5.5 mm @GAP=0.5（原註解寫 5.1 是 GAP=0.1 時代殘留）
 COIL_OUT_R = 8.0                  ! mm
-COIL_H     = PROT_H - 2*COIL_GAP  ! = 6.8 mm (was: = PROT_H = 7 mm, coincident end faces)
+COIL_H     = PROT_H - 2*COIL_GAP  ! [MODIFIED comment] = 6.0 mm @GAP=0.5（原註解寫 6.8 同為 GAP=0.1 殘留）
+! [ADDED 2026-08-04] 只建指定的單一線圈：0 = 全 6 顆（現行行為，預設不變）；1..6 = 只建該顆。
+!   用途：向量位交叉測試只激發 P1，未通電線圈 μr≈1 等同空氣、可省略。
+!   ⚠ 對齊 SOURC36 標稱值（in 5 / out 8 / h 7 mm、截面 21 mm²）須另傳 COIL_GAP=0；
+!     GAP=0.5 時截面只有 15 mm²，比標稱小 28.6%。
+COIL_SEL   = 0
 
 POLE_R        = 6.0/2
 POLE_TIP_R    = 40.0e-3
@@ -282,6 +289,12 @@ ALLSEL, ALL
 ! axial extent as its protrusion.
 ! ====================================================================
 *do, coil_ind, 1, POLE_NUM, 1
+    ! [ADDED 2026-08-04] COIL_SEL>0 → 只建該顆線圈，其餘跳過
+    *if, COIL_SEL, NE, 0, then
+        *if, coil_ind, NE, COIL_SEL, then
+            *cycle
+        *endif
+    *endif
     WPLANE,1,0,0,0,,,,,,
     WPcsys,-1,0
     *if, coil_ind,LE,3, then
@@ -301,6 +314,35 @@ ALLSEL, ALL
 *enddo
 
 ALLSEL, ALL
+
+! ====================================================================
+! [ADDED 2026-08-04] 交付前幾何自驗：印線圈 volume 的體積與質心，與解析值對照。
+!   期望（COIL_SEL=1, COIL_GAP=0）：體積 = pi*(8^2-5^2)*7 = 857.655 mm^3、
+!   質心 = (YOKE_MID_R, 0, -PROT_H/2) = (47.5, 0, -3.5) mm。
+!   ⚠ 本模型不可用 OCC 讀 ANSYS IGES 驗證（已知非均勻變形 xy×1.411），故在此就地驗。
+! ====================================================================
+*if, COIL_SEL, NE, 0, then
+    ALLSEL, ALL
+    CSYS, 0
+    VSEL, S, LOC, X, YOKE_MID_R - COIL_OUT_R - 0.01, YOKE_MID_R + COIL_OUT_R + 0.01
+    VSUM                                   ! [ADDED] *GET 的 VOLU/CENT 必須先 VSUM，否則被忽略
+    *get, COIL_VNUM, VOLU,, NUM, MAX
+    *get, COIL_VOL,  VOLU, COIL_VNUM, VOLU
+    *get, COIL_CX,   VOLU, COIL_VNUM, CENT, X
+    *get, COIL_CY,   VOLU, COIL_VNUM, CENT, Y
+    *get, COIL_CZ,   VOLU, COIL_VNUM, CENT, Z
+    COIL_VOL_EXP = 3.141592653589793*(COIL_OUT_R**2 - COIL_IN_R**2)*COIL_H
+    *status, COIL_VNUM
+    *status, COIL_VOL
+    *status, COIL_VOL_EXP
+    *status, COIL_CX
+    *status, COIL_CY
+    *status, COIL_CZ
+    *status, COIL_IN_R
+    *status, COIL_OUT_R
+    *status, COIL_H
+    ALLSEL, ALL
+*endif
 
 ! ===== Render multiple PNG views =====
 /SHOW, PNG
@@ -325,7 +367,9 @@ VPLOT
 
 ! ===== IGES export =====
 ALLSEL, ALL
-IGESOUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\model_check\long2016_hexapole_halfcut\Geom_WithCoil', 'iges'
+! [MODIFIED 2026-08-04] model_check 的 topic 夾早已改名 long2016_hexapole_halfcut → long_fei
+!   （見 model_check/long_fei/README.md 命名慣例），原路徑不存在、IGESOUT 會失敗。
+IGESOUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\model_check\long_fei\Geom_WithCoil', 'iges'
 
 ! [!! IMPORTANT POST-STEP !!] ANSYS IGESOUT writes unit flag = 6 (metres) regardless
 ! of /UNITS setting. Since geometry numbers are in mm here, the IGES gets read 1000×

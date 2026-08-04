@@ -39,7 +39,23 @@ function plot_npts_cost_vs_R(USE_BIAS, SRC, SAMPLING)
     % ---- 繪圖範圍（與 ell_gain_vs_R 同：maxwell 從 80µm 起，小 R 格點太少擬合病態）----
     if strcmpi(SRC,'maxwell'), Rmin = 80; else, Rmin = 40; end
     m = Rum >= Rmin;   Rum = Rum(m);  npts_R = npts_R(m);  J_R = J_R(m);
-    XT = [100 200 300 400 500];   % 等距(見 figure-style tick 均勻規則);x 軸起點對齊第一 tick(100),避免大留白/壓字
+    % [MODIFIED 2026-08-03] x 軸同樣「兩端留白 = tick 間距」（使用者拍板；原本 xlim 從 100 起，
+    %   既讓首尾 tick 貼框(留白 0)，又把 R=80 那點切在框外）。
+    %   資料 80–500 → 5 個奇數等距 tick 100..500、s=100 → xlim=[0,600]，R=80 回到圖內。
+    [~, XT] = axlim_auto(Rum(1), Rum(end), 5);
+    % [MODIFIED 2026-08-03] 水平軸 = 資料範圍本身：起點 80、**終點 500**（使用者拍板）。
+    %   ⚠ 因此 x 不套「兩端留白 = 間距」（該規則只適用縱軸）：末 tick 500 落在右框線上、
+    %   左側留 20。tick 仍為 5 個等距（100..500），與縱軸 tick 數一致。
+    XL = [Rum(1), Rum(end)];
+
+    % [MODIFIED 2026-08-03] single 與 eighteen 兩張圖**共用同一組 y 尺度**（使用者拍板；
+    %   figure-style「同類比較圖共用軸尺度」）——否則各自 auto-scale，讀者無法直接比 cost 大小。
+    %   做法：一併讀另一個 model 的快取，y 範圍/刻度都用兩者的聯集去算（缺檔就退回只用自己）。
+    [npts_all, J_all] = union_with_other(here, sstr, istr, bstr, Rmin, npts_R, J_R);
+
+    % [ADDED 2026-08-03] 上下兩 panel 的 y tick「數量必須一致」（使用者拍板）：
+    %   先挑一個兩邊都可行的奇數 tick 數（取「最差 panel 的填充率最高」者），再各自算範圍。
+    NY = pick_common_n(npts_all, J_all, [3 5]);
 
     fprintf('  R=%d: N=%d, J=%.4g mT^2   →   R=%d: N=%d, J=%.4g mT^2\n', ...
             Rum(1), npts_R(1), J_R(1), Rum(end), npts_R(end), J_R(end));
@@ -54,8 +70,8 @@ function plot_npts_cost_vs_R(USE_BIAS, SRC, SAMPLING)
     ax1 = nexttile(t);  hold(ax1,'on');
     plot(ax1, Rum, npts_R, '-o', 'Color',cN, 'LineWidth',3.0, 'MarkerSize',8, 'MarkerFaceColor',cN);
     style_panel(ax1, FS);
-    xlim(ax1,[XT(1) 500]);   set(ax1,'XTick',XT);
-    [yl,yt] = ylim_auto(npts_R);   ylim(ax1,yl);  set(ax1,'YTick',yt);
+    xlim(ax1, XL);   set(ax1,'XTick',XT);
+    [yl,yt] = axlim_auto(min(npts_all), max(npts_all), NY);   ylim(ax1,yl);  set(ax1,'YTick',yt);   % [MODIFIED] 共用尺度
     ax1.XTickLabel = {};                                % 上 panel x 數字隱藏(共用軸)
     ylabel(ax1, '$\mathbf{Number\;of\;points}$', 'Interpreter','latex', 'FontSize',36);   % 無單位 → 不標
     hold(ax1,'off');
@@ -64,34 +80,104 @@ function plot_npts_cost_vs_R(USE_BIAS, SRC, SAMPLING)
     ax2 = nexttile(t);  hold(ax2,'on');
     plot(ax2, Rum, J_R, '-s', 'Color',cJ, 'LineWidth',3.0, 'MarkerSize',8, 'MarkerFaceColor',cJ);
     style_panel(ax2, FS);
-    xlim(ax2,[XT(1) 500]);   set(ax2,'XTick',XT);
-    [yl,yt] = ylim_auto(J_R);      ylim(ax2,yl);  set(ax2,'YTick',yt);
+    xlim(ax2, XL);   set(ax2,'XTick',XT);
+    [yl,yt] = axlim_auto(min(J_all), max(J_all), NY);         ylim(ax2,yl);  set(ax2,'YTick',yt);   % [MODIFIED] 共用尺度
     ylabel(ax2, '$\mathbf{Cost\;(mT^{2})}$', 'Interpreter','latex', 'FontSize',36);
     xlabel(ax2, '$\mathbf{Sampling\;range\;(\mu m)}$', 'Interpreter','latex', 'FontSize',36);
     hold(ax2,'off');
 
-    out = fullfile(figdir, sprintf('npts_cost_vs_R%s%s.png', bstr, sstr));
+    % [MODIFIED 2026-08-03] 檔名一律明確標「求解器_模型」（使用者拍板）
+    mstr = 'single'; if USE_BIAS, mstr = 'eighteen'; end
+    out = fullfile(figdir, sprintf('npts_cost_vs_R_%s_%s.png', lower(SRC), mstr));
     exportgraphics(fig, out, 'Resolution', 200);
     fprintf('\nwrote %s\n', out);
 end
 
 % ============================================================================
-function [yl, yt] = ylim_auto(v)
-% y 範圍 / 刻度：4 個等距內縮 tick（不含端點），照 figure-style「等距、不含端點」。
-    lo = min(v(:));  hi = max(v(:));  sp = hi - lo;
-    yl = [lo - 0.12*sp, hi + 0.12*sp];
-    s  = nice_step(diff(yl)/4);                          % 3 個 tick 的間距(margin≈間距、不擠;見 figure-style tick 規則)
-    c  = round(mean(yl)/s)*s;
-    yt = c + (-1:1:1)*s;                                 % 3 個等距 tick(短 panel 不塞太多)
-    yt = yt(yt > yl(1) & yt < yl(2));
+function [npts_all, J_all] = union_with_other(here, sstr, istr, bstr, Rmin, npts_R, J_R)
+% [ADDED 2026-08-03] 把「另一個 model（single↔eighteen）」的 sweep 併進來，讓兩張圖共用 y 尺度。
+%   另一顆快取不存在時，靜默退回只用自己的資料（圖仍可產、只是不保證跨圖同尺度）。
+    npts_all = npts_R(:);   J_all = J_R(:);
+    if isempty(bstr), other = '_bias'; else, other = ''; end
+    f = fullfile(here, sprintf('ell_gain_sweep%s%s%s.mat', sstr, istr, other));
+    if exist(f,'file') ~= 2
+        fprintf('  [warn] 另一 model 快取不存在(%s) → y 尺度只依本圖資料\n', f);   return;
+    end
+    O = load(f);
+    if ~isfield(O,'J_R') || ~isfield(O,'npts_R') || ~isfield(O,'Rum')
+        fprintf('  [warn] 另一 model 快取缺欄位 → y 尺度只依本圖資料\n');          return;
+    end
+    mo = O.Rum >= Rmin;                                  % 同一段 R 才可比
+    npts_all = [npts_all; O.npts_R(mo).'];
+    J_all    = [J_all;    O.J_R(mo).'];
+    fprintf('  y 尺度共用：併入 %s（J max 本圖 %.4g / 另一圖 %.4g mT^2）\n', ...
+            other_name(other), max(J_R), max(O.J_R(mo)));
 end
 
-function s = nice_step(x)
-    k = floor(log10(x));   m = x/10^k;
-    cand = [1 2 2.5 3 4 5 10];
-    [~,i] = min(abs(cand - m));
-    s = cand(i)*10^k;
+function s = other_name(other)
+    if isempty(other), s = 'single'; else, s = 'eighteen'; end
 end
+
+% ============================================================================
+function n = pick_common_n(v1, v2, nlist)
+% [ADDED 2026-08-03] 兩 panel 共用的 tick 數：取「兩邊都可行」且「較差那個 panel 的填充率最高」者。
+%   填充率 = 資料跨度 / 軸總跨距（越高代表留白越少、曲線越舒展）。
+    best = nlist(1);  bestFill = -inf;
+    for n_ = nlist
+        [L1, ~] = axlim_auto(min(v1), max(v1), n_);
+        [L2, ~] = axlim_auto(min(v2), max(v2), n_);
+        f = min( (max(v1)-min(v1))/diff(L1), (max(v2)-min(v2))/diff(L2) );
+        if f > bestFill, bestFill = f;  best = n_; end
+    end
+    n = best;
+end
+
+% ============================================================================
+function [lim, tk] = axlim_auto(lo, hi, nlist)
+% [ADDED 2026-08-03] 通用軸範圍/刻度：**奇數個等距 tick，且兩端留白 = tick 間距**（使用者拍板）。
+%   ⇒ 軸總跨距 = (n+1)·s。反過來先定 s：在 nice 候選(1/2/2.5/3/4/5/10 ×10^k) × 給定的奇數 tick 數中，
+%   取「總跨距最小」且容得下 [lo,hi] 的組合（總跨距最小 ⇒ 自動避開負值區與多餘留白）。
+%   x、y 共用此邏輯：y 給 nlist=3、x 給 5（長軸可多放）。
+    cand = [1 2 2.5 3 4 5 10];
+    mid  = (lo+hi)/2;   rng = max(hi-lo, realmin);
+    best = {};   bestSpan = inf;
+    for n = nlist
+        k0 = floor(log10(rng/(n+1)));
+        for k = k0:(k0+4)
+            hit = false;
+            for c = cand
+                s   = c*10^k;
+                ctr = round(mid/s)*s;                    % tick 對齊 s 的整數倍（數值好讀）
+                T = { ctr + (-(n-1)/2 : (n-1)/2)*s };
+                % [ADDED 2026-08-03] 資料從 ~0 起時，優先讓「最低 tick = 0」——避免計數/成本軸
+                %   出現負值刻度，也就是使用者說的「資料最低點停在 0 tick 上」那個樣子。
+                if lo >= 0 && lo < s, T = [{(0:n-1)*s}, T]; end %#ok<AGROW>
+                for it = 1:numel(T)
+                t   = T{it};
+                L   = [t(1)-s, t(end)+s];                % 兩端留白 = s
+                % [MODIFIED 2026-08-03] 不只要「在範圍內」，還要**與上下框線有淨空**——
+                %   否則像 cost 這種小 R 時 ≈0 的資料會整條貼在底框上（使用者打槍過）。
+                %   淨空門檻 0.15·s：資料最低/最高點離框至少 0.15 格。
+                clr = 0.15*s;
+                if lo >= L(1)+clr && hi <= L(2)-clr
+                    if (n+1)*s < bestSpan, bestSpan = (n+1)*s;  best = {L, t}; end
+                    hit = true;  break;
+                end
+                end   % T 迴圈
+                if hit, break; end
+            end
+            if hit, break; end
+        end
+    end
+    if isempty(best)                                     % 保險（理論上不會走到）
+        n = nlist(1);  s = rng/(n+1);
+        t = mid + (-(n-1)/2 : (n-1)/2)*s;   best = {[t(1)-s, t(end)+s], t};
+    end
+    lim = best{1};   tk = best{2};
+end
+
+% （原 local `nice_step` 與 `ylim_auto` 已於 2026-08-03 移除：軸範圍/刻度全部走 axlim_auto，
+%   兩者已無任何呼叫點，留著只會讓人誤以為改它會生效。）
 
 % ============================================================================
 function style_panel(ax, FS)

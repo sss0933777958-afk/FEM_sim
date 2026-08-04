@@ -10,9 +10,9 @@ MODEL    = 'long2016_hexapole_halfcut';
 GEOM     = 'tip40um';       % config 幾何變體：long2016 用 tip40um|tip400um；hung/NTU 用 ''（flat config）
 VARIANT  = '';              % '' = 用該 geom 的 default_variant（data 變體）
 DATASET  = 'all';
-BASE     = 'voltage';       % 'current' | 'voltage'
+BASE     = 'current';       % 'current' | 'voltage'
 USE_BIAS = true;            % e 開關：false=fix(single)、true=18-param(eighteen)
-R_select = 150e-6;          % 取點球半徑 [m]
+R_select = 300e-6;          % 取點球半徑 [m]
 l0       = 0.5e-3;          % l_hat 初值 [m]
 I_actual = 1;               % 驅動電流 [A]（= FEM 激發）
 % 通用化旗標（'' → 由 cfg 提供預設；特例幾何自動吃自己的設定，不用手動改）

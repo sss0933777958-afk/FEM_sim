@@ -1,0 +1,131 @@
+! ============================================================================
+! MT_Sim_VP.txt — Long2016 halfcut **向量位（vector potential）** solve deck, coil 1
+!   [ADDED 2026-08-04] 目的：檢驗「APDL 純量位 vs Maxwell/COMSOL 向量位在 WP 差 11~14%」
+!   是否來自 SOLID96 純量位離散化本身。已排除材料/幾何/安匝/網格/純量位公式化(RSP≡DSP)。
+!
+!   RESUME db/mesh/vp/mesh_vp.db（SOLID237 edge element、含 coil 1 實體、MAT_CU 已標）
+!     → 對 COMP_COIL 元素施**方位向源電流密度** BFE,,JS
+!     → D,ALL,AZ,0（flux-parallel；⚠ 純量位的 D,ALL,MAG,0 在此不存在）
+!     → SOLVE → POST 抽 all + wp .dat → data/vp/coil1/
+!     → SAVE solve db 供 re-extract。
+!
+!   ⚠ POST 區塊與 sim/graded/MT_Sim_graded_all.txt **逐字相同格式**（同樣 PRNSOL,B,COMP +
+!     NLIST COORD、同樣 WP 球選取），下游 MATLAB 比較腳本可直接吃、不需改。
+!
+!   電流：NI = TURNS×I = 70×1 = 70 A·turns；線圈截面 A = (8-5)mm × 7mm = 21 mm²
+!         |J| = NI/A = 70/21e-6 = 3.3333e6 A/m²，方向 = 繞線圈自身軸(+Z @ (YOKE_MID_R,0)) 的方位向。
+!   ⚠ 逐元素常向量 → 295 元素 ≈ 環向 29 等分，等效面積少 ~0.8%（29 邊形逼近圓）。
+!     解完必核總安匝，不可假設可忽略。
+! ============================================================================
+! [ADDED 2026-08-04] 網格變體開關 —— 與 mesh/MT_Mesh_VP.txt 的 SMRT_LVL 配對，六處手動同步：
+!   /CWD 尾夾名、RESUME 的 jobname + 夾名、下方四個 /OUTPUT 的 data 夾名。
+!   已用過：vp（SMRT_LVL=8，定案）/ vp6（SMRT_LVL=6，加密對照）
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\sim\vp6'
+/CLEAR,NOSTART
+/TITLE, Long2016 halfcut VECTOR POTENTIAL (SOLID237) - coil 1
+RESUME,'mesh_vp6','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\mesh\vp6'
+
+/PREP7
+*afun,DEG
+! ---- geom consts（APDL scalars 不存進 .db；POST 用 SPH_OFST）----
+PROT_H     = 7.0e-3
+YOKE_H     = 2.0e-3
+R_norm     = 500e-6
+R_norm_z   = R_norm/sqrt(3.0)
+SPH_OFST   = -PROT_H - 6e-3 + R_norm_z
+AIR_CYL_R  = 80e-3
+AIR_CYL_H  = 70e-3
+YOKE_IN_R  = 84e-3/2.0
+YOKE_OUT_R = 106e-3/2.0
+YOKE_MID_R = (YOKE_IN_R + YOKE_OUT_R)/2.0
+COIL_IN_R_G  = 5e-3
+COIL_OUT_R_G = 8e-3
+COIL_H_G     = PROT_H
+TURNS      = 70
+I_COIL     = 1.0
+COIL_AREA  = (COIL_OUT_R_G - COIL_IN_R_G)*COIL_H_G      ! 21e-6 m^2
+JMAG       = TURNS*I_COIL/COIL_AREA                      ! 3.3333e6 A/m^2
+
+! ============================================================================
+! [ADDED] 源電流密度：逐元素方位向 BFE,,JS（取代純量位的 SOURC36）
+!   線圈自身軸 = +Z、圓心 (YOKE_MID_R, 0)。對元素質心 (ecx,ecy)：
+!     r⃗ = (ecx-YOKE_MID_R, ecy)、方位向 t̂ = ẑ × r̂ = (-dy, dx)/|r⃗|
+!   號誌：整體翻號只會翻 B 的方向、不改 |B| → 對本次「位準比較」無影響。
+! ============================================================================
+CMSEL,S,COMP_COIL
+*get, NE_COIL, ELEM, 0, COUNT
+JS_SUM = 0                                ! 累計 |J|·體積 → 之後核安匝
+e_cur = 0
+*do, ii, 1, NE_COIL
+	e_cur = ELNEXT(e_cur)
+	*get, ecx, ELEM, e_cur, CENT, X
+	*get, ecy, ELEM, e_cur, CENT, Y
+	dxe = ecx - YOKE_MID_R
+	dye = ecy
+	rre = sqrt(dxe*dxe + dye*dye)
+	*if, rre, GT, 1e-9, then
+		JXE = -JMAG*dye/rre
+		JYE =  JMAG*dxe/rre
+		BFE, e_cur, JS, 1, JXE, JYE, 0
+	*endif
+*enddo
+ALLSEL,ALL
+*status, NE_COIL
+*status, JMAG
+
+! ============================================================================
+! [MODIFIED vs 純量位版] far-field BC：AZ=0（flux-parallel）
+!   ⚠ 原 graded deck 是 D,ALL,MAG,0（純量位 MAG 自由度）；SOLID237 沒有 MAG，只有 AZ。
+!   選取節點的方式與 graded 完全相同（外氣圓柱側壁 + 上下蓋，容差 ±0.5mm）。
+! ============================================================================
+AIR_CYL_Z_CTR = YOKE_H/2
+AIR_CYL_Z_BOT = AIR_CYL_Z_CTR - AIR_CYL_H/2
+AIR_CYL_Z_TOP = AIR_CYL_Z_CTR + AIR_CYL_H/2
+LOCAL,11,1,0,0,0
+CSYS,11
+NSEL,S,LOC,X, AIR_CYL_R-0.5e-3, AIR_CYL_R+0.5e-3
+CSYS,0
+NSEL,A,LOC,Z, AIR_CYL_Z_TOP-0.5e-3, AIR_CYL_Z_TOP+0.5e-3
+NSEL,A,LOC,Z, AIR_CYL_Z_BOT-0.5e-3, AIR_CYL_Z_BOT+0.5e-3
+*get, NN_BC, NODE, 0, COUNT
+D,ALL,AZ,0
+ALLSEL,ALL
+*status, NN_BC
+FINISH
+
+! ---- solve（edge element：一般 static，非 MAGSOLV 的純量位策略）----
+/SOLU
+ANTYPE,STATIC
+SOLVE
+FINISH
+
+! ============================================================================
+! POST1: all + WP region -> data/vp/coil1/   （格式與 graded 完全相同）
+! ============================================================================
+/POST1
+SET,LAST
+ALLSEL,ALL
+/HEADER,OFF,OFF,OFF,OFF,OFF,OFF
+/FORMAT,10,,20,12,,
+/PAGE,1000000,,1000000
+/OUTPUT,'coil1_coord_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\vp6\coil1'
+NLIST,ALL, , ,COORD
+/OUTPUT
+/OUTPUT,'coil1_bfield_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\vp6\coil1'
+PRNSOL,B,COMP
+/OUTPUT
+LOCAL,12,2, 0, 0, SPH_OFST
+CSYS,12
+NSEL,S,LOC,X, 0, 2e-3
+CSYS,0
+/OUTPUT,'coil1_coord_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\vp6\coil1'
+NLIST,ALL, , ,COORD
+/OUTPUT
+/OUTPUT,'coil1_bfield_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\vp6\coil1'
+PRNSOL,B,COMP
+/OUTPUT
+ALLSEL,ALL
+CSYS,0
+FINISH
+SAVE
+/EXIT
