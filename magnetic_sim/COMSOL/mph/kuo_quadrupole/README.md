@@ -9,4 +9,4 @@
 - `tweezer.mph` — 較早的整體 tweezer 模型。
 - `monolithic_T55.mph` 及 `quadrupole_*_T55.mph` 系列（imported / with_air / with_coils / with_blocks / with_physics / solved / solved_blocks）— T=55 µm 漸進建模各階段。
 
-**相關**：上層 model 索引見 `../README.md`；LiveLink 連線見 `../../../../.claude/rules/comsol-livelink.md`；mm 座標探測坑見 memory `feedback_comsol_mm_coord_pitfall`；ANSYS 對應設計見 `../../../ANSYS/main/`。
+**相關**：上層 model 索引見 `../README.md`；LiveLink 連線見 `../../../ANSYS/main/doc/workflows/comsol-livelink.md`；mm 座標探測坑見 memory `feedback_comsol_mm_coord_pitfall`；ANSYS 對應設計見 `../../../ANSYS/main/`。

@@ -8,4 +8,4 @@
 
 **命名 / 慣例**：檔名沿 `long2016_hexapolehalfcut_*`；`hollowprot` = hollow protrusion 變體、`withcoil` = 含線圈、`split` = 半切。topic `long_fei` = 下游 `long2016_hexapole_halfcut`（同模型）。
 
-**相關**：`../README.md`、`ansys-cad-alignment.md`、`doc/workflows/step-to-apdl.md`、COMSOL 流程 `comsol-livelink.md`。
+**相關**：`../README.md`、`ansys-cad-alignment.md`、`doc/workflows/step-to-apdl.md`、COMSOL 流程 `doc/workflows/comsol-livelink.md`。

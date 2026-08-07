@@ -21,6 +21,14 @@ function c = mt_constants()
     c.fld_dir           = 'D:\Maxwell_sim\long2016_hexapole_halfcut\export';
     c.fld_files         = {'B_p1.fld','B_p2.fld','B_p3.fld','B_p4.fld','B_p5.fld','B_p6.fld'};
     %   ↑ 步距 0.02mm、框 x,y∈±0.6mm z∈[-13.31,-12.11]mm、61³=226,981 格點
+    % [ADDED 2026-08-05] variant → WP 細格 .fld 檔名（dataset='all' 用；voltage 一律走 fld_files_voltage）。
+    %   兩組**匯出格點完全相同**（header 逐字一致），差別只在 Maxwell 側 Sphere1mm 的網格尺寸：
+    %     maxwell          = Sphere1mm 0.1 mm（定案基準，134,067 tets）
+    %     maxwell_mesh0p06 = Sphere1mm 0.06 mm（網格收斂測試；同框同步距 → 可與上者逐點相減）
+    c.fld_files_variant.maxwell = c.fld_files;
+    c.fld_files_variant.maxwell_mesh0p06 = ...
+        {'B_p1_0.06.fld','B_p2_0.06.fld','B_p3_0.06.fld', ...
+         'B_p4_0.06.fld','B_p5_0.06.fld','B_p6_0.06.fld'};
     c.fld_files_voltage = {'B_voltage_p1.fld','B_voltage_p2.fld','B_voltage_p3.fld', ...
                            'B_voltage_p4.fld','B_voltage_p5.fld','B_voltage_p6.fld'};
     %   ↑ 步距 0.1mm、框 x∈±15.23 y∈±14 z∈[-16.1,0]mm、306×281×162=13,929,732 格點（含兩層 sensor）

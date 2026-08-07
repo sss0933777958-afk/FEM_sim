@@ -9,7 +9,7 @@
 **動手前先讀完此規則。**
 
 對應 memory：`feedback_deliver_step_for_check.md`
-相關規則：`ansys-cad-alignment.md`（CAD=source of truth）、`cad-import-ansys.md`（OCC/OCP 已在用）、`iges-model-id.md`。
+相關規則：`ansys-cad-alignment.md`（CAD=source of truth）、`cad-import-ansys.md`（OCC/OCP 已在用）。
 相關 SOP：`doc/workflows/{cad-export,iges-sync-quick,model-check}.md`（那些是 **SolidWorks→export** 方向，跟本規則的 **ANSYS→交付** 方向不同）。
 
 ---

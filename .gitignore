@@ -83,6 +83,15 @@ magnetic_sim/ANSYS/main/LTspice/**/*.net
 magnetic_sim/ANSYS/main/ANSYS_data/**/*mpitest*
 magnetic_sim/ANSYS/main/ANSYS_data/**/_classify.txt
 
+# ANSYS 拋棄式 scratch 夾（per db-folder-retention「GUI scratch 夾整夾刪」）
+#   _gui_view* = 開 -g GUI 用的獨立 -dir（絕不可用真 mesh/geom 夾，否則關閉時 Save 會覆蓋 canonical db）
+#   _run_*     = 批次求解的暫時工作夾（只留 solve.out 做 audit）
+_gui_view*/
+_run_*/
+
+# MAPDL 產的 cmd 暫存 bat（會掉在任何 cwd，不限 ANSYS_data 底下）
+!T!.BAT
+
 # OS files
 Thumbs.db
 desktop.ini

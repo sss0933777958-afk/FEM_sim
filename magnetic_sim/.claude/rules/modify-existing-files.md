@@ -3,7 +3,7 @@
 **使用者拍板（2026-07-09）**：**要改腳本/程式，一律改現有那支檔；不要動不動就複製成新的變體檔。能改現有就改，除非真的必要才創新的。**
 
 對應 memory：`feedback_modify_existing_no_new_files.md`
-相關規則：`no-structure-change-without-ask`（移/改名/刪/新建資料夾要先問）、`main-workspace.md`（產物落點）。
+相關規則：`no-structure-change-without-ask`（移/改名/刪/新建資料夾要先問）；產物落點見 `magnetic_sim/ANSYS/main/CLAUDE.md`「資料夾架構地圖」。
 
 ---
 

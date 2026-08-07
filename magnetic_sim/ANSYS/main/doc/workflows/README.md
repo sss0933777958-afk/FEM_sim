@@ -82,5 +82,5 @@ MT_Geom_<variant>.txt ─── [apdl-fem-run] ──→ .rst/.rmg
 
 ## 觸發機制
 
-本資料夾所有 SOP 都接到 `.claude/rules/main-workflows.md` 自然語 trigger。
-要新增 SOP 時:寫 `<新名>.md` → 在本 README 加列 → 在 `main-workflows.md` 加觸發節。
+本資料夾所有 SOP 由本 README 索引（原 `.claude/rules/main-workflows.md` 觸發表已於 2026-08-06 刪除）。
+要新增 SOP 時:寫 `<新名>.md` → 在本 README 加列(含觸發片語)。

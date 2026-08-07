@@ -16,9 +16,9 @@ matlab/<model>/<activity>[/<subfolder>]/data/*.mat
 5. **同步 README**：建/搬 `data/` 後，更新該功能組 `README.md` 的 pipeline／輸出路徑。
 
 ## 與既有慣例的關係（重要）
-- **覆寫**：本規則**刻意覆寫**全域 `…/FEM_sim/.claude/rules/main-workspace.md`「`.mat → MATLAB_data/<model>/<功能>`」那條——限 `matlab/<model>` 產出物。
-- **`MATLAB_data/` = legacy / 過渡**：尚未遷移的 shared namespace（如 `charge_fit/fitting_trend`、`fit_KI_ball`、`bs_matrix`、`flux_profile`、`freq_response`、`bh_saturation`、`calib_bias`）**暫留** `MATLAB_data/`；其 reader 暫不改。分波遷移。
-- **`matlab_path()` resolver 不改**：仍解析到 `MATLAB_data/`，服務上述未遷移 / 跨 model 讀取。遷移後的腳本**改用 local `data/`**、不再經 `matlab_path` 寫自己的 `.mat`。
+- **覆寫**：本規則**刻意覆寫**舊的「`.mat → MATLAB_data/<model>/<功能>`」中央 namespace 慣例——限 `matlab/<model>` 產出物。
+- **`MATLAB_data/` 已移除（2026-06-26 遷移完成）**：全部 `.mat` 已落到各活動的 local `data/`；**不要再產生或引用 `MATLAB_data/` 路徑**。
+- **`matlab_path()` resolver 已 deprecated**：新舊腳本一律用自身 root 變數算 `fullfile(<本功能組夾>,'data')`，不再經 resolver 寫 `.mat`。
 - **與 ANSYS_data 的 `data/` 區分**：
   - `ANSYS_data/<model>/data/` = FEM **`.dat` 場**（+ `.db/.cdb` 等交付）白名單（見 sim-cleanup「歸檔資料夾保留原則」）。
   - `matlab/<model>/<activity>/data/` = **MATLAB `.mat` 分析成果**（本規則）。兩者不同樹、不同內容物。
@@ -30,6 +30,6 @@ matlab/<model>/<activity>[/<subfolder>]/data/*.mat
 
 ## 何時不適用
 - 純繪圖（只出 `.png`）/ 純讀 FEM `.dat`、不產 `.mat` 的腳本。
-- 還沒分波遷移的 shared / 跨 model `.mat`（暫仍 `MATLAB_data/`）。
+- `figures/paper_fig_plot/data/`（論文圖的快取 `.mat`）——那是繪圖組自己的快取夾，不受本規則的 `<activity>/data/` 命名限制。
 
-相關：`db-folder-retention.md`、`results-pdf-only.md`、全域 `main-workspace.md`、memory `feedback_matlab_local_data_layout`。
+相關：`db-folder-retention.md`、`results-pdf-only.md`、memory `feedback_matlab_local_data_layout`。

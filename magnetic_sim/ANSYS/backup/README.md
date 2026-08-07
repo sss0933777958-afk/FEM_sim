@@ -4,6 +4,6 @@
 
 **內容**：
 - `hexapole-long2016/` — Long Fei 2016 博論六極磁鑷設計（含 `docs/` notation glossary、fitting-methods、model-validation 等 canonical 文件，repo 多處引用為 notation 標準）。
-- `hung/` — Hung hexapole 設計（含 build workflow；對應 `.claude/rules/hung-docs.md`、`hexapole-build.md`）。
+- `hung/` — Hung hexapole 設計（含 build workflow，見 `hung/docs/README.md`）。
 
-**相關**：上層求解器層見 `../README.md`；涉及 `hung/` 的必讀文件規則見 `../../../.claude/rules/hung-docs.md`；notation 標準見 `hexapole-long2016/docs/notation-glossary.md`。
+**相關**：上層求解器層見 `../README.md`；涉及 `hung/` 的必讀文件順序見 `hung/docs/README.md`；notation 標準見 `hexapole-long2016/docs/notation-glossary.md`。

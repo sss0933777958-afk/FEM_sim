@@ -61,6 +61,7 @@
 全依 Fei Long 2016 dissertation。canonical glossary：`backup/hexapole-long2016/docs/notation-glossary.md`。
 - 對外一律 **P1–P6**；APDL coil index 只在 APDL code / raw 脈絡。
 - **coil→paper map 是 per-model（非全域）**：long2016 `[1,3,6,5,2,4]` / NTU `[1,3,6,5,2,4]` / hung `identity`；新 model 用 identity。**別互抄**（`pole-coil-numbering.md`；舊全域宣稱是錯的、曾靜默污染 hung K̄_I）。
+- **禁用 "WP" 這個字眼**（使用者拍板 2026-08-06）：圖、軸標、圖例、註解、對話一律不用（含「WP 框 / WP 區」）。那一點就叫**原點**（六極尖共球球心 = 繪圖座標原點），圖上以黑點標示、不加文字。既有檔不強制回溯清理，動到哪個檔就順手改；全 repo 清理要先問。詳見 `figure-style.md`「座標原點與『WP』字眼」。
 - ρ 兩義：physical（500µm）vs fitted（900µm）—— 講清哪個。
 - 單位：ANSYS 出 Tesla；WP 場圖用 mT；dissertation Fig 2.4 用 Gauss。（完整單位表見 `unit-reference.md`。）
 
@@ -136,13 +137,10 @@ cd magnetic_sim/ANSYS/backup/hexapole-long2016
 | 改 ANSYS 幾何 / mt_constants / 對齊 CAD | `ansys-cad-alignment.md`（CAD=source of truth） |
 | 匯入 CAD/STEP 進 ANSYS | `cad-import-ansys.md`（STEP→x_t→ac4para→/INPUT） |
 | 交付幾何給使用者檢查 | `deliver-step-for-check.md`（一律出 STEP） |
-| 跑 COMSOL / LiveLink | `comsol-livelink.md`（拆兩 process） |
 | charge fit / 改 I_actual | `fit-current-matches-sim.md`（I = FEM 激發 1A） |
-| 貼 `model_check/*.iges` 路徑 | `iges-model-id.md`（從路徑認模型、不問） |
 | Calibration_using_FEM_modeling 結構 | `calibration-shared-structure.md`（結構凍結、改先問）、`calibration-transfer-matrix-output.md`、`actuator-frame.md`、`charge-model-source-convention.md`、`pole-coil-numbering.md`、`unit-reference.md` |
-| 建 hexapole | `hexapole-build.md`；在 `backup/hung/` 工作 | `hung-docs.md` |
-| 出 STEP / 解析 STEP / 建 APDL 幾何 / 檢查模型 等 SOP | `main-workflows.md` → `doc/workflows/` |
-| 產物落點細表 | `main-workspace.md` |
+| 出 STEP / 解析 STEP / 建 APDL 幾何 / 檢查模型 / 跑 COMSOL 等 SOP | `doc/workflows/`（入口 `workflows/README.md`；部分為 kuo 時代遺留） |
+| 產物落點 / 資料夾架構 | 本檔「資料夾架構地圖」+ 各夾 `README.md` |
 
 ## Detailed Docs（long2016 深技術）
 `backup/hexapole-long2016/docs/`：`fitting-methods.md`（[B-6x] 最終）、`model-validation.md`、`notation-glossary.md`、`coil-winding-sign-convention.md`、`charge-model-fitting.md`、`ansys-environment.md`、`simulation-parameters.md`、`workflow.md`、`troubleshooting.md`。

@@ -34,12 +34,20 @@
 
 | dir | coil/dataset | 物理意義 | matched 節點 (wp) | `_all` 行數 | WP 區 \|B\| max 指紋 |
 |---|---|---|---|---|---|
-| `coil1` | coil1, wp/all | **Long2016 verbatim baseline**（v4 重建，下極半切）P1 激發 | 390579（air 341428） | 494873 | ~1.02 T |
-| `coil2` | coil2 | baseline，P3 激發 | 390579 | 494873 | ~1.14 T |
-| `coil3` | coil3 | baseline，P6 激發 | 390579 | 494873 | ~1.14 T |
-| `coil4` | coil4 | baseline，P5 激發 | 390579 | 494873 | ~0.75 T |
-| `coil5` | coil5 | baseline，P2 激發 | 390579 | 494873 | ~0.45 T |
-| `coil6` | coil6 | baseline，P4 激發 | 390579 | 494873 | ~0.74 T |
+| `coil1` | coil1, wp/all | **Long2016 verbatim baseline**（下極半切）P1 激發。**2026-08-06 重解補齊**（先前 `standard/` 缺此夾，整棵樹都沒有 baseline coil1） | 390579（air 341428） | 494873 | **1.1259 T** |
+| `coil2` | coil2 | baseline，P3 激發 | 390579 | 494873 | **1.1366 T** |
+| `coil3` | coil3 | baseline，P6 激發 | 390579 | 494873 | **1.1380 T** |
+| `coil4` | coil4 | baseline，P5 激發 | 390579 | 494873 | **0.7489 T** |
+| `coil5` | coil5 | baseline，P2 激發 | 390579 | 494873 | **0.7417 T** |
+| `coil6` | coil6 | baseline，P4 激發 | 390579 | 494873 | **0.7410 T** |
+
+> **⚠ 2026-08-06 更正兩筆錯誤指紋**（六顆全部重新實測 `import_ansys_data(...,'wp',...)` 的 `max(bsum)`）：
+> `coil1` 原記 ~1.02 T → 實測 **1.1259**（1.02 應是誤抄本檔 gap sweep 列的 gap150 值 1.0102）；
+> `coil5` 原記 ~0.45 T → 實測 **0.7417**。其餘四筆原記載正確。
+> **佐證**：①`coil1` 的 1.1259 與本檔 `coil1/gap0um_mueq` 列的「gap0 **1.1259**（=baseline 驗證）」逐位相同；
+> ②三顆下極（P1/P3/P6 = coil1/2/3）1.126/1.137/1.138 與三顆上極（P5/P2/P4 = coil4/5/6）0.749/0.742/0.741
+> 各自成族，原記的 1.02 與 0.45 都是族外離群值。
+> 舊的錯誤值會讓「層②核指紋」把**正確**的資料判成不符而擋下來 —— 這是本次重解 coil1 時抓到的。
 
 > apdl coil 索引 ↔ 紙上極名：{1,2,3,4,5,6} = {P1,P3,P6,P5,P2,P4}（見 notation-glossary）。
 > **2026-06-12 的泛化誤差分析、KI trend、B̄ matrix v4 baseline 用的就是這 6 個 dir 的 `wp` dataset。**

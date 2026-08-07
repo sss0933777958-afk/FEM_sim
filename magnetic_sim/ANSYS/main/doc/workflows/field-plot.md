@@ -39,7 +39,7 @@
 2. **討論 style** — 字體大小、title 文字、legend、colormap、line thickness
 3. **MATLAB MCP preview** — render 草圖,**先看不存**
 4. ⏸ **使用者批准** content + style
-5. **存到 `magnetic_sim/ANSYS/main/figures/{topic}/{case_tag}/<file>.png`**(`main-workspace.md` 規則)
+5. **存到 `magnetic_sim/ANSYS/main/figures/{topic}/{case_tag}/<file>.png`**(見 `main/CLAUDE.md` 資料夾架構地圖)
 
 ## 產物
 
@@ -50,11 +50,11 @@
 ## 常見坑
 
 - **跳過 preview 直接存** → 違反 `CLAUDE.md` Figure Production 規則
-- 圖存到 `G:\my_workspace\report\` / git root → 違反 `main-workspace.md`(報告需要圖時
+- 圖存到 `G:\my_workspace\report\` / git root → 違反產物落點規則(報告需要圖時
   改 reference `magnetic_sim/ANSYS/main/figures/...`)
 - 標題用 LaTeX `\int` 等 → MATLAB OK 但本 chat 不渲染;用文字版「∫ B dz」
   (memory `feedback_no_latex`)
-- 圖名帶方法後綴(`_jfit` / `_post` / `_fit`)→ 違反 `main-workspace.md`(case_tag 不可帶方法)
+- 圖名帶方法後綴(`_jfit` / `_post` / `_fit`)→ 違反命名慣例(case_tag 不可帶方法)
 - preview / final 用不同腳本 → 後續找不到那張圖是誰生的
 
 ## 適用 topic

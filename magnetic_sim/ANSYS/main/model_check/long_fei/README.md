@@ -14,6 +14,22 @@
 - 由 `apdl/.../geom/export/MT_Geom_Export_mm.txt` 改 `POLE_TIP_R`（0.4 / 0.020）重建（scenario A：flank/base 用 `POLE_TIP_R_REF=40µm` 凍結、尖端 kp 後退 `(R−REF)×4.099`；40µm 重現 baseline）。flag 6→2 patch（同 no_gap.iges，SolidWorks 讀）。`.db`（FEM-ready）在 `ANSYS_data/.../db/geom/tip_variants/tip{400,20}um.db`（+ tip40um baseline，皆只留 .db）。
 - ⚠ **不出 STEP**：ANSYS IGESOUT → OCC 對此模型（大量 WPLANE/WPROTA）會**非均勻變形**（xy×1.411、z 另比例）；現有 gap `*.step`（make_gap_step 產）**同樣 xy=149.58mm 錯**（只驗過 z/體積、沒量 xy）。ANSYS .db 幾何本身已驗證正確（scenario A：40µm tip@0.5mm、400µm 後退到 1.90mm、15µm 0.42mm）。要 mm STEP 須走 OCC-primitive 重建（deliver-step 規則），不可用 ANSYS IGES→OCC。
 
+**Sensor 加密球位置檢查 IGES（2026-08-05）**：
+- **`sensor_refine_p1p2.iges`**：鐵件總成 ＋ **3 顆 R0.3mm 純空氣標記球**，用來在建網格前目視確認加密球位置。
+  球心（mm，ANSYS 全域）＝貼附點 + 0.46·n̂（＝取樣圓柱幾何中心；0.41 氣隙 + 半個柱高 0.05），**SOFF = 4.5mm**：
+  **P1 削平面** `[4.9082, 0, −12.5400]`、**P1 底錐面** `[4.7306, 0, −14.3336]`、**P2 上錐面** `[−3.0839, 0, −8.7754]`。
+  三顆皆離鋼面 0.46mm、R0.3 → **清鋼 0.16mm**；球**不參與布林**（保持獨立 solid 才看得出有無吃鋼）。
+- 由 `apdl/.../geom/export/MT_Geom_Export_mm_SensorRefine.txt`（＝ `MT_Geom_Export_mm.txt` verbatim + 3 球 + 球心診斷）產。
+  APDL 端已驗：3 顆質心與設計值完全相符、單顆體積 0.113096 mm³、0 error / 0 warning。
+- **inch 量級（`VLSCALE 1/25.4`）+ flag 6→1 patch**（＝ `MT_Geom_Export_mm.txt` 原生做法，
+  該 deck 註明 2026-07-06 更正：SW 忽略 flag 當 inch 讀 → inch 座標 + INCH flag = 正確 mm；
+  使用者 2026-08-05 確認採此路線）。同 `gap_200um` / `tip400um_cnc`。
+  ⚠ 本夾旗標**歷史上不統一**：`no_gap`(May)、`vp_coil1`(Aug 4) 是 mm/flag 2；`gap_200um`(Jul 8)、
+  `tip400um_cnc`(Jul 22) 與**本檔**是 inch/flag 1。**要跟產生它的 deck 一致**，不可一律套同一個數；
+  `MT_Geom_Export_mm.txt` 的註解與本檔 §命名/慣例那句「MKS 用 flag 2」尚未統一（待日後定案）。
+- ⚠ 同上不出 STEP（OCC 對此模型非均勻變形）。開檔第一件事：量 yoke 外徑應 ≈ **106mm**。
+- 後續：確認球位後才改 `apdl/.../mesh/MT_Mesh_SensorRefine.txt` 的 `SC_X/Y/Z`（公尺）跑 lv1/2/3 收斂。
+
 **內容**：`long2016_hexapole_no_gap.iges`（主）、`..._Geom_HollowProt.iges`、`..._Geom_HollowProt_Plain.iges`、`..._Geom_gap200um.iges`、`..._Geom_sphtip.iges`、`..._Geom_WPsphere.iges`（鐵件總成 ＋ WP 7mm 空氣球殼，raw 重疊、CAD 檢視用；mm/flag-2），另含 `Geom_WithCoil.iges`（6 coil rings）、`Geom_hp_split.iges`、`SinglePoleFilled.iges`（**單一下極：削平半錐填回完整圓錐** ＋ 4 塊支撐座 ＋ 1 根 protrusion 鐵柱；無 yoke / 無上極 / 無 coil 實體；mm/flag-2）。
 
 **`..._Geom_WPsphere.iges` 出處**：由 `apdl/long2016_hexapole_halfcut/geom/export/MT_Geom_Export_mm_WPsphere.txt`（＝ `MT_Geom_Export_mm.txt` 鐵件 mm 建構 ＋ APDL `SPHERE` 加 WP 球，不做布林）`IGESOUT` → flag 6→2 patch。球心 z = −12.71 mm、R = 7 mm，與 FEM `V7` 同。
@@ -26,4 +42,4 @@
 
 **命名 / 慣例**：⚠ 同一物理模型在 `model_check/` 用 topic 名 **`long_fei`**，但在 `IGES/`、`ANSYS_data/`、`apdl/` 仍用 **`long2016_hexapole_halfcut`**。與 `IGES/` 對應、須同步。MKS 轉換用 **flag 2 / 重 export**，不可抄 hung sed 6→1。`WithCoil`/`hp_split` 為由 STEP 直轉的額外變體（IGES/ 側無同名件）。
 
-**相關**：`../README.md`、`../../IGES/long2016_hexapole_halfcut/`、`doc/workflows/iges-sync-quick.md`、`iges-model-id.md`。
+**相關**：`../README.md`、`../../IGES/long2016_hexapole_halfcut/`、`doc/workflows/iges-sync-quick.md`。

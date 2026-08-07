@@ -1,12 +1,13 @@
 ! ============================================================================
 ! MT_Mesh_SensorRefine.txt  —  Long2016 hexapole halfcut  SENSOR-REFINE MESH-ONLY deck
-!   = MT_Mesh_Graded.txt（定案 2026-06-25）+ 6 顆 sensor 加密**幾何球**（R_SENS 純空氣實體球）。
-!   目的：sensor 收斂研究——在 6 sensor 圓柱中心埋 R0.3 純空氣球、球內用 ESIZE_SENS 生細 mesh，
+!   = MT_Mesh_Graded.txt（定案 2026-06-25）+ N_SENS 顆 sensor 加密**幾何球**（R_SENS 純空氣實體球）。
+!   [MODIFIED 2026-08-05] N_SENS = 3（P1 削平面 / P1 底錐面 / P2 上錐面 @ SOFF 4.5）；舊版為 6 顆 @ 4.572。
+!   目的：sensor 收斂研究——在 sensor 圓柱中心埋 R0.3 純空氣球、球內用 ESIZE_SENS 生細 mesh，
 !         其餘照 graded（純 smrt5 + cone EREFINE），量圓柱內 node-average ⟨B·n+⟩ vs 節點數 N 收斂。
 !   ★ 幾何球路線（EREFINE 死路後改的）：sensor 空氣緊貼鋼極面、EREFINE 建不出跨界面過渡（非確定性、掙扎後放棄）；
 !     改把加密球「建進幾何 → VOVLAP → 建網格時球內直接生細」避開界面問題（WP core 球純空氣不 sliver 為先例）。
 !   ⚠ ESIZE_SENS 由 run_sensor_refine.sh sed（XESX → lv1/2/3 = 0.10/0.05/0.03mm）；lvXLVX → lv1/2/3。
-!   ⚠ 6 球純空氣（R0.3 清鋼 0.16mm、含取樣圓柱 R0.158）→ VATT 新增 `vsz<5e-9→MAT_AIR1` 抓（比鋼尖 ~1e-8 更小）。
+!   ⚠ 球純空氣（R0.3 清鋼 0.16mm、含取樣圓柱 R0.158）→ VATT 新增 `vsz<5e-9→MAT_AIR1` 抓（比鋼尖 ~1e-8 更小）。
 !   建幾何 + 網格 + SAVE 成 mesh_lvN.db（**無 /SOLU、無 MAG BC**）；solve deck RESUME 它。
 !
 !   ★ 定案 pipeline（一跑即產 ~656,163 節點 / 3,924,481 元素）：
@@ -23,7 +24,9 @@
 !   材料/網格分區一律 by location+size（VOVLAP/booleans 會清 VATT，volume 編號不可硬編）。
 ! ============================================================================
 
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\mesh\sensor_refine'
+! [MODIFIED 2026-08-05] case tag → sensor_refine_p1p2（3 顆球 @ SOFF 4.5）；
+!   舊 sensor_refine（6 顆 @ 4.572）封存不動。
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\mesh\sensor_refine_p1p2'
 Finish
 /cle
 /CLEAR,NOSTART
@@ -46,22 +49,30 @@ CORE_R      = 0.4e-3    ! [MODIFIED 2.0->0.6->0.8->0.4] WP 細球半徑：R0.6 s
                         !   改 R<500µm 尖端距離 → core 純空氣、零鋼極相交(無 sliver) + 小而簡單(不爆)；尖端由 20µm LESIZE 解析
 
 ! -------------------------------------------------------------------
-! [SENSOR REFINE] 6 顆 sensor 加密幾何球（純空氣實體球，@ 6 sensor 圓柱幾何中心）
+! [SENSOR REFINE] sensor 加密幾何球（純空氣實體球，@ sensor 圓柱幾何中心）
 !   R_SENS=0.3mm：清鋼 0.16mm（sensor 中心離鋼面 0.46mm）+ 含取樣圓柱 R0.158（cyl R0.15/H0.10 全埋）。
-!   球心座標 = ANSYS 全域 frame（= .dat 座標，公尺）；已對上 export SC、皆離 WP 5.07mm、在內氣球 R7mm 內。
+!   球心座標 = ANSYS 全域 frame（= .dat 座標，公尺）；在內氣球 R7mm 內。
 !   ESIZE_SENS 由 driver sed（XESX → lv1/2/3 = 0.10/0.05/0.03mm）；球內生細 mesh 用。
+!
+! [MODIFIED 2026-08-05] 6 顆 @ SOFF 4.572 → **3 顆 @ SOFF 4.5**（使用者拍板）。
+!   目的：定案「P1 削平面 vs P1 底錐面 vs P2 上錐面」的 <b.n+>；P3–P6 是 P1/P2 的旋轉複製、
+!   本比較用不到，拿掉可省網格。**削平面那顆是新的**——舊 6 顆全在錐面，削平面從來沒有球，
+!   這正是該處 standard/graded 差 23% 卻無法收斂的原因（空氣側 2mm 立方僅 17 節點、間距 0.56mm）。
+!   球心與 Stage A 已交付的檢查模型 model_check/long_fei/sensor_refine_p1p2.iges 同一組數字
+!   （該檔為 mm 量級；此處 ×1e-3 為公尺）。慣例＝貼附點 + (AIR 0.41 + H/2 0.05)*n_hat，
+!   公式同 matlab/APDL/Calibration_using_FEM_modeling/function/build_V_matrix.m 的 sensor_geometry
+!   （已驗：SOFF=4.572 時逐位重現本檔原有的 SC(1)/SC(2)）。
+!   ⚠ 舊 6 顆 @4.572 的網格與結果封存在 db/mesh/sensor_refine + data/sensor_refine，不受影響。
 ! -------------------------------------------------------------------
 R_SENS     = 0.3e-3
 ESIZE_SENS = XESX       ! [SED] sensor 球內元素邊長（lv1/2/3 = 0.10/0.05/0.03e-3）
-*dim, SC_X,, 6
-*dim, SC_Y,, 6
-*dim, SC_Z,, 6
-SC_X(1) =  4.8012e-3  $ SC_Y(1) =  0.0000e-3  $ SC_Z(1) = -14.3477e-3   ! P1(下)
-SC_X(2) = -3.1322e-3  $ SC_Y(2) =  0.0000e-3  $ SC_Z(2) =  -8.7220e-3   ! P2(上)
-SC_X(3) = -2.4006e-3  $ SC_Y(3) =  4.1580e-3  $ SC_Z(3) = -14.3477e-3   ! P3(下)
-SC_X(4) =  1.5661e-3  $ SC_Y(4) = -2.7125e-3  $ SC_Z(4) =  -8.7220e-3   ! P4(上)
-SC_X(5) =  1.5661e-3  $ SC_Y(5) =  2.7125e-3  $ SC_Z(5) =  -8.7220e-3   ! P5(上)
-SC_X(6) = -2.4006e-3  $ SC_Y(6) = -4.1580e-3  $ SC_Z(6) = -14.3477e-3   ! P6(下)
+N_SENS     = 3          ! [ADDED] 加密球顆數（舊版 = 6）
+*dim, SC_X,, N_SENS
+*dim, SC_Y,, N_SENS
+*dim, SC_Z,, N_SENS
+SC_X(1) =  4.9082e-3  $ SC_Y(1) =  0.0000e-3  $ SC_Z(1) = -12.5400e-3   ! P1(下) 削平面   n+ = +z
+SC_X(2) =  4.7306e-3  $ SC_Y(2) =  0.0000e-3  $ SC_Z(2) = -14.3336e-3   ! P1(下) 底錐面   n+ = [-0.1961 0 -0.9806]
+SC_X(3) = -3.0839e-3  $ SC_Y(3) =  0.0000e-3  $ SC_Z(3) =  -8.7754e-3   ! P2(上) 上錐面   n+ = [ 0.7420 0  0.6704]
 
 MESH_SIZE = 5
 POLE_NUM  = 6
@@ -273,17 +284,18 @@ SPHERE, 0, MID_SPH_R, 0,360             ! [ADDED] 中間氣球 25mm（VOVLAP 後
 WPOFFS,0,0, -SPH_OFST + YOKE_H/2 - AIR_CYL_H/2
 CYL4,0,0,AIR_CYL_R, ,,,AIR_CYL_H        ! 外氣圓柱
 
-! ===== [SENSOR REFINE] 6 顆加密球（純空氣實體球 @ sensor 圓柱中心，VOVLAP 前建）=====
-!   建進幾何 → 隨後 VOVLAP,ALL 一起 overlap 進內氣球成 6 顆子體積（純空氣、glued 共面）。
+! ===== [SENSOR REFINE] N_SENS 顆加密球（純空氣實體球 @ sensor 圓柱中心，VOVLAP 前建）=====
+!   建進幾何 → 隨後 VOVLAP,ALL 一起 overlap 進內氣球成 N_SENS 顆子體積（純空氣、glued 共面）。
 !   球心 = SC_X/Y/Z（全域 frame，公尺）；R_SENS 純空氣不吃鋼（清 0.16mm）。
-*do, si, 1, 6
+! [MODIFIED 2026-08-05] 迴圈上限 6 → N_SENS
+*do, si, 1, N_SENS
 	WPLANE,1,0,0,0,,,,,,
 	WPcsys,-1,0
 	WPOFFS, SC_X(si), SC_Y(si), SC_Z(si)
 	SPHERE, 0, R_SENS, 0,360
 *enddo
 
-! ===== 單一 VOVLAP（含 core 球 + 6 sensor 球）=====
+! ===== 單一 VOVLAP（含 core 球 + N_SENS 顆 sensor 球）=====
 ALLSEL,ALL
 VOVLAP,ALL
 NUMCMP,VOLU
@@ -339,10 +351,11 @@ ALLSEL,ALL
 *enddo
 ALLSEL,ALL
 
-! ===== [SENSOR REFINE] 把 6 顆加密球選進 component CM_SENS（依 centroid 位置，供先細 mesh）=====
-!   6 球純空氣、centroid = 球心 = sensor 圓柱中心（SC_X/Y/Z）；tol 0.1mm << 球間距 5mm，且再夾 MAT_AIR1 排除鋼尖。
+! ===== [SENSOR REFINE] 把 N_SENS 顆加密球選進 component CM_SENS（依 centroid 位置，供先細 mesh）=====
+!   球純空氣、centroid = 球心 = sensor 圓柱中心（SC_X/Y/Z）；tol 0.1mm << 球間最近距 1.80mm，且再夾 MAT_AIR1 排除鋼尖。
+! [MODIFIED 2026-08-05] 迴圈上限 6 → N_SENS
 SENS_TOL = 0.1e-3
-*do, si, 1, 6
+*do, si, 1, N_SENS
 	VSEL,S,LOC,X, SC_X(si)-SENS_TOL, SC_X(si)+SENS_TOL
 	VSEL,R,LOC,Y, SC_Y(si)-SENS_TOL, SC_Y(si)+SENS_TOL
 	VSEL,R,LOC,Z, SC_Z(si)-SENS_TOL, SC_Z(si)+SENS_TOL
@@ -357,11 +370,11 @@ SENS_TOL = 0.1e-3
 	*endif
 *enddo
 ALLSEL,ALL
-! 診斷：CM_SENS 應含 6 顆球
+! 診斷：CM_SENS 應含 N_SENS 顆球   ! [MODIFIED 2026-08-05] 6 → N_SENS(=3)
 CMSEL,S, CM_SENS
 *GET, NV_SENS, VOLU, 0, COUNT
 ALLSEL,ALL
-/com, [SENSOR] CM_SENS volumes (expect 6):
+/com, [SENSOR] CM_SENS volumes (expect N_SENS = 3):
 *VWRITE, NV_SENS
 ('  NV_SENS = ',F8.0)
 
@@ -435,14 +448,14 @@ MSHKEY,0
 LOCAL,98,2,0,0,SPH_OFST
 
 ! ============================================================================
-! [SENSOR REFINE] 兩段 mesh：先 6 sensor 球（ESIZE_SENS 細）→ 再其餘（純 smrt5）。
-!   球先細：ESIZE_SENS 只作用在 6 顆純空氣球（遠鋼、乾淨）→ 局限 sliver 風險（先測 lv1）。
+! [SENSOR REFINE] 兩段 mesh：先 sensor 球（ESIZE_SENS 細）→ 再其餘（純 smrt5）。
+!   球先細：ESIZE_SENS 只作用在 N_SENS 顆純空氣球（遠鋼、乾淨）→ 局限 sliver 風險（先測 lv1）。
 !   其餘 smrt5：VMESH 會 conform 已 meshed 的球面（graded 遠場照舊粗）。
 !   ⚠ 細球後必 ESIZE,0 清掉強制尺寸，否則 smrt5 段被 forced ESIZE 汙染 → 全域 sliver/thrash（鐵律）。
 ! ============================================================================
 MSHAPE,1,3D
 MSHKEY,0
-! --- Stage A：先細 mesh 6 sensor 球 ---
+! --- Stage A：先細 mesh sensor 球 ---
 CMSEL,S, CM_SENS
 ESIZE, ESIZE_SENS
 VMESH, ALL
@@ -505,7 +518,7 @@ NSEL,S,LOC,X, 0, CORE_R
 *GET, NN_CORE, NODE, 0, COUNT
 CSYS,0
 ALLSEL,ALL
-! [SENSOR] 6 顆加密球內總節點數（確認球內細 mesh 生成；隨 lv 級數遞增）
+! [SENSOR] 加密球內總節點數（確認球內細 mesh 生成；隨 lv 級數遞增）
 CMSEL,S, CM_SENS
 ESLV,S
 NSLE,S
@@ -521,7 +534,7 @@ ALLSEL,ALL
 *VWRITE, NN_CORE
 ('CORE   nodes (R < CORE_R) = ',F12.0)
 *VWRITE, NV_SENS, NN_SENS
-('SENSOR 6-sphere volumes = ',F8.0,'   nodes in spheres = ',F12.0)
+('SENSOR sphere volumes  = ',F8.0,'   nodes in spheres = ',F12.0)
 /com, ===============================================
 
 SAVE                 ! → mesh_lvXLVX.db（供 solve deck RESUME；/FILNAME 已設）

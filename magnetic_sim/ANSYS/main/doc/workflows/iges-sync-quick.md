@@ -42,7 +42,7 @@ cp magnetic_sim/ANSYS/backup/hung/IGES/Part.iges magnetic_sim/ANSYS/backup/hung/
 sed -i "s/,1.0,6,,/,1.0,1,,/" magnetic_sim/ANSYS/backup/hung/IGES_converted/Part.iges
 ```
 
-(本 SOP **只管 kuo**;hung 的請參 `.claude/rules/hung-docs.md`)
+(本 SOP **只管 kuo**;hung 的請參 `../../../backup/hung/docs/README.md`)
 
 ## 產物
 
@@ -53,7 +53,7 @@ sed -i "s/,1.0,6,,/,1.0,1,,/" magnetic_sim/ANSYS/backup/hung/IGES_converted/Part
 
 - 抄錯設計的 sync 公式(hung vs kuo)→ 尺寸 1000× / 0.001×
 - 改了 `IGES/` 忘記同步 `model_check/` → APDL import 用舊形狀
-- 刪除 / 重命名一邊 → 兩邊要同步處理(`main-workspace.md` 強制規則 #3)
+- 刪除 / 重命名一邊 → 兩邊要同步處理(兩邊同步為強制要求)
 
 ## 適用 topic
 

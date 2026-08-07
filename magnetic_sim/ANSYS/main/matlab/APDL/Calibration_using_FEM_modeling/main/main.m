@@ -20,7 +20,8 @@ INTERP_TO = '';             % '' 正常；否則把本 variant 場內插到此�
 V_METHOD  = '';             % '' → cfg.v_method（'csv-tet' 預設 / 'scattered'）
 % voltage-only 取樣調參
 SOFF_upper = 4.572e-3;      % 上極 sensor 沿錐面距極尖 [m]
-n_uniform  = 1e4;           % 每 sensor 圓柱撒點數
+n_uniform  = 500;           % 每 sensor 圓柱撒點數（[MODIFIED 2026-08-06] 使用者拍板統一 500；
+                            %   取樣標準誤 ≈ (σ/μ)/√n ≈ 0.11%。舊結果用 1e4（0.024%））
 sensor_r   = 0.15e-3;       % sensor 圓柱半徑 [m]
 axial_tol  = 0.10e-3;       % sensor 圓柱高（沿 n+）[m]
 
@@ -72,6 +73,9 @@ switch BASE
         [V, ~] = build_V_matrix(cfg, VARIANT, raw, cfg.S_hall, SOFF_upper, n_uniform, sensor_r, axial_tol, [], V_METHOD);
         [D_bar, gV_hat, G, rm] = solve_voltage(l_hat, e, Pc_base, P, Bstack, V);
         rec.D_bar = D_bar;  rec.gV_hat = gV_hat;  rec.G = G;  rec.V = V;
+        % [ADDED 2026-08-06] sensor 取樣參數記進 .mat（自描述；與 Maxwell 分支同步）
+        rec.SOFF_upper = SOFF_upper;  rec.n_uniform = n_uniform;
+        rec.sensor_r = sensor_r;  rec.axial_tol = axial_tol;
     otherwise
         error('BASE 必為 ''current'' | ''voltage''');
 end

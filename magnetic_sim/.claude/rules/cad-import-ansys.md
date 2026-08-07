@@ -7,7 +7,7 @@
 （primitive 逼近複雜 B-spline 錐/T 字/半切件不收斂、來回「錯很多」；hung_hexapole 驗證通過此匯入法）。
 
 對應 memory：`reference_cad_import_step_to_ansys.md`
-相關規則：`ansys-cad-alignment.md`（CAD=source of truth、原點對齊）、`iges-model-id.md`、`sim-cleanup.md`
+相關規則：`ansys-cad-alignment.md`（CAD=source of truth、原點對齊）、`sim-cleanup.md`
 相關 memory：[[iges-nurbs-measure-trap]]、[[ansys-cad-alignment]]
 
 ---
@@ -102,5 +102,5 @@ hung 出 **97 vol / 540 area / 680 kp**、bbox ±62.5mm、原點置中。
 - 「建真實幾何模型」/「別 primitive、直接匯入」
 
 ## 何時不適用
-- **純參數化/idealized 幾何**（如 `hexapole-build.md` 用 primitive 建的乾淨可控幾何、要做參數掃描）——那用 primitive 建模是對的。
+- **純參數化/idealized 幾何**（用 primitive 建的乾淨可控幾何、要做參數掃描）——那用 primitive 建模是對的。
 - 純後處理 / 純 mesh / 純 MATLAB。

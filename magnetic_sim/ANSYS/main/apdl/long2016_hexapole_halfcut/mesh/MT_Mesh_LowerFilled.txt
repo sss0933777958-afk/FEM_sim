@@ -1,7 +1,7 @@
 ! ============================================================================
 ! MT_Mesh_LowerFilled.txt — Long2016 hexapole, 3 LOWER POLES FILLED (full cone), region-graded MESH-ONLY
 !   [Variant of MT_Mesh_Graded.txt]: lower-pole half-cut BLOCK,0+VSBV REMOVED -> P1/P3/P6 are FULL cones.
-!   Same graded pipeline (smrt5 + 2x EREFINE). SAVE mesh_lowerfilled.db. (header below = canonical deck's)
+!   Same graded pipeline (smrt5 + 2x EREFINE). SAVE mesh_lower_filled.db. (header below = canonical deck's)
 !   建幾何 + region-graded 網格 + SAVE 成 mesh_graded.db（**無 /SOLU、無 MAG BC**）。
 !   之後 solve deck `RESUME mesh_graded.db` → 加 D,ALL,MAG,0 + CURR + magsolv（mesh/solve 分離）。
 !
@@ -19,12 +19,15 @@
 !   材料/網格分區一律 by location+size（VOVLAP/booleans 會清 VATT，volume 編號不可硬編）。
 ! ============================================================================
 
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\geom\lower_filled'
+! [MODIFIED 2026-08-04] 落點與 jobname 對齊 run_graded_all.sh 的慣例（db/mesh/<V>/mesh_<V>.db），
+!   VARIANT=lower_filled 即可直接 RESUME；同時 db/geom → db/mesh 也符合 db-folder-retention
+!   （mesh-only 產物歸 db/mesh/，db/geom/ 只放純幾何）。
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\mesh\lower_filled'
 Finish
 /cle
 /CLEAR,NOSTART
-/TITLE, Long2016 LOWER-FILLED hexapole - region-graded mesh-only (SAVE mesh_lowerfilled.db)
-/FILNAME,mesh_lowerfilled,1
+/TITLE, Long2016 LOWER-FILLED hexapole - region-graded mesh-only (SAVE mesh_lower_filled.db)
+/FILNAME,mesh_lower_filled,1
 /PREP7
 
 ! -------------------------------------------------------------------
@@ -445,5 +448,5 @@ ALLSEL,ALL
 ('CORE   nodes (R < CORE_R) = ',F12.0)
 /com, ===============================================
 
-SAVE                 ! → mesh_lowerfilled.db（供 solve deck RESUME）
+SAVE                 ! → mesh_lower_filled.db（供 solve deck RESUME）
 FINISH

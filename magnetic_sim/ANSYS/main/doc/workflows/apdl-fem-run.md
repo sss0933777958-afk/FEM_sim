@@ -17,7 +17,7 @@
 | `{geom}` | `magnetic_sim/ANSYS/main/apdl/{topic}/geom/MT_Geom_<variant>.txt` |
 | `{sim_script}` | `magnetic_sim/ANSYS/main/apdl/{topic}/sim/MT_Sim_*.txt`(從樣板挑) |
 | `{coils}` | `[1]` / `[1..6]` / `[1,3,6]` |
-| `{case_tag}` | 例 `Lp0p46_T55_TURNS6`(沿 `main-workspace.md` pattern) |
+| `{case_tag}` | 例 `Lp0p46_T55_TURNS6`(沿既有 case_tag pattern) |
 
 ## 樣板
 

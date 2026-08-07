@@ -21,6 +21,6 @@ doc/
 - `*.tex`（原稿）/ `*.pdf`（編譯產物）/ `*.m`（LaTeX 表格產生器）/ `*.md`（SOP、說明）。
 
 ## 規則
-- **跑流程 / 操作前先看 `workflows/README.md`** 找對應 SOP；觸發詞 → SOP 對照見 `.claude/rules/main-workflows.md`。
-- LaTeX 原稿放 `<analysis>/<topic>/scripts/`，編譯 PDF 放 `<analysis>/<topic>/pdf/`（analysis-first schema，見 `main-workspace.md`）。
+- **跑流程 / 操作前先看 `workflows/README.md`** 找對應 SOP（自然語觸發對照也在該 README）。
+- LaTeX 原稿放 `<analysis>/<topic>/scripts/`，編譯 PDF 放 `<analysis>/<topic>/pdf/`（analysis-first schema）。
 - 中文報告需要圖時 **reference** `../matlab/<model>/<功能組>/figures/<file>.png`，不要把圖另存到 git root 外。

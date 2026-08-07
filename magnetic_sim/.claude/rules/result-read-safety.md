@@ -8,7 +8,7 @@
 對應清單（single source of truth）：各 topic 的 `magnetic_sim/ANSYS/main/ANSYS_data/<topic>/RESULTS_MAP.md`
 （目前已建：`magnetic_sim/ANSYS/main/ANSYS_data/long2016_hexapole_halfcut/RESULTS_MAP.md`）
 
-相關規則：`.claude/rules/iges-model-id.md`（識別物理模型）、`.claude/rules/main-workspace.md`、`.claude/rules/sim-cleanup.md`
+相關規則：`.claude/rules/sim-cleanup.md`
 相關 memory：[[verify-before-act]]、[[long-fei-b-bar-matrix-v4]]、[[smrt4-unreliable-halfcut]]
 
 ---
@@ -86,4 +86,4 @@
 
 - 不載入 result 的純幾何 / mesh / IGES / CAD 工作。
 - 已在記憶體中的資料二次處理（同一次對話已核過指紋、未換 dir）。
-- COMSOL / 非 ANSYS 結果（COMSOL 有自己的座標 / 單位坑，見 `.claude/rules/comsol-livelink.md`）。
+- COMSOL / 非 ANSYS 結果（COMSOL 有自己的座標 / 單位坑，見 memory `feedback_comsol_mm_coord_pitfall`）。

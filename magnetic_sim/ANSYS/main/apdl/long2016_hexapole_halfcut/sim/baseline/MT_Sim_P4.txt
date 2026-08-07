@@ -1,6 +1,6 @@
 !****/CWD,'C:\Users\feilong\Desktop\Fei Long Ansys\Magnetic Tweezers LowPermeability'
 !****/CWD,'D:\Fei Long ANSYS\Magnetic Tweezers LowPermeability'
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\coil4\standard'   ! [KUO] halfcut sim output
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\standard\coil4'   ! [MODIFIED 2026-08-06] 對齊 data/<variant>/coil<N> 佈局（原 coil4\standard 是 2026-07-14 翻轉前的舊路徑）
 
 Finish
 /cle
@@ -372,6 +372,23 @@ mp , murx , MAT_AIR1 , 1     !----MAT NUM 1 : center air
 mp , murx , MAT_MT   , 280   !----MAT NUM 2 : 1018 steel
 mp , murx , MAT_AIR2 , 1     !----MAT NUM 3 : outer air
 
+! [ADDED] per-pole material numbers: each of the 6 poles gets its own MAT so that
+!   it can be selected / plotted / post-processed on its own (ESEL,S,MAT,,MAT_P1 ...).
+!   All six are the SAME 1018 steel (murx = 280) as MAT_MT -> the physics is unchanged;
+!   only the element material attribute differs. MAT_MT now covers yoke + protrusions only.
+MAT_P1 = 4     !----MAT number 4 : pole P1 (lower,   0 deg)
+MAT_P2 = 5     !----MAT number 5 : pole P2 (upper, 180 deg)
+MAT_P3 = 6     !----MAT number 6 : pole P3 (lower, 120 deg)
+MAT_P4 = 7     !----MAT number 7 : pole P4 (upper, 300 deg)
+MAT_P5 = 8     !----MAT number 8 : pole P5 (upper,  60 deg)
+MAT_P6 = 9     !----MAT number 9 : pole P6 (lower, 240 deg)
+mp , murx , MAT_P1 , 280     !----MAT NUM 4 : 1018 steel
+mp , murx , MAT_P2 , 280     !----MAT NUM 5 : 1018 steel
+mp , murx , MAT_P3 , 280     !----MAT NUM 6 : 1018 steel
+mp , murx , MAT_P4 , 280     !----MAT NUM 7 : 1018 steel
+mp , murx , MAT_P5 , 280     !----MAT NUM 8 : 1018 steel
+mp , murx , MAT_P6 , 280     !----MAT NUM 9 : 1018 steel
+
 !**** element defination: ****
 ET_nocurr = 1
 ET_curr   = 2
@@ -450,8 +467,23 @@ NODE_START = NODE_NUM + 1
 
 
 ! **** mesh magnetic tweezers: ****
-VSEL,s,VOLU,,1,6           !----6 poles
-VSEL,a,VOLU,,8             !----magnetic tweezers
+! [MODIFIED] was: VSEL,s,VOLU,,1,6 + VSEL,a,VOLU,,8 -> VATT,MAT_MT (all steel = MAT 2).
+!   Each pole volume now carries its own MAT; yoke + protrusions keep MAT_MT.
+!   V_ID_P* are the post-VOVLAP volume numbers declared above (= the old 1..6).
+VSEL,s,VOLU,,V_ID_P1       !----pole P1
+VATT,MAT_P1,1,ET_nocurr
+VSEL,s,VOLU,,V_ID_P2       !----pole P2
+VATT,MAT_P2,1,ET_nocurr
+VSEL,s,VOLU,,V_ID_P3       !----pole P3
+VATT,MAT_P3,1,ET_nocurr
+VSEL,s,VOLU,,V_ID_P4       !----pole P4
+VATT,MAT_P4,1,ET_nocurr
+VSEL,s,VOLU,,V_ID_P5       !----pole P5
+VATT,MAT_P5,1,ET_nocurr
+VSEL,s,VOLU,,V_ID_P6       !----pole P6
+VATT,MAT_P6,1,ET_nocurr
+
+VSEL,s,VOLU,,V_ID_MT       !----yoke + protrusions
 VATT,MAT_MT,1,ET_nocurr    !----material attribute : material num, real const set num, type num
 
 VSEL,s,VOLU,,V_ID_AIR_SPH  !----Inner air
@@ -467,8 +499,24 @@ mshkey,0           !---- 0:free meshing(defaul)
 vmesh,all
 
 ! **** Define component: ****
+! [MODIFIED] COMP_MT must still cover ALL steel -> yoke (MAT_MT) + 6 poles (MAT 4..9)
 ESEL,S,MAT,,MAT_MT !if you want to plot this element, just use ESEL command and /replot
+ESEL,A,MAT,,MAT_P1,MAT_P6  ! [ADDED] add the six per-pole materials
 CM,COMP_MT,ELEM  ! magnetic tweezers as a component
+
+! [ADDED] per-pole components (per-pole plotting / post-processing)
+ESEL,S,MAT,,MAT_P1
+CM,COMP_P1,ELEM
+ESEL,S,MAT,,MAT_P2
+CM,COMP_P2,ELEM
+ESEL,S,MAT,,MAT_P3
+CM,COMP_P3,ELEM
+ESEL,S,MAT,,MAT_P4
+CM,COMP_P4,ELEM
+ESEL,S,MAT,,MAT_P5
+CM,COMP_P5,ELEM
+ESEL,S,MAT,,MAT_P6
+CM,COMP_P6,ELEM
 
 ESEL,S,MAT,,MAT_AIR1
 CM,COMP_AIR1,ELEM  ! magnetic tweezers as a component

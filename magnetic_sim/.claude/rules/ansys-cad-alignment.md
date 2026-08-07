@@ -11,7 +11,7 @@
 **動手前必須先讀完此規則全文**。
 
 對應 memory:`feedback_ansys_cad_alignment.md`
-相關規則:`.claude/rules/main-workflows.md`(model-check SOP)、`.claude/rules/sim-cleanup.md`
+相關規則:`.claude/rules/sim-cleanup.md`;model-check SOP 見 `magnetic_sim/ANSYS/main/doc/workflows/model-check.md`
 相關 memory:`feedback_step_geom_extraction.md`(STEP 抽尺寸方法論)
 
 ---
@@ -141,6 +141,27 @@ per [[step-geom-extraction]]:
 | `long2016_hexapole_halfcut` POLE_R | 3.175 mm | 3.047 mm | +4.2% | ⚠ 待對齊 |
 | `long2016_hexapole_halfcut` POLE_CONE_LEN | 15.875 mm | 14.827 mm | +7.1% | ⚠ 待對齊 |
 | (其他 topic 待查)| — | — | — | — |
+
+### 🔴 long2016：**上下極錐體不同**（2026-08-07 從 STEP 實測，六根極組內完全一致）
+
+來源：`CAD_model/long_fei/STEP/long2016_hexapolehalfcut_geom.STEP`
+
+| | 底半徑 | 錐長（自極尖點） | 半錐角 | R(s)（s 自極尖點）|
+|---|---|---|---|---|
+| **下極 P1/P3/P6** | 3.0470 mm | 14.8267 mm | **11.492°** | **0.0327 + 0.20330·s** |
+| **上極 P2/P4/P5** | 3.0000 mm | 15.2443 mm | **11.014°** | **0.0330 + 0.19463·s** |
+
+- 斜率差 **4.43%**；從 Maxwell 場獨立量到 4.44%（對到小數第 2 位）。
+- **`mt_constants.m` 的 `POLE_R=3e-3 / POLE_CONE_LEN=15e-3`（11.310°）對兩層都不對**
+  —— 用單一組參數套六根極會有 ±2~3% 的斜率誤差。
+- **`plot_surface_flux.m` 的 `geo_pole`（RT .04 / SLP .2028 / S_CONE 14.827）只對下極**，
+  Maxwell 分支若沿用同一組會系統性偏 0.05 mm。
+- ⚠ **錐頂要用「虛擬錐頂」**：錐面與 40 µm 尖端球相切，物理極尖是球的前緣 →
+  `e = r_f/sinβ − r_f ≈ 0.16 mm`、`tanβ = R_base/(t_base + e)`、`R(s) = e·tanβ + s·tanβ`。
+  用極尖點當錐頂會高估 **0.123°**。截距是 **+0.033**，**不是 0、也不是 r_f/cosβ=0.041**。
+- 實證：換用正確的 per-pole 幾何後，「截面通量 vs 表面環積分」兩法收斂由
+  +2.15%/−5.41% 改善到 **−0.26%/−1.11%** —— **收斂度是幾何對錯的靈敏指標**。
+- 詳見 memory [[long2016-pole-cone-geometry]]、[[long2016-flux-leakage-maxwell]]。
 
 新發現的不一致**必須加進此表**並在 [[ansys-cad-alignment]] memory 同步。
 

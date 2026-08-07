@@ -17,4 +17,4 @@
 4. `pole-geometry.md` — understand the part dimensions
 5. `hexapole-simulation-reference.md` — understand the simulation rules
 
-This order is enforced by `.claude/rules/hung-docs.md`.
+This README is the source of that order (the former `.claude/rules/hung-docs.md` was removed 2026-08-06; backup/ is no longer an active design).

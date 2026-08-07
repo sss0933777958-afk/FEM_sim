@@ -39,6 +39,23 @@ plot 腳本的 `figdir` 寫 `fullfile(CAL,'figures',MODEL,BASE,<param>)`；各 `
 （舊命名 `{single_param,eighteen_param,shared}` → 新 `{single,eighteen,common}`；舊 per-model
 `<model>/Calibration_using_FEM_modeling/{current_base,voltage_base}/figures/` 已退役。`results/` 見 `results-pdf-only.md`。）
 
+## 論文圖：`figures/paper_fig_plot/{plot,data}` 佈局（2026-08-06 重組）
+
+論文圖（`figures/paper_fig/Section*/`）的產生端一律**兩夾分家**：
+
+- **`figures/paper_fig_plot/plot/`** — 繪圖腳本（`.m`）。含兩支**無對應圖但不可刪的引擎**：
+  `plot_surface_flux.m`（表面通量積分，被 `plot_upper_boundary_flux` 呼叫）、
+  `build_steel_footprint.m`（產 `steel_ids.mat`，被 4 支場圖腳本讀）。
+- **`figures/paper_fig_plot/data/`** — 功能性快取（`.mat`；重算要數分鐘，屬產物不是暫存，**不要清**）。
+
+腳本內路徑一律：
+```matlab
+here   = fileparts(fileparts(mfilename('fullpath')));   % → paper_fig_plot/（腳本在 plot/ 之下）
+figdir = fullfile(fileparts(here), 'paper_fig', 'Section<X>');
+cachef = fullfile(here, 'data', '<name>.mat');
+```
+**沒有對應圖的腳本（引擎除外）＝孤兒，一律刪**（2026-08-06 已刪 11 支 + 15 個孤兒快取）。
+
 ## 小提醒
 
 - 輸出解析度要讓檔**能被直接開 / 被 `Read` 目視**（PNG 太大時可降 DPI，例如 ~150；

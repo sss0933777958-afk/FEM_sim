@@ -28,4 +28,4 @@ matlab/
 
 ## 規則
 - 擬合電流要對齊 FEM 激發電流（1A），見 `.claude/rules/fit-current-matches-sim.md`。
-- 工作放置慣例（哪種產物去哪）見 `.claude/rules/main-workspace.md`。
+- 工作放置慣例（哪種產物去哪）見 `../CLAUDE.md`「資料夾架構地圖」。

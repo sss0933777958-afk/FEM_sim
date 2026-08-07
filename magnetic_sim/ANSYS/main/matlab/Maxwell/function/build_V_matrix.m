@@ -1,6 +1,14 @@
-function [V, exc_sign] = build_V_matrix(cfg, variant, raw, S_hall, SOFF_upper, n_uniform, sensor_r, axial_tol, sensor_override, V_METHOD, SOFF_lower)
+function [V, exc_sign, sensor_pos, sensor_n, dbg] = build_V_matrix(cfg, variant, raw, S_hall, SOFF_upper, n_uniform, sensor_r, axial_tol, sensor_override, V_METHOD, SOFF_lower, FACE_lower)
+%   [ADDED 2026-08-06] 第 5 個輸出 dbg（僅 V_METHOD='scattered'）：逐點診斷用
+%     dbg.ang{i,kc}  sensor i、激發 kc 下每個撒點的 ∠(b, n̂⁺) [deg]
+%     dbg.bn{i,kc}   同上的 b·n̂⁺ [mT]；dbg.bmag{i,kc} 同上的 ‖b‖ [mT]
+%     dbg.samp{i}    該 sensor 的撒點座標（ANSYS 框 [m]）——與算 V 用的是**同一批點**
 %   [ADDED] SOFF_lower（可選，預設 4.572e-3）：下極 sensor 沿錐面距極尖 [m]。
 %   原本下極寫死 4.572e-3、只有上極可調；要「兩層同時移動」時必須一起給。
+%   [ADDED 2026-08-05] FACE_lower（可選，預設 'cone'）：下極 sensor 貼哪個面
+%     'cone' = 半切件**底錐面**（原行為，法線朝下出鋼）
+%     'flat' = 半切**平切上表面**（法線 +z；半切面是通過極軸的水平面 → 沿水平極軸走 SOFF、離面 AIR）
+%   上極永遠貼自己的完整錐面，不受此參數影響。
 %BUILD_V_MATRIX  電壓提取：sensor 幾何 → 每 sensor 圓柱撒點 → 內插 raw 場 → 6×6 V[mV]。
 %   [V, exc_sign] = BUILD_V_MATRIX(cfg, variant, raw, S_hall, SOFF_upper, n_uniform, sensor_r, axial_tol, sensor_override, V_METHOD)
 %   sensor 幾何來源優先序：
@@ -17,6 +25,7 @@ function [V, exc_sign] = build_V_matrix(cfg, variant, raw, S_hall, SOFF_upper, n
     if nargin < 9,  sensor_override = []; end
     if nargin < 10 || isempty(V_METHOD),   V_METHOD   = 'csv-tet'; end
     if nargin < 11 || isempty(SOFF_lower), SOFF_lower = 4.572e-3;  end   % [ADDED]
+    if nargin < 12 || isempty(FACE_lower), FACE_lower = 'cone';    end   % [ADDED 2026-08-05]
     N_I = cfg.N_I;
 
     % ① sensor 幾何（WP 框）：override > config 提供 > 內建 baseline 錐面
@@ -25,7 +34,7 @@ function [V, exc_sign] = build_V_matrix(cfg, variant, raw, S_hall, SOFF_upper, n
     elseif isfield(cfg,'sensor_pos') && isfield(cfg,'sensor_n') && ~isempty(cfg.sensor_pos)
         sensor_pos = cfg.sensor_pos;  sensor_n = cfg.sensor_n;
     else
-        [sensor_pos, sensor_n] = sensor_geometry(cfg, SOFF_upper, SOFF_lower);   % [MODIFIED] 兩層都可調
+        [sensor_pos, sensor_n] = sensor_geometry(cfg, SOFF_upper, SOFF_lower, FACE_lower);   % [MODIFIED] 兩層可調 + 下極可換面
     end
 
     % ② 每 sensor 圓柱內均勻撒 n_uniform 點（ANSYS 框、rng 可重現）——兩法共用
@@ -44,13 +53,14 @@ function [V, exc_sign] = build_V_matrix(cfg, variant, raw, S_hall, SOFF_upper, n
     end
 
     % ③ 內插 raw 場到撒點 → V=S_hall·⟨B·n̂⟩[mV]（依 V_METHOD 分兩法）
+    dbg = struct('ang',{cell(6,N_I)}, 'bn',{cell(6,N_I)}, 'bmag',{cell(6,N_I)}, 'samp',{samp});
     switch V_METHOD
         case 'csv-tet'
             V = vmat_csv_tet(cfg, variant, raw, samp, sensor_n, S_hall, N_I);
         case 'scattered'
             R_loc = 1.5e-3;
             if isfield(cfg,'sensor_r_loc') && ~isempty(cfg.sensor_r_loc), R_loc = cfg.sensor_r_loc; end
-            V = vmat_scattered(raw, samp, cen, sensor_n, S_hall, N_I, R_loc);
+            [V, dbg] = vmat_scattered(raw, samp, cen, sensor_n, S_hall, N_I, R_loc, dbg);
         otherwise
             error('build_V_matrix: V_METHOD 必為 ''csv-tet'' | ''scattered''（得 ''%s''）', V_METHOD);
     end
@@ -98,7 +108,7 @@ function V = vmat_csv_tet(cfg, variant, raw, samp, sensor_n, S_hall, N_I)
 end
 
 % ---- scattered：對 raw solve 場在 sensor 鄰域建 scatteredInterpolant（CSV≠solve mesh 時用）----
-function V = vmat_scattered(raw, samp, cen, sensor_n, S_hall, N_I, R_loc)
+function [V, dbg] = vmat_scattered(raw, samp, cen, sensor_n, S_hall, N_I, R_loc, dbg)
     X = [raw.x, raw.y, raw.z];                        % ANSYS 框 [m]
     V = zeros(6, N_I);
     for i = 1:6
@@ -112,18 +122,25 @@ function V = vmat_scattered(raw, samp, cen, sensor_n, S_hall, N_I, R_loc)
             FY = scatteredInterpolant(Xs(:,1),Xs(:,2),Xs(:,3),Bk(:,2),'linear','none');
             FZ = scatteredInterpolant(Xs(:,1),Xs(:,2),Xs(:,3),Bk(:,3),'linear','none');
             Bp = [FX(pts), FY(pts), FZ(pts)];
-            V(i,kc) = S_hall * mean(Bp * ni, 'omitnan');
+            bn = Bp * ni;                            % 逐點 b·n̂⁺ [mT]
+            V(i,kc) = S_hall * mean(bn, 'omitnan');
+            % [ADDED 2026-08-06] 逐點診斷：∠(b, n̂⁺) = acos( (b·n̂)/‖b‖ )
+            bm = vecnorm(Bp, 2, 2);
+            dbg.ang{i,kc}  = acosd(min(1, max(-1, bn./bm)));
+            dbg.bn{i,kc}   = bn;
+            dbg.bmag{i,kc} = bm;
         end
     end
 end
 
 % ---- local：6 顆 Hall 中心+法線 n+（WP 框；long2016 錐面幾何）----
-function [sensor_pos, sensor_n] = sensor_geometry(cfg, SOFF_upper, SOFF_lower)
+function [sensor_pos, sensor_n] = sensor_geometry(cfg, SOFF_upper, SOFF_lower, FACE_lower)
     beta   = atan2(cfg.POLE_R, cfg.POLE_CONE_LEN);    % 半錐角 ≈ 11.31°
     psi0   = atan2(cfg.R_norm_z, cfg.R_norm_xy);      % 仰角 ≈ 35.26°（magic-angle；只進 e1）
     inc_up = cfg.upper_incline;                       % 上極真實錐軸傾角 ≈ 36.59°
     ell    = cfg.R_norm;
     if nargin < 3 || isempty(SOFF_lower), SOFF_lower = 4.572e-3; end   % [MODIFIED] 原寫死，改為可傳入
+    if nargin < 4 || isempty(FACE_lower), FACE_lower = 'cone';   end   % [ADDED 2026-08-05]
     AIR = 0.41e-3;
     dir = @(el,az) [cos(el)*cos(az); cos(el)*sin(az); sin(el)];
     sensor_pos = zeros(3,6);  sensor_n = zeros(3,6);
@@ -132,8 +149,13 @@ function [sensor_pos, sensor_n] = sensor_geometry(cfg, SOFF_upper, SOFF_lower)
         if cfg.pole_is_lower(i), psi = -psi0; else, psi = +psi0; end
         e1 = dir(psi, th);                            % → 極尖
         if cfg.pole_is_lower(i)
-            e2   = dir(-beta,      th);               % 下極（FEM 水平半切）：底錐面 −β
-            nhat = dir(-beta-pi/2, th);               % 外法線朝下出鋼
+            if strcmpi(FACE_lower,'flat')             % [ADDED] 平切上表面：面內方向 = 水平極軸、法線 +z
+                e2   = dir(0, th);
+                nhat = [0; 0; 1];
+            else                                      % 'cone'（預設，原行為）
+                e2   = dir(-beta,      th);           % 下極（FEM 水平半切）：底錐面 −β
+                nhat = dir(-beta-pi/2, th);           % 外法線朝下出鋼
+            end
             soff = SOFF_lower;
         else
             e2   = dir(inc_up+beta,      th);         % 上極：真實錐面 inc_up+β

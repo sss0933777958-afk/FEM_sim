@@ -102,7 +102,7 @@ function draw_one(cfg, X, B, isair, cnst, sp, sn, rxy, rz, Rnorm, SHOW_FIELD, ba
 
     % [MODIFIED] 磁極輪廓改「解析錐體」（圓角尖端 + 切線直錐 + 圓柱段），只畫選定的極（P2/P5）。
     %   原為 FEM 鐵節點 alphaShape → 形狀糊、且會把鄰極/軛鐵的節點一起包進來。
-    %   幾何與 figures/paper_fig_plot/plot_p2_pole_full.m 的 draw_pole_full 同一套。
+    %   幾何與 figures/paper_fig_plot/plot/plot_p2_pole_full.m 的 draw_pole_full 同一套。
     rf   = cnst.POLE_TIP_R*1e3;                       % 尖端圓角半徑 [mm]
     beta = atan2(cnst.POLE_R, cnst.POLE_CONE_LEN);    % 半錐角 ≈ 11.31°
     Rcyl = cnst.POLE_R*1e3;                           % 錐→柱轉換半徑 [mm]
@@ -160,7 +160,7 @@ function draw_one(cfg, X, B, isair, cnst, sp, sn, rxy, rz, Rnorm, SHOW_FIELD, ba
 end
 
 %% ---- local：解析磁極整根（圓角尖端 + 切線直錐 + 圓柱段）；單位 mm ----
-%   照抄 figures/paper_fig_plot/plot_p2_pole_full.m 的 draw_pole_full；改動要兩邊同步。
+%   照抄 figures/paper_fig_plot/plot/plot_p2_pole_full.m 的 draw_pole_full；改動要兩邊同步。
 function draw_pole_full(ax, tip, a, u, v, rf, beta, Rcyl, L, col, alp)
     ts = rf*(1+sin(beta));  rt = rf*cos(beta);
     L_cone = ts + (Rcyl - rt)/tan(beta);            % 錐→柱轉換軸向位置

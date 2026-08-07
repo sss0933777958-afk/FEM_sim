@@ -144,8 +144,26 @@ ax=gca; ax.Toolbar.Visible='off';                    % 匯出不帶 axes 工具�
     直方圖同款：`XTick=[0.2 0.4 0.6 0.8]`（s=0.2）配 `xlim=[0,1]` → 留白 0.2 = s，端點 0/1 再用 `text` 補數字（兩者兼得）。
 - **🔒 tick 不可太擠（使用者拍板 2026-08-03）**：tick 數量不可過多、間距不可過小——尤其**短 panel（如 2×1 tiled 的上下子圖）y-tick 不要塞 4 個以上，取 3 個等距**即可（例：npts_cost 上 panel y 由 4 個 `1.5/2.5/3.5/4.5` → 3 個）。與「兩端留白 = 間距」一起看：**均勻、疏密適中**——外側留白 = tick 間距、且一軸約 3–5 個 tick，不擠不空。做法：`ylim_auto` 類產 tick 用 `(-1:1:1)*s`（3 個）而非 `(-1.5:1:1.5)*s`（4 個）。
 - **🔒 tick 數量一律奇數（使用者拍板 2026-08-03）**：每根軸（縱軸、水平軸都是）的 tick **數量取奇數**（3、5、…），**不要偶數**（如 4 個 `-1.5/-1/-0.5/0` → 改 3 或 5）。奇數含中心對稱、視覺較穩。與上面兩條合看：**奇數個、等距、疏密適中**（三者 2D/3D 通用）＋ **2D 另加「兩端留白 = 間距」**（優先序：奇數 > 等距 > 留白；端點必標數字時留白可讓步）。**3D box 圖不套留白條**，改「內縮一格、角落不放 tick」——見上。3D 本就慣用 3/5（見 sphere/box 規則），2D 圖同此。
-- **框邊加粗**：變體 A 用 `box off` + `draw_box_edges(bh,3.0)`（省**最近角** 3 邊、留 9 邊全粗；**別用 BoxStyle full、別省最遠角**——見上「別再犯」）。
-- 範例：`figures/paper_fig_plot/plot_sphere_lattice_3d.m`（±0.9 框、三軸 `-0.5:0.5:0.5`、font 36、手動框邊省最近角）。
+- **框邊加粗**：變體 A 用 `box off` + `draw_box_edges(bh, LWBOX)`（省**最近角** 3 邊、留 9 邊全粗；**別用 BoxStyle full、別省最遠角**——見上「別再犯」）。
+- **🔒 3D 框線寬定案 `LWBOX = 4.0`（使用者拍板 2026-08-07）**：3D box 圖框線一律 **4.0**，且**手動框邊與座標軸 ruler 必須同值**：
+  ```matlab
+  LWBOX = 4.0;                              % 在腳本頂部宣告一次
+  set(ax,'LineWidth',LWBOX);                % ruler 線（有刻度的那幾條邊由它畫）
+  draw_box_edges3(ax, XL, YL, ZL, LWBOX);   % 手動補其餘框邊
+  ```
+  ⚠ **兩者不同值會粗細不一**：`box off` 後，有刻度的邊由 MATLAB ruler 畫、其餘由 `draw_box_edges3` 補，
+  只改一邊就會看到同一個框「有的邊粗、有的邊細」。舊值（手動 2.5–3.0 / ruler 1.5–2）**過細，已作廢**。
+- **🔒 3D 刻度數字一律轉正（使用者拍板 2026-08-07）**：MATLAB 3D 座標軸預設把刻度標籤**沿軸向旋轉**，
+  投影短的那根軸（常是 y）會被轉得歪斜、糊成一團。三軸一律強制水平：
+  ```matlab
+  ax.XAxis.TickLabelRotation = 0;
+  ax.YAxis.TickLabelRotation = 0;
+  ax.ZAxis.TickLabelRotation = 0;
+  ```
+  ⚠ **別把「歪斜」誤診成「tick 太多」而去刪刻度** —— 那是兩回事（踩過）。先轉正，數字仍相撞才是數量/間距問題。
+  範例：`plot_sensor_ring_schematic.m`。
+- 範例：`figures/paper_fig_plot/plot/plot_sphere_lattice_3d.m`（±0.9 框、三軸 `-0.5:0.5:0.5`、font 36、手動框邊省最近角）、
+  `plot_sensor_ring_schematic.m`（`LWBOX=4.0`、y 軸不放 tick、z 軸 `[-1 1 3]` 奇數等距）。
 
 範例圖：A＝`…/fix_dir/figures/charge_positions_P1P2_3d.png`（view −30/−20）；
 B＝`…/fix_dir/figures/svd_gain_3d.png`・`svd_iso_3d.png`（surf 山丘，view −40/30）、`…/Hall_sensor_base_fix_dir/figures/circuit_3d_*.png`。
@@ -167,7 +185,7 @@ B＝`…/fix_dir/figures/svd_gain_3d.png`・`svd_iso_3d.png`（surf 山丘，vie
 - **磁極表面（錐面）改用重心內插加密**（使用者要「整根均勻、後端也要密、但別像規則格那樣假」，2026-07-28）：**真實貼面節點（自然、優先）+ `scatteredInterpolant`（`linear`＝barycentric）在錐面細格（軸×方位）查詢點填補空隙 → 再用 `vsz≈0.22mm` 體素「每格留一、真實優先」**。這樣整根均勻密、graded 網格超密的尖端不成團、後端粗網格區靠內插填滿，且位置以真實節點為主（非純規則格 → 不假）。半切下極只取鋼側（`z<z_tip`）phi 0..π；全錐上極 phi 0..2π。**所有箭頭(內部+表面)一律限制在磁極軸長度 L 內**（`(P−tip)·axk ≤ L`），超過 L（根部寬端外）不畫。使用者明示**此圖表面內插不必標示**。
 - **turbo 依 `|B|(mT)` 分 bin（28 bin）**上色（同 `plot_p2_charge_merged` 右圖）。此類全極示意圖使用者要**不放顏色表**。
 - **箭頭長度依 `|B|` 變化，但最大長度不誇張（🔒 定案）**：用壓縮映射 `len = lmin + (lmax−lmin)·(|B|/|B|max)^0.35`，方向 = 單位 `B`×`len`（`quiver3(...,0,'AutoScale','off')` 隱含用實 len）。**`lmax` 取相對圖幅的適度上限**——**最大箭頭不可長到橫跨大半視野**（例：全極 8mm box 用 `lmin=0.15 / lmax=0.55mm`）。**不要**用單位化固定長度（全部等長、看不出大小），也**不要**線性 raw×大比例（最大箭頭爆掉）。
-- 範例：`figures/paper_fig_plot/plot_p2_pole_full.m`（全極 P2，`lmin/lmax=0.15/0.55`）、`plot_p2_charge_merged.m` 的 `render_3d`（尖端 zoom，`0.014/0.060`）。
+- 範例：`figures/paper_fig_plot/plot/plot_p2_pole_full.m`（全極 P2，`lmin/lmax=0.15/0.55`）、`plot_p2_charge_merged.m` 的 `render_3d`（尖端 zoom，`0.014/0.060`）。
 
 ### 🔒 Maxwell 資料的磁路箭頭取樣 = jittered grid（使用者拍板 2026-08-04，定案）
 
@@ -202,9 +220,31 @@ Zs = ZL(1) + (gz(:)+0.5 + JIT*(rand(numel(gz),1)-0.5))*hz;
   即可（raw、不內插）。
 - **快取存「原始切面格點」、不要存抽樣結果**：切面格點僅 ~4k 點 / 130KB，之後調密度、抖動、格距都秒級；
   存抽樣結果的話每次改樣式都要重讀 ~2GB `.fld`。
-- 範例：`figures/paper_fig_plot/plot_sensor_mounting_p1.m`（`SRC='maxwell'` 分支；N=4200 → 74×57 格、格邊 0.091mm）。
+- 範例：`figures/paper_fig_plot/plot/plot_sensor_mounting_p1.m`（`SRC='maxwell'` 分支；N=4200 → 74×57 格、格邊 0.091mm）。
 
 ---
+
+## 🔒 純幾何示意圖：不放軸標題（使用者拍板 2026-08-07）
+
+**schematic（只畫幾何、不承載場值或量測數據的示意圖）不放軸標題**（`xlabel` / `ylabel` / `zlabel`）。
+
+- **拿掉的是「軸標題」**（`x (mm)`、`z (mm)` 那種），**不是刻度數字** —— 刻度數字照留（讀者要靠它判斷尺度）。
+- 理由：示意圖的重點是幾何關係，軸標題是多餘的字；刻度數字已足以表達尺度與單位。
+- 其餘風格照舊：框線加粗、`grid off`、3D 依變體 A/B 選框法、刻度規則不變。
+- 範例：`figures/paper_fig_plot/plot/plot_sensor_ring_schematic.m`（截面示意，保留 XTick/YTick/ZTick、無 xlabel/zlabel）。
+- **何時不適用**：承載數據的圖（場圖、剖面曲線、直方圖、結果圖）**一律要有軸標題**，照原規則用 LaTeX `\mathbf` + 單位括號。
+
+## 🔒 座標原點與「WP」字眼（使用者拍板 2026-08-06）
+
+1. **禁用 "WP" 這個字眼。** 圖上的文字 / 軸標 / 圖例 / legend、腳本註解、以及對使用者的說明，**一律不再出現 "WP"**
+   （也不要 "WP 框"、"WP 區"、"WP center"）。理由：使用者明示 —— WP 不是「原點」的意思，用它當標籤會誤導。
+2. **那一點就叫「原點」。** 六極尖共球的球心 = 繪圖座標的 **原點 (0,0,0)**；需要描述時寫「原點」或
+   「六極尖共球球心（= 原點）」，不要另創代號。
+3. **圖上用黑點標原點、不加文字**：`plot3(ax,0,0,0,'ko','MarkerFaceColor','k','MarkerSize',10)`。
+   軸的 0 刻度已經表達位置，再加文字反而囉嗦。
+4. **既有檔案不強制回溯清理**（`mt_constants` / `build_actuator_data` / `RESULTS_MAP` / dataset 名 `wp` 等
+   處處都是），但**動到哪個檔就順手把該檔的 WP 字樣改掉**。要全 repo 清理需另外先問使用者。
+5. 範例：`figures/paper_fig_plot/plot/plot_sensor_ring_schematic.m`（黑點在原點、全檔無 WP 字樣）。
 
 ## 通用數值標註慣例（圖 + 結果 PDF）
 
@@ -217,11 +257,16 @@ Zs = ZL(1) + (gz(:)+0.5 + JIT*(rand(numel(gz),1)-0.5))*hz;
 5. **水平軸「起點 + 終點」都要標數字；縱軸首末都不標**（使用者拍板 2026-07-26/27，2D 圖通用；直方圖 / 線圖皆適用）：
    - 一張圖兩軸的端點值**只由水平軸負責標**——**x 軸起點與終點都要有數字**（起點如 `0`/線圖 `40`；終點如直方圖 `1`/線圖 `500`），**縱軸起點與末端都不標**（縱軸只留內縮 tick）。
    - **起始點不進 `XTick`**（原點在角落、不畫刻度線）：`XTick` 只放內部值（如 `[2 4 6 8]`），起始 `0` 用 `text(ax,0,-0.022*ytop,'0',...,'VerticalAlignment','top','Clipping','off')` 在原點下方**補字**（有數字、無 tick mark）。線圖第一點若本就在軸內（如 x 從 40 起），該點可直接留在 `XTick`。
-   - **水平軸「終點」也一定要標數字**（使用者拍板 2026-07-27，**無例外**——直方圖也要）：水平軸的**起點與終點都要有數字**（縱軸則首末都不標）。兩種做法依情境：
-     - **線圖 / 端點是真 tick**（如掃描 40~500）：起點 + 終點都放進 `XTick`（`[40 100 200 300 400 500]`），正常刻度線。
-     - **直方圖 / 端點在角落**（起點在原點、終點在右緣，該處不畫 tick line）：`XTick` 只放內部值，**起點 + 終點各用 `text` 補在該端下方**（無 tick mark）：`xr=xlim(ax); text(ax,xr(1),-0.022*ytop,sprintf('%g',xr(1)),...); text(ax,xr(2),-0.022*ytop,sprintf('%g',xr(2)),...)`（`VerticalAlignment top`、`Clipping off`）。⚠ 之前「直方圖終點不標」是**錯的**，已更正。
+   - **水平軸「終點」也一定要標數字**（使用者拍板 2026-07-27，**無例外**——直方圖也要）：水平軸的**起點與終點都要有數字**（縱軸則首末都不標）。
+     - **🔒 端點一律「只標數字、不畫 tick mark」（使用者拍板 2026-08-06，取代舊的兩種情境分流）**：不論直方圖或線圖，`XTick` **只放內部值**（奇數個、等距），起點 + 終點各用 `text` 補在該端下方：
+       `xr=xlim(ax); yoff=yr(1)-0.022*diff(yr); text(ax,xr(1),yoff,sprintf('%g',xr(1)),'HorizontalAlignment','center','VerticalAlignment','top','FontSize',FS,'FontWeight','bold','Clipping','off');`（終點同理）。
+       ⚠ **作廢**：舊寫法「線圖 / 端點是真 tick → 起點+終點放進 `XTick`、正常刻度線（如 `[40 100 200 300 400 500]`）」**已被否決，不要再用**。⚠ 更早的「直方圖終點不標」也是錯的。
+     - **🔒 曲線圖：首末資料點必須貼齊左右框邊、兩端不留空白（使用者拍板 2026-08-06）**：`xlim = [第一點, 最後一點]`（跨多條曲線時取全域 min/max），端點數字即該兩個值。線/marker 加 `'Clipping','off'`，讓落在框邊上的 marker 不被框線切一半。
+       → 此條**凌駕**「兩端留白 = 間距」（那條只適用端點不是資料點的場合，如直方圖從 0 起）。內部 tick 仍須奇數個 + 等距。
+     - **🔒 分層 / 分箱資料的 x 用「名目層中心」**（`(edg(L)+edg(L+1))/2`），**不可**用該層樣本的實際平均位置——後者帶隨機抖動（如 5.5 / 15.5 / 25.4…）、非等距、且無物理意義。層平均值代表整層，故標在層中心；**這也表示曲線本質上不會從層邊界（0）起算**（10 層 × 10 µm ⇒ x = 5,15,…,95，不是 0…100）。
    - 連帶：講「tick 數量」時**不含起始/終點**（「x 軸 4 個內部 tick」= `[2 4 6 8]`，另加起點 0 + 終點 1；縱軸「3 個 tick」= 首末不標的 3 個內縮值）。
-   - 範例：`plot_err_hist.m`（`XTick=[0.2 0.4 0.6 0.8]` + `text` 補起點 0 + 終點 1、y 三內縮）、`plot_ell_gain_vs_R.m`（x 起點 40 + 終點 500 都在 XTick）。
+   - 範例：`plot_err_hist.m`（`XTick=[0.2 0.4 0.6 0.8]` + `text` 補起點 0 + 終點 1、y 三內縮）、**`plot_sensor_normal_gradient.m`（曲線圖新標準：`xlim=[5,95]` 首末點貼框、`XTick=[25 50 75]`、5/95 用 `text` 補、名目層中心）**。
+     ⚠ `plot_ell_gain_vs_R.m`（x 起點 40 + 終點 500 都在 `XTick`）是**舊寫法、尚未改**——要動那張圖時順手改成上面的新標準。
 
 範例實作：`…/fix_dir/code/function/emit_model_results.m`（K̄_I 無單位、^Bĝ_I 的 `ge==0` 分支）、`Calibration_using_FEM_modeling/function/emit_tex.m`（bmatrix + 正值不標 +）。
 
@@ -237,7 +282,11 @@ Zs = ZL(1) + (gz(:)+0.5 + JIT*(rand(numel(gz),1)-0.5))*hz;
 
 **所有磁路 / |B| 場圖的 colorbar 一律照此標準**（source of truth = `plot_circuit_side.m` 的 `style_cbar`）：
 - **colormap = `turbo`**；`clim([0 CLIM])`，`CLIM = ceil(max(|B|_mT)/50)*50`（進位到 50mT）。
-- **標題** = LaTeX 數學粗體 `cb.Label.String = '$\mathbf{|B|\;(mT)}$'`、`cb.Label.Interpreter='latex'`、`cb.Label.FontSize=36`。
+- **標題** = LaTeX 數學粗體、**norm 表示法 + 小寫 b**：`cb.Label.String = '$\mathbf{\|b\|\;(mT)}$'`（渲染成 `‖b‖ (mT)`）、
+  `cb.Label.Interpreter='latex'`、`cb.Label.FontSize=36`。
+  🔒 **使用者拍板 2026-08-05：場量標籤一律寫 `‖b‖`（雙豎線 norm、小寫 b），不再用 `|B|`（單豎線、大寫）。**
+  適用所有 colorbar / 軸標題 / 圖例中的場強度標籤（lumped-parameter 模型的場一律小寫 b，見 `unit-reference.md`）。
+  LaTeX 寫法：`\|b\|`（`\|` 才是雙豎線；`|b|` 會出單豎線）。
 - **刻度數字** `cb.FontSize=36; cb.FontWeight='bold'`。
 - **箭頭配色**：nb=28 個 turbo bin、`edges=linspace(0,CLIM,nb+1)`，逐 bin `quiver(...,'Color',cmap(k,:))`（箭頭自帶 truecolor，colormap/clim 只驅動 colorbar 圖例）。
 - **貼近 panel**：colorbar 緊靠圖框、不要留大白邊（2D 圖用預設 east 即可；合併圖用下方寬度比例法）。3D 透視圖若預設 colorbar 離框太遠或標題被裁 → 手動 `set(ax,'Position',...)` 縮軸 + `cb.Position` 明確定位，把標題留在圖內。
@@ -266,7 +315,7 @@ Zs = ZL(1) + (gz(:)+0.5 + JIT*(rand(numel(gz),1)-0.5))*hz;
 - 「用選項① / 粗體框圖 / 套那個風格」——直接套對應 preset。
 
 ## 之後新增 preset
-往本檔 `## 選項②…` 續寫；同步更新 `README.md`、`read-rules-first.md` 清單，以及「畫圖前問選項」時列出的當前清單。
+往本檔 `## 選項②…` 續寫；同步更新 `README.md` 清單，以及「畫圖前問選項」時列出的當前清單。
 
 ## 相關
 - memory `feedback_field_quiver_style`（同款風格 + y=0 場 quiver 專屬坑：source/interp/raw/cap/前端發散）。

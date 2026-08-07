@@ -1,23 +1,26 @@
 ! ============================================================================
-! MT_Sim_graded_all.txt — Long2016 halfcut ORIGINAL graded (NO gap), coil 1
+! MT_Sim_SensorRefine.txt — Long2016 halfcut sensor-refine（3 顆加密球）solve deck, coil XCOILX
 !   目的：重解原始 graded（無氣隙、支撐座實心鋼=MAT2、無 slab），統一補上**全域 all** 場
 !   （當初 graded 只匯 WP、all dump 被關掉 → sensor/電壓側做不了；本次補齊）。
 !
-!   RESUME db/mesh/graded/mesh_graded.db（原始 graded 網格，同底 geom）
-!     → coil 1 = +1 raw、其餘 0（**照 MT_Sim_P*_basegap 慣例，不可自創**）
-!     → D,ALL,MAG,0 → magsolv,3 → POST 抽 all + wp .dat → data/graded/coil1/
-!     → SAVE solve db（sim_coil1.db）供日後 re-extract，不再重解。
+!   RESUME db/mesh/sensor_refine_p1p2/mesh_lv<N>.db（graded 底 + 3 顆 R0.3 加密球）
+!     → coil XCOILX = +1 raw、其餘 0（**照 MT_Sim_P*_basegap 慣例，不可自創**）
+!     → D,ALL,MAG,0 → magsolv,3 → POST 抽 all + wp .dat → data/sensor_refine_p1p2/lv<N>/coil<C>/
+!     → SAVE solve db（coil<C>_lv<N>.db）供日後 re-extract，不再重解。
 !
 !   coil↔pole = long2016 [1,3,6,5,2,4]（baked in mesh 的 SOURC36 REAL set；= NTU 同 map）。
 !   deck **不做號誌翻轉**：raw = 下極 sink / 上極 source（混合，long2016 事實）；
 !     all-source 的全域 negate + flip-sink 由 MATLAB load_coils_actuator 統一處理。
-!   ⚠ 由 run_graded_all.sh sed 1→coil 編號；勿手改 1。
 !   ⚠ TURNS/几何常數 /CWD /RESUME /export 路徑皆與 basegap 一致，只差 RESUME 網格 + 輸出夾。
+!
+! [MODIFIED 2026-08-05] case → sensor_refine_p1p2（3 顆加密球 @ SOFF 4.5）；
+!   激發 coil 由寫死 1 改成 placeholder **XCOILX**，由 run_sensor_refine.sh sed（COILS 預設 "1 5"）。
+!   coil1 = P1 自激、coil5 = P2 自激（map [1,3,6,5,2,4]；⚠ coil2 是 P3 不是 P2）。
 ! ============================================================================
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\sim\sensor_refine'
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\sim\sensor_refine_p1p2'
 /CLEAR,NOSTART
-/TITLE, Long2016 halfcut ORIGINAL graded (no gap) - coil 1
-RESUME,'mesh_lvXLVX','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\mesh\sensor_refine'
+/TITLE, Long2016 halfcut sensor-refine p1p2 lvXLVX - coil XCOILX
+RESUME,'mesh_lvXLVX','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\mesh\sensor_refine_p1p2'
 
 /PREP7
 *afun,DEG
@@ -35,14 +38,16 @@ COIL_THK   = COIL_OUT_R - COIL_IN_R
 COIL_H     = PROT_H
 TURNS      = 70
 
-! ---- coil currents: coil 1 = +1 raw, others 0 ----
+! ---- coil currents: coil XCOILX = +1 raw, others 0 ----
+! [MODIFIED 2026-08-05] 激發索引 1 → XCOILX（driver sed）；六顆先歸零的結構不變。
+!   號誌一律 +TURNS*1；raw 的 sink/source 由下游 s_source=[-1,+1,-1,+1,+1,-1] 處理，deck 不翻號。
 R,1,1,TURNS*0,COIL_THK,COIL_H
 R,2,1,TURNS*0,COIL_THK,COIL_H
 R,3,1,TURNS*0,COIL_THK,COIL_H
 R,4,1,TURNS*0,COIL_THK,COIL_H
 R,5,1,TURNS*0,COIL_THK,COIL_H
 R,6,1,TURNS*0,COIL_THK,COIL_H
-R,1,1,TURNS*1,COIL_THK,COIL_H
+R,XCOILX,1,TURNS*1,COIL_THK,COIL_H
 
 ! ---- far-field BC: MAG=0 on outer cyl lateral + caps ----
 AIR_CYL_Z_CTR = YOKE_H/2
@@ -64,7 +69,7 @@ magsolv,3,,,,,1
 FINISH
 
 ! ====================================================================
-! POST1: all + WP region -> data/graded/coil1/
+! POST1: all + WP region -> data/sensor_refine_p1p2/lvXLVX/coilXCOILX/
 ! ====================================================================
 /POST1
 SET,LAST
@@ -72,24 +77,24 @@ ALLSEL,ALL
 /HEADER,OFF,OFF,OFF,OFF,OFF,OFF
 /FORMAT,10,,20,12,,
 /PAGE,1000000,,1000000
-/OUTPUT,'coil1_coord_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\sensor_refine\lvXLVX\coil1'
+/OUTPUT,'coilXCOILX_coord_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\sensor_refine_p1p2\lvXLVX\coilXCOILX'
 NLIST,ALL, , ,COORD
 /OUTPUT
-/OUTPUT,'coil1_bfield_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\sensor_refine\lvXLVX\coil1'
+/OUTPUT,'coilXCOILX_bfield_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\sensor_refine_p1p2\lvXLVX\coilXCOILX'
 PRNSOL,B,COMP
 /OUTPUT
 LOCAL,12,2, 0, 0, SPH_OFST
 CSYS,12
 NSEL,S,LOC,X, 0, 2e-3
 CSYS,0
-/OUTPUT,'coil1_coord_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\sensor_refine\lvXLVX\coil1'
+/OUTPUT,'coilXCOILX_coord_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\sensor_refine_p1p2\lvXLVX\coilXCOILX'
 NLIST,ALL, , ,COORD
 /OUTPUT
-/OUTPUT,'coil1_bfield_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\sensor_refine\lvXLVX\coil1'
+/OUTPUT,'coilXCOILX_bfield_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\sensor_refine_p1p2\lvXLVX\coilXCOILX'
 PRNSOL,B,COMP
 /OUTPUT
 ALLSEL,ALL
 CSYS,0
 FINISH
-SAVE                   ! [ADDED] 存 solve db → db/sim/graded/sim_coil1.db（交付 db/sim；日後 re-extract 不再重解）
+SAVE                   ! [ADDED] 存 solve db → db/sim/sensor_refine_p1p2/（jobname coil<C>_lv<N>）（交付 db/sim；日後 re-extract 不再重解）
 /EXIT

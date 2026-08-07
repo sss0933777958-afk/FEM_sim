@@ -21,5 +21,5 @@ model_check/
 - `*.iges` — legacy（ANSYS IGESOUT 出的、SW 讀成 ×25.4，**勿再交付**，僅留存）。
 
 ## 相關
-- 規則 `.claude/rules/deliver-step-for-check.md`（交付一律 STEP）、`iges-model-id.md`（貼 `model_check/<topic>/*` 路徑辨識模型）。
+- 規則 `.claude/rules/deliver-step-for-check.md`（交付一律 STEP）。貼 `model_check/<model>/*` 路徑時直接從第二層認模型（`long_fei` / `hung_hexapole` / `NTU_hexapole`），不必問。
 - backup/hung 有自己的 `backup/hung/IGES_converted/`（**未改名**，另一設計）。
