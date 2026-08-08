@@ -15,10 +15,12 @@ function plot_p1p2_poles_3d(SOURCE, FLD, XLin, ZLin, YHW)
     here   = fileparts(fileparts(mfilename('fullpath')));
     figdir = fullfile(fileparts(here), 'paper_fig', 'Section3_A');
     if ~exist(figdir,'dir'); mkdir(figdir); end
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');
+    % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live 樹。
+    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
     addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling\common_path');
     addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Maxwell\function');   % import_maxwell_fld
-    c = mt_constants();
+    c = model_config('long2016_hexapole_halfcut','tip40um');
 
     rf = c.POLE_TIP_R*1e3;  beta = atan2(c.POLE_R, c.POLE_CONE_LEN);
     L  = 8;

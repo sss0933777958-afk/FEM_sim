@@ -18,7 +18,9 @@ N_MAX    = 60000;         % 橫軸上限
 %% ---- paths -----------------------------------------------------------------
 CAL  = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
         'hung_hexapole\Calibration_using_FEM_modeling'];
-addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');
+% [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live 樹。
+CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
 addpath(fullfile(CAL,'voltage_base','code','main_function')); addpath(fullfile(CAL,'voltage_base','code','function'));
 addpath(fullfile(CAL,'voltage_base','code','main_function'));
 results_root = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\data';
@@ -26,7 +28,7 @@ mesh_csv_dir = fullfile(results_root,'mesh','graded','csv');
 TREE = fullfile(CAL,'voltage_base');
 fig_dir = fullfile(TREE,'figures','shared'); if ~exist(fig_dir,'dir'); mkdir(fig_dir); end
 
-cnst = mt_constants();
+cnst = model_config('hung_hexapole');
 apdl_to_paper_idx = [1,3,6,5,2,4];
 plabel = {'P1','P2','P3','P4','P5','P6'};
 [sensor_pos, sensor_n] = build_sensor_geometry(cnst);

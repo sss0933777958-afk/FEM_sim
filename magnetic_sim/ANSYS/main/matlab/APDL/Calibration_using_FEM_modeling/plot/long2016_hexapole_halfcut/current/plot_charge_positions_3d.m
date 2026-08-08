@@ -5,7 +5,9 @@ function plot_charge_positions_3d()
 %   pc = ℓ̂·(Pc_base + E(ê))（actuator frame → 轉 WP frame），並**標出相對於 current_base 的總偏移 Δ**。
 %   gap200um_mueq、R=150µm；輸出 current_base/figures/charge_positions_P1P2_3d.png。
 
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');   % mt_constants...
+    % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live config。
+    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
     addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\common');  % ansys_path
     here   = fileparts(mfilename('fullpath'));
     nofix  = fileparts(fileparts(here));                    % .../current_base
@@ -13,7 +15,7 @@ function plot_charge_positions_3d()
     addpath(fullfile(nofix,'code','main_function'));             % load_coils_actuator/select_ball/fitting
     figdir = fullfile(nofix,'figures','shared');  if ~exist(figdir,'dir'); mkdir(figdir); end
 
-    cnst = mt_constants();
+    cnst = model_config('long2016_hexapole_halfcut','tip40um');
     tip  = [cnst.pole_tip_x; cnst.pole_tip_y; cnst.pole_tip_z_wp];   % 3x6 [m] WP frame
     dhat = tip ./ vecnorm(tip);
     L = cnst.POLE_CONE_LEN*1e3;  R = cnst.POLE_R*1e3;                % mm

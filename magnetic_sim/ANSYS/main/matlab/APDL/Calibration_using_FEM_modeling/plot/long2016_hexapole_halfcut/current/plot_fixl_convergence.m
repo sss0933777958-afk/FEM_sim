@@ -10,10 +10,12 @@
 %  ============================================================================
 clear; clc; close all;
 addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\common');
-addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');
+% [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live config。
+CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
 model = 'long2016_hexapole_halfcut';
 
-cnst    = mt_constants();
+cnst = model_config('long2016_hexapole_halfcut','tip40um');
 R_list  = 50:50:500;                         % 同 no_fix_l
 NIT     = 25;
 dataset = 'all';

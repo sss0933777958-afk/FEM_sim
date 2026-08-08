@@ -18,7 +18,9 @@ function plot_current_vs_voltage_err_hist()
            'long2016_hexapole_halfcut\Calibration_using_FEM_modeling'];
     OUTDIR = fullfile(CAL,'voltage_base','figures','shared');
     results_root = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');   % mt_constants/import_ansys_data/filter_iron_nodes
+    % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live config。 原註：mt_constants/import_ansys_data/filter_iron_nodes
+    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
     addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\common');
     addpath(fullfile(CAL,'current_base','code','main_function'));               % load_coils_actuator/select_ball/fitting/build_S_matrix/solve_KI_bar_gain
     addpath(fullfile(CAL,'voltage_base','code','main_function')); % build_sensor_geometry

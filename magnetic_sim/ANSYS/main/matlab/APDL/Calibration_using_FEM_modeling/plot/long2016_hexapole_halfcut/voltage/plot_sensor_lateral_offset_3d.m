@@ -9,9 +9,11 @@
 clear; clc;
 here = fileparts(mfilename('fullpath'));
 CAL  = fileparts(fileparts(here));                            % ...\voltage_base
-addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');
-cnst = mt_constants();
-outdir = fullfile(CAL,'figures','shared'); if ~exist(outdir,'dir'), mkdir(outdir); end
+% [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live config + utils/pole_sensor_geometry。
+CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
+cnst = model_config('long2016_hexapole_halfcut','tip40um');
+outdir = fullfile(CALROOT,'figures','long2016_hexapole_halfcut','voltage','common'); if ~exist(outdir,'dir'), mkdir(outdir); end
 
 render_offset('cone', 'lat',  -30, cnst, outdir);
 render_offset('cone', 'long', -2,  cnst, outdir);
@@ -20,13 +22,16 @@ render_offset('shank','none',  0,  cnst, outdir);
 %% ================= per-mode render =================
 function render_offset(GEO, OFF, AMT, cnst, outdir)
     colP=[0.30 0.55 0.95]; green=[0.10 0.55 0.20]; redn=[0.85 0.10 0.10]; arcc=[0.85 0.45 0.05];
-    ell=cnst.R_norm; beta=atan2(cnst.POLE_R,cnst.POLE_CONE_LEN); psi0=atan2(cnst.R_norm_z,cnst.R_norm_xy);
+    % [MODIFIED 2026-08-08] sensor 幾何改由 utils/pole_sensor_geometry 供給（含 psi 繞極軸旋轉）；
+    %   本檔原本的 e2c(p)/ncf(p) 是同一套 psi 慣例，但用舊構法（名目 beta、無真實錐體半徑外推）。
+    ell=cnst.R_norm; psi0=atan2(cnst.R_norm_z,cnst.R_norm_xy);
+    [~,~,gg] = pole_sensor_geometry(cnst);  beta = gg.beta(1);   % P1 真實半錐角（CAD）
     dirv=@(e,a)[cos(e)*cos(a);cos(e)*sin(a);sin(e)];
     MM=1e3; ah=[1;0;0]; vh=[0;1;0]; e1=dirv(-psi0,0); T=(ell*e1)*MM;
-    CONE=cnst.POLE_CONE_LEN*MM; RSH=3.047; Rc=CONE*tan(beta);
-    soffC=4.572e-3; AIR=0.41e-3;
-    e2c=@(p) cos(beta)*ah+sin(beta)*(cos(p)*[0;0;-1]+sin(p)*vh);
-    ncf=@(p) -sin(beta)*ah+cos(beta)*(cos(p)*[0;0;-1]+sin(p)*vh);
+    CONE=gg.cone_len(1)*MM; RSH=3.047; Rc=CONE*tan(beta);      % 真實錐長（CAD）
+    soffC=4.572e-3;   % AIR 由 pole_sensor_geometry 內部處理（預設 0.41mm）
+    % psi 版位置/法線：直接取共用幾何（psi=0 即 canonical sensor 方位）
+    Pg =@(p,so) sg_pos(cnst, so, p);   Ng =@(p,so) sg_nrm(cnst, so, p);
     RadOff=3.047+0.41; a0=18; nr0=[0;0;-1]; wf=@(p) cos(p)*nr0+sin(p)*vh;
 
     isShank=strcmp(GEO,'shank'); DRAW_OFF=~strcmp(OFF,'none'); Pf=[]; nf=[]; tt=[];
@@ -35,15 +40,15 @@ function render_offset(GEO, OFF, AMT, cnst, outdir)
         Lcyl=22; Lp=CONE; XL=[-1 24]; YL=[-4.5 4.5]; ZL=[-5.6 0.8]; TICK=5;
         fn='sensor_lateral_offset_P1_shank18_3d.png'; ttl='P1 Hall sensor @ shank a=18mm（3D 示意）';
     else
-        Pnom=(ell*e1+soffC*e2c(0)+AIR*ncf(0))*MM; n_nom=ncf(0);
+        Pnom=Pg(0,soffC)*MM; n_nom=Ng(0,soffC);
         Lp=6; XL=[-0.6 6.4]; YL=[-2 2]; ZL=[-2.8 0.4]; TICK=2;
         if strcmp(OFF,'lat')
             tt=linspace(0,AMT,40)*pi/180;
-            Pf=@(p)(ell*e1+soffC*e2c(p)+AIR*ncf(p))*MM;  nf=@(p)ncf(p);
+            Pf=@(p)Pg(p,soffC)*MM;  nf=@(p)Ng(p,soffC);
             fn='sensor_lateral_offset_P1_3d.png'; ttl='P1 Hall sensor 側向偏移（3D 示意）';
         else % long：沿錐面滑 soff
             tt=linspace(0,AMT,40)*1e-3;
-            Pf=@(d)(ell*e1+(soffC+d)*e2c(0)+AIR*ncf(0))*MM;  nf=@(d)ncf(0);
+            Pf=@(d)Pg(0,soffC+d)*MM;  nf=@(d)Ng(0,soffC);
             fn='sensor_long_offset_P1_3d.png'; ttl='P1 Hall sensor 縱向偏移（3D 示意）';
         end
     end
@@ -127,4 +132,14 @@ function draw_box_edges(ax,xl,yl,zl,lw)
         plot3(ax,C(E(e,:),1),C(E(e,:),2),C(E(e,:),3),'-','Color','k','LineWidth',lw);
     end
     xlim(ax,xl); ylim(ax,yl); zlim(ax,zl);
+end
+
+%% ---- local：包一層 pole_sensor_geometry（P1、可帶 psi 與 soff）----
+function P = sg_pos(cnst, soff, psi)
+    S = pole_sensor_geometry(cnst, struct('soff_lower', soff, 'psi', psi));
+    P = S(:,1);
+end
+function N = sg_nrm(cnst, soff, psi)
+    [~, Nn] = pole_sensor_geometry(cnst, struct('soff_lower', soff, 'psi', psi));
+    N = Nn(:,1);
 end

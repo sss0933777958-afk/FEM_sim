@@ -32,6 +32,7 @@ APDL  = fileparts(CAL);                                      % .../main/matlab/A
 ANSYS = fileparts(fileparts(fileparts(APDL)));               % .../ANSYS
 addpath(fullfile(CAL, 'function'));                                     % pipeline + import_ansys_data/filter_iron_nodes/interp_field_to_points
 addpath(fullfile(CAL, 'common_path'));                                  % ansys_path（共用路徑 resolver）
+addpath(fullfile(CAL, 'utils'));                                          % [ADDED 2026-08-08] pole_sensor_geometry（sensor 幾何唯一來源）
 
 %% ---- pipeline 前段（共用）---------------------------------------------------
 cfg = model_config(MODEL, GEOM);

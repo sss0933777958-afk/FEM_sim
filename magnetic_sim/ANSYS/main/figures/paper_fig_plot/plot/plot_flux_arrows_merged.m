@@ -14,8 +14,10 @@ function plot_flux_arrows_merged()
     if ~exist(figdir,'dir'); mkdir(figdir); end
     CAL = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
     addpath(fullfile(CAL,'function'));  addpath(fullfile(CAL,'common_path'));
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');
-    cnst = mt_constants();
+    % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live 樹。
+    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
+    cnst = model_config('long2016_hexapole_halfcut','tip40um');
 
     cname='coil5';  pidx=2;                 % coil5 = P2(上極 source）
     s = 1 - 2*cnst.pole_is_lower(pidx);     % = +1(不翻)

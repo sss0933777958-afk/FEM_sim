@@ -3,10 +3,12 @@ function plot_P2pole_circuit_2d(PREVIEW)
 %   graded 密網格、P1 激發（CURR=-1 已 all-source）、真實 FEM 節點、x-z 剖面（y≈0 薄片）。
 %   箭頭=單位方向、顏色=|B|(log)。
     if nargin < 1 || isempty(PREVIEW), PREVIEW = false; end
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');
+    % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live 樹。
+    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
     addpath(['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
              'hung_hexapole\Calibration_using_FEM_modeling\voltage_base\code\function']);
-    cnst = mt_constants();
+    cnst = model_config('hung_hexapole');
     rr = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\data';
 
     d = import_ansys_data(fullfile(rr, 'graded_p2', 'coil1'),'p2reg_full','coil1');   % 已 all-source（不翻）；_full=Z 擴到 holder 頂

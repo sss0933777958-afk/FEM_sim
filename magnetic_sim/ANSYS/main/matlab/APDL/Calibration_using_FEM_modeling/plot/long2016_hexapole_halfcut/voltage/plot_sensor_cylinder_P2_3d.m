@@ -5,9 +5,11 @@
 clear; clc;
 here = fileparts(mfilename('fullpath'));
 CAL  = fileparts(fileparts(here));                                   % ...\voltage_base
-addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');   % mt_constants
+% [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live config。 原註：mt_constants
+CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
 addpath(fullfile(CAL,'code','main_function'));                       % build_sensor_geometry
-cnst = mt_constants();
+cnst = model_config('long2016_hexapole_halfcut','tip40um');
 outdir = fullfile(CAL,'figures','shared'); if ~exist(outdir,'dir'), mkdir(outdir); end
 MM = 1e3;
 

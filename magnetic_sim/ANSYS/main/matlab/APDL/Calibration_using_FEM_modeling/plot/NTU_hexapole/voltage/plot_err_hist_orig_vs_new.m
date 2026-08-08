@@ -7,7 +7,9 @@ function plot_err_hist_orig_vs_new(variant)
 
     CAL = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
            'NTU_hexapole\Calibration_using_FEM_modeling'];
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');
+    % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live 樹。
+    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
     addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\common');
     addpath(fullfile(CAL,'current_base','code','main_function'));
     addpath(fullfile(CAL,'voltage_base','code','main_function'));
@@ -16,7 +18,7 @@ function plot_err_hist_orig_vs_new(variant)
 
     S = load(fullfile(base,'data',sprintf('calib_D_%s.mat',variant)));   % R_select/S_hall/n_uniform/apdl/paper
     apdl_to_paper = [1,3,6,5,2,4];
-    cnst = mt_constants();
+    cnst = model_config('NTU_hexapole');
 
     %% ---- 電荷擬合（WP 球，bias）→ A, Dv(G), Bstack ----
     D = load_coils_actuator('NTU_hexapole', cnst, apdl_to_paper, 'all', variant);

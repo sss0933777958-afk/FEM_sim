@@ -16,14 +16,14 @@ function plot_sensor_mounting_p2(SOFF, WITHFIELD, CMODE)
     here   = fileparts(fileparts(mfilename('fullpath')));
     figdir = fullfile(fileparts(here),'paper_fig','Section3_A');
     if ~exist(figdir,'dir'); mkdir(figdir); end
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');   % mt_constants
+    % [MODIFIED 2026-08-08] 不再 addpath backup（規則 no-backup-data）；改用 live config +
+    %   utils/pole_sensor_geometry（sensor 幾何唯一來源）。幾何改用 CAD STEP 實測的真實錐體。
+    CAL = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    addpath(fullfile(CAL,'function'), fullfile(CAL,'utils'));
+    cnst = model_config('long2016_hexapole_halfcut', 'tip40um');
 
-    % ---- tip40 geometry (P2, WP frame, mm; = plot_sensor_mounting.m) ----
-    cnst   = mt_constants();
-    beta   = atan2(cnst.POLE_R, cnst.POLE_CONE_LEN);        % 半錐角 β ≈ 11.31°
-    inc_up = cnst.upper_incline;                            % 上極錐軸仰角 ≈ 36.59°
-    Lsl    = hypot(cnst.POLE_CONE_LEN, cnst.POLE_R)*1e3;    % 錐面斜長 ≈ 15.30 mm
-    rf     = cnst.POLE_TIP_R*1e3;                           % 尖端倒圓半徑 [mm]（40µm = 0.04）
+    % ---- tip40 geometry (P2, WP frame, mm) ----
+    IP = 2;                                                 % P2（幾何全部由 pole_sensor_geometry 供給）
     if nargin < 1 || isempty(SOFF), SOFF = 4.572; end       % [MODIFIED] 沿錐面直線距(藍線長)可調
     if nargin < 2 || isempty(WITHFIELD), WITHFIELD = false; end   % [ADDED]
     % [ADDED 2026-08-05] CMODE = 色階模式（視窗內 ‖b‖ 跨 4 個數量級，單一線性色階顯示不出結構）
@@ -31,19 +31,24 @@ function plot_sensor_mounting_p2(SOFF, WITHFIELD, CMODE)
     if nargin < 3 || isempty(CMODE), CMODE = 'max'; end   % [MODIFIED] 使用者偏好線性全範圍
     YSLAB = 4.0;   CELL = 0.07;                             % [ADDED] apdl 取樣：y 半寬 / 抽稀格邊 [mm]
     AIR = 0.41;                                             % 離面 [mm]
-    dir = @(el,az)[cos(el)*cos(az); sin(el)];
     rot = @(v,a)[cos(a)*v(1)-sin(a)*v(2); sin(a)*v(1)+cos(a)*v(2)];
 
-    az = pi;                                                % P2:180°、上極、全錐
-    T   = [cnst.pole_tip_x(2); cnst.pole_tip_z_wp(2)]*1e3;
-    axc = dir(inc_up, az);
-    e2  = dir(inc_up + beta, az);
-    nh  = dir(inc_up + beta + pi/2, az);                    % n+（出鋼）
+    % [MODIFIED 2026-08-08] sensor 位置/法線一律由 pole_sensor_geometry 供給（不再自己算）。
+    %   P2 的子午面 = y=0 → 3D 向量取 (x,z) 即得本圖的 2D 座標。
+    [spos, snor, geo] = pole_sensor_geometry(cnst, struct('soff_upper', SOFF*1e-3));
+    to2 = @(v) v([1 3])*1e3;                                % 3D[m] → 2D(x,z)[mm]
+    beta = geo.beta(IP);                                    % 上極**真實**半錐角 11.0138°（CAD）
+    rf   = geo.r_tip(IP)*1e3;                               % 尖端倒圓半徑 [mm]
+    T    = to2(geo.tip(:,IP));
+    axc  = geo.axis([1 3],IP);
+    nh   = snor([1 3],IP);                                  % n+（出鋼）
+    sensor = to2(spos(:,IP));                               % 圓柱底面中心（離錐面精確 0.41mm）
+    foot   = sensor - AIR*nh;                               % 錐面上落腳點
 
-    foot   = T + SOFF*e2;                                   % 錐面上落腳點（直線端點）
-    sensor = foot + AIR*nh;                                 % 貼面 + 0.41mm（圓柱底面中心）
-
-    % ---- 磁極截面輪廓（tip + 錐軸 + ±β 錐面 + 40µm 鈍尖倒圓）----
+    % ---- 磁極截面輪廓（tip + 錐軸 + ±β 錐面 + 40µm 鈍尖倒圓；用真實錐體）----
+    % 弧自極尖掃到切點（半張角 90°−β），再沿母線延伸到錐底：
+    %   Lsl = (真實錐長 − 倒圓軸向推進)/cos β
+    Lsl = (geo.cone_len(IP) - geo.t_tan(IP))*1e3/cos(beta);
     C   = T + rf*axc;  axa = atan2(axc(2),axc(1));  angf = axa + pi;  hw = pi/2 - beta;
     fdA = rot(axc,+beta);  fdB = rot(axc,-beta);
     tha = linspace(angf-hw,angf+hw,60);  arc = C + rf*[cos(tha); sin(tha)];

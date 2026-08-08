@@ -8,7 +8,9 @@
 % 輸出 figures/eighteen_param/combo_region_hist.png（SET1）或 combo_region_hist_set2.png（SET2）。
 clear; clc;
 here=fileparts(mfilename('fullpath')); CAL=fileparts(fileparts(fileparts(here))); MODELDIR=fileparts(CAL);
-addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');
+% [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live config。
+CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
 addpath(fullfile(MODELDIR,'common'));
 addpath(fullfile(CAL,'current_base','code','main_function'));
 addpath(fullfile(CAL,'voltage_base','code','main_function'));

@@ -52,10 +52,12 @@ function plot_P2sensor_Braw_P1exc(MODE, PREVIEW, VARIANT, FLIP, WIN, FILLEMPTY)
     end
 
     %% ---- paths ----
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');
+    % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live config。
+    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
     addpath(['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
              'long2016_hexapole_halfcut\Calibration_using_FEM_modeling\voltage_base\code\function']);
-    cnst = mt_constants();
+    cnst = model_config('long2016_hexapole_halfcut','tip40um');
     rr   = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
 
     %% ---- P2 sensor 幾何（i=2）----

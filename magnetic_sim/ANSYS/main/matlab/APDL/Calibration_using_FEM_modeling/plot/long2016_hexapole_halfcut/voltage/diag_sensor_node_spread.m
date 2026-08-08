@@ -7,13 +7,15 @@
 clear; clc;
 TREE = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
         'long2016_hexapole_halfcut\Calibration_using_FEM_modeling\voltage_base'];
-addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');
+% [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live config。
+CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
 addpath(fullfile(TREE,'code','main_function')); addpath(fullfile(TREE,'code','function'));
 addpath(fullfile(TREE,'code','main_function'));
 results_root = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
 
 SENSOR_R = 0.15e-3; AXIAL_T = 0.10e-3;
-cnst = mt_constants();
+cnst = model_config('long2016_hexapole_halfcut','tip40um');
 apdl_to_paper_idx = [1,3,6,5,2,4];
 [sensor_pos, sensor_n] = build_sensor_geometry(cnst);
 plabel = {'P1','P2','P3','P4','P5','P6'};

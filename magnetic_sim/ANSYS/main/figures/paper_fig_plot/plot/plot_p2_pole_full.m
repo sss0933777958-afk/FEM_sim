@@ -10,9 +10,11 @@ function plot_p2_pole_full()
     here   = fileparts(fileparts(mfilename('fullpath')));
     figdir = fullfile(fileparts(here), 'paper_fig', 'Section3_A');
     if ~exist(figdir,'dir'); mkdir(figdir); end
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');
+    % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live 樹。
+    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
     addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling\common_path');
-    c = mt_constants();
+    c = model_config('long2016_hexapole_halfcut','tip40um');
 
     % ---- P2 幾何(WP frame, mm)----
     inc=c.upper_incline; th=c.pole_angles(2)*pi/180; psi0=atan2(c.R_norm_z,c.R_norm_xy); Rn=c.R_norm*1e3;

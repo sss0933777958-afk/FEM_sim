@@ -5,10 +5,12 @@ function diag_P2P1_gap_trend()
 %   畫 2-panel 解釋圖：(A) 兩條磁通路徑機制示意；(B) B·n+ @P2 vs gap 量化曲線。
 %   注意：sensor B·n+ 為「局部單點內插」估計（baseline 粗網格 sensor 圓柱內節點少）。
 
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');
+    % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live config。
+    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
     addpath(['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
              'long2016_hexapole_halfcut\Calibration_using_FEM_modeling\voltage_base\code\function']);
-    cnst = mt_constants();
+    cnst = model_config('long2016_hexapole_halfcut','tip40um');
     [sp, sn] = build_sensor_geometry(cnst);
     rr  = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
     mcd = fullfile(rr,'mesh','standard','csv');

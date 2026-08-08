@@ -14,9 +14,11 @@ function plot_hexapole_sensors_3d(layer)
     here   = fileparts(fileparts(mfilename('fullpath')));
     figdir = fullfile(fileparts(here), 'paper_fig', 'Section3_A');
     if ~exist(figdir,'dir'); mkdir(figdir); end
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling\common_path');
-    c = mt_constants();
+    % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live config，
+    %   否則 cnst 沒有 pole_cone_slope，pole_sensor_geometry 會靜默回退成名目 beta。
+    CAL = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    addpath(fullfile(CAL,'function'), fullfile(CAL,'utils'), fullfile(CAL,'common_path'));
+    c = model_config('long2016_hexapole_halfcut','tip40um');
 
     % =============================== 合併(上|下)===============================
     if strcmp(layer,'merge')
@@ -41,9 +43,12 @@ end
 % ============================================================================
 function draw_layer(ax, layer, c)
 % 把單一 layer(upper/lower)的 6-半極 + sensor + 框 + 視角 + tick 畫進 ax。
-    beta = atan2(c.POLE_R, c.POLE_CONE_LEN);  inc = c.upper_incline;
+    inc  = c.upper_incline;
     rf   = c.POLE_TIP_R*1e3;  Rcyl = c.POLE_R*1e3;                 % mm
-    gap  = rf*(1 - sin(beta));  SOFF = 4.572;  AIR = 0.41;          % mm（tip40 幾何）
+    SOFF = 4.572;                                                   % mm（沿貼附面斜面距離）
+    % [MODIFIED 2026-08-08] sensor 幾何改由 utils/pole_sensor_geometry 供給（唯一來源）。
+    %   舊寫法 sp = tip + SOFF*e2 + (gap+AIR)*nh（gap = rf(1-sin beta) 加在**法線**上）已作廢。
+    [SPOS, SNOR, GEO] = pole_sensor_geometry(c, struct('soff_upper',SOFF*1e-3,'soff_lower',SOFF*1e-3));
     dir3 = @(el,az)[cos(el)*cos(az); cos(el)*sin(az); sin(el)];
     L    = 8;
     SEP  = 0.6;   % [USER] 圖示用:每根極沿自身軸往外推,分開中間匯聚的尖端(mm)
@@ -60,15 +65,14 @@ function draw_layer(ax, layer, c)
         tip = [c.pole_tip_x(i); c.pole_tip_y(i); c.pole_tip_z_wp(i)]*1e3;   % mm
         if c.pole_is_lower(i)
             a=dir3(0,th); u=[-sin(th);cos(th);0]; v=[0;0;-1]; half=true;
-            e2=dir3(-beta,th);      nh=dir3(-beta-pi/2,th);
         else
             a=dir3(inc,th); u=cross(a,[0;0;1]); u=u/norm(u); v=cross(a,u); half=false;
-            e2=dir3(inc+beta,th);   nh=dir3(inc+beta+pi/2,th);
         end
+        beta = GEO.beta(i);                      % per-pole 真實半錐角（CAD STEP）
         tip = tip + SEP*a;   % [USER] 沿自身軸外推,分開中間匯聚尖端(sensor sp 依 tip 一起移)
         [X,Y,Z] = draw_pole(ax, tip,a,u,v, rf,beta,Rcyl, L, half, colP, 1.0);
         allP = [allP; X(:) Y(:) Z(:)]; %#ok<AGROW>
-        sp = tip + SOFF*e2 + (gap+AIR)*nh;   sn = nh;
+        sp = SPOS(:,i)*1e3 + SEP*a;   sn = SNOR(:,i);   % 位置/法線由共用幾何供給（sp 同步 SEP 外推）
         draw_cyl(ax, sp, sn, 0.15, 0.10, colS, 0.95);
         allP = [allP; sp.']; %#ok<AGROW>
     end

@@ -13,7 +13,9 @@ OUTDIR = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
 VARIANT='gap_200um'; R_select=150e-6; ell0=0.5e-3;   % ell0 [m]（fit_bias 在 SI）
 CAL = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
        'hung_hexapole\Calibration_using_FEM_modeling'];
-addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');
+% [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live 樹。
+CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
 addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\common');
 addpath(fullfile(CAL,'current_base','code','main_function'));     % load_coils_actuator/select_ball/fitting/build_S_matrix/solve_KI_bar_gain
 model='hung_hexapole'; cnst=mt_constants(); apdl_to_paper_idx=[1,3,6,5,2,4];

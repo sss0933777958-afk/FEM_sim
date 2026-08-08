@@ -19,7 +19,9 @@ clear; clc;
 %% ---- paths ----------------------------------------------------------------
 TREE = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
         'long2016_hexapole_halfcut\Calibration_using_FEM_modeling\voltage_base'];
-addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');  % mt_constants/import_ansys_data
+% [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live config。 原註：mt_constants/import_ansys_data
+CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
 addpath(fullfile(TREE,'code','main_function')); addpath(fullfile(TREE,'code','function'));                                                      % 三個 extract_Vmat*
 addpath(fullfile(TREE,'code','main_function'));                                                      % 三個 extract_Vmat*
 results_root = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
@@ -35,7 +37,7 @@ AXIAL_T  = 0.10e-3;        % sensor 圓柱高 [m]
 plabel   = {'P1','P2','P3','P4','P5','P6'};
 
 %% ---- 共用：常數 + sensor 幾何 + APDL→paper 對映 --------------------------
-cnst = mt_constants();
+cnst = model_config('long2016_hexapole_halfcut','tip40um');
 apdl_to_paper_idx = [1,3,6,5,2,4];                       % APDL coil j → paper pole（判下極翻號用）
 [sensor_pos, sensor_n] = build_sensor_geometry(cnst);     % 6 顆 sensor 中心 + 法線 n+（兩法 M1/M2 共用）
 

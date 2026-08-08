@@ -13,13 +13,15 @@ function plot_sphere_lattice_3d()
     here   = fileparts(fileparts(mfilename('fullpath')));
     figdir = fullfile(fileparts(here), 'paper_fig', 'Section2_E');
     if ~exist(figdir,'dir'); mkdir(figdir); end
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');
+    % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live 樹。
+    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
     CAL = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
 
     % ---- 載 fix(無 bias)fit → ell;轉 actuator frame;單位 mm ----
     S = load(fullfile(CAL,'data','long2016_hexapole_halfcut','.mat','fit_fixl_R150um_gap_200um.mat'),'ell');
     ellm = S.ell / 1000;                                 % mm(≈0.868)
-    c   = mt_constants();
+    c = model_config('long2016_hexapole_halfcut','tip40um');
     tip  = [c.pole_tip_x; c.pole_tip_y; c.pole_tip_z_wp];
     dhat = tip ./ vecnorm(tip);                          % 3×6 measure 單位方向
     pc   = ellm * dhat;                                  % 6 尖端落在 ℓ̂ 殼上 [mm]（measure frame, 磁角位置）

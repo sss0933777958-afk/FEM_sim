@@ -5,8 +5,10 @@ function plot_ellipsoids_yaxis_3d()
 %   畫：每點橢球（半透明）+ U 三個單位向量箭頭（k=1 紅/2 綠/3 藍）。只留橢球+U（無球/圓/線）。
 %   ★ model-derived。橢球需 daspect([1 1 1]) 才不變形。輸出 current_base/figures/ellipsoids_yaxis_3d.png。
 
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');  % mt_constants
-    cnst = mt_constants();
+    % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live config。
+    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
+    cnst = model_config('long2016_hexapole_halfcut','tip40um');
     here   = fileparts(mfilename('fullpath'));
     fixdir = fileparts(fileparts(here));
     figdir = fullfile(fixdir,'figures','single_param');   if ~exist(figdir,'dir'); mkdir(figdir); end

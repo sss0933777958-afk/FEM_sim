@@ -13,8 +13,10 @@ function diag_P2_Bn_map(PREVIEW)
     if nargin < 1 || isempty(PREVIEW), PREVIEW = false; end
 
     %% ---- paths ----
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');  % mt_constants, import_ansys_data
-    cnst = mt_constants();
+    % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live config + utils/pole_sensor_geometry。
+    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
+    cnst = model_config('long2016_hexapole_halfcut','tip40um');
     rr   = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
 
     %% ---- 載 baseline coil1 (P1 激發) ----
@@ -28,7 +30,7 @@ function diag_P2_Bn_map(PREVIEW)
     %% ---- P2 cone 幾何 (i=2，上極) ----
     th     = cnst.pole_angles(2)*pi/180;                 % P2 方位角
     inc_up = cnst.upper_incline;                         % 上極軸傾角 ≈36.59° [rad]
-    beta   = atan2(cnst.POLE_R, cnst.POLE_CONE_LEN);     % 半錐角 ≈11.31° [rad]
+    beta   = atan(cnst.pole_cone_slope(2));              % 上極**真實**半錐角 11.0138°（CAD STEP）
     dirv   = @(e,a) [cos(e)*cos(a); cos(e)*sin(a); sin(e)];
     tip    = [cnst.R_norm_xy*cos(th); cnst.R_norm_xy*sin(th); +cnst.R_norm_z];
 

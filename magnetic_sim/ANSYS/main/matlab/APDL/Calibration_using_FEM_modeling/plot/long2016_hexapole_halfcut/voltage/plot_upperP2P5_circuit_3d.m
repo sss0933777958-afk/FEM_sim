@@ -12,11 +12,13 @@ function plot_upperP2P5_circuit_3d(EXC, VARIANT, SHOW_FIELD)
     if nargin < 3 || isempty(SHOW_FIELD), SHOW_FIELD = true;     end
     DPI = 200;
 
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');   % mt_constants
+    % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live config。
+    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
     % [MODIFIED] 原本 addpath 舊 per-model 樹 voltage_base\code\function（已刪除）→ 改掛共用 function/
     addpath(['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\' ...
              'Calibration_using_FEM_modeling\function']);           % import_ansys_data / filter_iron_nodes
-    cnst = mt_constants();
+    cnst = model_config('long2016_hexapole_halfcut','tip40um');
     [sp, sn] = sensor_geometry_local(cnst);                 % 3×6 sensor 中心/法線（WP 框 [m]）
                                                             % [MODIFIED] 原 build_sensor_geometry 隨舊樹刪除，
                                                             %   改用照抄 build_V_matrix.m 之 canonical local（見檔末）
@@ -222,29 +224,11 @@ function draw_box_edges3(ax, bx, by, bz, lw)
     end
 end
 
-%% ---- local：sensor 幾何（照抄 function/build_V_matrix.m 的 canonical local sensor_geometry）----
-%   ⚠ 與 build_V_matrix.m 為同一份定義，改動要兩邊同步。
+%% ---- local：sensor 幾何（**改為呼叫** utils/pole_sensor_geometry，唯一來源）----
+% [MODIFIED 2026-08-08] 原本這裡照抄了一份 build_V_matrix 的舊 local sensor_geometry
+%   （名目 beta、無真實錐體半徑外推、氣隙實際只有 0.3635/0.4012mm），已刪除。
 function [sensor_pos, sensor_n] = sensor_geometry_local(cfg)
-    SOFF_upper = 4.572e-3;
-    beta   = atan2(cfg.POLE_R, cfg.POLE_CONE_LEN);    % 半錐角 ≈ 11.31°
-    psi0   = atan2(cfg.R_norm_z, cfg.R_norm_xy);      % 仰角 ≈ 35.26°（magic-angle）
-    inc_up = cfg.upper_incline;                       % 上極真實錐軸傾角 ≈ 36.59°
-    ell    = cfg.R_norm;
-    SOFF_lower = 4.572e-3;  AIR = 0.41e-3;
-    dir = @(el,az) [cos(el)*cos(az); cos(el)*sin(az); sin(el)];
-    sensor_pos = zeros(3,6);  sensor_n = zeros(3,6);
-    for i = 1:6
-        th = cfg.pole_angles(i)*pi/180;
-        if cfg.pole_is_lower(i), psi = -psi0; else, psi = +psi0; end
-        e1 = dir(psi, th);
-        if cfg.pole_is_lower(i)
-            e2 = dir(-beta, th);   nhat = dir(-beta-pi/2, th);   soff = SOFF_lower;
-        else
-            e2 = dir(inc_up+beta, th);  nhat = dir(inc_up+beta+pi/2, th);  soff = SOFF_upper;
-        end
-        sensor_pos(:,i) = ell*e1 + soff*e2 + AIR*nhat;
-        sensor_n(:,i)   = nhat;
-    end
+    [sensor_pos, sensor_n] = pole_sensor_geometry(cfg);
 end
 
 %% ---- local：sensor 取樣圓柱（軸=n̂、半徑 R、高 H）----

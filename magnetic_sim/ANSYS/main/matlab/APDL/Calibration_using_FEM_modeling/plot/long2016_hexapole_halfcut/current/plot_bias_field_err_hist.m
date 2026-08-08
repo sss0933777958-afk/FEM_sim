@@ -20,13 +20,15 @@ NB       = 40;                % 直方圖 bin 數
 TREE = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
         'long2016_hexapole_halfcut\Calibration_using_FEM_modeling\current_base'];
 addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\common');     % ansys_path
-addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');  % mt_constants/import_ansys_data/filter_iron_nodes
+% [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live config。
+CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
 addpath(fullfile(TREE,'code','main_function'));
 model  = 'long2016_hexapole_halfcut';
 figdir = fullfile(TREE,'figures','eighteen_param');
 if ~exist(figdir,'dir'); mkdir(figdir); end
 
-cnst = mt_constants();
+cnst = model_config('long2016_hexapole_halfcut','tip40um');
 apdl_to_paper_idx = [1,3,6,5,2,4];
 
 %% ---- 讀結果防呆 + 載 6 coil（gap200, 'all'）------------------------------

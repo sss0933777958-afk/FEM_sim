@@ -9,8 +9,10 @@ function plot_pole_circuit_charge_3d(p, showArrows, Rum)
     if nargin < 1, p = 1; end
     if nargin < 2, showArrows = true; end
     if nargin < 3, Rum = 50; end
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');
-    cnst = mt_constants();
+    % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live config。
+    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
+    cnst = model_config('long2016_hexapole_halfcut','tip40um');
     apdl_to_paper = [1,3,6,5,2,4];
     k = find(apdl_to_paper == p);
     out_dir = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\figures\single_param\long2016_hexapole_halfcut';

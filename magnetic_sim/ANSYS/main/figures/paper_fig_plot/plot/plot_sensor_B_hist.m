@@ -231,31 +231,23 @@ function cfg = mw_cfg()
     rmpath(fullfile(APDL,'function'));  rmpath(fullfile(APDL,'common_path'));
     warning('on','MATLAB:rmpath:DirNotFound');
     addpath(fullfile(MW,'function'));   addpath(fullfile(MW,'common_path'));
+    addpath(fullfile(MW,'utils'));      % [ADDED 2026-08-08] pole_sensor_geometry
     cfg = model_config('long2016_hexapole_halfcut','tip40um');
 end
 
 % ============================================================================
 function [pos, nhat] = sensor_geom(cfg, kpole, face, soff)
-% Hall 中心 + 法線 n̂⁺（WP 框）。公式 = build_V_matrix.m 的 local sensor_geometry，
-%   取 i=kpole；face 決定貼哪個面。**改動要兩邊同步。**
-    beta   = atan2(cfg.POLE_R, cfg.POLE_CONE_LEN);    % 半錐角 ≈ 11.31°
-    psi0   = atan2(cfg.R_norm_z, cfg.R_norm_xy);      % magic-angle 仰角 ≈ 35.26°
-    inc_up = cfg.upper_incline;                       % 上極真實錐軸傾角 ≈ 36.59°
-    ell = cfg.R_norm;   AIR = 0.41e-3;
-    th  = cfg.pole_angles(kpole)*pi/180;
-    dir = @(el,az) [cos(el)*cos(az); cos(el)*sin(az); sin(el)];
-    if cfg.pole_is_lower(kpole), psi = -psi0; else, psi = +psi0; end
-    e1 = dir(psi, th);                                % → 極尖
+% Hall 中心 + 法線 n̂⁺（WP 框）。
+% [MODIFIED 2026-08-08] 改呼叫 utils/pole_sensor_geometry（**sensor 幾何唯一來源**）。
+%   原本這裡複製了一份 build_V_matrix 的舊公式（名目 beta、無真實錐體半徑外推），已刪除。
     switch lower(face)
-        case 'p1flat'                                 % 平切上表面：面內 = 水平極軸、法線 +z
-            e2 = dir(0, th);                  nhat = [0; 0; 1];
-        case 'p1cone'                                 % 下極底錐面：面內 −β、外法線朝下出鋼
-            e2 = dir(-beta, th);              nhat = dir(-beta-pi/2, th);
-        case 'p2cone'                                 % 上極真實錐面：inc_up+β、外法線朝上出鋼
-            e2 = dir(inc_up+beta, th);        nhat = dir(inc_up+beta+pi/2, th);
+        case 'p1flat',            fl = 'flat';   % 下極平切上表面
+        case {'p1cone','p2cone'}, fl = 'cone';   % 下極底錐面 / 上極錐面（上極不受 face_lower 影響）
         otherwise, error('sensor_geom: 未知 face ''%s''', face);
     end
-    pos = ell*e1 + soff*e2 + AIR*nhat;
+    [P, N] = pole_sensor_geometry(cfg, struct('soff_upper', soff, ...
+                                              'soff_lower', soff, 'face_lower', fl));
+    pos = P(:,kpole);  nhat = N(:,kpole);
 end
 
 % ============================================================================

@@ -4,10 +4,12 @@ function diag_P2P1_single(variant)
 %   （gap μ_r 等效＝同網格同 node_id）。用來看「改 μ_eff 後，P2-under-P1 翻負了沒」。
 %   variant 例：'standard' / 'gap_200um' / 'gap20um_mueq'。
     if nargin < 1 || isempty(variant), variant = 'standard'; end
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');
+    % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live config。
+    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
     addpath(['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
              'long2016_hexapole_halfcut\Calibration_using_FEM_modeling\voltage_base\code\function']);
-    cnst = mt_constants();
+    cnst = model_config('long2016_hexapole_halfcut','tip40um');
     [sp, sn] = build_sensor_geometry(cnst);
     rr  = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
     mcd = fullfile(rr,'mesh','standard','csv');

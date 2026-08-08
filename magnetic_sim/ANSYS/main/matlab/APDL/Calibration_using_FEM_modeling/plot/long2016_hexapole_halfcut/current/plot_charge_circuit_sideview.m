@@ -18,7 +18,9 @@ function plot_charge_circuit_sideview()
 %   field_viz/plot_Bcircuit_gap_compare.m).  Style = bold-framed (option 1).
 
     %% --- Paths (import_ansys_data / mt_constants live in backup analysis) ---
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');
+    % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live config。
+    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
 
     CAL = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
            'long2016_hexapole_halfcut\Calibration_using_FEM_modeling'];
@@ -34,7 +36,7 @@ function plot_charge_circuit_sideview()
     THRESH_T  = 1e-4;                  % drop |B| < 0.1 mT nodes
 
     %% --- Constants + actuator rotation (measure/WP <-> actuator) ---
-    cnst = mt_constants();
+    cnst = model_config('long2016_hexapole_halfcut','tip40um');
     SPH_OFST = cnst.SPH_OFST;                           % m (WP z in APDL frame, ~ -12.711e-3)
     tip   = [cnst.pole_tip_x; cnst.pole_tip_y; cnst.pole_tip_z_wp];   % 3x6 (WP frame)
     dhat  = tip ./ vecnorm(tip);

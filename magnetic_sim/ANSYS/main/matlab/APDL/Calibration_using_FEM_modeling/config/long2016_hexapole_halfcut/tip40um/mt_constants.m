@@ -37,10 +37,28 @@ function c = mt_constants()
     c.pole_tip_y    = c.R_norm_xy * sind(c.pole_angles);
     c.pole_tip_z_wp = [-1, +1, -1, +1, +1, -1] * c.R_norm_z;
 
-    % 濾鐵用錐體幾何
+    % 濾鐵用錐體幾何（**名目值**，勿改：filter_iron_nodes 用它篩鐵，動了會改變電荷擬合）
     c.POLE_TIP_R    = 40e-6;                          % 尖端倒圓半徑
     c.POLE_R        = 3e-3;                           % 底半徑（6mm 直徑之半）
     c.POLE_CONE_LEN = 15e-3;                          % 錐長
+
+    % [ADDED 2026-08-08] sensor 貼附面用的**真實** per-layer 錐體斜率 tan(beta)（CAD STEP 實測）
+    %   下極 R(s) = 0.0327 + 0.20330*s  (beta = 11.4916 deg)
+    %   上極 R(s) = 0.0330 + 0.19463*s  (beta = 11.0138 deg)   [mm]，s 自極尖點沿極軸量
+    %   名目值 3.0/15.0 (11.310 deg) 對兩層都不對 -> 只在 build_V_matrix 的 sensor 幾何改用真值；
+    %   截距 R0 不寫死，由 POLE_TIP_R 經虛擬錐頂公式導出（見 sensor_geometry），故 tip 變體自動跟著走。
+    c.pole_cone_slope = [0.20330, 0.19463];           % [下極, 上極]
+
+    % [ADDED 2026-08-08] 尖端倒圓的**軸向推進量**（CAD STEP 實測，六根極一致）。
+    %   = 錐面與 40µm 倒圓球的「切點」距極尖的軸向距離。切點落在球面 90deg-beta 處（非赤道），
+    %   故軸向只推進 0.0322mm、**不是 0.04**（實測交界圓 t=0.03216 / r=0.0391~0.0394，
+    %   反推 r_f = r/cos(beta) = 0.0398~0.0402 => 倒圓確實是 40µm）。理論值 r_f*(1-sin beta)
+    %   = 0.03203(下)/0.03236(上)，與實測差 0.1~0.2µm。缺此欄位時 sensor_geometry 用該理論式回退。
+    c.pole_tip_axial = 0.0322e-3;                     % [m]
+
+    % [ADDED 2026-08-08] 真實錐長（自極尖點沿極軸；CAD STEP 實測）。供畫磁極輪廓用。
+    %   底半徑可由 R(cone_len) = R0 + slope*cone_len 導出（下 3.0470 / 上 3.0000 mm）。
+    c.pole_cone_len_real = [14.8267e-3, 15.2443e-3];  % [下極, 上極]
 
     % 上極傾角（APDL 幾何導出）→ 供 pole_axis
     YOKE_H      = 2e-3;

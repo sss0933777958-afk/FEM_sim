@@ -6,7 +6,9 @@ function plot_frames_lattice_bias_3d()
 %   出兩張：frames_lattice_bias_3d.png（只 ℓ̂ 殼）、frames_lattice_bias_R150_3d.png（多綠 R=150µm 球）。
 %   單位 µm；框 = box on + daspect（cube、view-robust）。
 
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');  % mt_constants
+    % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live config。
+    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
     here   = fileparts(mfilename('fullpath'));
     nofix  = fileparts(fileparts(here));                            % .../current_base
     addpath(fullfile(nofix,'code','main_function'));                     % make_Pc
@@ -15,7 +17,7 @@ function plot_frames_lattice_bias_3d()
     %% ---- 載 bias fit（ell µm、ê 17×1）+ 重建 6 荷位置（不需 FEM）----
     S = load(fullfile(nofix,'data','fit_bias_R150um_gap200um_mueq.mat'), 'ell','e_hat');
     ell = S.ell;   e_hat = S.e_hat;                                 % ell µm（≈857）
-    cnst = mt_constants();
+    cnst = model_config('long2016_hexapole_halfcut','tip40um');
     tip  = [cnst.pole_tip_x; cnst.pole_tip_y; cnst.pole_tip_z_wp];
     dhat = tip ./ vecnorm(tip);                                     % 3×6 measure 單位方向
     R_act   = [dhat(:,1), dhat(:,3), dhat(:,5)].';                  % actuator→measure（列=P1/P3/P5）

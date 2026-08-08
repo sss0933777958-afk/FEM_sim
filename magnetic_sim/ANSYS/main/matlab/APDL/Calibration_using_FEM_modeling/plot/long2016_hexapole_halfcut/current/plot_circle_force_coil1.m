@@ -7,14 +7,16 @@ function plot_circle_force_coil1()
     model = 'long2016_hexapole_halfcut';
     ML    = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut';
     addpath(fullfile(ML,'common'));                                                   % ansys_path
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis'); % import_ansys_data/filter_iron_nodes/mt_constants
+    % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live config。
+    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
     here   = fileparts(mfilename('fullpath'));
     cbase  = fileparts(fileparts(here));
     figdir = fullfile(cbase,'figures','shared'); if ~exist(figdir,'dir'); mkdir(figdir); end
     outpng = fullfile(figdir,'circle_force_coil1.png');
 
     % ---- 載入 coil1 gap_calibrate（measure/WP frame, µm, mT）----
-    cnst = mt_constants();
+    cnst = model_config('long2016_hexapole_halfcut','tip40um');
     d    = import_ansys_data(ansys_path(model,'data','gap_calibrate','coil1'),'all','coil1');
     air  = filter_iron_nodes(d.x,d.y,d.z,cnst,struct('visualize',false));
     zwp  = d.z - cnst.SPH_OFST;                                   % WP frame z

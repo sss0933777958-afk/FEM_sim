@@ -12,12 +12,14 @@ function plot_singlepole_sideview(shapes)
     here   = fileparts(mfilename('fullpath'));
     nfdir  = fileparts(fileparts(here));                                                          % current_base
     FIX_MFUN = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\Calibration_using_FEM_modeling\current_base\code\main_function';  % load_singlepole
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');  % mt_constants
+    % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live config。
+    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
     addpath(FIX_MFUN);                                                                            % load_singlepole (reuse)
     figdir = fullfile(nfdir,'figures','eighteen_param');  if ~exist(figdir,'dir'); mkdir(figdir); end
     DATA   = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil1\singlepole';
 
-    cnst = mt_constants();
+    cnst = model_config('long2016_hexapole_halfcut','tip40um');
     cnst.SPH_OFST = 0;                                  % +x mesh: WP 在原點（load_singlepole 不 z-shift）
     APEX = cnst.R_norm*1e3;                             % 尖端頂點 x [mm] = 0.5
     POLE_R = cnst.POLE_R*1e3;  POLE_LEN = cnst.POLE_CONE_LEN*1e3;

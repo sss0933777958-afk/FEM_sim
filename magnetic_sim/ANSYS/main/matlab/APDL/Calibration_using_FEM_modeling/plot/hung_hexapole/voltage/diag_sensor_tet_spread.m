@@ -27,14 +27,16 @@ RUN_ALL_COILS = false;     % true = B/C 對 6 coil 全掃（幾何 A 不變）�
 %% ---- paths（沿用，不另寫）-----------------------------------------------
 CAL  = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
         'hung_hexapole\Calibration_using_FEM_modeling'];
-addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');  % mt_constants/import_ansys_data
+% [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live 樹。
+CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
 addpath(fullfile(CAL,'voltage_base','code','main_function')); addpath(fullfile(CAL,'voltage_base','code','function'));                            % build_sensor_geometry
 addpath(fullfile(CAL,'voltage_base','code','main_function'));                            % build_sensor_geometry
 results_root = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\data';
 mesh_csv_dir = fullfile(results_root,'mesh','graded','csv');
 
 %% ---- 常數 + 慣例 + 修正 sensor 位置 -------------------------------------
-cnst = mt_constants();
+cnst = model_config('hung_hexapole');
 apdl_to_paper_idx = [1,3,6,5,2,4];
 plabel = {'P1','P2','P3','P4','P5','P6'};
 [sensor_pos, sensor_n] = build_sensor_geometry(cnst);   % 3×6 WP 框 [m]（下極 −β 修正版）

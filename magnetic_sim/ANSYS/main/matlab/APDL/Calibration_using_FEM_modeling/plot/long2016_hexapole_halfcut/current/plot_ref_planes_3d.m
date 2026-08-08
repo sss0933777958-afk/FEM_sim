@@ -5,8 +5,10 @@ function plot_ref_planes_3d()
 %   ref_{x_ay_a}(藍)、ref_{y_az_a}(橘)、ref_{x_az_a}(紫)。6 磁極尖端標紅點 + P1–P6 標籤。
 %   框 = box on + daspect（cube 幾何、view-robust）。輸出 current_base/figures/ref_planes_3d.png。
 
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');   % mt_constants
-    cnst = mt_constants();
+    % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live config。
+    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
+    cnst = model_config('long2016_hexapole_halfcut','tip40um');
     here   = fileparts(mfilename('fullpath'));
     fixdir = fileparts(fileparts(here));
     figdir = fullfile(fixdir, 'figures','shared');

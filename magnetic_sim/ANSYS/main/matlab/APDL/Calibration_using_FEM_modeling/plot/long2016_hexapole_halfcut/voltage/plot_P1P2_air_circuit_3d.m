@@ -23,10 +23,12 @@ function plot_P1P2_air_circuit_3d(PREVIEW, FOCUS, VIEW, VARIANT, DATASET, FLIP)
     if nargin < 6 || isempty(FLIP),    FLIP    = 'flip';     end   % 'flip'=all-source 翻 P1 / 'none'=不翻（資料已 all-source）
     DPI = 200;
 
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');
+    % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live config。
+    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
     addpath(['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
              'long2016_hexapole_halfcut\Calibration_using_FEM_modeling\voltage_base\code\function']);
-    cnst = mt_constants();
+    cnst = model_config('long2016_hexapole_halfcut','tip40um');
     [sp, sn] = build_sensor_geometry(cnst);
     rr = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
 

@@ -10,12 +10,16 @@ function plot_gain_iso_index()
 
     here   = fileparts(mfilename('fullpath'));
     fixdir = fileparts(fileparts(here));                 % .../current_base
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis'); % filter_iron_nodes
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hung\analysis\core');          % hung mt_constants + import_ansys_data
+    % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live 樹。
+    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
+    % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live hung config。
+    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
     addpath(fullfile(fixdir,'code','main_function'));
     addpath(fullfile(fixdir,'code','main_function'));
 
-    cnst = mt_constants();                                % hung
+    cnst = model_config('hung_hexapole');   % hung
     idx  = cnst.apdl_to_paper_idx;                        % [1,2,3,4,5,6]
     results_root = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\data';
 

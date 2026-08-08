@@ -4,8 +4,10 @@ function plot_ref_planes_3d()
 %   6 磁極尖端（在 R_norm=500µm 球面）標紅點 + P1–P6 標籤（frames_lattice 風格）。
 %   框 = box on + daspect（cube 幾何、view-robust）。輸出 current_base/figures/ref_planes_3d.png。
 
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hung\analysis\core');   % hung mt_constants
-    cnst = mt_constants();
+    % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live hung config。
+    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
+    cnst = model_config('hung_hexapole');
     here   = fileparts(mfilename('fullpath'));
     fixdir = fileparts(fileparts(here));
     figdir = fullfile(fixdir, 'figures','shared');

@@ -24,7 +24,9 @@ NB       = 40;                % 直方圖 bin 數（定案前可改）
 %% ---- paths（沿用既有函式，同 main_Dmatrix.m）------------------------------
 CAL  = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
         'hung_hexapole\Calibration_using_FEM_modeling'];
-addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');  % mt_constants/import_ansys_data/filter_iron_nodes
+% [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live 樹。
+CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
 addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\common');  % ansys_path
 addpath(fullfile(CAL,'current_base','code','main_function'));  % load_coils_actuator/select_ball/fitting/build_S_matrix
 addpath(fullfile(CAL,'current_base','code','main_function'));  % load_coils_actuator/select_ball/fit_bias/make_Pc/build_A
@@ -32,7 +34,7 @@ model = 'hung_hexapole';
 figdir = fullfile(CAL,'voltage_base','figures','eighteen_param');
 if ~exist(figdir,'dir'); mkdir(figdir); end
 
-cnst = mt_constants();
+cnst = model_config('hung_hexapole');
 apdl_to_paper_idx = [1,3,6,5,2,4];
 
 %% ---- 讀結果防呆（result-read-safety 層①）----------------------------------

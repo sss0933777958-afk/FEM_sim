@@ -37,6 +37,8 @@ Calibration_using_FEM_modeling/
   common_path/ansys_path.m           共用路徑 resolver（model-agnostic；2026-07-23 由 long2016/common 搬入）
   data/<model>/{.mat,csv}/           結果存放（.mat 自描述：結果 + 設定條件與參數；含保存的 single-pole .mat）
   results/<model>/{eighteen,single}/ PDF 輸出（eighteen = USE_BIAS true、single = false）
+  utils/*.m                          **通用函式**（model-agnostic，`main.m` 不直接呼叫的第二層 helper）
+                                     例：`pole_sensor_geometry.m`（sensor 幾何唯一來源；2026-08-08 使用者拍板放此層）
   utils/<model>/                     後處理 compute 腳本：讀 calib .mat → 進一步運算（如 SVD 分解）→ 存 computed .mat 到 data/（**不重跑校正**）
   plot/<model>/<base>/               plot 腳本：讀 .mat → 畫圖到 figures/（**不做重運算**；<base>=current|voltage，不分 param）
   figures/<model>/<base>/{single,eighteen,common}/   三模型圖檔（single=fix、eighteen=bias、common=比較/診斷/場）
@@ -61,6 +63,13 @@ Calibration_using_FEM_modeling/
 > 範例：`utils/hung_hexapole/svd_sigma_hung_ws.m`（讀 calib→算 σ→存 `svd_sigma_hung_ws_R150.mat`）+
 > `plot/hung_hexapole/current/plot_sigma_hist_hung_ws.m`（讀 σ.mat→σ1/σ2/σ3 疊圖）。
 > ⚠ `utils/hung_hexapole/run_hung_current.m` 是**舊式**（utils 內自己重跑校正+inline 畫圖），不符此分工、暫留不動、勿沿用。
+>
+> **2026-08-08 使用者拍板：`utils/` 根層放 model-agnostic 通用函式**（`<model>/` 子夾維持後處理 compute 腳本，
+> 兩者共存不衝突）。首例 = `utils/pole_sensor_geometry.m`（六顆 Hall sensor 位置與外法線的**唯一來源**，
+> 兩分支各一份、內容相同）。`main.m` 已加 `addpath(fullfile(CAL,'utils'))`。
+> ⚠ 曾一度建 `lib/` 放它，**已作廢刪除**——通用函式一律 `utils/` 根層，不要再開 `lib/`。
+> （歷史對照：2026-07-23 曾把通用的 `interp_field_to_points.m` 由 utils **移入** `function/`；
+> 該檔維持在 `function/` 不動，新的通用函式則放 `utils/` 根層。）
 
 ## 🔒 規則
 

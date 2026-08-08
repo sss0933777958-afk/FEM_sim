@@ -14,7 +14,7 @@ function [V, exc_sign, sensor_pos, sensor_n, dbg] = build_V_matrix(cfg, variant,
 %   sensor 幾何來源優先序：
 %     ① sensor_override（可選 struct .pos/.n，escape hatch）
 %     ② cfg.sensor_pos / cfg.sensor_n（config「提供」的幾何，如 tip400um）
-%     ③ 內建 sensor_geometry（baseline 錐面公式，long2016 tip40um）
+%     ③ utils/pole_sensor_geometry（**sensor 幾何唯一來源**；CAD 實測錐體 + 真實氣隙）
 %   V_METHOD：'csv-tet'（預設；讀 sensor_local CSV 建 tet 重心內插——需 CSV 與 solve mesh 同網格）
 %             'scattered'（座標式 scatteredInterpolant 直接對 raw solve 場取樣——CSV≠solve mesh 時用，如 tip400）。
 %   需 ansys_path + readmatrix + triangulation/pointLocation（csv-tet）/ scatteredInterpolant（scattered）在 path。
@@ -34,7 +34,10 @@ function [V, exc_sign, sensor_pos, sensor_n, dbg] = build_V_matrix(cfg, variant,
     elseif isfield(cfg,'sensor_pos') && isfield(cfg,'sensor_n') && ~isempty(cfg.sensor_pos)
         sensor_pos = cfg.sensor_pos;  sensor_n = cfg.sensor_n;
     else
-        [sensor_pos, sensor_n] = sensor_geometry(cfg, SOFF_upper, SOFF_lower, FACE_lower);   % [MODIFIED] 兩層可調 + 下極可換面
+        % [MODIFIED 2026-08-08] 改呼叫 utils/pole_sensor_geometry（sensor 幾何唯一來源），
+        %   原本的 local sensor_geometry 已移除。
+        [sensor_pos, sensor_n] = pole_sensor_geometry(cfg, struct( ...
+            'soff_upper', SOFF_upper, 'soff_lower', SOFF_lower, 'face_lower', FACE_lower));
     end
 
     % ② 每 sensor 圓柱內均勻撒 n_uniform 點（ANSYS 框、rng 可重現）——兩法共用
@@ -130,39 +133,5 @@ function [V, dbg] = vmat_scattered(raw, samp, cen, sensor_n, S_hall, N_I, R_loc,
             dbg.bn{i,kc}   = bn;
             dbg.bmag{i,kc} = bm;
         end
-    end
-end
-
-% ---- local：6 顆 Hall 中心+法線 n+（WP 框；long2016 錐面幾何）----
-function [sensor_pos, sensor_n] = sensor_geometry(cfg, SOFF_upper, SOFF_lower, FACE_lower)
-    beta   = atan2(cfg.POLE_R, cfg.POLE_CONE_LEN);    % 半錐角 ≈ 11.31°
-    psi0   = atan2(cfg.R_norm_z, cfg.R_norm_xy);      % 仰角 ≈ 35.26°（magic-angle；只進 e1）
-    inc_up = cfg.upper_incline;                       % 上極真實錐軸傾角 ≈ 36.59°
-    ell    = cfg.R_norm;
-    if nargin < 3 || isempty(SOFF_lower), SOFF_lower = 4.572e-3; end   % [MODIFIED] 原寫死，改為可傳入
-    if nargin < 4 || isempty(FACE_lower), FACE_lower = 'cone';   end   % [ADDED 2026-08-05]
-    AIR = 0.41e-3;
-    dir = @(el,az) [cos(el)*cos(az); cos(el)*sin(az); sin(el)];
-    sensor_pos = zeros(3,6);  sensor_n = zeros(3,6);
-    for i = 1:6
-        th = cfg.pole_angles(i)*pi/180;
-        if cfg.pole_is_lower(i), psi = -psi0; else, psi = +psi0; end
-        e1 = dir(psi, th);                            % → 極尖
-        if cfg.pole_is_lower(i)
-            if strcmpi(FACE_lower,'flat')             % [ADDED] 平切上表面：面內方向 = 水平極軸、法線 +z
-                e2   = dir(0, th);
-                nhat = [0; 0; 1];
-            else                                      % 'cone'（預設，原行為）
-                e2   = dir(-beta,      th);           % 下極（FEM 水平半切）：底錐面 −β
-                nhat = dir(-beta-pi/2, th);           % 外法線朝下出鋼
-            end
-            soff = SOFF_lower;
-        else
-            e2   = dir(inc_up+beta,      th);         % 上極：真實錐面 inc_up+β
-            nhat = dir(inc_up+beta+pi/2, th);         % 外法線朝上出鋼
-            soff = SOFF_upper;
-        end
-        sensor_pos(:,i) = ell*e1 + soff*e2 + AIR*nhat;
-        sensor_n(:,i)   = nhat;
     end
 end

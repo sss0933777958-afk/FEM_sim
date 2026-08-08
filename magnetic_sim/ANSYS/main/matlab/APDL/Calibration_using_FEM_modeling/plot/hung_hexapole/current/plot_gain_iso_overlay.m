@@ -19,8 +19,13 @@ function plot_gain_iso_overlay(variant, variant_hung, labels, out_tag)
 %   同 gap200um_mueq、70 匝，R150 fit 固定；取樣半徑 R∈{150,500}µm。
 %   出 4 檔：{gain,iso}_hung_vs_long_R{150,500}um.png，**同存 long 與 hung 兩個 figures/**。
 
-    LONG_ANALYSIS = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis';
-    HUNG_CORE     = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hung\analysis\core';
+    % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ 改指 live config；
+    %   本檔靠「後 addpath 覆蓋」同時取得 long 與 hung 兩套 mt_constants，該語意保持不變。
+    % ⚠ 本檔仍有**其他**死相依（LONG_CAL/HUNG_CAL 指向已刪除的舊 per-model 樹、
+    %   load_coils_actuator 已不存在）→ 目前跑不起來，需另外重寫才能復活。
+    CALROOT       = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    LONG_ANALYSIS = fullfile(CALROOT,'config','long2016_hexapole_halfcut','tip40um');
+    HUNG_CORE     = fullfile(CALROOT,'config','hung_hexapole');
     LONG_CAL = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\hung_hexapole\Calibration_using_FEM_modeling';
     HUNG_CAL = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\hung_hexapole\Calibration_using_FEM_modeling';
 

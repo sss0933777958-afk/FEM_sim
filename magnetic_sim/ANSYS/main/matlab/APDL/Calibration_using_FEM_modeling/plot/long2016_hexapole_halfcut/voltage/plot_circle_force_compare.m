@@ -13,8 +13,10 @@ function plot_circle_force_compare()
     model = 'long2016_hexapole_halfcut';
     ML    = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut';
     addpath(fullfile(ML,'common'));
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');
-    cnst = mt_constants();
+    % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live config。
+    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
+    cnst = model_config('long2016_hexapole_halfcut','tip40um');
 
     Nn = 720; th = linspace(0,2*pi,Nn).'; Rc = 50;
     Pm = [Rc*cos(th), Rc*sin(th), zeros(Nn,1)];        % µm, measure/WP frame

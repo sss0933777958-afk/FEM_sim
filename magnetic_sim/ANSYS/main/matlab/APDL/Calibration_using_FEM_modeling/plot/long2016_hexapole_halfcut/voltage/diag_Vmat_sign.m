@@ -4,12 +4,14 @@ function diag_Vmat_sign()
 %   列=sensor 極 P1..P6；欄=激發（APDL coil1..6 = paper P1,P3,P6,P5,P2,P4）。
     TREE = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
             'long2016_hexapole_halfcut\Calibration_using_FEM_modeling\voltage_base'];
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');
+    % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live config。
+    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
     addpath(fullfile(TREE,'code','main_function')); addpath(fullfile(TREE,'code','function'));
     addpath(fullfile(TREE,'code','main_function'));
     rr = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
 
-    cnst = mt_constants();
+    cnst = model_config('long2016_hexapole_halfcut','tip40um');
     apdl_to_paper_idx = [1,3,6,5,2,4];
     S_hall = 130;
     [sensor_pos, sensor_n] = build_sensor_geometry(cnst);

@@ -12,10 +12,12 @@ function plot_svd_heatmaps_2d()
 
     here    = fileparts(mfilename('fullpath'));
     fixdir  = fileparts(fileparts(here));
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hung\analysis\core');            % hung mt_constants
+    % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live hung config。
+    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
     figdir  = fullfile(fixdir,'figures','single_param');  if ~exist(figdir,'dir'); mkdir(figdir); end
 
-    cnst = mt_constants();                                 % hung
+    cnst = model_config('hung_hexapole');   % hung
     tip  = [cnst.pole_tip_x; cnst.pole_tip_y; cnst.pole_tip_z_wp];  dhat = tip./vecnorm(tip);  % 3×6 measure 框
     ea_x = dhat(:,1);  ea_y = dhat(:,3);  ea_z = dhat(:,5);  % actuator 三軸（P1/P3/P5）
     S = load(fullfile(fixdir,'data','fit_fixl_R150um_gap_200um.mat'), 'ell','gB','Khat');

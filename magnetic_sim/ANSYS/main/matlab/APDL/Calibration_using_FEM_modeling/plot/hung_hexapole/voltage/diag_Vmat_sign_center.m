@@ -5,13 +5,15 @@ function diag_Vmat_sign_center(variant)
     if nargin < 1 || isempty(variant), variant = 'standard'; end
     TREE = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
             'hung_hexapole\Calibration_using_FEM_modeling\voltage_base'];
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');
+    % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live 樹。
+    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
     addpath(fullfile(TREE,'code','main_function')); addpath(fullfile(TREE,'code','function'));
     addpath(fullfile(TREE,'code','main_function'));
     rr = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\data';
     mesh_csv_dir = fullfile(rr,'mesh','standard','csv');   % 連接性恆用 baseline 網格（gap200um 同網格，csv/ 子夾）
 
-    cnst = mt_constants();
+    cnst = model_config('hung_hexapole');
     apdl_to_paper_idx = [1,3,6,5,2,4];
     S_hall = 130;
     [sensor_pos, sensor_n] = build_sensor_geometry(cnst);

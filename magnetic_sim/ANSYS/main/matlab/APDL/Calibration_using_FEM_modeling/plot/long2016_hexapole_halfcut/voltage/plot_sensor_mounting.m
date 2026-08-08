@@ -10,35 +10,33 @@ function plot_sensor_mounting(POLE, PREVIEW)
     if nargin < 2 || isempty(PREVIEW), PREVIEW = true; end
     POLE = upper(POLE);
 
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');   % mt_constants
-    cnst = mt_constants();
-    beta   = atan2(cnst.POLE_R, cnst.POLE_CONE_LEN);        % 半錐角 β ≈ 11.31°
+    % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）；sensor 幾何改由
+    %   utils/pole_sensor_geometry 供給（唯一來源、CAD 實測錐體 + 真實氣隙 0.41mm）。
+    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'));
+    cnst = model_config('long2016_hexapole_halfcut','tip40um');
+    [SPOS, SNOR, GEO] = pole_sensor_geometry(cnst);
     inc_up = cnst.upper_incline;                            % 上極錐軸仰角 ≈ 36.59°（baseline）
-    Lsl    = hypot(cnst.POLE_CONE_LEN, cnst.POLE_R)*1e3;    % 錐面斜長 ≈ 15.30 mm
     rf     = cnst.POLE_TIP_R*1e3;                           % 尖端倒圓半徑 [mm]（40µm = 0.04）
-    SOFF   = 4.572;  AIR = 0.41;                            % 沿錐面直線距 / 離面 [mm]
+    AIR    = 0.41;                                          % 離面 [mm]
     dir  = @(el,az) [cos(el)*cos(az); sin(el)];
     rot  = @(v,a)   [cos(a)*v(1)-sin(a)*v(2); sin(a)*v(1)+cos(a)*v(2)];
 
     switch POLE
         case 'P1'          % 0°、下極、半切、錐軸水平
-            az = 0;  islow = true;
-            T  = [cnst.pole_tip_x(1); cnst.pole_tip_z_wp(1)]*1e3;
-            axc = dir(0, az);
-            e2  = dir(-beta, az);                         % sensor 所在的下錐面 slant
-            nh  = dir(-beta - pi/2, az);                  % n+（朝下出鋼）
+            ip = 1;  az = 0;   islow = true;   axc = dir(0, az);
         case 'P2'          % 180°、上極、全錐、錐軸 upper_incline
-            az = pi;  islow = false;
-            T  = [cnst.pole_tip_x(2); cnst.pole_tip_z_wp(2)]*1e3;
-            axc = dir(inc_up, az);
-            e2  = dir(inc_up + beta, az);                 % sensor 所在的錐面 slant
-            nh  = dir(inc_up + beta + pi/2, az);          % n+（出鋼）
+            ip = 2;  az = pi;  islow = false;  axc = dir(inc_up, az);
         otherwise, error('POLE 必須是 P1 或 P2');
     end
 
-    % ---- sensor：tip 沿錐面直線 4.572 → 出 0.41（tip40 不含 gap 修正）----
-    foot   = T + SOFF*e2;                                 % 錐面上落腳點（直線端點）
-    sensor = foot + AIR*nh;                               % 貼面 + 0.41mm
+    % ---- sensor / 輪廓幾何：全部取自共用 geo（子午面 y=0 → 取 (x,z)）----
+    T      = [cnst.pole_tip_x(ip); cnst.pole_tip_z_wp(ip)]*1e3;
+    nh     = SNOR([1 3],ip);                              % n+（外法線出鋼）
+    sensor = SPOS([1 3],ip)*1e3;                          % 圓柱底面中心（離貼附面精確 0.41mm）
+    foot   = sensor - AIR*nh;                             % 貼附面上落腳點
+    beta   = GEO.beta(ip);                                % per-pole 真實半錐角（CAD）
+    Lsl    = (GEO.cone_len(ip) - GEO.t_tan(ip))*1e3/cos(beta);   % 自切點沿母線到錐底的斜長
 
     % ---- 磁極截面輪廓（tip + 錐軸 + ±β 錐面 + 鈍尖倒圓）----
     C    = T + rf*axc;   axa = atan2(axc(2), axc(1));   angf = axa + pi;
@@ -116,7 +114,9 @@ function plot_sensor_mounting(POLE, PREVIEW)
     if PREVIEW
         out = fullfile(tempdir, sprintf('sensor_mounting_%s_preview.png',POLE));  exportgraphics(gcf,out,'Resolution',150);
     else
-        fdir = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\long2016_hexapole_halfcut\Calibration_using_FEM_modeling\voltage_base\figures\shared';
+        % [MODIFIED 2026-08-08] 原路徑指向已刪除的舊 per-model 樹 → 改共用夾的 figures 佈局
+        fdir = fullfile(CALROOT,'figures','long2016_hexapole_halfcut','voltage','common');
+        if ~exist(fdir,'dir'), mkdir(fdir); end
         out = fullfile(fdir, sprintf('sensor_mounting_%s.png',POLE));  exportgraphics(gcf,out,'Resolution',200);
     end
     fprintf('saved %s\n', out);

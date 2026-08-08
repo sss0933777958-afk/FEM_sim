@@ -14,13 +14,14 @@ function plot_sensor_mounting_p1(SOFF, FACE, WITHFIELD, SRC)
     here   = fileparts(fileparts(mfilename('fullpath')));
     figdir = fullfile(fileparts(here),'paper_fig','Section3_A');
     if ~exist(figdir,'dir'); mkdir(figdir); end
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');   % mt_constants
+    % [MODIFIED 2026-08-08] 不再 addpath backup（規則 no-backup-data）；改用 live config +
+    %   utils/pole_sensor_geometry（sensor 幾何唯一來源）。幾何改用 CAD STEP 實測的真實錐體。
+    CAL = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    addpath(fullfile(CAL,'function'), fullfile(CAL,'utils'));
+    cnst = model_config('long2016_hexapole_halfcut', 'tip40um');
 
     % ---- tip40 geometry (P1: 0°、下極、半切、錐軸水平) ----
-    cnst   = mt_constants();
-    beta   = atan2(cnst.POLE_R, cnst.POLE_CONE_LEN);        % 半錐角 β ≈ 11.31°
-    Lsl    = hypot(cnst.POLE_CONE_LEN, cnst.POLE_R)*1e3;    % 錐面斜長 ≈ 15.30 mm
-    rf     = cnst.POLE_TIP_R*1e3;                           % 尖端倒圓半徑 [mm]（40µm = 0.04）
+    IP = 1;                                                 % P1（幾何全部由 pole_sensor_geometry 供給）
     if nargin < 1 || isempty(SOFF), SOFF = 4.572; end       % [MODIFIED] 沿貼附面直線距(藍線長)可調
     if nargin < 2 || isempty(FACE), FACE = 'cone'; end      % [ADDED] 'cone' | 'flat'
     % [ADDED 2026-08-04] WITHFIELD=true：疊上 APDL graded coil1（P1 自激發、1A）的磁路箭頭側視。
@@ -32,30 +33,27 @@ function plot_sensor_mounting_p1(SOFF, FACE, WITHFIELD, SRC)
     YSLAB = 4.0;    XMAX = 6.0;    CELL = 0.07;             % apdl：y 取樣半寬 / x 上界 / 抽稀格邊 [mm]
     NRND  = 4200;                                            % maxwell：y=0 平面隨機位置內插的取樣點數
     AIR = 0.41;                                             % 離面 [mm]
-    dir = @(el,az)[cos(el)*cos(az); sin(el)];
     rot = @(v,a)[cos(a)*v(1)-sin(a)*v(2); sin(a)*v(1)+cos(a)*v(2)];
 
-    az = 0;
-    T   = [cnst.pole_tip_x(1); cnst.pole_tip_z_wp(1)]*1e3;
-    axc = dir(0, az);                                       % 錐軸水平 [1;0]
-    if strcmpi(FACE,'flat')                                 % [ADDED] 平切上表面：面內方向 = 水平錐軸
-        e2 = axc;                                           % 沿平切面（= 錐軸）
-        nh = [0; 1];                                        % n+（朝上出鋼；鋼在平切面下方）
-    elseif strcmpi(FACE,'upper_cone')                       % [ADDED 2026-08-05] **填滿極**的上錐面
-        e2 = dir(+beta, az);                                % 上錐面 slant
-        nh = dir(beta + pi/2, az);                          % n+（朝上外出鋼）
-    else
-        e2 = dir(-beta, az);                                % 下錐面 slant
-        nh = dir(-beta - pi/2, az);                         % n+（朝下出鋼）
-    end
-
-    foot   = T + SOFF*e2;
-    sensor = foot + AIR*nh;
+    % [MODIFIED 2026-08-08] sensor 位置/法線一律由 pole_sensor_geometry 供給（不再自己算）。
+    %   P1 的子午面 = y=0 → 3D 向量取 (x,z) 即得本圖的 2D 座標。
+    gopt = struct('soff_lower', SOFF*1e-3, 'face_lower', FACE);
+    [spos, snor, geo] = pole_sensor_geometry(cnst, gopt);
+    to2  = @(v) v([1 3])*1e3;                               % 3D[m] → 2D(x,z)[mm]
+    beta = geo.beta(IP);                                    % 下極**真實**半錐角 11.4916°（CAD）
+    rf   = geo.r_tip(IP)*1e3;                               % 尖端倒圓半徑 [mm]
+    T    = to2(geo.tip(:,IP));
+    axc  = geo.axis([1 3],IP);                              % 錐軸水平 [1;0]
+    nh   = snor([1 3],IP);
+    sensor = to2(spos(:,IP));                               % 圓柱底面中心（離貼附面精確 0.41mm）
+    foot   = sensor - AIR*nh;                               % 貼附面上落腳點
+    Lsl  = (geo.cone_len(IP) - geo.t_tan(IP))*1e3/cos(beta);% 自切點沿母線到錐底的斜長
 
     % [ADDED 2026-08-04] WITHFIELD：兩顆 sensor 都畫（平切上表面 + 下錐面），各自法線
-    SP = [T + SOFF*axc          + AIR*[0;1], ...                 % 平切上表面（n+ = +z）
-          T + SOFF*dir(-beta,az) + AIR*dir(-beta-pi/2,az)];      % 下錐面（n+ 朝下出鋼）
-    SN = [[0;1], dir(-beta-pi/2,az)];
+    [pF, nF] = pole_sensor_geometry(cnst, struct('soff_lower',SOFF*1e-3,'face_lower','flat'));
+    [pC, nC] = pole_sensor_geometry(cnst, struct('soff_lower',SOFF*1e-3,'face_lower','cone'));
+    SP = [to2(pF(:,IP)), to2(pC(:,IP))];
+    SN = [nF([1 3],IP),  nC([1 3],IP)];
 
     % ---- 磁極截面輪廓（半切下極：平頂 + 鈍尖倒圓 + 下錐面）----
     C   = T + rf*axc;  axa = atan2(axc(2),axc(1));  angf = axa + pi;  hw = pi/2 - beta;

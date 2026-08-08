@@ -7,8 +7,10 @@ function plot_actuator_ellipsoids_3d()
 %   只呈現 橢球 + actuator 三軸 + P1 tip（半透明+淡網格+光照＝立體實心感）。
 %   ★ model-derived（hung）。box on + daspect（不變形）、view(120,25)。輸出 current_base/figures/actuator_frame_ellipsoids_3d.png。
 
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hung\analysis\core');   % hung mt_constants
-    cnst = mt_constants();
+    % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live hung config。
+    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
+    cnst = model_config('hung_hexapole');
     here   = fileparts(mfilename('fullpath'));
     fixdir = fileparts(fileparts(here));
     figdir = fullfile(fixdir,'figures','single_param');   if ~exist(figdir,'dir'); mkdir(figdir); end

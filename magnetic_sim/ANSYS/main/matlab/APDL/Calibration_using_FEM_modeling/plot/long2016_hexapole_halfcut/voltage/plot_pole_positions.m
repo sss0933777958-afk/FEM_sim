@@ -6,11 +6,14 @@
 % 風格 ①粗體框圖。輸出實檔 → figures/shared/pole_sensor_positions.png（覆蓋迭代）。
 % =========================================================================
 clear; clc;
-addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');   % mt_constants
+% [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live config + utils/pole_sensor_geometry。
+CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
 here = fileparts(mfilename('fullpath'));  TREE = fileparts(fileparts(here));   % .../voltage_base
-addpath(fullfile(TREE,'code','main_function'));                                % build_sensor_geometry
-cnst = mt_constants();
-[sensor_pos,~] = build_sensor_geometry(cnst);        % nominal 4.572mm，WP 框 [m]
+% [MODIFIED 2026-08-08] build_sensor_geometry 已不存在（舊 per-model 樹遺留）→ 改用
+%   utils/pole_sensor_geometry（sensor 幾何唯一來源）；同時脫離 backup（規則 no-backup-data）。
+cnst = model_config('long2016_hexapole_halfcut','tip40um');
+[sensor_pos, ~, GEO] = pole_sensor_geometry(cnst);   % nominal 4.572mm，WP 框 [m]
 
 psi0 = atan2(cnst.R_norm_z, cnst.R_norm_xy);          % 仰角 ψ ≈ 35.26°
 bta  = atan2(cnst.POLE_R, cnst.POLE_CONE_LEN);        % 半錐角 β ≈ 11.31°
@@ -31,9 +34,9 @@ for panel = 1:2
     else,        ip=2; low=false; nm='P2 (upper)'; end
     th = cnst.pole_angles(ip)*pi/180;
     if low
-        psi=-psi0; ax3=dirv(0,th);   e2=dirv(-bta,th);      nh=dirv(-bta-pi/2,th);
+        psi=-psi0; ax3=dirv(0,th);   bta=GEO.beta(ip); e2=dirv(-bta,th); nh=dirv(-bta-pi/2,th);
     else
-        psi=+psi0; ax3=dirv(inc,th); e2=dirv(inc+bta,th);   nh=dirv(inc+bta+pi/2,th);
+        psi=+psi0; ax3=dirv(inc,th); bta=GEO.beta(ip); e2=dirv(inc+bta,th); nh=dirv(inc+bta+pi/2,th);
     end
     tip = Rn*dirv(psi,th);                               % 極尖 WP [m]
     nr  = nh - dot(nh,ax3)*ax3;  nr = nr/norm(nr);       % 圓柱面徑向外法線（去軸向分量）

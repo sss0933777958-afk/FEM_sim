@@ -12,14 +12,16 @@ function plot_gain_iso_index()
 %   輸出（每 dir）：{gain,iso}_index.png（R150 navy）、_R500um.png（R500 棕）、_overlay.png（headline=R_k150）、_overlay_R{150..500}um.png（掃描 8 張）。
 %   ★ 兩模型都在 actuator 框同一組節點算（R_act·dhat=Pc_base）：fix 電荷=Pc_base（在軸）、bias=make_Pc(ê)（離軸）。
 
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\backup\hexapole-long2016\analysis');
+    % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live config。
+    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
     addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\common');
     here  = fileparts(mfilename('fullpath'));
     nofix = fileparts(fileparts(here));
     calroot = fileparts(nofix);
     addpath(fullfile(nofix,'code','main_function'));
 
-    cnst = mt_constants();
+    cnst = model_config('long2016_hexapole_halfcut','tip40um');
     apdl_to_paper_idx = [1, 3, 6, 5, 2, 4];
 
     %% ---- 載入資料 + 固定校正參數（R150 fit，兩半徑共用）----
