@@ -15,6 +15,12 @@ USE_BIAS = true;            % e 開關：false=fix(single)、true=18-param(eight
 R_select = 150e-6;          % 取點球半徑 [m]
 l0       = 0.5e-3;          % l_hat 初值 [m]
 I_actual = 1;               % 驅動電流 [A]（= FEM 激發）
+% [ADDED 2026-08-10] K̄(2,2) 物理約束（規則 calibration-transfer-matrix-output.md 附則二）。
+%   []      = 自由擬合（預設，行為與先前完全相同）
+%   0.8340  = 依「上磁極全錐應強於半切下磁極」設定；只改 G(2,2)、ℓ̂/e/其餘元素不動，
+%             輸出變體名自動加 _k22_0p8340（不覆蓋自由擬合版）。
+%   ⚠ 一旦設定，**current 與 voltage 兩邊都要用同一個值重跑**（兩邊必須共用同一顆 G）。
+K22_SET  = [];
 % 通用化旗標（'' → 由 cfg 提供預設；特例幾何自動吃自己的設定，不用手動改）
 INTERP_TO = '';             % '' 正常；否則把本 variant 場內插到此參考 geom 的 R≤R_select 點雲（公平比較）
 V_METHOD  = '';             % '' → cfg.v_method（'csv-tet' 預設 / 'scattered'）
@@ -69,7 +75,7 @@ switch BASE
     case 'current'
         F = zeros(6, cfg.N_I);
         for j = 1:cfg.N_I, F(cfg.apdl_to_paper_idx(j), j) = 1; end
-        [KI_bar, gI_hat, G, rm] = solve_current(l_hat, e, Pc_base, P, Bstack, F);
+        [KI_bar, gI_hat, G, rm] = solve_current(l_hat, e, Pc_base, P, Bstack, F, K22_SET);
         rec.KI_bar = KI_bar;  rec.gI_hat = gI_hat;  rec.G = G;  rec.Fmap = F;
     case 'voltage'
         % [MODIFIED] Maxwell 的 sensor 場是**另一組匯出**（WP 細格框 ±0.6mm 涵蓋不到
@@ -81,13 +87,23 @@ switch BASE
         rec.SOFF_upper = SOFF_upper;  rec.SOFF_lower = SOFF_lower;   % [ADDED] 記進 .mat（emit_results 據此加檔名後綴）
         % [ADDED 2026-08-06] sensor 取樣參數一併記進 .mat（自描述；先前查不到「這筆是幾點算的」）
         rec.n_uniform = n_uniform;  rec.sensor_r = sensor_r;  rec.axial_tol = axial_tol;
-        [D_bar, gV_hat, G, rm] = solve_voltage(l_hat, e, Pc_base, P, Bstack, V);
+        [D_bar, gV_hat, G, rm] = solve_voltage(l_hat, e, Pc_base, P, Bstack, V, K22_SET);
         rec.D_bar = D_bar;  rec.gV_hat = gV_hat;  rec.G = G;  rec.V = V;
     otherwise
         error('BASE 必為 ''current'' | ''voltage''');
 end
 rec.C_mean = rm.C_mean;  rec.kappa_mean = rm.kappa_mean;  rec.C_min = rm.C_min;  rec.kappa_worst = rm.kappa_worst;
 if isfield(rm,'RMSPE'), rec.RMSPE = rm.RMSPE; end     % 擬合 RMSPE [%]（current）
+
+% [ADDED 2026-08-10] K22 約束 → 輸出變體名加 tag（**資料載入仍用原 VARIANT**，只有輸出改名，
+%   故自由擬合版 model_results_*_maxwell.pdf 不會被覆蓋）。
+if ~isempty(K22_SET)
+    rec.K22_set = rm.K22_set;  rec.K22_free = rm.K22_free;
+    VAR_OUT     = sprintf('%s_k22_%s', VARIANT, strrep(sprintf('%.4f', K22_SET), '.', 'p'));
+    rec.VARIANT = VAR_OUT;                             % emit_results 依此決定 PDF 檔名
+else
+    VAR_OUT = VARIANT;
+end
 
 %% ---- 存 .mat（自描述）------------------------------------------------------
 tag = 'single'; if USE_BIAS, tag = 'eighteen'; end
@@ -97,7 +113,7 @@ soffsfx = '';   % [ADDED] voltage 且 sensor 距非定案 4.572mm → 檔名加�
 if strcmp(BASE,'voltage') && (abs(SOFF_upper-4.572e-3) > 1e-9 || abs(SOFF_lower-4.572e-3) > 1e-9)
     soffsfx = sprintf('_soff%gmm', SOFF_upper*1e3);
 end
-matfile = fullfile(matdir, sprintf('calib_%s_%s%s_R%03d_%s.mat', BASE, VARIANT, soffsfx, round(R_select*1e6), tag));
+matfile = fullfile(matdir, sprintf('calib_%s_%s%s_R%03d_%s.mat', BASE, VAR_OUT, soffsfx, round(R_select*1e6), tag));
 save(matfile, '-struct', 'rec');
 fprintf('saved %s\n', matfile);
 if strcmp(BASE,'current')

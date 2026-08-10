@@ -14,8 +14,8 @@ function plot_sensor_B_hist(force, NPT, SOFF, NB, PAIR)
 %
 %   ⚠ 這是**內插**(Maxwell 格距 0.1mm)，與校正管線 V_METHOD='scattered' 同一套。
 %     已驗證 500 點的內插四面體**無一含鋼件頂點**（撒點離最近鋼格點 0.385~0.524mm）。
-%   ⚠ sensor 幾何公式 = matlab/Maxwell/function/build_V_matrix.m 的 local sensor_geometry；
-%     **改動要兩邊同步。**
+%   ⚠ [MODIFIED 2026-08-10] sensor 幾何 = matlab/Maxwell/utils/pole_sensor_geometry.m（**唯一來源**，
+%     與校正管線 build_V_matrix 同一支）→ **不再需要兩邊同步**；原本此處複製的舊公式已刪除。
 %   ★ 本檔的 per-pole 快取 `sensor_B_hist_P<k>_maxwell_soff<S>_n<N>.mat` 同時被
 %     plot_sensor_cyl_B_3d.m 讀取（存撒點 P_<case>、場向量 B_<case>、sensor 鄰域格點 Xs/Bs）。
 %
