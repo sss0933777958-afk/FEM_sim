@@ -21,9 +21,16 @@ function plot_ell_gain_vs_R(USE_BIAS, SRC, SAMPLING)
     %                  'interp'= 先把場**內插到 10µm 細格**(見 local interp_grid_sample)再照舊掃描
     %                            → 球面切過晶格的顆粒感變細,ĝ_I(R) 抖動按格距等比下降。maxwell 預設。
     %   ⚠ 內插是「重新取樣」,不增加資訊;論文圖說須標明場經內插取樣。
+    % [ADDED 2026-08-10] 第三種取樣:'fixedN' = **固定點數、只改 R**（使用者拍板）
+    %   每個 R 都在球內「體積均勻」內插出固定 NFIX 個取樣點 → N 不再隨 R^3 增長。
+    %   目的:把「取樣點數」與「取樣區域大小」**徹底拆開** —— raw/interp 兩種模式下 N∝R^3,
+    %   兩個效應綁在一起;固定 N 後,殘留的趨勢就純粹是**模型有效範圍**造成的系統性漂移。
+    %   實作:同一組單位球點集(rng(0) 決定性)各 R 只**縮放** → 取樣圖樣完全相同、無抽樣抖動。
     if nargin < 3 || isempty(SAMPLING)
         if strcmpi(SRC,'maxwell'), SAMPLING = 'interp'; else, SAMPLING = 'raw'; end
     end
+    FIXN = strcmpi(SAMPLING,'fixedN');
+    NFIX = 4000;                                        % fixedN 的固定取樣點數
     here   = fileparts(fileparts(mfilename('fullpath')));
     figdir = fullfile(fileparts(here), 'paper_fig', 'Section2_E');
     if ~exist(figdir,'dir'); mkdir(figdir); end
@@ -34,6 +41,7 @@ function plot_ell_gain_vs_R(USE_BIAS, SRC, SAMPLING)
     % [ADDED] 掃描結果快取:R-sweep 要 24 次擬合(每次還得先讀 656k 節點 .dat)、數分鐘;
     %   純改樣式(軸標題/tick/顏色)不需重算 → 有快取就載入。要強制重算把此 .mat 刪掉。
     istr = ''; if strcmpi(SAMPLING,'interp'), istr = '_interp'; end    % [ADDED] 取樣方式後綴(只進快取名,圖檔名不變→覆蓋)
+    if FIXN, istr = sprintf('_fixedN%d', NFIX); end                    % [ADDED] fixedN 另存快取 + 另存圖檔
     cachef = fullfile(here, 'data', sprintf('ell_gain_sweep%s%s%s.mat', sstr, istr, bstr));
 
     if exist(cachef, 'file')
@@ -52,11 +60,19 @@ function plot_ell_gain_vs_R(USE_BIAS, SRC, SAMPLING)
 
         % ---- 掃描 R(fix 模型;每 20µm 一點;從 ĝ_I 正值起 R=40µm;R≤20 病態非物理)----
         Rum = 40:20:500;                                    % 取樣半徑 [µm](固定 20µm 間距)
+        if FIXN                                             % [ADDED] 固定點數模式:R 由 300 起(4000 點才確實 ≤ 球內格點數)
+            Rum = 300:10:500;
+            FX  = fixedN_prepare(ad, max(Rum)*1e-6, round(NFIX*1.20));   % 單位球點集 + 三角化(只建一次)
+        end
         nR  = numel(Rum);
         ell_R = nan(1,nR);  gI_R = nan(1,nR);  npts_R = zeros(1,nR);  J_R = nan(1,nR);
         fprintf('\n  R[um]   npts    ell_hat[um]   gI_hat[mT/A]      J[mT^2]\n');
         for i = 1:nR
-            [P, Bstack, npts] = cfg.select_ball(ad, Rum(i)*1e-6);
+            if FIXN
+                [P, Bstack, npts] = fixedN_sample(ad, cfg, FX, Rum(i)*1e-6, NFIX);
+            else
+                [P, Bstack, npts] = cfg.select_ball(ad, Rum(i)*1e-6);
+            end
             npts_R(i) = npts;
             if npts < 3, fprintf('  %5d  %6d   (skip: npts<3)\n', Rum(i), npts); continue; end
             [e, l_hat, J] = fitting(P, Bstack, Pc_base, 0.5e-3, USE_BIAS);   % fix / bias 由旗標切
@@ -73,10 +89,16 @@ function plot_ell_gain_vs_R(USE_BIAS, SRC, SAMPLING)
     %   (ĝ_I 衝到 27.6/11.3,非物理)。故 maxwell 從 **R=80µm**(252 點)起畫;快取仍存全範圍。
     %   apdl 是 graded 網格,近場極密,40µm 起即穩定;但 [MODIFIED 2026-08-06 使用者要求]
     %   **兩個求解器一律從 R=80µm 起畫**,四張圖橫軸一致才能並排比較。快取仍存 40:20:500 全範圍。
-    Rmin = 80;
+    Rmin = 80;   if FIXN, Rmin = min(Rum); end
     m = Rum >= Rmin;   Rum = Rum(m);  ell_R = ell_R(m);  gI_R = gI_R(m);
-    XT = unique([Rmin 100 200 300 400 500]);            % 起點 + 百位 + 終點(照 APDL 樣式)
-    XT(XT > Rmin & XT < Rmin+40) = [];                  % [ADDED] 起點與鄰近百位太近會壓字(80 vs 100)→ 去掉
+    if FIXN
+        % [ADDED] fixedN 走 figure-style 新標準:內部刻度奇數等距,起點/終點只標數字不畫 tick
+        XT = 350:50:450;                                % 3 個等距內部刻度
+    else
+        XT = unique([Rmin 100 200 300 400 500]);        % 起點 + 百位 + 終點(照 APDL 樣式)
+        XT(XT > Rmin & XT < Rmin+40) = [];              % [ADDED] 起點與鄰近百位太近會壓字(80 vs 100)→ 去掉
+    end
+    XL = [Rmin, max(Rum)];                              % 曲線首末點貼齊左右框邊
 
     % ---- 畫圖(2×1 panel,選項①粗體框)----
     cL = [0.05 0.10 0.95];   cR = [0.85 0.10 0.10];     % ℓ̂ 亮藍 / ĝ_I 紅
@@ -88,8 +110,8 @@ function plot_ell_gain_vs_R(USE_BIAS, SRC, SAMPLING)
     ax1 = nexttile(t);  hold(ax1,'on');
     plot(ax1, Rum, ell_R, '-o', 'Color',cL, 'LineWidth',3.0, 'MarkerSize',8, 'MarkerFaceColor',cL);
     style_panel(ax1, FS);
-    xlim(ax1,[Rmin 500]);   set(ax1,'XTick',XT);   % 含起點 + 終點 500
-    [yl,yt] = ylim_pick(SRC, USE_BIAS, 'ell', ell_R);   % [MODIFIED] apdl 沿用定案值;maxwell 自動等距 4 內縮 tick
+    xlim(ax1,XL);   set(ax1,'XTick',XT);
+    [yl,yt] = ylim_pick(SRC, USE_BIAS, 'ell', ell_R, FIXN);   % [MODIFIED] apdl 沿用定案值;maxwell/fixedN 自動
     ylim(ax1,yl);  set(ax1,'YTick',yt);
     ax1.XTickLabel = {};                                % 上 panel x 數字隱藏(共用軸)
     ylabel(ax1, '$\mathbf{\hat{\ell}\;(micro\;meter)}$', 'Interpreter','latex', 'FontSize',36);   % [MODIFIED 2026-08-05] 單位改拼字 micro meter；上 panel y 軸標題（標準數學字體 \mathbf CM，同下 panel）
@@ -99,16 +121,24 @@ function plot_ell_gain_vs_R(USE_BIAS, SRC, SAMPLING)
     ax2 = nexttile(t);  hold(ax2,'on');
     plot(ax2, Rum, gI_R, '-s', 'Color',cR, 'LineWidth',3.0, 'MarkerSize',8, 'MarkerFaceColor',cR);
     style_panel(ax2, FS);
-    xlim(ax2,[Rmin 500]);   set(ax2,'XTick',XT);   % 含起點 + 終點 500
-    [yl,yt] = ylim_pick(SRC, USE_BIAS, 'g', gI_R);      % [MODIFIED] 同上
+    xlim(ax2,XL);   set(ax2,'XTick',XT);
+    [yl,yt] = ylim_pick(SRC, USE_BIAS, 'g', gI_R, FIXN);      % [MODIFIED] 同上
     ylim(ax2,yl);  set(ax2,'YTick',yt);
+    if FIXN                                             % [ADDED] 起點/終點只標數字、不畫 tick mark
+        yoff = yl(1) - 0.030*diff(yl);
+        for xv = XL
+            text(ax2, xv, yoff, sprintf('%g', xv), 'HorizontalAlignment','center', ...
+                 'VerticalAlignment','top', 'FontSize',FS, 'FontWeight','bold', 'Clipping','off');
+        end
+    end
     ylabel(ax2, '$\mathbf{{}^{B}\hat{g}_{I}\;(mT/A)}$', 'Interpreter','latex', 'FontSize',36);   % 下 panel y 軸標題（標準數學字體 \mathbf CM）
     xlabel(ax2, '$\mathbf{Sampling\;range\;(micro\;meter)}$', 'Interpreter','latex', 'FontSize',36);   % [MODIFIED 2026-08-05] 單位改拼字 micro meter（使用者要求）；共用 x 軸標題（掃描半徑 R）
     hold(ax2,'off');
 
     % [MODIFIED 2026-08-03] 檔名一律明確標「求解器_模型」，不留隱含預設（使用者拍板）
     mstr = 'single'; if USE_BIAS, mstr = 'eighteen'; end
-    out = fullfile(figdir, sprintf('ell_gain_vs_R_%s_%s.png', lower(SRC), mstr));
+    fstr = ''; if FIXN, fstr = sprintf('_fixedN%d', NFIX); end   % [ADDED] fixedN 另存,不覆蓋原圖
+    out = fullfile(figdir, sprintf('ell_gain_vs_R_%s_%s%s.png', lower(SRC), mstr, fstr));
     exportgraphics(fig, out, 'Resolution', 200);
     fprintf('\nwrote %s\n', out);
 end
@@ -159,6 +189,59 @@ function adq = interp_grid_sample(ad, cfg, Rmax, h)
 end
 
 % ============================================================================
+function FX = fixedN_prepare(ad, Rmax, M)
+% [ADDED 2026-08-10] fixedN 模式的一次性準備：
+%   ① 單位球內「體積均勻」的 M 個點（立方體拒絕取樣；rng(0) 決定性）
+%      → 各 R 只把這同一組點**縮放**，取樣圖樣完全相同 ⇒ 趨勢不含抽樣抖動。
+%   ② 源點三角化只建一次（之後只換 .Values），源球半徑比 Rmax 多留 60µm 免邊界外插成 NaN。
+    rng(0);
+    U = zeros(M,3);   n = 0;
+    while n < M
+        V  = 2*rand(2*(M-n), 3) - 1;                     % 立方體 [-1,1]^3
+        d2 = sum(V.^2, 2);
+        V  = V(d2 <= 1 & d2 > 0, :);                     % 留球內 → 體積均勻
+        k  = min(size(V,1), M-n);
+        U(n+1:n+k, :) = V(1:k, :);   n = n + k;
+    end
+    FX.U   = U;
+    FX.src = ad.r2 < (Rmax + 60e-6)^2;
+    Xs     = ad.Pa(FX.src, :);
+    FX.Fi  = scatteredInterpolant(Xs(:,1), Xs(:,2), Xs(:,3), ...
+                                  ad.Ba(FX.src,1,1), 'linear', 'none');
+    fprintf('  [fixedN] 單位球點集 %d 點；源點 %d（球半徑 %.0f um）\n', M, nnz(FX.src), (Rmax+60e-6)*1e6);
+end
+
+% ============================================================================
+function [P, Bstack, npts] = fixedN_sample(ad, cfg, FX, R, NFIX)
+% [ADDED 2026-08-10] 在半徑 R 的球內取**固定 NFIX 個**體積均勻點，內插出各激發的場。
+%   回傳格式與 model_config 的 select_ball 完全一致：P(Np×3)、Bstack(3Np×N_I)。
+    Pq = FX.U * R;                                       % 同一組點集只縮放
+    Pm = (ad.R_act.' * Pq.').';                          % actuator → measure(WP frame)
+    air = filter_iron_nodes(Pm(:,1), Pm(:,2), Pm(:,3) + cfg.SPH_OFST, cfg);   % 與 pipeline 同判準
+    Pq  = Pq(air, :);
+
+    N_I = size(ad.Ba, 3);
+    Bq  = zeros(size(Pq,1), 3, N_I);
+    for j = 1:N_I
+        for c = 1:3
+            FX.Fi.Values = ad.Ba(FX.src, c, j);          % 重用三角化，只換值
+            Bq(:,c,j) = FX.Fi(Pq);
+        end
+    end
+    ok = ~any(any(isnan(Bq),3),2);                       % 落在源網格外者剔除（理論上不該有）
+    Pq = Pq(ok,:);   Bq = Bq(ok,:,:);
+
+    assert(size(Pq,1) >= NFIX, ...
+        'fixedN：R=%.0fum 濾鐵+去 NaN 後只剩 %d 點 < NFIX=%d，請加大 M', R*1e6, size(Pq,1), NFIX);
+    P    = Pq(1:NFIX, :);                                % 截到剛好 NFIX
+    npts = NFIX;
+    Bstack = zeros(3*npts, N_I);
+    for j = 1:N_I
+        Bstack(:,j) = reshape(Bq(1:NFIX,:,j).', [], 1);  % [Bx;By;Bz;…]（同 select_ball）
+    end
+end
+
+% ============================================================================
 function CAL = solver_path(SRC)
 % [ADDED] 依 SRC 掛上對應分支、並「移除另一分支」——兩分支有同名函式
 %   (model_config/fitting/solve_current/emit_*…)，只 addpath 不 rmpath 會被先進 path 的那份遮蔽。
@@ -187,9 +270,20 @@ function raw = load_raw(SRC, cfg)
 end
 
 % ============================================================================
-function [yl, yt] = ylim_pick(SRC, USE_BIAS, which_q, v)
+function [yl, yt] = ylim_pick(SRC, USE_BIAS, which_q, v, FIXN)
 % [ADDED] y 軸範圍 / 刻度：apdl 沿用既定案值（逐字不變）；maxwell 依實際資料自動取
 %   「等距 4 個內縮 tick」（照 figure-style：不含端點、等距、數量固定）。
+%   [MODIFIED 2026-08-10] FIXN=true 一律走自動、且改 **3 個奇數等距 tick**（新規則：tick 數量奇數）。
+    if nargin < 5, FIXN = false; end
+    if FIXN
+        lo = min(v(:));  hi = max(v(:));  sp = max(hi - lo, realmin);
+        yl = [lo - 0.20*sp, hi + 0.20*sp];
+        s  = nice_step(diff(yl)/4);
+        c  = round(mean(yl)/s)*s;
+        yt = c + (-1:1:1)*s;                             % 3 個等距 tick（奇數）
+        yt = yt(yt > yl(1) & yt < yl(2));
+        return;
+    end
     if strcmpi(SRC,'apdl')
         switch which_q
             case 'ell', yl = [750 870];  yt = [770 800 830 860];

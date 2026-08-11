@@ -224,6 +224,29 @@ Zs = ZL(1) + (gz(:)+0.5 + JIT*(rand(numel(gz),1)-0.5))*hz;
 
 ---
 
+## 🔒 自 0 起的軸（基準線貼框）：上緣只留 8% 裕度（使用者拍板 2026-08-12）
+
+當縱軸有**物理下界 0**（比例、計數、火柴棒圖的基準線…），下緣固定 0、**基準線貼齊下框**，
+且**上方不可留過多空白**：
+
+```matlab
+x = maxv/4;  k = floor(log10(x));
+s = cand(find(cand*10^k >= x, 1)) * 10^k;   % ① 刻度間距照資料範圍取 nice
+top = 1.08 * maxv;                          % ② 上緣只留 8% 裕度（limit 不顯示，不必是整數）
+n = floor(top/s);  if mod(n,2)==0, n = n-1; end   % ③ 刻度 = (1:n)*s，n 取不超出上緣的最大奇數
+ylim(ax,[0 top]);  set(ax,'YTick',(1:n)*s);
+```
+
+**🔴 不可為了湊「兩端留白 = 間距」而把上緣撐大**（那條規則是給兩端都無界的軸用的）。
+實例：資料最大 39.24 時，強制 `top=(n+1)*s` 會得到 `ylim=[0,60]`、填充率僅 **65%**（上方空掉三分之一）；
+本規則給 `ylim=[0,42.4]`、刻度 10/20/30、填充率 **92.6%**。
+**⚠ 壓上緣時「刻度間距不可跟著變小」** —— 踩過：把 s 從 10 改成 5，刻度只到 25（資料到 39），
+反而更難讀。**s 由資料範圍決定、與上緣壓縮無關。**
+
+範例：`figures/paper_fig_plot/plot/plot_nmin_ratio_stem.m` 的 `axlim_from_zero`。
+
+---
+
 ## 🔒 圖例（legend）標準樣式（使用者拍板 2026-08-10，所有圖通用）
 
 **範本圖**：`figures/paper_fig/Section3_A/sensor_B_hist_P1_flat_vs_cone_maxwell_soff4.572_n500.png`
@@ -241,6 +264,22 @@ axp = get(ax,'Position');  lgh = get(lg,'Position');  lgh = lgh(4);
 GAPN = 0.022;  newTop = 1 - lgh - GAPN - 0.006;
 axp(4) = newTop - axp(2);  set(ax,'Position',axp);
 set(lg, 'Position', [axp(1), newTop + GAPN, axp(3), lgh]);
+```
+
+**⚠ 補充（使用者拍板 2026-08-12）：圖例寬度要「自動貼合內容」，不可無條件拉滿框寬。**
+上面那行 `axp(3)` 是**兩則以上**、內容本來就接近框寬時才對；**只有一則短標籤**時會拉出一條又寬又空的
+長框（實例：`nmin_ratio_stem` 的單則 `Single parameter`）。判準與寫法：
+
+```matlab
+axp = get(ax,'Position');   lgp = get(lg,'Position');
+lgw = lgp(3);   lgh = lgp(4);
+GAPN = 0.022;   newTop = 1 - lgh - GAPN - 0.006;
+axp(4) = newTop - axp(2);   set(ax,'Position',axp);
+if lgw < 0.70*axp(3)        % 自然寬度 < 框寬 70% → 保持自然寬度並置中
+    set(lg, 'Position', [axp(1) + (axp(3)-lgw)/2, newTop + GAPN, lgw, lgh]);
+else                        % 否則沿用「左右緣切齊座標框」
+    set(lg, 'Position', [axp(1), newTop + GAPN, axp(3), lgh]);
+end
 ```
 
 要點（逐條，缺一不可）：

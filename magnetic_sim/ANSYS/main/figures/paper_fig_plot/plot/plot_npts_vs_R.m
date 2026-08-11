@@ -155,9 +155,18 @@ function render(R, N, Nm, MODEL, ref, SRC, DR, SCALE, XVAR, figdir)
         fprintf('  XL = [%g %g]; YL = [%g %g]（log10，YTick 10^0~10^4）；第一個 N>=1 在 R = %g µm\n', ...
                 XL, YL, R(find(q,1)));
     else
-        ny = nice_step(max(N)/1e3/4);
-        YL = [0 4*ny];  ylim(ax, YL);  set(ax,'YTick',(1:3)*ny);
-        fprintf('  XL = [%g %g]; YL = [%g %g]×10³（YTick %g/%g/%g）\n', XL, YL, ny, 2*ny, 3*ny);
+        % [MODIFIED 2026-08-11] 刻度數量在 {5,3} 中取「填充率最高」者 —— 原本寫死 3 個,
+        %   nice_step 進位後 YL 上緣常遠高於資料(本例 max 511.6 對 YL=800,上方空掉 36%)。
+        %   兩者都守 figure-style:奇數個、等距、兩端留白 = 間距(YL = [0,(n+1)·ny])。
+        nyc = [5 3];   fill = zeros(size(nyc));   nys = zeros(size(nyc));
+        for k = 1:numel(nyc)
+            nys(k)  = nice_step(max(N)/1e3/(nyc(k)+1));
+            fill(k) = (max(N)/1e3) / ((nyc(k)+1)*nys(k));
+        end
+        [~, kb] = max(fill);   nt = nyc(kb);   ny = nys(kb);
+        YL = [0 (nt+1)*ny];  ylim(ax, YL);  set(ax,'YTick',(1:nt)*ny);
+        fprintf('  XL = [%g %g]; YL = [%g %g]×10³（%d 個 YTick,間距 %g,填充率 %.1f%%）\n', ...
+                XL, YL, nt, ny, fill(kb)*100);
     end
 
     % 水平軸端點只標數字、不畫 tick（log 軸要在 log 空間下算偏移，線性公式會跑到負值）
