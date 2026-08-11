@@ -224,6 +224,39 @@ Zs = ZL(1) + (gz(:)+0.5 + JIT*(rand(numel(gz),1)-0.5))*hz;
 
 ---
 
+## 🔒 圖例（legend）標準樣式（使用者拍板 2026-08-10，所有圖通用）
+
+**範本圖**：`figures/paper_fig/Section3_A/sensor_B_hist_P1_flat_vs_cone_maxwell_soff4.572_n500.png`
+**範本碼**：`figures/paper_fig_plot/plot/plot_sensor_B_hist.m`（legend 區塊）。
+**以後所有圖的圖例一律照這張做**，不要各圖各自發明。
+
+```matlab
+lg = legend([h1 h2 ml1 ml2], {lbl1, lbl2, s1, s2}, ...
+            'Interpreter','tex', 'Location','northoutside', 'NumColumns',2);
+lg.FontSize = 24;  lg.FontWeight = 'bold';
+lg.Box = 'on';  lg.EdgeColor = 'k';  lg.LineWidth = 2.5;
+% 對齊：圖例左右緣切齊座標框、置於框正上方固定間距（northoutside 預設不會對齊，要手動定位）
+drawnow;
+axp = get(ax,'Position');  lgh = get(lg,'Position');  lgh = lgh(4);
+GAPN = 0.022;  newTop = 1 - lgh - GAPN - 0.006;
+axp(4) = newTop - axp(2);  set(ax,'Position',axp);
+set(lg, 'Position', [axp(1), newTop + GAPN, axp(3), lgh]);
+```
+
+要點（逐條，缺一不可）：
+
+1. **放框外正上方**（`Location='northoutside'`）—— 不壓到資料、不放圖內角落。
+2. **寬度與座標框對齊**：`lg.Position` 的 x 與寬度直接取 `axp(1)` / `axp(3)`，左右緣與框線切齊。
+   ⚠ `northoutside` **預設不會對齊**（會置中且寬度隨內容），必須照上面 `drawnow` 後手動定位。
+3. **黑色粗外框**：`Box='on'`、`EdgeColor='k'`、`LineWidth=2.5`。
+4. **字體 24 粗體**（比軸字 36 小一級）—— 圖例字跟軸字同大會擠爆版面。
+5. **`NumColumns=2`：左欄 = 資料系列**（bar / 線的色塊）、**右欄 = 該系列對應的統計線**
+   （mean / CV 等）。系列與它的統計值**同一列**，讀者一眼配對。
+6. **統計數值寫進圖例文字**（如 `Flat mean = 10.731 mT, CV = 1.42%`），**不要**另用 `text` 標在圖內。
+   數值帶單位、照本檔「通用數值標註慣例」。
+7. 每則**首字大寫**（見選項① 第 8 條）。
+8. 只有兩個系列而無統計線時，仍用 `northoutside` + 對齊 + 粗黑框；欄數依內容取 1 或 2。
+
 ## 🔒 純幾何示意圖：不放軸標題（使用者拍板 2026-08-07）
 
 **schematic（只畫幾何、不承載場值或量測數據的示意圖）不放軸標題**（`xlabel` / `ylabel` / `zlabel`）。
