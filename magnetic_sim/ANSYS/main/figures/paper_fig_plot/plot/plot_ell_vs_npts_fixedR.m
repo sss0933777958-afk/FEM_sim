@@ -1,8 +1,18 @@
-function plot_ell_vs_npts_fixedR(RFIX, MODELS, NN, ORDER, force)
-% plot_ell_vs_npts_fixedR -- paper 圖：固定取樣半徑 R，只增加取樣點數 n，看 l_hat 是否穩定
+function plot_ell_vs_npts_fixedR(RFIX, MODELS, NN, ORDER, force, QTY, MREP)
+% plot_ell_vs_npts_fixedR -- paper 圖：固定取樣半徑 R，只增加取樣點數 n，看參數是否穩定
 % =========================================================================
-%   水平軸 = 取樣點數 n（log）、縱軸 = l_hat [um]。
-%   MODELS = 'both'（預設，single + eighteen 疊圖）| 'single' | 'eighteen'
+%   水平軸 = 取樣點數 n（log）、縱軸 = QTY：
+%     QTY='ell' （預設）→ 有效長度 l_hat [um]      顏色 **藍**
+%     QTY='gain'        → 電流增益 g_I_hat [mT/A]  顏色 **紅**
+%   MODELS = 'both'（預設，上下兩 panel）| 'single' | 'eighteen'
+%
+%   [MODIFIED 2026-08-12] 使用者拍板兩件事：
+%     ① **一張 l_hat、一張 gain**（不是 random/radial 兩張 l_hat）；兩張都上下分
+%        single / eighteen 兩個子圖。
+%     ② 曲線 = **MREP=10 組隨機抽樣的逐點中位數**（不是單一 seed）——單組帶巨大抽樣運氣
+%        （同一 R 的 10 組 N_min 差 5~17 倍），中位數才是可引用的統計量。
+%     ③ 視覺編碼：**顏色 = 物理量**（l_hat 藍 / gain 紅）、**marker = 模型**
+%        （single 圓 o / eighteen 方 s）。
 %
 %   ⚠ 與 plot_ell_vs_npts 的差別（兩者橫軸都是點數，意義完全不同）：
 %     plot_ell_vs_npts        n 隨 R 一起變（n ~ R^3）→ 點數與區域大小綁在一起，分不開
@@ -36,11 +46,17 @@ function plot_ell_vs_npts_fixedR(RFIX, MODELS, NN, ORDER, force)
     %                    **全部**點，問的是「要取到多外面才夠」。**確定性、無抽樣抖動**。
     %   ⚠ radial 下 l_hat(n) 走的是「l_hat 對半徑」的曲線（n=20 -> r~17um、
     %     n=pool -> r=RFIX），不是「同一個球內加密」。兩者問的是不同問題，別混用。
-    if nargin < 4 || isempty(ORDER),  ORDER  = 'radial'; end
+    if nargin < 4 || isempty(ORDER),  ORDER  = 'random'; end
     if nargin < 5 || isempty(force),  force  = false;  end
-    % 穩定判準線：n = 1588 是 **random 序**下 single 進 ±0.26% 的門檻；radial 序不適用 → 不畫。
-    NMARK = 1588;
-    if strcmpi(ORDER,'radial'), NMARK = []; end
+    % [ADDED 2026-08-12] QTY 與抽樣組數。radial 是確定性序 → 強制 MREP=1（中位數無意義）。
+    if nargin < 6 || isempty(QTY),    QTY    = 'ell';   end   % 'ell' | 'gain'
+    if nargin < 7 || isempty(MREP),   MREP   = 10;      end   % 隨機序的抽樣組數（取逐點中位數）
+    if strcmpi(ORDER,'radial'), MREP = 1; end
+    switch lower(QTY)
+        case 'ell',  ylab = '$\mathbf{\hat{\ell}\;(micro\;meter)}$';       CQ = [0.05 0.10 0.95];
+        case 'gain', ylab = '$\mathbf{{}^{B}\hat{g}_{I}\;(mT/A)}$';        CQ = [0.85 0.10 0.10];
+        otherwise,   error('QTY 必為 ''ell'' | ''gain''');
+    end
 
     here   = fileparts(fileparts(mfilename('fullpath')));      % → paper_fig_plot/
     figdir = fullfile(fileparts(here), 'paper_fig', 'Section2_E');
@@ -55,7 +71,18 @@ function plot_ell_vs_npts_fixedR(RFIX, MODELS, NN, ORDER, force)
 
     nl = cell(1,numel(bias));   el = cell(1,numel(bias));
     for i = 1:numel(bias)
-        [nl{i}, el{i}] = sweep_one(RFIX, bias(i), NN, ORDER, force, here);
+        [nl{i}, el{i}] = sweep_median(RFIX, bias(i), NN, ORDER, MREP, QTY, force, here);
+    end
+
+    % [MODIFIED 2026-08-12] 穩定判準線改用**本 R 實際補算的 N_min**（原本寫死 n=1588）。
+    %   演算法與 plot_nmin_vs_R 的隨機序逐條相同（見 local nmin_canonical）：
+    %   10 um 內插格池 → rng(d-1) 打亂、巢狀累積取前 n（NN=45 log 間距）→ single 擬合
+    %   → 平坦段起點（其後 KTAIL=7 點相對變化率 <= TOLPC=0.20%）→ MREP=10 組取中位數。
+    %   ⚠ radial 序不適用（少取點 = 縮小範圍，N_min 與 R 無關且不是 R 的答案）→ 不畫線。
+    if strcmpi(ORDER,'radial')
+        NMARK = [];
+    else
+        NMARK = nmin_canonical(RFIX, here, force);
     end
 
     % ---- 畫圖（選項①粗體框；無軸標題）--------------------------------------
@@ -63,8 +90,12 @@ function plot_ell_vs_npts_fixedR(RFIX, MODELS, NN, ORDER, force)
     %   尺度看不出 eighteen 的結構 —— 它的擺幅只有 single 的 1/14）。依 figure-style
     %   「兩 panel 的 y tick 數量必須一致」，先取共同 tick 數再各自算範圍。
     FS = 36;  LWBOX = 4.0;
-    cols = [0.05 0.10 0.95; 0.85 0.10 0.10];   % single 亮藍 / eighteen 紅
-    mks  = {'-o','-s'};
+    % [MODIFIED 2026-08-12] 視覺編碼改為（使用者拍板）：
+    %   **顏色 = 物理量**（l_hat 藍、gain 紅），**marker = 模型**（single 圓 o、eighteen 方 s）。
+    %   一張圖只畫一個 QTY → 上下兩 panel 同色（CQ），靠圓/方區分 single / eighteen。
+    %   （原本是「顏色 = 模型」：single 藍 / eighteen 紅，與「gain 用紅」衝突。）
+    cols  = [CQ; CQ];            % 同一張圖只有一個物理量 → 兩條同色
+    mks   = {'-o','-s'};         % single = 圓、eighteen = 方
     if strcmpi(MODELS,'eighteen'), cols = cols(2,:);  mks = mks(2); end
     XL = [min(cellfun(@(v)v(1),nl)) max(cellfun(@(v)v(end),nl))];
     XT = log_ticks(XL);
@@ -106,7 +137,7 @@ function plot_ell_vs_npts_fixedR(RFIX, MODELS, NN, ORDER, force)
         % [MODIFIED 2026-08-11] 使用者要求加回軸標題。兩 panel 同為 l_hat → 用 layout 級
         %   共用 ylabel（各 panel 各標一次會重複）；xlabel 也掛 layout（共用 x 軸）。
         xlabel(tl, '$\mathbf{Number\;of\;points}$',            'Interpreter','latex', 'FontSize',FS);
-        ylabel(tl, '$\mathbf{\hat{\ell}\;(micro\;meter)}$',    'Interpreter','latex', 'FontSize',FS);
+        ylabel(tl, ylab,    'Interpreter','latex', 'FontSize',FS);
         axleg = axs(1);
     else
         fig = figure('Color','w','Position',[100 100 1120 820]);
@@ -127,7 +158,7 @@ function plot_ell_vs_npts_fixedR(RFIX, MODELS, NN, ORDER, force)
                  'VerticalAlignment','top','FontSize',FS,'FontWeight','bold','Clipping','off');
         end
         xlabel(axleg, '$\mathbf{Number\;of\;points}$',         'Interpreter','latex', 'FontSize',FS);
-        ylabel(axleg, '$\mathbf{\hat{\ell}\;(micro\;meter)}$', 'Interpreter','latex', 'FontSize',FS);
+        ylabel(axleg, ylab, 'Interpreter','latex', 'FontSize',FS);
         hold(axleg,'off');
     end
 
@@ -149,55 +180,140 @@ function plot_ell_vs_npts_fixedR(RFIX, MODELS, NN, ORDER, force)
     end
 
     ostr = ''; if strcmpi(ORDER,'radial'), ostr = '_radial'; end
-    out = fullfile(figdir, sprintf('ell_vs_npts_fixedR%d_maxwell10_%s%s.png', RFIX, lower(MODELS), ostr));
+    out = fullfile(figdir, sprintf('%s_vs_npts_fixedR%d_maxwell10_%s%s.png', lower(QTY), RFIX, lower(MODELS), ostr));
     exportgraphics(fig, out, 'Resolution', 200);
     fprintf('\nwrote %s\n', out);
 end
 
 % ============================================================================
-function [nlist, ell_n] = sweep_one(RFIX, USE_BIAS, NN, ORDER, force, here)
-% 一個模型的 n-sweep（有快取就讀）。回 nlist 與 ell_n [um]。
+function [nlist, val] = sweep_median(RFIX, USE_BIAS, NN, ORDER, MREP, QTY, force, here)
+% [MODIFIED 2026-08-12] 一個模型的 n-sweep，**MREP 組隨機抽樣 → 回逐點中位數**。
+%   一次算 l_hat 與 g_I_hat 兩個量、存同一顆快取（QTY 只決定回傳哪一個）
+%   → 「l_hat 一張 + gain 一張」只需跑一次擬合。
+%   每組 d：rng(d-1) 打亂池 → 巢狀累積取前 n（只增不換）→ fitting 得 l_hat、
+%           再 solve_current 得 g_I_hat（F = identity，Maxwell map 就是 identity）。
+%   ORDER='radial' 時 MREP 已被強制為 1（確定性序，無抽樣運氣可平均）。
     HGRID = 10e-6;   N0 = 20;
     mstr   = 'single'; if USE_BIAS, mstr = 'eighteen'; end
-    ostr   = ''; if strcmpi(ORDER,'radial'), ostr = '_radial'; end   % random 序不加後綴（沿用舊快取）
-    cachef = fullfile(here, 'data', sprintf('ell_vs_npts_fixedR%d_maxwell10_%s%s.mat', RFIX, mstr, ostr));
+    ostr   = ''; if strcmpi(ORDER,'radial'), ostr = '_radial'; end
+    cachef = fullfile(here, 'data', ...
+             sprintf('npts_fixedR%d_maxwell10_%s_m%d%s.mat', RFIX, mstr, MREP, ostr));
+
     if exist(cachef,'file') && ~force
-        S = load(cachef);   nlist = S.nlist;   ell_n = S.ell_n;
-        fprintf('loaded cache %s\n', cachef);   return;
-    end
-
-    solver_path();
-    cfg = model_config('long2016_hexapole_halfcut','tip40um');
-    raw = extract_maxwell_data(cfg, 'all', cfg.default_variant);
-    ad  = build_actuator_data(raw, cfg);
-    ad  = interp_grid_sample(ad, cfg, RFIX*1e-6, HGRID);      % → 10 um 格、只到 RFIX
-
-    Pool  = ad.Pa;   Bpool = ad.Ba;   npool = size(Pool,1);
-    if strcmpi(ORDER,'radial')
-        [~, ord] = sort(ad.r2, 'ascend');                     % 由內往外（確定性、無抽樣運氣）
+        S = load(cachef);   nlist = S.nlist;   ELL = S.ell;   GAIN = S.gain;
+        fprintf('loaded cache %s（%d 組）\n', cachef, size(ELL,1));
     else
-        rng(0);   ord = randperm(npool);                      % 打亂一次，之後不再抽
-    end
-    nlist = unique(round(logspace(log10(N0), log10(npool), NN)));
-    fprintf('  [%s/%s] 取樣池 %d 點（R<=%d um, %g um 格）；測 %d 個點數 %d..%d\n', ...
-            mstr, lower(ORDER), npool, RFIX, HGRID*1e6, numel(nlist), nlist(1), nlist(end));
+        solver_path();
+        cfg = model_config('long2016_hexapole_halfcut','tip40um');
+        raw = extract_maxwell_data(cfg, 'all', cfg.default_variant);
+        ad  = build_actuator_data(raw, cfg);
+        ad  = interp_grid_sample(ad, cfg, RFIX*1e-6, HGRID);   % → 10 um 格、只到 RFIX
 
-    ell_n = nan(size(nlist));   reff = nan(size(nlist));
-    fprintf('\n      n     ell_hat[um]   r_eff[um]\n');
-    for k = 1:numel(nlist)
-        idx = ord(1:nlist(k));                                % **前 n 個** → 巢狀累積
-        P   = Pool(idx, :);
-        Bstack = zeros(3*nlist(k), cfg.N_I);
-        for j = 1:cfg.N_I
-            Bstack(:,j) = reshape(Bpool(idx,:,j).', [], 1);   % 同 select_ball 的堆疊
+        Pool = ad.Pa;   Bpool = ad.Ba;   npool = size(Pool,1);
+        F = zeros(6, cfg.N_I);                                  % coil→pole（Maxwell = identity）
+        for j = 1:cfg.N_I, F(cfg.apdl_to_paper_idx(j), j) = 1; end
+        nlist = unique(round(logspace(log10(N0), log10(npool), NN)));
+        fprintf('  [%s/%s] 池 %d 點（R<=%d um, %g um 格）；%d 組 x %d 個 n（%d..%d）\n', ...
+                mstr, lower(ORDER), npool, RFIX, HGRID*1e6, MREP, numel(nlist), nlist(1), nlist(end));
+
+        ELL = nan(MREP, numel(nlist));   GAIN = nan(MREP, numel(nlist));
+        for d = 1:MREP
+            if strcmpi(ORDER,'radial')
+                [~, ord] = sort(ad.r2, 'ascend');               % 由內往外（確定性）
+            else
+                rng(d-1);   ord = randperm(npool);              % seed = d-1（同 N_min 研究）
+            end
+            for k = 1:numel(nlist)
+                idx = ord(1:nlist(k));                          % 巢狀累積
+                P   = Pool(idx, :);
+                Bstack = zeros(3*nlist(k), cfg.N_I);
+                for j = 1:cfg.N_I
+                    Bstack(:,j) = reshape(Bpool(idx,:,j).', [], 1);
+                end
+                [e, l_hat] = fitting(P, Bstack, ad.Pc_base, 0.5e-3, USE_BIAS);
+                [~, gI]    = solve_current(l_hat, e, ad.Pc_base, P, Bstack, F);
+                ELL(d,k)  = l_hat*1e6;                          % [um]
+                GAIN(d,k) = gI;                                 % [mT/A]
+            end
+            fprintf('    seed %d done\n', d-1);
         end
-        [~, l_hat] = fitting(P, Bstack, ad.Pc_base, 0.5e-3, USE_BIAS);
-        ell_n(k) = l_hat*1e6;
-        reff(k) = sqrt(max(ad.r2(idx)))*1e6;                  % 該 n 的有效半徑 [um]
-        fprintf('  %7d   %10.3f      %6.1f\n', nlist(k), ell_n(k), reff(k));
+        ell = ELL;  gain = GAIN;   %#ok<NASGU>
+        save(cachef, 'nlist', 'ell', 'gain', 'npool', 'RFIX', 'USE_BIAS', ...
+                     'HGRID', 'ORDER', 'MREP', 'NN');
+        fprintf('saved cache %s\n', cachef);
     end
-    save(cachef, 'nlist', 'ell_n', 'reff', 'npool', 'RFIX', 'USE_BIAS', 'HGRID', 'ORDER');
-    fprintf('saved cache %s\n', cachef);
+
+    switch lower(QTY)                                           % 逐點（跨組）中位數
+        case 'ell',  val = median(ELL,  1, 'omitnan');
+        case 'gain', val = median(GAIN, 1, 'omitnan');
+    end
+end
+
+% ============================================================================
+function Nmin = nmin_canonical(RFIX, here, force)
+% [ADDED 2026-08-12] 補算本 R 的 N_min —— **演算法與 plot_nmin_vs_R 的隨機序逐條相同**。
+%   之所以要補：N_min 研究的網格是 R = 100:20:500，**沒有 150**（相鄰的 140→1761、
+%   160→1256.5，差 1.4 倍，不能內插代用）。
+%
+%   演算法（= plot_nmin_vs_R 的 random_draws + flat_one + median，參數取定案值）：
+%     ① 池 = R<=RFIX 球內的 10 um 內插格點（single 用；濾鐵後）
+%     ② 每組 d：rng(d-1) 打亂 → **巢狀累積**取前 n（只增不換、不重抽）
+%     ③ n = log 間距 NN=45 個，20 → min(pool, NCAP=15000)
+%     ④ 平坦段起點 = 第一個 k，使**其後 KTAIL=7 點**的相對變化率都 <= TOLPC=0.20%
+%     ⑤ MREP=10 組（seed 0..9）取**中位數**
+%   ⚠ 判準參數取「定案值」而非 plot_nmin_vs_R 的函式預設（NN=40/K=5/M=5/tol=0.26）——
+%     已驗證 TOL=0.20/K=7/M=10 能重現既有快取的發表值（最大 2807、佔池中位數 0.51%）。
+%   ⚠ 池的列舉順序是 ndgrid 的 (z,y,x) 字典序 → 在 Rmax=RFIX 建格與「建到 500 再篩 r<=RFIX」
+%     得到**同一組、同順序**的點，故同 seed 的 randperm 抽到相同子集、與研究一致。
+    NN = 45;  NCAP = 15000;  N0 = 20;  HGRID = 10e-6;
+    MREP = 10;  TOLPC = 0.20;  KTAIL = 7;
+    cachef = fullfile(here, 'data', sprintf('nmin_fixedR%d_maxwell10_single_random.mat', RFIX));
+
+    if exist(cachef,'file') && ~force
+        S = load(cachef);   nlist = S.nlist;   E = S.ell;   npool = S.npool;
+        fprintf('loaded cache %s（%d 組）\n', cachef, size(E,1));
+    else
+        solver_path();
+        cfg = model_config('long2016_hexapole_halfcut','tip40um');
+        raw = extract_maxwell_data(cfg, 'all', cfg.default_variant);
+        ad  = build_actuator_data(raw, cfg);
+        ad  = interp_grid_sample(ad, cfg, RFIX*1e-6, HGRID);
+        npool = size(ad.Pa,1);
+        nlist = unique(round(logspace(log10(N0), log10(min(npool,NCAP)), NN)));
+        E = nan(MREP, numel(nlist));
+        fprintf('  [N_min] R<=%d um 池 %d 點；%d 組 x %d 個 n\n', RFIX, npool, MREP, numel(nlist));
+        for d = 1:MREP
+            rng(d-1);   ord = randperm(npool);                 % seed = d-1（同 random_draws）
+            for k = 1:numel(nlist)
+                idx = ord(1:nlist(k));                         % 巢狀累積：只增不換
+                P   = ad.Pa(idx,:);
+                Bs  = zeros(3*nlist(k), cfg.N_I);
+                for j = 1:cfg.N_I
+                    Bs(:,j) = reshape(ad.Ba(idx,:,j).', [], 1);
+                end
+                [~, l_hat] = fitting(P, Bs, ad.Pc_base, 0.5e-3, false);   % single
+                E(d,k) = l_hat*1e6;
+            end
+            fprintf('    seed %d done\n', d-1);
+        end
+        ell = E;   %#ok<NASGU>
+        save(cachef, 'nlist', 'ell', 'npool', 'RFIX', 'NN', 'NCAP', 'HGRID', ...
+                     'MREP', 'TOLPC', 'KTAIL');
+        fprintf('saved cache %s\n', cachef);
+    end
+
+    % 每組的平坦段起點 → 中位數
+    nd = nan(1, size(E,1));
+    for d = 1:size(E,1)
+        ell_d = E(d,:);
+        dch   = [NaN, abs(diff(ell_d))./ell_d(2:end)*100];
+        for a = 1:numel(nlist)-KTAIL
+            if all(dch(a+1 : a+KTAIL) <= TOLPC), nd(d) = nlist(a);  break; end
+        end
+    end
+    Nmin = median(nd, 'omitnan');
+    fprintf('  [N_min] R=%d um：10 組 = %s\n', RFIX, mat2str(nd));
+    fprintf('  [N_min] 中位數 = %g（佔池 %d 的 %.2f%%）\n', Nmin, npool, Nmin/npool*100);
 end
 
 % ============================================================================

@@ -30,11 +30,26 @@ function plot_ell_nmin_vs_full(QTY, RSEL, TOLPC, KWIN, force)
     if nargin < 3 || isempty(TOLPC), TOLPC = 0.2;        end
     if nargin < 4 || isempty(KWIN),  KWIN  = 7;          end
     if nargin < 5 || isempty(force), force = false;      end
+    % [ADDED 2026-08-12] QTY='nmae'：不比參數值，而是比**兩組參數各自把該 R 內全部點擬合得多好**。
+    %   兩條曲線都在**同一個評估集（該 R 內全部格點）**上算 NMAE：
+    %     ① 減量：用 N_min 個點校正出的參數 → 這是**泛化誤差**（訓練集 ⊂ 評估集）
+    %     ② 全取樣：用全部點校正出的參數   → 這是**自身殘差**（訓練集 = 評估集，必為下界）
+    %   NMAE 沿用 doc/error_definition 的**平均場正規化**（分母 = 平均場，L2 換成 L1）：
+    %     NMAE = <||B_model - B_FEM||> / <||B_FEM||> * 100 [%]，對「全部點 x 6 個激發」取平均。
     switch lower(QTY)
         case 'ell',  ylab = '$\mathbf{\hat{\ell}\;(micro\;meter)}$';   fmt = '%8.3f';
         case 'gain', ylab = '$\mathbf{{}^{B}\hat{g}_{I}\;(mT/A)}$';    fmt = '%8.4f';
-        otherwise,   error('QTY 必為 ''ell'' | ''gain''');
+        case 'nmae', ylab = '$\mathbf{NMAE\;(\%)}$';                   fmt = '%8.4f';
+        % [ADDED 2026-08-12] 只畫一條：|NMAE_全取樣 - NMAE_減量|（單位 = 百分點）。
+        %   兩條 NMAE 曲線疊在一起看不出差別 → 用差值圖把「減量的代價」放大呈現。
+        case 'nmaediff', ylab = '$\mathbf{|\Delta NMAE|\;(\%)}$';      fmt = '%8.4f';
+        % [ADDED 2026-08-12] 每點平均 cost：J/N(R)。J 是專案既有定義（同 plot_npts_cost_vs_R）
+        %   J = Σ_{j=1..6} ||S(l_hat,Pc)·g_j − b_j||² [mT²]，涵蓋全部點 x 3 分量 x 6 激發；
+        %   除以 N(R) = 該 R 內的**點數**（不是 3N 或 18N），去掉 J 的外延性，兩個 R 才可比。
+        case 'cost', ylab = '$\mathbf{Cost/N\;(mT^{2})}$';             fmt = '%10.3e';
+        otherwise,   error('QTY 必為 ''ell'' | ''gain'' | ''nmae'' | ''nmaediff'' | ''cost''');
     end
+    ONE = strcmpi(QTY,'nmaediff');                     % 單序列模式（無第二條曲線、無圖例）
 
     here   = fileparts(fileparts(mfilename('fullpath')));
     figdir = fullfile(fileparts(here), 'paper_fig', 'Section2_E');
@@ -64,7 +79,23 @@ function plot_ell_nmin_vs_full(QTY, RSEL, TOLPC, KWIN, force)
 
     if strcmpi(QTY,'gain')                             % ĝ_I 需重跑擬合（見檔頭 [ADDED]）
         [ellA, ellB] = gain_curves(here, RSEL, Nuse, S, F, force);
+    elseif strcmpi(QTY,'nmae') || ONE || strcmpi(QTY,'cost')
+        met = 'nmae';  if strcmpi(QTY,'cost'), met = 'cost'; end
+        [ellA, ellB] = nmae_curves(here, RSEL, Nuse, S, F, force, met);
+        if ONE                                         % 差值圖：一條 |全取樣 - 減量|
+            ellA = abs(ellB - ellA);   ellB = nan(size(ellA));
+        end
     end
+    if ONE                                             % [ADDED] 單序列：只印差值
+        fprintf('\n   R    N_min     pool    佔比%%    |dNMAE| [百分點]\n');
+        for t = 1:nR
+            fprintf(['  %3d  %7d  %7d  %6.2f   ' fmt '\n'], ...
+                    RSEL(t), Nuse(t), pool(t), Nuse(t)/pool(t)*100, ellA(t));
+        end
+        RMSPE = NaN;
+        fprintf('\n  |dNMAE| 範圍 %.4f ~ %.4f 百分點（中位數 %.4f）；點數佔比 %.2f ~ %.2f %%\n', ...
+                min(ellA), max(ellA), median(ellA), min(Nuse./pool)*100, max(Nuse./pool)*100);
+    else
     for t = 1:nR
         fprintf(['  %3d  %7d  %7d  %6.2f   ' fmt '   ' fmt '   %+7.3f\n'], ...
                 RSEL(t), Nuse(t), pool(t), Nuse(t)/pool(t)*100, ellA(t), ellB(t), ...
@@ -74,6 +105,7 @@ function plot_ell_nmin_vs_full(QTY, RSEL, TOLPC, KWIN, force)
     RMSPE = sqrt(mean(rel.^2)) * 100;
     fprintf('\n  RMSPE = %.4f %%   最大絕對誤差 %.3f %%   點數佔比 %.2f ~ %.2f %%\n', ...
             RMSPE, max(abs(rel))*100, min(Nuse./pool)*100, max(Nuse./pool)*100);
+    end
 
     % ---- 畫圖（單 panel，選項①粗體框）----
     FS = 36;  LWBOX = 4.0;
@@ -82,15 +114,24 @@ function plot_ell_nmin_vs_full(QTY, RSEL, TOLPC, KWIN, force)
     ax  = axes(fig);  hold(ax,'on');
     h1 = plot(ax, RSEL, ellA, '-o', 'Color',cA, 'LineWidth',3.0, 'MarkerSize',8, ...
               'MarkerFaceColor',cA, 'Clipping','off');
-    h2 = plot(ax, RSEL, ellB, '--s','Color',cB, 'LineWidth',3.0, 'MarkerSize',8, ...
-              'MarkerFaceColor',cB, 'Clipping','off');
+    if ~ONE
+        h2 = plot(ax, RSEL, ellB, '--s','Color',cB, 'LineWidth',3.0, 'MarkerSize',8, ...
+                  'MarkerFaceColor',cB, 'Clipping','off');
+    end
     box(ax,'on');  grid(ax,'off');
     set(ax,'FontSize',FS,'FontWeight','bold','LineWidth',LWBOX,'TickLength',[.015 .015]);
     ax.Toolbar.Visible = 'off';
 
     XL = [RSEL(1) RSEL(end)];   xlim(ax, XL);
     set(ax,'XTick', inner_ticks(XL(1), XL(2), 3));
-    [YL, YT] = axlim_auto(min([ellA ellB]), max([ellA ellB]), [3 5]);
+    if ONE || strcmpi(QTY,'cost')
+        % [ADDED] 差值與 cost/N 都是「距離 0 多遠」的量（有真實 0 下界、且資料貼近 0）
+        %   → 基準線 0 貼下框、上緣只留 8% 裕度（figure-style「自 0 起的軸」；
+        %   此時**不套**「兩端留白 = 間距」，否則下方會空掉一大截）。
+        [YL, YT] = axlim_from_zero(max([ellA ellB], [], 'omitnan'), [5 3]);   % ONE 時 ellB 全 NaN
+    else
+        [YL, YT] = axlim_auto(min([ellA ellB]), max([ellA ellB]), [3 5]);
+    end
     ylim(ax, YL);   set(ax,'YTick',YT);
 
     % [REMOVED 2026-08-12] 原本每點標 N_min 的數字已拿掉（使用者要求）——
@@ -103,20 +144,148 @@ function plot_ell_nmin_vs_full(QTY, RSEL, TOLPC, KWIN, force)
     xlabel(ax, '$\mathbf{Sampling\;range\;(micro\;meter)}$', 'Interpreter','latex', 'FontSize',FS);
     ylabel(ax, ylab, 'Interpreter','latex', 'FontSize',FS);
 
-    lg = legend(ax, [h1 h2], ...
-         {sprintf('Reduced sampling (RMSPE = %.2f%%)', RMSPE), 'Full sampling'}, ...
-         'Interpreter','tex', 'Location','northoutside', 'NumColumns',2);
-    lg.FontSize = 24;  lg.FontWeight = 'bold';
-    lg.Box = 'on';  lg.EdgeColor = 'k';  lg.LineWidth = 2.5;
-    hold(ax,'off');  drawnow;
-    axp = get(ax,'Position');  lgh = get(lg,'Position');  lgh = lgh(4);
-    GAPN = 0.022;  newTop = 1 - lgh - GAPN - 0.006;
-    axp(4) = newTop - axp(2);  set(ax,'Position',axp);
-    set(lg, 'Position', [axp(1), newTop + GAPN, axp(3), lgh]);
+    % [MODIFIED 2026-08-12] QTY='nmae' 時兩條曲線本身就是誤差 → 圖例不再掛「RMSPE」
+    %   （那是「兩條參數曲線的相對差」，對誤差曲線沒有意義）。
+    % [MODIFIED 2026-08-12] 單序列（nmaediff）**不放圖例** —— 只有一條線、標籤已在軸標題裡，
+    %   掛一個單則圖例只是多一個空框。此時軸也不必為圖例讓出上方空間。
+    if ONE
+        hold(ax,'off');  drawnow;
+    else
+        if strcmpi(QTY,'nmae') || strcmpi(QTY,'cost')   % 兩條本身就是誤差量 → 不掛 RMSPE
+            lbls = {'Reduced sampling', 'Full sampling'};
+        else
+            lbls = {sprintf('Reduced sampling (RMSPE = %.2f%%)', RMSPE), 'Full sampling'};
+        end
+        lg = legend(ax, [h1 h2], lbls, ...
+             'Interpreter','tex', 'Location','northoutside', 'NumColumns',2);
+        lg.FontSize = 24;  lg.FontWeight = 'bold';
+        lg.Box = 'on';  lg.EdgeColor = 'k';  lg.LineWidth = 2.5;
+        hold(ax,'off');  drawnow;
+        axp = get(ax,'Position');  lgh = get(lg,'Position');  lgh = lgh(4);
+        GAPN = 0.022;  newTop = 1 - lgh - GAPN - 0.006;
+        axp(4) = newTop - axp(2);  set(ax,'Position',axp);
+        set(lg, 'Position', [axp(1), newTop + GAPN, axp(3), lgh]);
+    end
 
     out = fullfile(figdir, sprintf('%s_nmin_vs_full_maxwell10_single.png', lower(QTY)));
     exportgraphics(fig, out, 'Resolution', 200);
     fprintf('\nwrote %s\n', out);
+end
+
+% ============================================================================
+function [A, B] = nmae_curves(here, RSEL, Nuse, S, F, force, METRIC)
+% [ADDED 2026-08-12] 兩組參數在**同一評估集（該 R 內全部格點）**上的場擬合 NMAE。
+%   ① 減量 A(t)：用該 R 的 N_min 個點校正 → 預測到全部點（**泛化誤差**）；10 組取中位數
+%   ② 全取樣 B(t)：用全部點校正 → 預測到全部點（**自身殘差**，必為 A 的下界）
+%   🔑 **不重跑優化器**：兩邊的 l_hat 都已在既有快取（減量在 nmin cache 的 ellall、
+%      全取樣在 ell_gain_sweep_maxwell_interp）。這裡只需用**各自的訓練點集**解一次
+%      線性最小平方得電荷 G，再乘上「全部點的 kernel」預測 —— 全部是閉式解。
+%   ⚠ 減量的 kernel 必須用該組自己的 l_hat 重建（不可借用全取樣的 l_hat）。
+%   ⚠ 抽樣序與 N_min 研究一致：格建到 max(RSEL)、`sel=find(r<=R)`、`rng(d-1)` 後
+%      `ord = sel(randperm(numel(sel)))` —— 同 seed 抽到同一組點。
+    if nargin < 7 || isempty(METRIC), METRIC = 'nmae'; end
+    cachef = fullfile(here,'data','nmae_nmin_vs_full_maxwell10_single.mat');
+    if exist(cachef,'file') && ~force
+        C = load(cachef);
+        % [MODIFIED 2026-08-12] 舊版快取只有 A/B（NMAE）；缺 Ac/Bc（cost/N）就重算。
+        if isequal(C.RSEL(:).',RSEL(:).') && isequal(C.Nuse(:).',Nuse(:).') ...
+           && isfield(C,'Ac') && isfield(C,'Bc')
+            fprintf('loaded cache %s\n', cachef);
+            [A, B] = pick_metric(C, METRIC);   return;
+        end
+        fprintf('  [warn] 快取的 RSEL/Nuse 不同或缺 cost 欄位 → 重算\n');
+    end
+
+    solver_path();
+    cfg = model_config('long2016_hexapole_halfcut','tip40um');
+    raw = extract_maxwell_data(cfg, 'all', cfg.default_variant);
+    ad  = build_actuator_data(raw, cfg);
+    ad  = interp_grid_sample(ad, cfg, max(RSEL)*1e-6, 10e-6);
+    rr  = sqrt(ad.r2);   Pc = ad.Pc_base;   N_I = size(ad.Ba,3);
+
+    nR = numel(RSEL);   A = nan(1,nR);   B = nan(1,nR);
+    Ac = nan(1,nR);     Bc = nan(1,nR);                 % [ADDED] cost/N（J/N，mT²）
+    fprintf('\n   R    N_min     pool    NMAE_減量%%  NMAE_全取樣%%   cost/N_減量   cost/N_全取樣\n');
+    for t = 1:nR
+        sel = find(rr <= RSEL(t)*1e-6);   Ns = numel(sel);
+        Pall = ad.Pa(sel,:);
+        Ball = zeros(3*Ns, N_I);
+        for j = 1:N_I, Ball(:,j) = reshape(ad.Ba(sel,:,j).', [], 1); end
+
+        % ---- ② 全取樣：l_hat 取自 sweep 快取，G 用全部點解 ----
+        lF   = F.ell_R(F.Rum == RSEL(t));
+        SaF  = kernel_S(lF*1e-6, Pc, Pall);
+        Gf   = (SaF.'*SaF) \ (SaF.'*Ball);
+        B(t)  = nmae_val(SaF*Gf, Ball);
+        Bc(t) = sum((SaF*Gf - Ball).^2, 'all') / Ns;    % J/N [mT²]
+
+        % ---- ① 減量：每組用自己的 l_hat + 自己的 N_min 點解 G，再預測到全部點 ----
+        i = find(S.RLIST == RSEL(t));   nl = S.nall{i};   E = S.ellall{i};
+        [~, k] = min(abs(nl - Nuse(t)));                  % 對到 N_min 那個 n 格
+        v = nan(1, size(E,1));   vc = nan(1, size(E,1));
+        for d = 1:size(E,1)
+            rng(d-1);   ord = sel(randperm(Ns));          % 與 N_min 研究同序
+            idx = ord(1:Nuse(t));
+            Ptr = ad.Pa(idx,:);
+            Btr = zeros(3*Nuse(t), N_I);
+            for j = 1:N_I, Btr(:,j) = reshape(ad.Ba(idx,:,j).', [], 1); end
+            lD  = E(d,k)*1e-6;                            % 該組自己的 l_hat
+            Str = kernel_S(lD, Pc, Ptr);                  % 訓練集 kernel
+            Gd  = (Str.'*Str) \ (Str.'*Btr);              % 只用訓練集解電荷
+            Sad = kernel_S(lD, Pc, Pall);                 % 同一 l_hat 的全點 kernel
+            v(d)  = nmae_val(Sad*Gd, Ball);
+            vc(d) = sum((Sad*Gd - Ball).^2, 'all') / Ns;  % J/N [mT²]
+        end
+        A(t)  = median(v,  'omitnan');
+        Ac(t) = median(vc, 'omitnan');
+        fprintf('  %3d  %7d  %7d   %9.4f   %10.4f   %11.4e   %12.4e\n', ...
+                RSEL(t), Nuse(t), Ns, A(t), B(t), Ac(t), Bc(t));
+    end
+    save(cachef, 'RSEL', 'Nuse', 'A', 'B', 'Ac', 'Bc');
+    fprintf('saved cache %s\n', cachef);
+    [A, B] = pick_metric(struct('A',A,'B',B,'Ac',Ac,'Bc',Bc), METRIC);
+end
+
+% ============================================================================
+function [A, B] = pick_metric(C, METRIC)
+    if strcmpi(METRIC,'cost'), A = C.Ac;  B = C.Bc;   else, A = C.A;  B = C.B;  end
+end
+
+% ============================================================================
+function [lim, tk] = axlim_from_zero(maxv, nlist) %#ok<INUSD>
+% [ADDED 2026-08-12] 與 plot_nmin_ratio_stem.m 同一份實作（figure-style「自 0 起的軸」）：
+%   下緣固定 0（基準線貼下框）、上緣**只留 8% 裕度**、刻度 (1:n)*s 取不超出上緣的最大奇數 n。
+%   ⚠ 此軸**不套**「兩端留白 = 間距」（那條只適用兩端都無界的軸）。
+    cand = [1 2 2.5 3 4 5 10];
+    x = maxv/4;   k = floor(log10(x));
+    s = cand(find(cand*10^k >= x, 1)) * 10^k;
+    top = 1.08 * maxv;
+    n = floor((top - 1e-12)/s);
+    if mod(n,2) == 0, n = n - 1; end
+    n = max(n, 1);
+    lim = [0, top];   tk = (1:n)*s;
+end
+
+% ============================================================================
+function Sm = kernel_S(l_hat, Pc, P)
+% 無因次點電荷 kernel（3Np x 6），與 solve_current / fitting 的 build_S 同式。
+    Np   = size(P,1);
+    pbar = P / l_hat;
+    Sm   = zeros(3*Np, 6);
+    for k = 1:6
+        dd = pbar - Pc(:,k).';
+        r3 = sum(dd.^2, 2).^1.5;
+        Sm(:,k) = reshape((dd ./ r3).', 3*Np, 1);
+    end
+end
+
+% ============================================================================
+function v = nmae_val(Bm, Bt)
+% NMAE [%]：對「全部點 x 6 個激發」的**向量誤差範數**取平均，除以平均場範數。
+%   = <||B_model - B_FEM||> / <||B_FEM||> * 100   （doc/error_definition 的平均場正規化）
+    dm = reshape(Bm - Bt, 3, []);      % 3 x (Np*6)
+    dt = reshape(Bt,      3, []);
+    v  = mean(vecnorm(dm,2,1)) / mean(vecnorm(dt,2,1)) * 100;
 end
 
 % ============================================================================

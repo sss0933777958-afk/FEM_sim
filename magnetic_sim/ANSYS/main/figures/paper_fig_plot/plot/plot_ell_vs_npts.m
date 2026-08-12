@@ -63,7 +63,15 @@ function plot_ell_vs_npts(QTY, SRC, SAMPLING, XSCALE, RMIN)
             max(L1(k))-min(L1(k)), max(L2(k))-min(L2(k)), unit);
 
     % ---- 畫圖（單 panel，選項①粗體框）----
-    c1 = [0.05 0.10 0.95];   c2 = [0.85 0.10 0.10];    % single 亮藍 / eighteen 紅
+    % [MODIFIED 2026-08-12] 視覺編碼（使用者拍板）：**顏色 = 物理量**（l_hat 藍、gain 紅）、
+    %   **marker = 模型**（single 圓 o、eighteen 方 s）。本圖兩條都是同一個 QTY
+    %   → 同色，靠圓/方區分模型。（原本是「顏色 = 模型」：single 藍 / eighteen 紅。）
+    C_ELL = [0.05 0.10 0.95];   C_GAIN = [0.85 0.10 0.10];
+    switch lower(QTY)
+        case 'ell',  cq = C_ELL;
+        case 'gain', cq = C_GAIN;
+    end
+    c1 = cq;   c2 = cq;                                % single / eighteen 同色（差在 marker）
     FS = 36;   LW = 3.0;   MS = 8;
     fig = figure('Color','w','Position',[100 100 1120 820]);
     ax  = axes(fig);   hold(ax,'on');
