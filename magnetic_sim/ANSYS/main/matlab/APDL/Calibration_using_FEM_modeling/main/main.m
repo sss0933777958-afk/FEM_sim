@@ -81,7 +81,8 @@ switch BASE
         error('BASE 必為 ''current'' | ''voltage''');
 end
 rec.C_mean = rm.C_mean;  rec.kappa_mean = rm.kappa_mean;  rec.C_min = rm.C_min;  rec.kappa_worst = rm.kappa_worst;
-if isfield(rm,'RMSPE'), rec.RMSPE = rm.RMSPE; end     % 擬合 RMSPE [%]（current）
+if isfield(rm,'RMSPE'), rec.RMSPE = rm.RMSPE; end
+if isfield(rm,'NMAE'),  rec.NMAE  = rm.NMAE;  end     % [ADDED 2026-08-15] 擬合 NMAE [%]（PDF 印這個）
 
 %% ---- 存 .mat（自描述）------------------------------------------------------
 tag = 'single'; if USE_BIAS, tag = 'eighteen'; end

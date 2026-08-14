@@ -125,8 +125,36 @@
 
 ---
 
+# 🔒 附則三：擬合誤差一律印 **NMAE**，不印 RMSPE（強制）
+
+**使用者拍板（2026-08-15）**：Calibration 結果 PDF 的擬合誤差指標，**由 RMSPE 改為 NMAE**。
+
+| | 定義 | 出現位置 |
+|---|---|---|
+| ~~RMSPE~~（**停用**） | `sqrt(Σεᵢ² / Σbᵢ²)·100` | 只留在 `.mat`（`rec.RMSPE`）供追溯，**PDF 不印** |
+| **NMAE**（現行） | **`Σ|εᵢ| / Σ|bᵢ| · 100`** | current 與 voltage 的 PDF 都印這個 |
+
+- ε = `S·G − Bstack`（模型減 FEM），與 RMSPE 同一顆殘差，只是換成 **L1**（RMSPE 是 L2）。
+- 分母同樣是**同一批** b 的絕對值和 —— 不要改成 `mean(|b|)` 或逐點 norm，否則與既有數字不可比。
+- 實作位置（**四支 solve + 兩支 emit，兩個分支都要同步**）：
+  - `matlab/{Maxwell,APDL/Calibration_using_FEM_modeling}/function/solve_current.m`、`solve_voltage.m`
+    → 算 `rm.NMAE`（`rm.RMSPE` 保留不刪）
+  - 兩支 `main/main.m` → `rec.NMAE = rm.NMAE`
+  - 兩支 `function/emit_results.m` → LaTeX 改成
+    `\[ \mathrm{NMAE} = \dfrac{\sum_i |\varepsilon_i|}{\sum_i |b_i|}\cdot 100 = %.2f\% \]`
+- **舊 PDF 上的 RMSPE 數字不可與新的 NMAE 並列比較**（L2 vs L1，NMAE 通常較小）。要比就一起重跑。
+
+## ⚠ 連帶：sensor 距非定案值時輸出檔名要帶 tag
+
+`main.m` 原本只在 **`.mat`** 檔名加 `_soff<值>mm`，**PDF 沒有** → 換 sensor 位置重跑會覆蓋掉
+4.572 mm 版的 PDF。2026-08-15 已改成把 soff tag 併進 `VAR_OUT`（PDF 檔名也帶），
+`.mat` 則由 `VAR_OUT` 一次帶出，不再重複加後綴。
+
+---
+
 ## 觸發片語
 - 「改 calibration 結果輸出 / emit_results」
+- 「RMSPE / NMAE / 擬合誤差指標」
 - 「K̄(2,2) / k22 / 固定對角 / current 與 voltage 的 G 要一致」
 - 「加印 / 輸出 ᴮĤ / H_I / H_V / 物理轉移矩陣」
 - 「加印 e/ℓ̂ / 無因次偏移 / 電荷格 Pc」

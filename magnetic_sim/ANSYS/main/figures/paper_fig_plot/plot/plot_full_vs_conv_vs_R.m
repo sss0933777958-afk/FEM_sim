@@ -35,10 +35,15 @@ function plot_full_vs_conv_vs_R(force)
     clc;
     if nargin < 1 || isempty(force), force = false; end
 
-    R_um  = 80:20:500;               % 取樣半徑 [um]
-                                     % [MODIFIED 2026-08-13] 起點 60 -> 80：R=60 的 single
-                                     % 在 120 個設計內都無法讓 K_I_bar 持續符合物理（小球內
-                                     % 六顆電荷近簡併），且該點的全格點基準本身只有 106 個點。
+    R_um  = 20:20:500;               % 取樣半徑 [um]
+                                     % [MODIFIED 2026-08-14] 使用者要求「取樣範圍自小往大、
+                                     % 每 20um 跑一次流程」→ 起點降到 **40**（= 全格點快取
+                                     % ell_gain_sweep_maxwell*.mat 的最小 R；R=20 那顆快取沒有、
+                                     % R=0 球內 0 點無法擬合）。
+                                     % ⚠ 已知：R=40/60 小球內六顆電荷近簡併，conv 可能判不到
+                                     % 收斂（回 NaN）；全格點基準本身也只有 28 / 106 點，
+                                     % 且 R=40 的 single 全格點 g_I = 27.6 mT/A（正常 ~9.5）。
+                                     % [歷史] 2026-08-13 曾因此把起點由 60 提到 80。
     l0    = 0.5e-3;
     TOL   = 0.005;                   % 兩判準共用：相對變化 < 0.5%
     % [MODIFIED 2026-08-13] 視窗 5 → 10（使用者拍板；R=150 的實測顯示 K=5..7 三個量的
@@ -55,7 +60,16 @@ function plot_full_vs_conv_vs_R(force)
 
     %% ---- 計算（快取）------------------------------------------------------
     if exist(cachef,'file') && ~force
-        S = load(cachef);   fprintf('由快取載入 %s\n', cachef);
+        S = load(cachef);
+        if isequal(S.R_um(:).', R_um(:).')
+            fprintf('由快取載入 %s\n', cachef);
+        else
+            % [ADDED 2026-08-14] **增量補跑**：R 清單改變時，舊快取已有的 R 直接沿用，
+            %   只算新增的那幾個（全部重跑要數小時，九成花在大 R 端的大設計上）。
+            fprintf('快取 R 清單與設定不符 → 只補跑新增的 R\n');
+            S = sweep(here, MODEL, GEOM, R_um, l0, TOL, KWIN, NDMAX, S);
+            save(cachef, '-struct', 'S');   fprintf('已更新 %s\n', cachef);
+        end
     else
         S = sweep(here, MODEL, GEOM, R_um, l0, TOL, KWIN, NDMAX);
         save(cachef, '-struct', 'S');   fprintf('已存 %s\n', cachef);
@@ -65,8 +79,13 @@ function plot_full_vs_conv_vs_R(force)
     % 未收斂的 R 會是 NaN（conv_fit 已 warn），RMSPE 只取兩邊皆有限的點
     rp = @(a,b) 100*sqrt(sum((a(isfinite(a)&isfinite(b))-b(isfinite(a)&isfinite(b))).^2) ...
                        / sum(b(isfinite(a)&isfinite(b)).^2));
-    r_e1 = rp(S.ell_c1, S.ell_f1);   r_g1 = rp(S.gI_c1, S.gI_f1);
-    r_e2 = rp(S.ell_c2, S.ell_f2);   r_g2 = rp(S.gI_c2, S.gI_f2);
+    % [ADDED 2026-08-14] **本檔的兩張圖與 RMSPE 只取 R>=80**（維持既有論文圖不變）：
+    %   快取雖已擴到 R=40（供 plot_ell_gain_2panel 用），但 R=40 的全格點 single
+    %   g_I = 27.6 mT/A（正常 ~9.5，小球內六顆電荷近簡併）會把 y 軸拉爆、
+    %   也會污染 RMSPE。R=40/60 的 conv-single 本來就是 NaN（判不到收斂）。
+    pm   = S.R_um >= 80;
+    r_e1 = rp(S.ell_c1(pm), S.ell_f1(pm));   r_g1 = rp(S.gI_c1(pm), S.gI_f1(pm));
+    r_e2 = rp(S.ell_c2(pm), S.ell_f2(pm));   r_g2 = rp(S.gI_c2(pm), S.gI_f2(pm));
     fprintf('\n  RMSPE（減量 vs 全格點）\n');
     fprintf('    single   ：l_hat %.3f%%   g_I %.3f%%   (N = %d-%d)\n', r_e1, r_g1, S.N1(1), S.N1(2));
     fprintf('    eighteen ：l_hat %.3f%%   g_I %.3f%%   (N = %d-%d)\n', r_e2, r_g2, S.N2(1), S.N2(2));
@@ -80,8 +99,10 @@ function plot_full_vs_conv_vs_R(force)
 end
 
 % ============================================================================
-function S = sweep(here, MODEL, GEOM, R_um, l0, TOL, KWIN, NDMAX)
+function S = sweep(here, MODEL, GEOM, R_um, l0, TOL, KWIN, NDMAX, old)
 % 全格點曲線讀既有快取；減量曲線逐 R 重算（設計固定、只有球半徑變）。
+%   old（選填）：舊快取。其 R 已算過者直接沿用，只跑新增的 R（判準相同才可沿用）。
+    if nargin < 9, old = []; end
     CAL = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Maxwell';
     addpath(fullfile(CAL,'function'), fullfile(CAL,'common_path'), fullfile(CAL,'utils'));
     addpath(fullfile(CAL,'utils','long2016_hexapole_halfcut'));
@@ -94,11 +115,18 @@ function S = sweep(here, MODEL, GEOM, R_um, l0, TOL, KWIN, NDMAX)
     A = load(fullfile(here,'data','ell_gain_sweep_maxwell.mat'));       % single
     B = load(fullfile(here,'data','ell_gain_sweep_maxwell_bias.mat'));  % eighteen
     assert(isequal(A.Rum(:), B.Rum(:)), '兩顆全格點快取的 R 不一致');
+    % [MODIFIED 2026-08-14] 全格點快取缺某些 R 時**不再中止**，該點的 full 曲線填 NaN。
+    %   （R=20 不在全格點快取裡；本檔的兩張圖只畫 R>=80，而 plot_ell_gain_2panel 只用 conv。）
     [tf, loc] = ismember(R_um, A.Rum);
-    assert(all(tf), '全格點快取缺少某些 R：%s', num2str(R_um(~tf)));
-    S.ell_f1 = A.ell_R(loc(:)).';   S.gI_f1 = A.gI_R(loc(:)).';
-    S.ell_f2 = B.ell_R(loc(:)).';   S.gI_f2 = B.gI_R(loc(:)).';
-    S.npts_f = A.npts_R(loc(:)).';
+    nR0 = numel(R_um);
+    [S.ell_f1, S.gI_f1, S.ell_f2, S.gI_f2, S.npts_f] = deal(nan(1,nR0));
+    S.ell_f1(tf) = A.ell_R(loc(tf));   S.gI_f1(tf) = A.gI_R(loc(tf));
+    S.ell_f2(tf) = B.ell_R(loc(tf));   S.gI_f2(tf) = B.gI_R(loc(tf));
+    S.npts_f(tf) = A.npts_R(loc(tf));
+    if ~all(tf)
+        fprintf('⚠ 全格點快取缺 R = %s um → 該點 full 曲線填 NaN（conv 不受影響）\n', ...
+                num2str(R_um(~tf)));
+    end
 
     % --- 減量：**每個 R 各自沿階梯搜尋收斂點**（雙判準交集）---
     w = [1, 3, 3*pi];   tt = [1 2 3];   TRI = zeros(NDMAX,3);
@@ -106,10 +134,44 @@ function S = sweep(here, MODEL, GEOM, R_um, l0, TOL, KWIN, NDMAX)
     nR = numel(R_um);
     [S.ell_c1, S.gI_c1, S.ell_c2, S.gI_c2, S.n_c1, S.n_c2] = deal(nan(1,nR));
     S.tri_c1 = zeros(nR,3);   S.tri_c2 = zeros(nR,3);
+    S.fb_c1  = false(1,nR);   S.fb_c2  = false(1,nR);   % [ADDED] true = 只用 l_hat 收斂點的 fallback
+    % [ADDED 2026-08-14] 舊快取可沿用的條件：判準（TOL/KWIN）一致
+    reuse = ~isempty(old) && isfield(old,'R_um') && ...
+            isfield(old,'TOL') && isequal(old.TOL,TOL) && ...
+            isfield(old,'KWIN') && isequal(old.KWIN,KWIN);
     for a = 1:nR
         R = R_um(a)*1e-6;
-        [S.ell_c1(a), S.gI_c1(a), S.n_c1(a), S.tri_c1(a,:)] = conv_fit(R, TRI, cfg, l0, false, F, TOL, KWIN);
-        [S.ell_c2(a), S.gI_c2(a), S.n_c2(a), S.tri_c2(a,:)] = conv_fit(R, TRI, cfg, l0, true,  F, TOL, KWIN);
+        % [MODIFIED 2026-08-14] 兩個模型**分開**沿用；舊值是 NaN 的重算（現在有 fallback 了）
+        got1 = false;   got2 = false;
+        if reuse
+            j = find(old.R_um == R_um(a), 1);
+            if ~isempty(j)
+                if ~isnan(old.ell_c1(j))
+                    S.ell_c1(a) = old.ell_c1(j);  S.gI_c1(a) = old.gI_c1(j);
+                    S.n_c1(a)   = old.n_c1(j);    S.tri_c1(a,:) = old.tri_c1(j,:);
+                    if isfield(old,'fb_c1'), S.fb_c1(a) = old.fb_c1(j); end
+                    got1 = true;
+                end
+                if ~isnan(old.ell_c2(j))
+                    S.ell_c2(a) = old.ell_c2(j);  S.gI_c2(a) = old.gI_c2(j);
+                    S.n_c2(a)   = old.n_c2(j);    S.tri_c2(a,:) = old.tri_c2(j,:);
+                    if isfield(old,'fb_c2'), S.fb_c2(a) = old.fb_c2(j); end
+                    got2 = true;
+                end
+            end
+        end
+        if got1 && got2
+            fprintf('  R=%3d um | 沿用舊快取（conv 1p N=%d / 18p N=%d）\n', R_um(a), S.n_c1(a), S.n_c2(a));
+            continue;
+        end
+        if ~got1
+            [S.ell_c1(a), S.gI_c1(a), S.n_c1(a), S.tri_c1(a,:), S.fb_c1(a)] = ...
+                conv_fit(R, TRI, cfg, l0, false, F, TOL, KWIN);
+        end
+        if ~got2
+            [S.ell_c2(a), S.gI_c2(a), S.n_c2(a), S.tri_c2(a,:), S.fb_c2(a)] = ...
+                conv_fit(R, TRI, cfg, l0, true,  F, TOL, KWIN);
+        end
         fprintf('  R=%3d um | full %6d : 1p l=%6.1f g=%6.3f | 18p l=%6.1f g=%6.3f\n', ...
                 R_um(a), S.npts_f(a), S.ell_f1(a), S.gI_f1(a), S.ell_f2(a), S.gI_f2(a));
         fprintf('           conv 1p N=%5d (%d,%d,%2d) l=%6.1f g=%6.3f | 18p N=%5d (%d,%d,%2d) l=%6.1f g=%6.3f\n', ...
@@ -128,7 +190,7 @@ function S = sweep(here, MODEL, GEOM, R_um, l0, TOL, KWIN, NDMAX)
 end
 
 % ============================================================================
-function [ell_um, gI, n, tri] = conv_fit(R, TRI, cfg, l0, USE_BIAS, F, TOL, KWIN)
+function [ell_um, gI, n, tri, isfb] = conv_fit(R, TRI, cfg, l0, USE_BIAS, F, TOL, KWIN)
 % 沿階梯走，找**三判準的交集**（各自都要持續 KWIN 步）：
 %   (a) l_hat 穩定    ：「相對前一個設計」的變化 < TOL
 %   (b) g_I_hat 穩定  ：同一把尺（相對前一個設計的變化 < TOL）
@@ -169,9 +231,22 @@ function [ell_um, gI, n, tri] = conv_fit(R, TRI, cfg, l0, USE_BIAS, F, TOL, KWIN
         ik = first_true(ok(1:q), KWIN);
         if ~isnan(ie) && ~isnan(ig) && ~isnan(ik), i0 = max([ie ig ik]);  break; end
     end
+    % [ADDED 2026-08-14] fallback（使用者拍板）：三判準交集達不到時，**只要 l_hat 有收斂
+    %   就用 l_hat 的收斂點**，g_I 取同一個設計的值（不是另外找 g_I 的收斂點——它根本沒有）。
+    %   適用 R<=60：實測 single 的 g_I 與 K_I 號誌在 55 個設計內都判不到，但 l_hat 都收斂。
+    %   ⚠ 這種點回報的 g_I **未經自身收斂驗證**，isfb=true 供上層標示 / 排除。
+    isfb = false;
     if isnan(i0)
-        warning('conv_fit:noconv','R=%.0f um (USE_BIAS=%d) %d 個設計內未達判準', R*1e6, USE_BIAS, nD);
-        ell_um = NaN;  gI = NaN;  n = NaN;  tri = [0 0 0];  return
+        ie = first_stable(ell, TOL, KWIN);
+        if isnan(ie)
+            warning('conv_fit:noconv','R=%.0f um (USE_BIAS=%d) %d 個設計內 l_hat 也未收斂', ...
+                    R*1e6, USE_BIAS, nD);
+            ell_um = NaN;  gI = NaN;  n = NaN;  tri = [0 0 0];  return
+        end
+        warning('conv_fit:ellonly', ...
+                'R=%.0f um (USE_BIAS=%d) 三判準交集未達 → 改用 l_hat 收斂點 N=%d（g_I 未經收斂驗證）', ...
+                R*1e6, USE_BIAS, np(ie));
+        i0 = ie;   isfb = true;
     end
     ell_um = ell(i0);   gI = gIv(i0);   n = np(i0);   tri = TRI(i0,:);
 end

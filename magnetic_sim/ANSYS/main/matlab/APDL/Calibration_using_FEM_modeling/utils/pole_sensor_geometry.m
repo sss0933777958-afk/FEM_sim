@@ -29,10 +29,12 @@ function [pos, nhat, geo] = pole_sensor_geometry(cfg, opt)
 % dir(+-beta) 直接走 SOFF，貼附點會埋進鋼裡 -> 對**真實**錐面的垂距只有 0.3635 mm（下極）
 % / 0.4012 mm（上極），而不是設定的 0.41 mm。新構法的垂距精確等於 opt.air。
 %
-% SOFF 語意 = **沿貼附面量的斜面距離**（定案 4.572e-3 m = 0.18 inch）。最前面 t_tan
-% 那一段是倒圓、不在錐面上，所以只有 (SOFF - t_tan) 要乘 cos(beta)。
-% t_tan = **CAD STEP 實測 0.0322 mm**（錐面與倒圓球的切點距極尖的軸向距離，六根極一致）。
-% ⚠ 不是 0.04 —— 切點落在球面 90deg-beta 處而非赤道，故軸向只推進 r_f*(1-sin beta)。
+% SOFF 語意 = **沿貼附面自極尖量的斜面距離**（定案 4.572e-3 m = 0.18 inch）。最前面
+% t_tan 那一段是倒圓、不在錐面上，所以只有 (SOFF - t_tan) 要乘 cos(beta)。
+% t_tan = **下極 0.03 mm / 上極 0.04 mm**（使用者定義，2026-08-14）。
+%   使用者慣例：**任何沿貼附面自極尖量的長度，都已內含這一段**（下 0.03、上 0.04）。
+%   （歷史：曾用 CAD STEP 實測 0.0322 mm 六極共用，= 球切錐理論值 r_f*(1-sin beta)
+%    的 0.0320/0.0324。改成 0.03/0.04 後 s_ax 只差 -0.04/+0.14 um，量級可忽略。）
 %
 % 下極 face_lower='flat'（平切上表面）：該平面**通過極軸** -> 無徑向外推、斜面距離即
 % 軸向距離、n+ = +z；psi 對平面不適用（忽略）。
@@ -73,6 +75,7 @@ function [pos, nhat, geo] = pole_sensor_geometry(cfg, opt)
     SOFF_L = gv('soff_lower', 4.572e-3);
     FACE_L = gv('face_lower', 'cone');
     AIR    = gv('air',        0.41e-3);
+    T_TAN  = gv('t_tan',      [0.03e-3, 0.04e-3]);   % [下極, 上極] SOFF 內含的倒圓段長
     PSI    = gv('psi',        0);
     if isscalar(PSI), PSI = repmat(PSI, 1, 6); end
 
@@ -121,9 +124,14 @@ function [pos, nhat, geo] = pole_sensor_geometry(cfg, opt)
         rad0 = dir(el + sg*pi/2, th);                % 徑向、朝貼附面側
         tv   = [-sin(th); cos(th); 0];               % 切向、垂直子午面
 
-        % t_tan：CAD 實測優先，否則用球切錐理論式 r_f*(1-sin beta)
-        if isfield(cfg, 'pole_tip_axial'), t_tan = cfg.pole_tip_axial;
-        else,                              t_tan = r_f*(1 - sin(bet)); end
+        % t_tan = SOFF 最前端「不在錐面上」的那一段（倒圓段）
+        % [MODIFIED 2026-08-14 使用者拍板] 改成 per-layer 定值：下極 0.03 / 上極 0.04 mm。
+        %   使用者定義：**任何沿貼附面自極尖量的長度都已包含這一段**（下 0.03、上 0.04）。
+        %   先前用 CAD 實測的 pole_tip_axial = 0.0322 mm（六極共用，= r_f(1-sin beta) 理論值
+        %   0.0320/0.0324）；改成 0.03/0.04 後 s_ax 只動 -0.04 um(P1) / +0.14 um(P2)，
+        %   遠小於 0.41 mm 氣隙，下游 V 矩陣與 sensor 圖無須重跑。
+        %   要回到 CAD 值：opt.t_tan = cfg.pole_tip_axial*[1 1]。
+        t_tan = T_TAN(2 - low);              % low=1 -> T_TAN(1) 下極；low=0 -> T_TAN(2) 上極
 
         if flat
             % 平切上表面通過極軸 -> 斜面距離即軸向距離、無徑向外推、n+ = +z
@@ -131,7 +139,14 @@ function [pos, nhat, geo] = pole_sensor_geometry(cfg, opt)
             nh   = [0; 0; 1];
             pos(:,i) = T + s_ax*ax + AIR*nh;
         else
-            s_ax = (soff - t_tan)*cos(bet) + t_tan;  % 斜面距離 -> 軸向站位
+            % [MODIFIED 2026-08-15 使用者拍板] 起算點改成「紅點」= 母線與極尖同軸向位置的
+            %   那一點（軸向 0、半徑 R(0)=e_v*tan beta），**整段 soff 都沿母線投影**：
+            %       s_ax = soff * cos(beta)
+            %   舊式 (soff - t_tan)*cos(beta) + t_tan 是把最前面 t_tan 當「軸向」段加回去
+            %   （起算點在極尖）。兩者只差 t_tan*(1-cos beta) = **0.6~0.7 um**，下游不受影響。
+            %   t_tan（下 0.03 / 上 0.04，寫死）現在只是記錄「這段斜距最前面壓在倒圓上的長度」，
+            %   不參與 s_ax 計算 —— 因為沿母線量時它本來就一起被投影了。
+            s_ax = soff*cos(bet);                    % 斜面距離(自紅點) -> 軸向站位
             e_v  = r_f/sin(bet) - r_f;               % 虛擬錐頂在極尖外的距離
             R    = (e_v + s_ax)*tan(bet);            % 該站位的真實錐體半徑
             rh   = cos(PSI(i))*rad0 + sin(PSI(i))*tv;

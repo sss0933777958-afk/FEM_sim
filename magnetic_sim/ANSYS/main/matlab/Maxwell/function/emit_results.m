@@ -41,8 +41,8 @@ function emit_results(matfile)
             T.mat(fid, 'G~[\mathrm{mT}]', H_I*F_ex, pole, '');
             T.mat(fid, 'F~[\mathrm{A}]', F_ex, pole, '');
             T.scalar_unit(fid, '{}^{B}\hat{g}_{I}', rec.gI_hat, 'mT/A');
-            if isfield(rec,'RMSPE')
-                fprintf(fid, '\\[ \\mathrm{RMSPE} = \\sqrt{\\dfrac{\\sum_i \\varepsilon_i^{2}}{\\sum_i b_i^{2}}}\\cdot 100 = %.2f\\%% \\]\n', rec.RMSPE);
+            if isfield(rec,'NMAE')
+                fprintf(fid, '\\[ \\mathrm{NMAE} = \\dfrac{\\sum_i |\\varepsilon_i|}{\\sum_i |b_i|}\\cdot 100 = %.2f\\%% \\]\n', rec.NMAE);
             end
             cunit = 'mT/A';
         case 'voltage'
@@ -55,8 +55,8 @@ function emit_results(matfile)
             T.mat(fid, 'G~[\mathrm{mT}]', rec.G(:,p2a), pole, '');
             T.mat(fid, 'V~[\mathrm{mV}]', rec.V(:,p2a), pole, '');
             T.scalar_unit(fid, '{}^{B}\hat{g}_{V}', rec.gV_hat, 'mT/mV');
-            if isfield(rec,'RMSPE')                            % [ADDED] voltage 也印 RMSPE（同 current 定義與版式）
-                fprintf(fid, '\\[ \\mathrm{RMSPE} = \\sqrt{\\dfrac{\\sum_i \\varepsilon_i^{2}}{\\sum_i b_i^{2}}}\\cdot 100 = %.2f\\%% \\]\n', rec.RMSPE);
+            if isfield(rec,'NMAE')                            % [MODIFIED 2026-08-15] voltage 也印 NMAE（同 current 定義與版式）
+                fprintf(fid, '\\[ \\mathrm{NMAE} = \\dfrac{\\sum_i |\\varepsilon_i|}{\\sum_i |b_i|}\\cdot 100 = %.2f\\%% \\]\n', rec.NMAE);
             end
             cunit = 'mT/mV';
         otherwise

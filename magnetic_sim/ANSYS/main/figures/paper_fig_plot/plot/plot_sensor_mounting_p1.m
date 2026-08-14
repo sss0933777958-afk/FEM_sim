@@ -213,9 +213,17 @@ function plot_sensor_mounting_p1(SOFF, FACE, WITHFIELD, SRC)
     plot([0 T(1)],[0 T(2)],'-','Color',[.5 .5 .5],'LineWidth',1.6);
     plot(0,0,'+','MarkerSize',22,'Color','k','LineWidth',3);
 
-    % 藍線 tip→foot（沿錐面 4.572mm）+ 橘線 foot→sensor（0.41mm，直接相連、無數字）
-    plot([T(1) foot(1)],[T(2) foot(2)],'-','Color',[.15 .35 .75],'LineWidth',3);
-    plot([foot(1) sensor(1)],[foot(2) sensor(2)],'-','Color',[.75 .35 .1],'LineWidth',3);
+    % [MODIFIED 2026-08-15 使用者拍板] 三段構法（原本是「藍線沿錐面斜拉 + 橘線 0.41」兩段，
+    %   藍線畫錯了）：① 藍線沿**軸線**走 s_ax ② 棕線**垂直軸線**走 R 到錐面 ③ 橘線垂直錐面
+    %   走 0.41 到感測器底面中心。s_ax、R 都直接取自 pole_sensor_geometry，與位置計算同源。
+    if strcmpi(FACE,'flat')
+        P0 = T;                                        % 平切面通過極軸 → 起點就是極尖
+    else
+        rh2 = (nh + sin(beta)*axc)/cos(beta);          % 2D 徑向單位向量（朝貼附面側）
+        P0  = T + geo.apex_off(IP)*tan(beta)*1e3*rh2;  % 紅點：母線起點（軸向 0、半徑 R(0)）
+    end
+    plot([P0(1) foot(1)],[P0(2) foot(2)],'-','Color',[.15 .35 .75],'LineWidth',3);   % 藍：沿錐面 SOFF
+    plot([foot(1) sensor(1)],[foot(2) sensor(2)],'-','Color',[.75 .35 .1],'LineWidth',3); % 棕：氣隙 0.41
 
     % tip（黑方塊，無字）
     plot(T(1),T(2),'s','MarkerSize',11,'MarkerFaceColor','k','MarkerEdgeColor','k');

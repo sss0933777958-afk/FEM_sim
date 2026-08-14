@@ -63,14 +63,15 @@ function plot_conv_vs_R(force)
     fprintf('  評估格點 : %s\n',     num2str(S.Neval,'%7d'));
 
     %% ---- 四張圖 -----------------------------------------------------------
-    mk('ell',  S.ell1,  S.ell2,  '$\mathbf{\hat{\ell}\;(micro\;meter)}$',        figdir, S.R_um);
-    mk('gain', S.gI1,   S.gI2,   '$\mathbf{{}^{B}\hat{g}_{I}\;(mT/A)}$',         figdir, S.R_um);
+    % [MODIFIED 2026-08-14] 曲線自 R=0 起（使用者指定），起始值 = 0。
+    % ⚠ l_hat 與 g_I 的 R-sweep **只保留 plot_ell_gain_2panel.m 那一版**（左右兩格、
+    %   同一張圖）—— 本檔不再產 ell_vs_R_conv / gain_vs_R_conv（重複呈現，使用者拍板）。
     % [MODIFIED 2026-08-13] rms 圖改畫**校正當下的 min J**（不是外推到全格點的殘差）：
     %   sqrt(min J / (3·N_c·6))。min J 來自 fitting 的 variable projection 閉式解。
     %   分母用**純量項數**（3 分量 × N_c 點 × 6 激發），這樣單位才是 mT、才是每個殘差
     %   分量的 RMS。外推到全格點的那組仍算在 S.rms1/S.rms2（存快取，未出圖）。
-    mk('rms',  S.rmsc1, S.rmsc2, '$\mathbf{\sqrt{J/N}\;(mT)}$',                  figdir, S.R_um);
-    mk('nmae', S.nmae1, S.nmae2, '$\mathbf{NMAE\;(\%)}$',                        figdir, S.R_um);
+    mk('rms',  S.rmsc1, S.rmsc2, '$\mathbf{\sqrt{J/N}\;(mT)}$',                  figdir, S.R_um, 0);
+    mk('nmae', S.nmae1, S.nmae2, '$\mathbf{NMAE\;(\%)}$',                        figdir, S.R_um, 0);
 end
 
 % ============================================================================
@@ -185,8 +186,14 @@ function S = build_S(l_hat, Pc, P)
 end
 
 % ============================================================================
-function mk(tag, v1, v2, ylab, figdir, R_um)
+function mk(tag, v1, v2, ylab, figdir, R_um, v0)
 % 一張圖：橫軸 R [um]（線性），single 藍 / eighteen 紅。
+%   v0（選填）：**R=0 的起始值**（使用者指定曲線自 0 起）。給了就在最前面補一個
+%     (0, v0) 錨點，橫軸自 0 起；ell 用擬合初值 500、其餘量用 0。
+    if nargin < 7, v0 = []; end
+    if ~isempty(v0)
+        R_um = [0, R_um(:).'];   v1 = [v0, v1(:).'];   v2 = [v0, v2(:).'];
+    end
     FS = 36;   LW = 3.0;   MS = 10;
     c1 = [0.05 0.10 0.95];   c2 = [0.85 0.10 0.10];
     fig = figure('Color','w','Position',[100 100 1120 820]);
@@ -202,7 +209,11 @@ function mk(tag, v1, v2, ylab, figdir, R_um)
     ax.Toolbar.Visible = 'off';
 
     XL = [min(R_um) max(R_um)];   xlim(ax, XL);
-    set(ax,'XTick',[200 300 400]);                       % 3 個等距內部刻度，端點另以 text 標
+    if isempty(v0)
+        set(ax,'XTick',[200 300 400]);                   % 3 個等距內部刻度，端點另以 text 標
+    else
+        set(ax,'XTick',100:100:400);                     % 自 0 起：整數刻度，端點 0/500 以 text 標
+    end
     [YL, YT] = axlim_auto(min([v1 v2]), max([v1 v2]), [3 5]);
     ylim(ax, YL);   set(ax,'YTick',YT);
 

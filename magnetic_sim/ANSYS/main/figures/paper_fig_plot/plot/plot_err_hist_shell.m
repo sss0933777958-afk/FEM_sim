@@ -33,7 +33,15 @@ function plot_err_hist_shell(USE_BIAS, Rum, Rsplit, SPLIT)
     if nargin < 1 || isempty(USE_BIAS), USE_BIAS = false; end
     if nargin < 2 || isempty(Rum),      Rum      = 300;   end   % 校正 + 評估半徑 [um]
     if nargin < 3 || isempty(Rsplit),   Rsplit   = 150;   end   % 內外分層半徑 [um]
-    if nargin < 4 || isempty(SPLIT),    SPLIT    = true;  end   % false = 不分層、單一藍色
+    if nargin < 4 || isempty(SPLIT),    SPLIT    = true;  end
+    % [ADDED 2026-08-14] SPLIT 三種模式：
+    %   true    → 'overlay'：兩層**各自正規化**疊圖（比較分布形狀；樣本數差 7 倍）
+    %   false   → 'single' ：不分層、單一顏色
+    %   'stack' → 'stack'  ：**同一個分布**（總高度 = 不分層時的分布），內部依半徑
+    %                        分成兩色堆疊（使用者拍板：維持一樣的分布、只是內部分色）
+    MODE = 'overlay';
+    if islogical(SPLIT) && ~SPLIT,                              MODE = 'single'; end
+    if (ischar(SPLIT) || isstring(SPLIT)) && strcmpi(SPLIT,'stack'), MODE = 'stack';  end
 
     here   = fileparts(fileparts(mfilename('fullpath')));       % → paper_fig_plot/
     figdir = fullfile(fileparts(here), 'paper_fig', 'Section2_E');
@@ -94,7 +102,7 @@ function plot_err_hist_shell(USE_BIAS, Rum, Rsplit, SPLIT)
     %     single 用紫 #7B52AB（沿用 plot_err_hist.m 的 pick_colors）、
     %     eighteen 用深青 #008C99（使用者拍板 2026-08-14：紫色已用過，要不同色）。
     cOUT = [0.85 0.10 0.10];
-    if SPLIT || Rum == 150
+    if ~strcmp(MODE,'single') || Rum == 150
         cIN = [0.05 0.10 0.95];
     elseif USE_BIAS
         cIN = [0.000 0.549 0.600];
@@ -113,7 +121,7 @@ function plot_err_hist_shell(USE_BIAS, Rum, Rsplit, SPLIT)
     fig  = figure('Color','w','Position',[100 100 1100 830]);
     ax   = axes(fig);   hold(ax,'on');
 
-    if SPLIT
+    if strcmp(MODE,'overlay')
         p1 = histcounts(e1, edg) / numel(e1) * 100;   % 各組自我正規化（樣本數差 7 倍）
         p2 = histcounts(e2, edg) / numel(e2) * 100;
         h1 = bar(ax, ctr, p1, 1, 'FaceColor',cIN,  'FaceAlpha',ALPH, 'EdgeColor','k', 'LineWidth',0.3);
@@ -121,6 +129,20 @@ function plot_err_hist_shell(USE_BIAS, Rum, Rsplit, SPLIT)
         m1 = xline(ax, mu1, '--', 'Color',cM1, 'LineWidth',2.8);
         m2 = xline(ax, mu2, '--', 'Color',cM2, 'LineWidth',2.8);
         pAll = [p1 p2];
+    elseif strcmp(MODE,'stack')
+        % **共用分母 numel(eAll)** → 兩段疊起來剛好等於「不分層」時的整體分布，
+        %   只是每根長條依格點半徑分成內層（藍）／外層（紅）兩段。
+        p1 = histcounts(e1, edg) / numel(eAll) * 100;
+        p2 = histcounts(e2, edg) / numel(eAll) * 100;
+        hb = bar(ax, ctr, [p1(:) p2(:)], 1, 'stacked', 'EdgeColor','k', 'LineWidth',0.3);
+        hb(1).FaceColor = cIN;    hb(1).FaceAlpha = ALPH;
+        hb(2).FaceColor = cOUT;   hb(2).FaceAlpha = ALPH;
+        h1 = hb(1);   h2 = hb(2);
+        muA = mean(eAll);
+        mA  = xline(ax, muA, '--', 'Color',cM1, 'LineWidth',2.8);
+        pAll = p1 + p2;                               % 堆疊後的總高度
+        fprintf('  堆疊：整體 mean=%.4f mT；內層佔 %.1f%%、外層佔 %.1f%% 的樣本\n', ...
+                muA, 100*numel(e1)/numel(eAll), 100*numel(e2)/numel(eAll));
     else
         pA = histcounts(eAll, edg) / numel(eAll) * 100;
         hA = bar(ax, ctr, pA, 1, 'FaceColor',cIN, 'FaceAlpha',ALPH, 'EdgeColor','k', 'LineWidth',0.3);
@@ -150,13 +172,19 @@ function plot_err_hist_shell(USE_BIAS, Rum, Rsplit, SPLIT)
     ylabel(ax, '$\mathbf{Percentage\;(\%)}$',  'Interpreter','latex', 'FontSize',36);
 
     % 圖例：左欄 = 系列、右欄 = 該系列的統計值（house 標準）
-    if SPLIT
+    if strcmp(MODE,'overlay')
         % R 大寫；外層標成明確區間 150 < R <= 300（不用開放的 R > 150）
         lg = legend(ax, [h1 h2 m1 m2], ...
             {sprintf('R \\leq %d {\\mu}m', Rsplit), ...
              sprintf('%d < R \\leq %d {\\mu}m', Rsplit, Rum), ...
              sprintf('Inner mean = %.3f mT', mu1),  sprintf('Outer mean = %.3f mT', mu2)}, ...
             'Interpreter','tex', 'Location','northoutside', 'NumColumns',2);
+    elseif strcmp(MODE,'stack')
+        lg = legend(ax, [h1 h2 mA], ...
+            {sprintf('R \\leq %d {\\mu}m', Rsplit), ...
+             sprintf('%d < R \\leq %d {\\mu}m', Rsplit, Rum), ...
+             sprintf('Mean = %.3f mT', mean(eAll))}, ...
+            'Interpreter','tex', 'Location','northoutside', 'NumColumns',3);
     else
         lg = legend(ax, [hA mA], ...
             {sprintf('R \\leq %d {\\mu}m', Rum), ...
@@ -174,20 +202,21 @@ function plot_err_hist_shell(USE_BIAS, Rum, Rsplit, SPLIT)
     set(lg, 'Position', [axp(1), newTop + GAPN, axp(3), lgh]);
 
     mstr = 'single';  if USE_BIAS, mstr = 'eighteen'; end
-    tag  = 'conv';    if SPLIT,    tag  = 'shell';    end     % shell = 分層、conv = 不分層
+    % shell = 各自正規化的疊圖；conv = 單一分布（不分層 或 依半徑分色堆疊）
+    tag  = 'conv';    if strcmp(MODE,'overlay'), tag = 'shell'; end
     out  = fullfile(figdir, sprintf('err_hist_%s_maxwell_%s_R%d.png', tag, mstr, Rum));
     exportgraphics(fig, out, 'Resolution', 200);
     fprintf('wrote %s\n', out);
 end
 
 % ============================================================================
-function [xr, xt, frac] = xlim_auto(eAll)
+function [xr, xt, frac] = xlim_auto(eAll, PCT)
 % 橫軸（殘差 mT）：0 起、等距內縮刻度（端點另以 text 標數字，照直方圖既有做法）。
-%   沿用 plot_err_hist / plot_err_hist_overlay 的 xlim_pick：先取「5 格 nice 步長」，
-%   若上界比實際 max 寬超過 25% 再收緊一次（使用者反映 x 範圍太寬）。
-%   ⚠ 不用百分位裁切：本分布的尾巴很厚（R=300 時 p90=1.24、p95=1.63 mT），
-%   砍尾會丟掉有意義的資料。收緊後 **一格不丟**、只是把空白壓掉。
-    maxE = max(eAll);
+% [MODIFIED 2026-08-14] 上界改以 **PCT 百分位**（預設 99.5）為準，不再用 max
+%   （使用者反映水平軸拉太寬）：長尾極稀疏 —— R=300 的 max 是 1.90 mT，但那是極少數點，
+%   用它定上界會讓分布主體擠在左側 1/3。被截到視窗外的比例仍由 frac 回報、console 印出。
+    if nargin < 2 || isempty(PCT), PCT = 99.5; end
+    maxE = prctile(eAll, PCT);
     cand = [1 2 2.5 5 10];
     k0 = floor(log10(max(maxE, realmin)/5));   s = [];
     for k = k0:(k0+3)

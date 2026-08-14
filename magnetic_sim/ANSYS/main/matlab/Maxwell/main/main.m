@@ -26,13 +26,13 @@ K22_SET  = [];
 %   用來重現「收斂點的點數就夠」這件事。R=150um 的收斂點：single (1,2,4)=8 點、
 %   eighteen (1,2,3)=6 點（判準：其後連續 7 步相對前一步 < 0.5%，只看 l_hat）。
 %   輸出檔名自動加 _convN<點數>，不覆蓋全格點版。
-GRID_NRPT = [];
+GRID_NRPT = [2 4 10];
 % 通用化旗標（'' → 由 cfg 提供預設；特例幾何自動吃自己的設定，不用手動改）
 INTERP_TO = '';             % '' 正常；否則把本 variant 場內插到此參考 geom 的 R≤R_select 點雲（公平比較）
 V_METHOD  = '';             % '' → cfg.v_method（'csv-tet' 預設 / 'scattered'）
 % voltage-only 取樣調參
-SOFF_upper = 4.572e-3;      % 上極 sensor 沿錐面距極尖 [m]（定案值 4.572e-3）
-SOFF_lower = 4.572e-3;      % [ADDED] 下極 sensor 沿錐面距極尖 [m]（原寫死 4.572e-3；兩層要一起移才與示意圖一致）
+SOFF_upper = 3.0e-3;        % 上極 sensor 沿錐面距極尖 [m]（定案值 4.572e-3）
+SOFF_lower = 3.0e-3;        % [ADDED] 下極 sensor 沿錐面距極尖 [m]（原寫死 4.572e-3；兩層要一起移才與示意圖一致）
 n_uniform  = 500;           % 每 sensor 圓柱撒點數（[MODIFIED 2026-08-06] 使用者拍板統一 500；
                             %   取樣標準誤 ≈ (σ/μ)/√n ≈ 2.4%/22.4 ≈ 0.11%。舊結果用 1e4（0.024%））
 sensor_r   = 0.15e-3;       % sensor 圓柱半徑 [m]
@@ -113,7 +113,8 @@ switch BASE
         error('BASE 必為 ''current'' | ''voltage''');
 end
 rec.C_mean = rm.C_mean;  rec.kappa_mean = rm.kappa_mean;  rec.C_min = rm.C_min;  rec.kappa_worst = rm.kappa_worst;
-if isfield(rm,'RMSPE'), rec.RMSPE = rm.RMSPE; end     % 擬合 RMSPE [%]（current）
+if isfield(rm,'RMSPE'), rec.RMSPE = rm.RMSPE; end
+if isfield(rm,'NMAE'),  rec.NMAE  = rm.NMAE;  end     % [ADDED 2026-08-15] 擬合 NMAE [%]（PDF 印這個）
 
 % [ADDED 2026-08-10] K22 約束 → 輸出變體名加 tag（**資料載入仍用原 VARIANT**，只有輸出改名，
 %   故自由擬合版 model_results_*_maxwell.pdf 不會被覆蓋）。
@@ -135,7 +136,10 @@ end
 tag = 'single'; if USE_BIAS, tag = 'eighteen'; end
 matdir = fullfile(CAL, 'data', MODEL, '.mat');
 if ~exist(matdir, 'dir'), mkdir(matdir); end
-soffsfx = '';   % [ADDED] voltage 且 sensor 距非定案 4.572mm → 檔名加後綴，不覆蓋既有結果
+% voltage 且 sensor 距非定案 4.572mm → .mat 檔名加後綴，不覆蓋既有結果
+%   ⚠ [2026-08-15] 不要把 soff tag 併進 VAR_OUT —— emit_results 會**自己**再加一次
+%   （它由 rec.SOFF_upper 判斷），併進去會得到 `..._soff3mm_soff3mm.pdf`。踩過。
+soffsfx = '';
 if strcmp(BASE,'voltage') && (abs(SOFF_upper-4.572e-3) > 1e-9 || abs(SOFF_lower-4.572e-3) > 1e-9)
     soffsfx = sprintf('_soff%gmm', SOFF_upper*1e3);
 end

@@ -26,6 +26,7 @@ function plot_p2_pole_full()
     L = 8;                                                         % 沿軸畫的軸向長度(mm)(與六極圖一致)
 
     XL=[-8.5 0]; YL=[-2 2]; ZL=[0 7];                              % 圓整框(L=8)
+    SIDE_VIEW = true;                                              % [ADDED 2026-08-14] true=側視(0,0)、false=原本的 3D (45,25)
 
     % ---- 畫圖 ----
     fig = figure('Color','w','Position',[60 40 1180 1000]);
@@ -39,13 +40,22 @@ function plot_p2_pole_full()
     sc=[-3.1454;0;3.9774]; nrm=[0.7420;0;0.6704]; Ln=1.3;
     draw_narrow(ax, sc, nrm, Ln, [0.85 0.10 0.10], 4.0);
 
-    grid(ax,'off'); box(ax,'off'); daspect(ax,[1 1 1]);
+    grid(ax,'off'); daspect(ax,[1 1 1]);
     xlim(ax,XL); ylim(ax,YL); zlim(ax,ZL);
-    view(ax,45,25);  camlight(ax,'headlight'); lighting(ax,'gouraud'); material(ax,'dull');
+    % [MODIFIED 2026-08-14] SIDE_VIEW：沿 -y 看 x-z 平面的側視圖（使用者要求）。
+    %   資料、取樣、幾何一律不動，只換視角 + 框線。側視時 y 軸邊看（深度塌陷）→
+    %   手動 draw_box_edges3 會把前後框邊疊成同一條，改用 box on 並拿掉 y 刻度。
+    if SIDE_VIEW
+        view(ax,0,0);   box(ax,'on');
+    else
+        view(ax,45,25);   box(ax,'off');
+    end
+    camlight(ax,'headlight'); lighting(ax,'gouraud'); material(ax,'dull');
     set(ax,'FontSize',36,'FontWeight','bold','LineWidth',3.0,'TickLength',[.02 .02]);
-    set(ax,'XTick',[-7 -5 -3 -1],'YTick',[-1 0 1],'ZTick',[2 4 6]);  % 內縮 tick(L=8 重新框)
+    set(ax,'XTick',[-7 -5 -3 -1],'ZTick',[2 4 6]);                 % 內縮 tick(L=8 重新框)
+    if SIDE_VIEW, set(ax,'YTick',[]); else, set(ax,'YTick',[-1 0 1]); end
     ax.XTickLabelRotation=0; ax.YTickLabelRotation=0; ax.ZTickLabelRotation=0;        % 刻度數字不隨軸旋轉(保持水平)
-    draw_box_edges3(ax, XL,YL,ZL, 3.0);
+    if ~SIDE_VIEW, draw_box_edges3(ax, XL,YL,ZL, 3.0); end
     ax.Clipping='off';  ax.Toolbar.Visible='off';  hold(ax,'off');
 
     out = fullfile(figdir,'p2_pole_full.png');

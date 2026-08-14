@@ -82,11 +82,17 @@ function plot_conv_npts(force)
     rep('K_I    eighteen', S.N, S.ifro2, S.TRI);
 
     %% ---- 圖 A：l_hat（含 N=0 錨點）---------------------------------------
-    NA  = [0,          S.N];
-    A1  = [l0*1e6,     S.ell1];
-    A2  = [l0*1e6,     S.ell2];
+    % [MODIFIED 2026-08-14] 使用者拍板：**只畫到「收斂點之後再 3 個設計」**、橫軸改**線性**。
+    %   理由：收斂點在 N=6/8，後面到 N=1776 全是平的，log 軸把九成篇幅給了沒有資訊的尾段。
+    %   截到收斂後 3 個設計（索引 5 → N=14）＝「跳一下就穩住」再走三步確認，畫面最緊湊。
+    %   （曾試 +10 → N=88、+7 → N=30，右側都偏空。）圖 B / 圖 C 不動（仍 log、完整階梯）。
+    ic  = min(numel(S.N), max([S.iell1, S.iell2]) + 3);
+    NA  = [0,          S.N(1:ic)];
+    A1  = [l0*1e6,     S.ell1(1:ic)];
+    A2  = [l0*1e6,     S.ell2(1:ic)];
+    fprintf('\n[圖A] 截到索引 %d（N=%d）＝收斂點後 3 個設計\n', ic, S.N(ic));
     mk('ell', NA, A1, A2, idx2N(S.N,S.iell1), idx2N(S.N,S.iell2), ...
-       '$\mathbf{\hat{\ell}\;(micro\;meter)}$', true, figdir);
+       '$\mathbf{\hat{\ell}\;(micro\;meter)}$', true, figdir, [], 'linear');
 
     %% ---- 圖 B：K_I 的 Frobenius 相對變化（從第 2 個設計起）----------------
     m   = 2:numel(S.N);
@@ -96,8 +102,13 @@ function plot_conv_npts(force)
     %% ---- 圖 C：g_I_hat（無 N=0 錨點：g_I 沒有初值）------------------------
     % [ADDED 2026-08-13] 判準加入 g_I 後補這張。**從階梯第一個設計（N=6）畫起**，
     %   eighteen 的收斂點 N=10 才進得了圖。y 刻度使用者指定為整數 → 明給 [6 8 10]。
-    mk('gain', S.N, S.gI1, S.gI2, idx2N(S.N,S.igI1), idx2N(S.N,S.igI2), ...
-       '$\mathbf{{}^{B}\hat{g}_{I}\;(mT/A)}$', false, figdir, [6 8 10]);
+    % [MODIFIED 2026-08-14] **截到「收斂點之後再 3 個設計」**（索引 31 → N=600）；
+    %   橫軸維持**對數**、主刻度以 **10^n 指數形式**呈現（使用者拍板，'logexp'）。
+    %   （曾試線性軸：N=6~30 的 9 個點會壓在最左緣、single 的震盪看不清 → 還原回對數。）
+    icg = min(numel(S.N), max([S.igI1, S.igI2]) + 3);
+    fprintf('[圖C] 截到索引 %d（N=%d）＝收斂點後 3 個設計\n', icg, S.N(icg));
+    mk('gain', S.N(1:icg), S.gI1(1:icg), S.gI2(1:icg), idx2N(S.N,S.igI1), idx2N(S.N,S.igI2), ...
+       '$\mathbf{{}^{B}\hat{g}_{I}\;(mT/A)}$', false, figdir, [6 8 10], 'logexp');
 end
 
 % ============================================================================
@@ -219,19 +230,27 @@ function rep(name, N, i0, TRI)
 end
 
 % ============================================================================
-function mk(tag, N, v1, v2, Nc1, Nc2, ylab, zero_anchor, figdir, YTfix)
-% 一張圖：橫軸 N（log）、single 藍 / eighteen 紅、收斂點以同色虛線標出。
+function mk(tag, N, v1, v2, Nc1, Nc2, ylab, zero_anchor, figdir, YTfix, XSCALE)
+% 一張圖：橫軸 N、single 藍 / eighteen 紅、收斂點以同色虛線標出。
 %   YTfix（選填）：明給 y 刻度（等距）；上下界由「外側刻度再留一個間距」推得。
 %   不給則走 axlim_auto 自動取刻度。
-    if nargin < 10, YTfix = []; end
+%   XSCALE（選填）：'log'（預設，主刻度標一般數字 10 / 100）
+%                  | 'logexp'（對數軸、主刻度標 **10^n 指數形式**）
+%                  | 'linear'（線性軸；N=0 錨點直接畫在 0，內部刻度取奇數個等距）
+%     三者的端點數字都仍以 text 補、首末點貼框。
+    if nargin < 10, YTfix  = []; end
+    if nargin < 11 || isempty(XSCALE), XSCALE = 'log'; end
+    isLin = strcmpi(XSCALE, 'linear');
+    isExp = strcmpi(XSCALE, 'logexp');
     FS = 36;   LW = 3.0;   MS = 10;
     c1 = [0.05 0.10 0.95];   c2 = [0.85 0.10 0.10];
     fig = figure('Color','w','Position',[100 100 1120 820]);
     ax  = axes(fig);   hold(ax,'on');
 
     % log 軸畫不了 N=0 → 錨點擺在最左端（往左一個十年），端點數字標 0
+    % 線性軸沒這個問題，0 就畫在 0
     Np = N;
-    if zero_anchor && any(N == 0)
+    if zero_anchor && any(N == 0) && ~isLin
         pos = N(N > 0);   Np(N == 0) = min(pos)/10;
     end
 
@@ -244,7 +263,18 @@ function mk(tag, N, v1, v2, Nc1, Nc2, ylab, zero_anchor, figdir, YTfix)
     set(ax,'FontSize',FS,'FontWeight','bold','LineWidth',2.5,'TickLength',[.02 .02]);
     ax.Toolbar.Visible = 'off';
 
-    XL = [min(Np) max(Np)];   xlim(ax, XL);   set(ax,'XScale','log');
+    XL = [min(Np) max(Np)];   xlim(ax, XL);
+    lb0 = sprintf('%g',XL(1));   lb1 = sprintf('%g',XL(2));
+    if zero_anchor && any(N == 0), lb0 = '0'; end
+    if isLin
+    % [ADDED 2026-08-14] 線性橫軸：內部刻度取**奇數個等距**（不含端點，figure-style），
+    %   端點數字另以 text 補、首末資料點貼齊左右框邊；線性軸不放次刻度。
+    set(ax, 'XScale', 'linear', 'XMinorTick', 'off');
+    XT = ticks_lin_inner(XL(1), XL(2), 3);
+    set(ax, 'XTick', XT);
+    set(ax, 'XTickLabel', arrayfun(@(v) sprintf('%g', v), XT, 'UniformOutput', false));
+    else
+    set(ax,'XScale','log');
     % [MODIFIED 2026-08-13] **標準對數軸**（使用者要求「對數刻度畫得像樣」）：
     %   主刻度 = 整十年（10 / 100 / 1000），標一般數字（不用 10^3 指數形式）；
     %   次刻度 = 每個十年內的 2..9，短線無數字 —— 科學圖表的慣例畫法。
@@ -255,21 +285,29 @@ function mk(tag, N, v1, v2, Nc1, Nc2, ylab, zero_anchor, figdir, YTfix)
     e0  = floor(log10(XL(1)));   e1 = ceil(log10(XL(2)));
     dec = 10.^(e0:e1);           dec = dec(dec >= XL(1) & dec <= XL(2));
     sp  = log10(XL(2)/XL(1));    CW  = 0.024;      % 每字元約佔軸寬比例（FS36 粗體）
-    lb0 = sprintf('%g',XL(1));   lb1 = sprintf('%g',XL(2));
-    if zero_anchor && any(N == 0), lb0 = '0'; end
     keep = true(size(dec));
     for q = 1:numel(dec)
-        d  = sprintf('%g', dec(q));
-        keep(q) = log10(dec(q)/XL(1))/sp >= 0.5*CW*(numel(d)+numel(lb0)) + 0.010 && ...
-                  log10(XL(2)/dec(q))/sp >= 0.5*CW*(numel(d)+numel(lb1)) + 0.010;
+        % isExp 時標籤是 10^{n}，顯示寬度不隨指數變（上標較小）→ 一律以 3 個字元估
+        if isExp, nd = 3; else, nd = numel(sprintf('%g', dec(q))); end
+        keep(q) = log10(dec(q)/XL(1))/sp >= 0.5*CW*(nd+numel(lb0)) + 0.010 && ...
+                  log10(XL(2)/dec(q))/sp >= 0.5*CW*(nd+numel(lb1)) + 0.010;
     end
     XT = dec(keep);
     set(ax, 'XTick', XT);
-    set(ax, 'XTickLabel', arrayfun(@(v) sprintf('%g', v), XT, 'UniformOutput', false));
+    if isExp
+        % [ADDED 2026-08-14] 主刻度以 10^n 指數形式呈現（使用者要求）。用 tex interpreter
+        %   做上標即可 —— 刻度數字仍是 Helvetica 粗體，符合 figure-style（不套 latex）。
+        set(ax, 'TickLabelInterpreter', 'tex');
+        set(ax, 'XTickLabel', arrayfun(@(v) sprintf('10^{%d}', round(log10(v))), ...
+                                       XT, 'UniformOutput', false));
+    else
+        set(ax, 'XTickLabel', arrayfun(@(v) sprintf('%g', v), XT, 'UniformOutput', false));
+    end
     mv = [];
     for e = e0:e1, mv = [mv, (2:9)*10^e]; end %#ok<AGROW>
     set(ax, 'XMinorTick', 'on');
     ax.XAxis.MinorTickValues = mv(mv >= XL(1) & mv <= XL(2));
+    end
 
     if isempty(YTfix)
         [YL, YT] = axlim_auto(min([v1 v2]), max([v1 v2]), [3 5]);
@@ -316,6 +354,27 @@ function mk(tag, N, v1, v2, Nc1, Nc2, ylab, zero_anchor, figdir, YTfix)
     out = fullfile(figdir, sprintf('%s_vs_npts_conv_maxwell_R150.png', tag));
     exportgraphics(fig, out, 'Resolution', 200);
     fprintf('wrote %s\n', out);
+end
+
+% ============================================================================
+function tk = ticks_lin_inner(lo, hi, n)
+% 線性軸：n 個（奇數）等距 nice 刻度，嚴格落在 (lo,hi) **內部**、不含端點。
+%   端點數字由呼叫端以 text 補（figure-style：曲線首末點貼框、端點只標數字不畫 tick mark）。
+%   n 是**目標**個數：若該範圍湊不出 n 個 nice 刻度，依序退到 n+2 / n-2 / n+4（**都維持奇數**）。
+%   例：(0,30) 湊不出 3 個 nice 刻度（10/20 只有 2 個），退到 5 個 → [5 10 15 20 25]。
+    cand = [1 2 2.5 3 4 5 10];
+    for nn = [n, n+2, n-2, n+4]
+        if nn < 1, continue; end
+        k0 = floor(log10(max(hi-lo, realmin)/(nn+1)));
+        for k = k0:(k0+3)
+            for c = cand
+                s = c*10^k;
+                t = s*ceil((lo + 0.5*s)/s) : s : (hi - 0.5*s);
+                if numel(t) == nn, tk = t;  return; end
+            end
+        end
+    end
+    tk = lo + (1:n)/(n+1)*(hi-lo);        % 退路：等分（極端範圍才會用到）
 end
 
 % ============================================================================
