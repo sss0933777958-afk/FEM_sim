@@ -350,6 +350,24 @@ end
 - bars 樣式：`FaceAlpha 0.55`、`EdgeColor 'w'`、`LineWidth 0.3`；mean 用 `xline` 虛線（同色）；legend 用 histogram handles；上方留 headroom（`ylim*1.20`）讓 legend 不壓 bar。
 - 範例：`plot_gain_iso_overlay.m` 的 `render_overlay`（gain 𝒞 / iso κ 疊圖）。
 
+### 🔒 藍色深淺：直方圖用**深藍**、疊圖（蝶圖）才用淺藍（使用者拍板 2026-08-13）
+
+| 圖型 | 藍色 | 為什麼 |
+|---|---|---|
+| **直方圖** | **深藍 `[0.05 0.10 0.95]`** | 長條套 `FaceAlpha` 後本來就會變淡，再用淺藍會糊掉 |
+| **疊圖（蝶圖）** | 淺藍 `[0.10 0.35 1.00]` | 兩組交疊時淺一點才看得出重疊區 |
+
+紅色不分深淺，一律 `[0.85 0.10 0.10]`。mean 虛線**不隨長條色走**，一律中性色
+（黑 `[0 0 0]` / 深綠 `[0 0.60 0]`）—— 中性色壓在任何顏色的長條上都看得清。
+範例：`figures/paper_fig_plot/plot/plot_err_hist_shell.m`。
+
+### 🔒 半徑分層的圖例寫法（使用者拍板 2026-08-13）
+
+依半徑分層時，圖例的半徑符號用**大寫 `R`**，而且外層要標**明確區間**、不用開放不等式：
+
+- ✅ `R \leq 150 {\mu}m` ／ `150 < R \leq 300 {\mu}m`
+- ❌ `r \leq 150 {\mu}m` ／ `r > 150 {\mu}m`（小寫、且上界沒交代）
+
 ## |B| 場 colorbar 標準樣式（使用者拍板 2026-07-29）
 
 **所有磁路 / |B| 場圖的 colorbar 一律照此標準**（source of truth = `plot_circuit_side.m` 的 `style_cbar`）：

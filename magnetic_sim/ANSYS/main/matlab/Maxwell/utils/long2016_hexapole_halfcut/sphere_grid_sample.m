@@ -82,6 +82,8 @@ function [x, y, z, B, info] = sphere_grid_sample(R, c, opt)
 %       .variant    .fld 變體（預設 cfg.default_variant = 'maxwell'）
 %       .N_target   直接指定目標點數（跳過數格點；此時 c 被忽略）
 %       .N_nodes    直接給該 R 的原始格點數（跳過讀 .fld 數點，仍用 c 算 target）
+%       .NRPT       [N_r N_phi N_theta] 直接指定三個整數，**跳過 Step 1-b 的配比**
+%                   （用於「固定角向只掃徑向」或自訂點數階梯；產點法 Step 1-c 不變）
 %       .query      Np x 3 **measure frame** 座標，直接指定查詢點（跳過 Step 1 的
 %                   配比與產點）。驗證用（例：拿 .fld 格點當查詢點，應原值重現）。
 %
@@ -119,18 +121,27 @@ function [x, y, z, B, info] = sphere_grid_sample(R, c, opt)
         % --- 1-a 目標點數：c x 該球內空氣中的原始格點數 ---
         N_target = gv('N_target', []);
         N_nodes  = gv('N_nodes',  []);
-        if isempty(N_target)
-            if isempty(N_nodes), N_nodes = count_fld_nodes(cfg, VARIANT, R); end
-            N_target = c * N_nodes;
-        end
-        assert(N_target >= 27, 'N_target 太小（%g），至少 27 才配得出 (1,3,9)', N_target);
+        NRPT     = gv('NRPT',     []);          % [ADDED] 直接指定 [N_r N_phi N_theta]
 
         % --- 1-b 配比 N_r : N_phi : N_theta = 1 : 3 : 3pi ---
         %     比例三項乘積 = 1*3*3pi = 9pi；三數同乘 s 則乘積乘 s^3
-        s       = (N_target / (9*pi))^(1/3);
-        N_r     = max(1, round(s));
-        N_phi   = max(1, round(3    * N_r));
-        N_theta = max(1, round(3*pi * N_r));
+        % [ADDED] opt.NRPT 給定時**跳過配比**，直接吃三個整數（供「固定角向只掃徑向」
+        %   或「自訂點數階梯」的掃描；Step 1-c 之後完全相同）。
+        if ~isempty(NRPT)
+            validateattributes(NRPT, {'numeric'}, {'vector','numel',3,'positive','integer'});
+            N_r = NRPT(1);   N_phi = NRPT(2);   N_theta = NRPT(3);
+            if isempty(N_target), N_target = N_r*N_phi*N_theta; end
+        else
+            if isempty(N_target)
+                if isempty(N_nodes), N_nodes = count_fld_nodes(cfg, VARIANT, R); end
+                N_target = c * N_nodes;
+            end
+            assert(N_target >= 27, 'N_target 太小（%g），至少 27 才配得出 (1,3,9)', N_target);
+            s       = (N_target / (9*pi))^(1/3);
+            N_r     = max(1, round(s));
+            N_phi   = max(1, round(3    * N_r));
+            N_theta = max(1, round(3*pi * N_r));
+        end
 
         % --- 1-c 三個 1D 座標（都取格心）+ 張成點雲 ---
         u = ((1:N_r)     - 0.5) / N_r;      r_k     = R * u.^(1/3);     % 等分 r^3

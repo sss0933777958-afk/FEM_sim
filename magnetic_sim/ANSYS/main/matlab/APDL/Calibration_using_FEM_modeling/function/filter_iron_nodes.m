@@ -8,7 +8,17 @@ function [air_mask, debug_info] = filter_iron_nodes(x_apdl, y_apdl, z_apdl, c, o
 %     c       - constants struct from mt_constants()
 %     opts    - optional struct with fields:
 %       .visualize  (false)  generate 3D scatter plot
-%       .safety_r   (100e-6) safety sphere radius around each tip [m]
+%       .safety_r   (0)      extra safety sphere radius around each tip [m]
+%
+%   [MODIFIED 2026-08-14] safety_r default 100e-6 -> 0 (user decision).
+%     The tips sit 500 um from the origin, so a 100 um safety sphere reached
+%     inward to r = 400 um and punched six holes out of every sampling ball
+%     with R > 400 um (measured: 0 nodes removed at R = 400, 70 at R = 420,
+%     1452 = 2.23% at R = 500). Those nodes are AIR, not iron -- the cone
+%     envelope below already covers the iron, and nodes in front of the tip
+%     (s < 0) are outside the pole by construction. Keeping the sphere made
+%     "a ball of radius R" untrue for R > 400 um. Set safety_r > 0 explicitly
+%     if a particular study needs to stay clear of the tip singularity.
 %
 %   Outputs:
 %     air_mask   - logical Nx1, true = air node (keep), false = iron (exclude)
@@ -16,7 +26,7 @@ function [air_mask, debug_info] = filter_iron_nodes(x_apdl, y_apdl, z_apdl, c, o
 
     if nargin < 5, opts = struct(); end
     if ~isfield(opts, 'visualize'), opts.visualize = false; end
-    if ~isfield(opts, 'safety_r'),  opts.safety_r  = 100e-6; end
+    if ~isfield(opts, 'safety_r'),  opts.safety_r  = 0; end
 
     N = numel(x_apdl);
 

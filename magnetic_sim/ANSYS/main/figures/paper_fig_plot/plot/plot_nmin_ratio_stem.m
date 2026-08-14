@@ -1,44 +1,76 @@
-function plot_nmin_ratio_stem(RSEL, TOLPC, KWIN)
+function plot_nmin_ratio_stem(MODE, RSEL, TOLPC, KWIN, USE_BIAS)
 % plot_nmin_ratio_stem -- paper 圖：每個取樣範圍所需的點數佔全池的比例（火柴棒圖）
 % =========================================================================
-%   水平軸 = 取樣半徑 R [um]、縱軸 = N_min / pool × 100 [%]。
-%   火柴棒（stem）：細桿 + 圓頭，圓頭旁標「N_min/pool」的實際數量（旋轉 90 度避免相撞）。
+%   水平軸 = 取樣半徑 R [um]、縱軸 = N / N_total × 100 [%]。
+%   火柴棒（stem）：細桿 + 圓頭，圓頭旁標「取樣點數 / 總格數」（旋轉 90 度避免相撞）。
 %
-%   N_min(R)：對每組隨機排列，找第一個 n 使**其後 KWIN 點**的相對變化率都 <= TOLPC%；
-%             10 組取中位數（判準與 plot_ell_nmin_vs_full 完全一致）。
-%   pool(R) ：該 R 球內 10 um 內插格的全部點數。
+%   MODE（第 1 引數，預設 'conv'）：
+%     'conv' — [ADDED 2026-08-13] **等測度網格 + 現行三條件判準**的 N_c
+%              （l_hat 穩定 ∧ g_I 穩定 ∧ K_I 符合物理，各持續 10 步）。
+%              N_c 與 N_total 都直接讀 data/full_vs_conv_vs_R_maxwell.mat。
+%              N_total = 該 R 球內**真實 20 um .fld 格點**數。
+%              ⚠ R 從 140 起：R<=120 時 N_c 反而**超過**該 R 內的真實格點數
+%                （R=80 佔 980%、R=100 佔 285%、R=120 佔 128%）——等測度點是內插的、
+%                不受格點數限制，所以小 R 根本稱不上「減量」。畫進去會讓縱軸失去解析度。
+%     'nmin' — 舊研究：隨機巢狀取樣的 N_min（10 組中位數、後 KWIN 點變化率 <= TOLPC%），
+%              N_total = 該 R 球內 10 um 內插格的全部點數。
+%              資料來自 data/nmin_vs_R_maxwell10_single_random.mat。
 %
-%   🔑 **不做任何擬合**，全部從 data/nmin_vs_R_maxwell10_single_random.mat 取值。
+%   🔑 **不做任何擬合**，全部從快取取值。
 %
 %   風格 = 選項①粗體框 @ paper scale。
-%   輸出 → figures/paper_fig/Section2_E/nmin_ratio_stem_maxwell10_single.png
+%   輸出 → figures/paper_fig/Section2_E/nmin_ratio_stem_maxwell{10_single,_conv}.png
 % =========================================================================
     clc;
-    if nargin < 1 || isempty(RSEL),  RSEL  = 100:20:500; end
-    if nargin < 2 || isempty(TOLPC), TOLPC = 0.2;        end
-    if nargin < 3 || isempty(KWIN),  KWIN  = 7;          end
+    if nargin < 1 || isempty(MODE),  MODE  = 'conv';      end
+    if nargin < 3 || isempty(TOLPC), TOLPC = 0.2;         end
+    if nargin < 4 || isempty(KWIN),  KWIN  = 7;           end
+    if nargin < 5 || isempty(USE_BIAS), USE_BIAS = false; end   % conv 模式：false=single、true=eighteen
 
     here   = fileparts(fileparts(mfilename('fullpath')));
     figdir = fullfile(fileparts(here), 'paper_fig', 'Section2_E');
     if ~exist(figdir,'dir'); mkdir(figdir); end
-    S = load(fullfile(here,'data','nmin_vs_R_maxwell10_single_random.mat'));
 
-    nR = numel(RSEL);   Nuse = nan(1,nR);   pool = nan(1,nR);
-    for t = 1:nR
-        i = find(S.RLIST == RSEL(t));   assert(~isempty(i), '快取沒有 R=%d', RSEL(t));
-        n = S.nall{i};   E = S.ellall{i};   pool(t) = S.pool(i);
-        nd = nan(1, size(E,1));
-        for d = 1:size(E,1), nd(d) = flat_one(n, E(d,:), TOLPC, KWIN); end
-        [~, k] = min(abs(n - median(nd,'omitnan')));
-        Nuse(t) = n(k);
+    if strcmpi(MODE,'conv')
+        D = load(fullfile(here,'data','full_vs_conv_vs_R_maxwell.mat'));
+        % [MODIFIED 2026-08-13] 起點 per-model（使用者拍板）：
+        %   eighteen 從 80（全段最大才 40.6%，畫得下）；
+        %   single 從 **140** —— R<=120 時 N_c 反而超過該 R 內的真實格點數
+        %   （R=80 佔 980%、100 佔 285%、120 佔 128%；等測度點是內插的、不受格點數限制），
+        %   放進去會把縱軸撐到 1520%，R>=140 的 38%→0.28% 變化全部壓成貼底線的一排。
+        if nargin < 2 || isempty(RSEL)
+            RSEL = D.R_um;
+            if ~USE_BIAS, RSEL = RSEL(RSEL >= 140); end
+        end
+        [tf, loc] = ismember(RSEL, D.R_um);
+        assert(all(tf), 'full_vs_conv 快取缺少 R = %s', num2str(RSEL(~tf)));
+        fld = 'n_c1';  mstr = 'single';   lbl = 'Single parameter';
+        if USE_BIAS, fld = 'n_c2';  mstr = 'eighteen';  lbl = 'Eighteen parameters'; end
+        Nuse = D.(fld)(loc);   pool = D.npts_f(loc);
+        outn = sprintf('nmin_ratio_stem_maxwell_conv_%s.png', mstr);
+    else
+        if nargin < 2 || isempty(RSEL), RSEL = 100:20:500; end
+        S = load(fullfile(here,'data','nmin_vs_R_maxwell10_single_random.mat'));
+        nR = numel(RSEL);   Nuse = nan(1,nR);   pool = nan(1,nR);
+        for t = 1:nR
+            i = find(S.RLIST == RSEL(t));   assert(~isempty(i), '快取沒有 R=%d', RSEL(t));
+            n = S.nall{i};   E = S.ellall{i};   pool(t) = S.pool(i);
+            nd = nan(1, size(E,1));
+            for d = 1:size(E,1), nd(d) = flat_one(n, E(d,:), TOLPC, KWIN); end
+            [~, k] = min(abs(n - median(nd,'omitnan')));
+            Nuse(t) = n(k);
+        end
+        outn = 'nmin_ratio_stem_maxwell10_single.png';
+        lbl  = 'Single parameter';
     end
     pct = Nuse ./ pool * 100;
-    fprintf('   R    N_min     pool     佔比%%\n');
-    fprintf('  %3d  %6d  %7d   %6.2f\n', [RSEL; Nuse; pool; pct]);
+    fprintf('   R    取樣點數   總格數    佔比%%\n');
+    fprintf('  %3d  %8d  %7d   %6.2f\n', [RSEL(:).'; Nuse(:).'; pool(:).'; pct(:).']);
     fprintf('\n  佔比範圍 %.2f ~ %.2f %%（中位數 %.2f%%）\n', min(pct), max(pct), median(pct));
 
     % ---- 畫圖（火柴棒；選項①粗體框）----
     FS = 36;  LWBOX = 4.0;   col = [0.05 0.10 0.95];
+    if strcmpi(MODE,'conv') && USE_BIAS, col = [0.85 0.10 0.10]; end   % 顏色 = 模型
     fig = figure('Color','w','Position',[100 100 1240 860]);
     ax  = axes(fig);  hold(ax,'on');
     hs = stem(ax, RSEL, pct, 'filled', 'Color',col, 'LineWidth',1.8, ...
@@ -54,7 +86,10 @@ function plot_nmin_ratio_stem(RSEL, TOLPC, KWIN)
     set(ax,'XTick', inner_ticks(RSEL(1), RSEL(end), 3));
     % [MODIFIED 2026-08-12] 基準線（0%）**對齊下框**（使用者要求）：ylim 下緣固定 0，
     %   不留下方空白；刻度取奇數個等距、上緣留白 = 間距。
-    [YL, YT] = axlim_from_zero(max(pct), [5 3]);
+    % [MODIFIED 2026-08-13] 圓頭旁要標「取樣點數/總格數」（旋轉 90 度往上長），8% 裕度放不下
+    %   → 上緣放大到 HEAD×。⚠ 刻度必須**跟著填滿放大後的軸**（原本先算 8% 版的刻度、再改
+    %   上緣，結果上半截整片沒有刻度、違反規則）——故把上緣一起傳進去算刻度。
+    [YL, YT] = axlim_from_zero(max(pct), 1.55);
     ylim(ax, YL);   set(ax,'YTick',YT);
 
     yoff = YL(1) - 0.022*diff(YL);                         % 水平軸端點只標數字、不畫 tick
@@ -63,12 +98,19 @@ function plot_nmin_ratio_stem(RSEL, TOLPC, KWIN)
              'VerticalAlignment','top','FontSize',FS,'FontWeight','bold','Clipping','off');
     end
 
-    % [REMOVED 2026-08-12] 圓頭旁的「N_min/pool」數字標註已拿掉（使用者要求）。
+    % [RESTORED 2026-08-13] 圓頭旁標「取樣點數/總格數」（使用者要求），旋轉 90 度避免相撞
+    for t = 1:numel(RSEL)
+        text(ax, RSEL(t), pct(t) + 0.02*diff(YL), sprintf('%d/%d', Nuse(t), pool(t)), ...
+             'Rotation',90, 'HorizontalAlignment','left', 'VerticalAlignment','middle', ...
+             'FontSize',17, 'FontWeight','bold', 'Color',col, 'Clipping','off');
+    end
 
     xlabel(ax, '$\mathbf{Sampling\;range\;(micro\;meter)}$', 'Interpreter','latex', 'FontSize',FS);
-    ylabel(ax, '$\mathbf{N_{min}/N_{total}\;(\%)}$',         'Interpreter','latex', 'FontSize',FS);
+    ylab = '$\mathbf{N_{min}/N_{total}\;(\%)}$';
+    if strcmpi(MODE,'conv'), ylab = '$\mathbf{N/N_{total}\;(\%)}$'; end   % [MODIFIED] N_c -> N
+    ylabel(ax, ylab, 'Interpreter','latex', 'FontSize',FS);
 
-    lg = legend(ax, hs, {'Single parameter'}, ...
+    lg = legend(ax, hs, {lbl}, ...
                 'Interpreter','tex', 'Location','northoutside', 'NumColumns',1);
     lg.FontSize = 24;  lg.FontWeight = 'bold';
     lg.Box = 'on';  lg.EdgeColor = 'k';  lg.LineWidth = 2.5;
@@ -86,7 +128,7 @@ function plot_nmin_ratio_stem(RSEL, TOLPC, KWIN)
         set(lg, 'Position', [axp(1), newTop + GAPN, axp(3), lgh]);
     end
 
-    out = fullfile(figdir, 'nmin_ratio_stem_maxwell10_single.png');
+    out = fullfile(figdir, outn);
     exportgraphics(fig, out, 'Resolution', 200);
     fprintf('\nwrote %s\n', out);
 end
@@ -111,7 +153,23 @@ function tk = inner_ticks(lo, hi, n)
 end
 
 % ============================================================================
-function [lim, tk] = axlim_from_zero(maxv, nlist)
+function [lim, tk] = axlim_from_zero(maxv, HEAD)
+% [MODIFIED 2026-08-13] 第 2 引數改成「上緣裕度倍率」（原本是刻度數候選、實際沒在用）。
+%   HEAD=1.08 → 照 figure-style「自 0 起的軸上緣只留 8%」；需要放標註時傳更大的倍率，
+%   刻度會跟著填滿放大後的軸（奇數個、等距、最大刻度 < 上緣）。
+    if nargin < 2 || isempty(HEAD), HEAD = 1.08; end
+    cand = [1 2 2.5 3 4 5 10];
+    x = maxv/4;   k = floor(log10(x));
+    s = cand(find(cand*10^k >= x, 1)) * 10^k;      % 間距由**資料範圍**決定，與上緣無關
+    top = HEAD * maxv;
+    n = floor((top - 1e-12)/s);
+    if mod(n,2) == 0, n = n - 1; end
+    n = max(n, 1);
+    lim = [0, top];   tk = (1:n)*s;
+end
+
+% ============================================================================
+function [lim, tk] = axlim_from_zero_old(maxv, nlist) %#ok<DEFNU>
 % 下緣固定 0（基準線貼下框）；**上緣與刻度間距解耦**，避免過多留白。
 %   [MODIFIED 2026-08-12] 原本強制 上緣 = (n+1)*s（留白 = 間距），資料 39.2 會被撐到
 %   上緣 60（填充率僅 65%、上方空掉三分之一）。改為：

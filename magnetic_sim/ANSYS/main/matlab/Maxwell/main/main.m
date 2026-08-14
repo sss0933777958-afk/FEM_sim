@@ -21,6 +21,12 @@ I_actual = 1;               % 驅動電流 [A]（= FEM 激發）
 %             輸出變體名自動加 _k22_0p8340（不覆蓋自由擬合版）。
 %   ⚠ 一旦設定，**current 與 voltage 兩邊都要用同一個值重跑**（兩邊必須共用同一顆 G）。
 K22_SET  = [];
+% [ADDED 2026-08-13] 取樣點來源。[] = 球內**全部** .fld 格點（既有行為，不變）；
+%   給 [N_r N_phi N_theta] 則改用 **等測度網格**（sphere_grid_sample）只取那麼多點——
+%   用來重現「收斂點的點數就夠」這件事。R=150um 的收斂點：single (1,2,4)=8 點、
+%   eighteen (1,2,3)=6 點（判準：其後連續 7 步相對前一步 < 0.5%，只看 l_hat）。
+%   輸出檔名自動加 _convN<點數>，不覆蓋全格點版。
+GRID_NRPT = [];
 % 通用化旗標（'' → 由 cfg 提供預設；特例幾何自動吃自己的設定，不用手動改）
 INTERP_TO = '';             % '' 正常；否則把本 variant 場內插到此參考 geom 的 R≤R_select 點雲（公平比較）
 V_METHOD  = '';             % '' → cfg.v_method（'csv-tet' 預設 / 'scattered'）
@@ -61,6 +67,20 @@ else
     Bstack  = interp_field_to_points(cfg, VARIANT, cfg.R_act, P, getdef(cfg,'r_loc',0.6e-3));
     Pc_base = cfg.Pc_base;                                   % 本 variant 的電荷格（非 canonical）
 end
+% [ADDED 2026-08-13] 改用等測度網格取樣（只在 GRID_NRPT 非空時生效）。
+%   場一律由 sphere_grid_sample 從同一份 .fld 以三線性內插取得，回傳已在 actuator frame、
+%   單位 mT；Maxwell 的 s_source 全 +1 故不需翻號。Pc_base 直接取 cfg（與 ad 相同）。
+if ~isempty(GRID_NRPT)
+    addpath(fullfile(CAL, 'utils', MODEL));                 % sphere_grid_sample
+    [gx, gy, gz, gB] = sphere_grid_sample(R_select, [], ...
+        struct('frame','actuator', 'NRPT',GRID_NRPT, 'variant',VARIANT));
+    P    = [gx, gy, gz];    npts = size(P,1);
+    Bstack = zeros(3*npts, size(gB,3));
+    for j = 1:size(gB,3), Bstack(:,j) = reshape(gB(:,:,j).', [], 1); end
+    Pc_base = cfg.Pc_base;
+    fprintf('[grid] 改用等測度網格 (%d,%d,%d) → %d 點（取代球內全部格點）\n', GRID_NRPT, npts);
+end
+
 [e, l_hat, J] = fitting(P, Bstack, Pc_base, l0, USE_BIAS);
 
 %% ---- 共用結果紀錄（rec = 結果 + 設定，自描述）------------------------------
@@ -103,6 +123,12 @@ if ~isempty(K22_SET)
     rec.VARIANT = VAR_OUT;                             % emit_results 依此決定 PDF 檔名
 else
     VAR_OUT = VARIANT;
+end
+% [ADDED 2026-08-13] 等測度網格取樣 → 檔名加 _convN<點數>，與全格點版並存
+if ~isempty(GRID_NRPT)
+    VAR_OUT     = sprintf('%s_convN%d', VAR_OUT, npts);
+    rec.VARIANT = VAR_OUT;
+    rec.GRID_NRPT = GRID_NRPT;
 end
 
 %% ---- 存 .mat（自描述）------------------------------------------------------

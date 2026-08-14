@@ -1,4 +1,4 @@
-function plot_err_hist_overlay(SRC, Rsel_um)
+function plot_err_hist_overlay(SRC, Rsel_um, CONV)
 % plot_err_hist_overlay -- long2016 半切六極 R=150µm：fix vs bias 絕對殘差「疊圖」
 % =========================================================================
 %   同一取樣球(R=150µm)、同一絕對殘差定義 |b_FEM − S·ĝ_I·K̄·I| (mT)：
@@ -10,6 +10,10 @@ function plot_err_hist_overlay(SRC, Rsel_um)
     clc;
     if nargin < 1, SRC = 'apdl'; end       % [ADDED] 'apdl'(ANSYS .dat) | 'maxwell'(.fld) → 檔名加 _maxwell
     if nargin < 2 || isempty(Rsel_um), Rsel_um = 150; end   % [ADDED] 取樣球半徑 [µm]；≠150 時檔名加 _R<NNN>
+    % [ADDED 2026-08-13] CONV=true：**改用該 R 的 N_c 減量設計校正**（判準＝l_hat 穩定
+    %   ∧ g_I 穩定 ∧ K_I 符合物理，各持續 10 步），再拿該 R 內全部真實格點當評估集。
+    %   兩個模型各自有自己的 N_c。檔名加 _conv。
+    if nargin < 3 || isempty(CONV), CONV = false; end
     here   = fileparts(fileparts(mfilename('fullpath')));
     figdir = fullfile(fileparts(here), 'paper_fig', 'Section2_E');
     if ~exist(figdir,'dir'); mkdir(figdir); end
@@ -26,8 +30,17 @@ function plot_err_hist_overlay(SRC, Rsel_um)
     fprintf('取樣範圍 R <= %d um：npts = %d\n', Rum, npts);
 
     % ---- 兩模型各擬合一次 → 逐節點×激發 絕對殘差 (mT) ----
-    err0 = fit_abs_resid(P, Bstack, Pc_base, F, npts, false);   % single_param (無 bias)
-    err1 = fit_abs_resid(P, Bstack, Pc_base, F, npts, true);    % eighteen_param (有 bias)
+    if CONV
+        addpath(fullfile(CAL,'utils'), fullfile(CAL,'utils','long2016_hexapole_halfcut'));
+        [Pa, Ba, na] = conv_set(Rum, cfg, F, false, here);
+        [Pb, Bb, nb_] = conv_set(Rum, cfg, F, true,  here);
+        fprintf('N_c：single %d 點｜eighteen %d 點（評估集 = %d 個真實格點）\n', na, nb_, npts);
+        err0 = fit_abs_resid(P, Bstack, Pc_base, F, npts, false, Pa, Ba);
+        err1 = fit_abs_resid(P, Bstack, Pc_base, F, npts, true,  Pb, Bb);
+    else
+        err0 = fit_abs_resid(P, Bstack, Pc_base, F, npts, false);   % single_param (無 bias)
+        err1 = fit_abs_resid(P, Bstack, Pc_base, F, npts, true);    % eighteen_param (有 bias)
+    end
     cv0 = std(err0)/mean(err0)*100;   cv1 = std(err1)/mean(err1)*100;   % CV = σ/μ [%]（不受 bin 寬影響）
     fprintf('single_param  : mean=%.4f mT  max=%.4f mT  CV=%.1f%%\n', mean(err0), max(err0), cv0);
     fprintf('eighteen_param: mean=%.4f mT  max=%.4f mT  CV=%.1f%%\n', mean(err1), max(err1), cv1);
@@ -96,7 +109,8 @@ function plot_err_hist_overlay(SRC, Rsel_um)
     set(lg, 'Position', [axp(1), newTop + GAPN, axp(3), lgh]);
 
     % [MODIFIED 2026-08-03] 檔名一律明確標「求解器_半徑」（overlay 本身含 single+eighteen，不標模型）
-    out = fullfile(figdir, sprintf('err_hist_overlay_%s_R%d.png', lower(SRC), Rum));
+    cstr = ''; if CONV, cstr = '_conv'; end
+    out = fullfile(figdir, sprintf('err_hist_overlay%s_%s_R%d.png', cstr, lower(SRC), Rum));
     exportgraphics(fig, out, 'Resolution', 200);
     fprintf('wrote %s\n', out);
 end
@@ -180,9 +194,22 @@ end
 
 
 % ---- 擬合 + 逐節點×激發 絕對殘差 |S·G − Bstack| (mT) ----
-function err = fit_abs_resid(P, Bstack, Pc_base, F, npts, USE_BIAS)
-    [e, l_hat, ~] = fitting(P, Bstack, Pc_base, 0.5e-3, USE_BIAS);
-    [~, ~, G]     = solve_current(l_hat, e, Pc_base, P, Bstack, F);
+function [Pq, Bq, np] = conv_set(Rum, cfg, F, USE_BIAS, here)
+% [ADDED 2026-08-13] 取該 R 的 N_c 收斂設計 → 產減量取樣點與場（校正用）。
+    tri = conv_design(Rum*1e-6, cfg, F, USE_BIAS, here);
+    [x,y,z,B] = sphere_grid_sample(Rum*1e-6, [], struct('frame','actuator','NRPT',tri));
+    Pq = [x y z];   np = size(Pq,1);
+    Bq = zeros(3*np, size(B,3));
+    for j = 1:size(B,3), Bq(:,j) = reshape(B(:,:,j).', [], 1); end
+end
+
+% ============================================================================
+function err = fit_abs_resid(P, Bstack, Pc_base, F, npts, USE_BIAS, Pc_cal, Bc_cal)
+% [MODIFIED 2026-08-13] 可選第 7/8 引數：**用另一組點校正**（N_c 減量設計），
+%   再拿 (P, Bstack)（該 R 內全部真實格點）當評估集。不給就是原行為（同一組點校正+評估）。
+    if nargin < 7 || isempty(Pc_cal), Pc_cal = P;  Bc_cal = Bstack; end
+    [e, l_hat, ~] = fitting(Pc_cal, Bc_cal, Pc_base, 0.5e-3, USE_BIAS);
+    [~, ~, G]     = solve_current(l_hat, e, Pc_base, Pc_cal, Bc_cal, F);
     Pc = make_Pc(e, Pc_base);
     pbar = P / l_hat;  S = zeros(3*npts, 6);
     for k = 1:6, d = pbar - Pc(:,k).'; r3 = sum(d.^2,2).^1.5; S(:,k) = reshape((d./r3).', 3*npts, 1); end
