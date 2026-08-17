@@ -97,15 +97,18 @@ function plot_sensor_B_hist(force, NPT, SOFF, NB, PAIR)
     cv1 = std(b1)/mu1*100;   cv2 = std(b2)/mu2*100;      % CV = σ/μ [%]（不受 bin 寬影響）
     % ⚠ 不可用「同一個 fmt + 永遠傳 cv」的寫法：sprintf 引數多於格式符時會**循環套用格式**，
     %   會在圖例後面接出一串亂碼（踩過）。要嘛連引數一起省掉。
+    % [MODIFIED 2026-08-15] 圖例改成「**每個系列一行、標記一律方框**」（使用者拍板）：
+    %   統計值（mean / CV）併進該系列自己那一行，不再另外用虛線標記佔一欄。
+    %   mean 的虛線仍畫在圖上（ml1/ml2），只是不進圖例。
     if SHOW_CV
-        s1 = sprintf('%s mean = %.3f mT, CV = %.2f%%', first_word(lbl{1}), mu1, cv1);
-        s2 = sprintf('%s mean = %.3f mT, CV = %.2f%%', first_word(lbl{2}), mu2, cv2);
+        s1 = sprintf('%s: mean = %.3f mT, CV = %.2f%%', lbl{1}, mu1, cv1);
+        s2 = sprintf('%s: mean = %.3f mT, CV = %.2f%%', lbl{2}, mu2, cv2);
     else
-        s1 = sprintf('%s mean = %.3f mT', first_word(lbl{1}), mu1);
-        s2 = sprintf('%s mean = %.3f mT', first_word(lbl{2}), mu2);
+        s1 = sprintf('%s: mean = %.3f mT', lbl{1}, mu1);
+        s2 = sprintf('%s: mean = %.3f mT', lbl{2}, mu2);
     end
-    lg = legend([h1 h2 ml1 ml2], {lbl{1}, lbl{2}, s1, s2}, ...
-                'Interpreter','tex', 'Location','northoutside', 'NumColumns',2);
+    lg = legend([h1 h2], {s1, s2}, ...
+                'Interpreter','tex', 'Location','northoutside', 'NumColumns',1);
     lg.FontSize = 24;  lg.FontWeight = 'bold';  lg.Box = 'on';  lg.EdgeColor = 'k';  lg.LineWidth = 2.5;
     xlabel(ax, '$\mathbf{\|b\|\;(mT)}$', 'Interpreter','latex', 'FontSize',36);
     ylabel(ax, '$\mathbf{Percentage\;(\%)}$', 'Interpreter','latex', 'FontSize',36);

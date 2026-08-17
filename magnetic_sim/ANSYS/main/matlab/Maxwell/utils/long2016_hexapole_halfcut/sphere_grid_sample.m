@@ -105,7 +105,13 @@ function [x, y, z, B, info] = sphere_grid_sample(R, c, opt)
     assert(any(strcmpi(FRAME,{'actuator','measure'})), 'opt.frame 必為 actuator | measure');
 
     solver_path();
-    cfg     = model_config('long2016_hexapole_halfcut','tip40um');
+    % [MODIFIED 2026-08-15] model 參數化（原本寫死 long2016）→ 可用於其他 Maxwell model
+    %   （zhi_peng 等）。預設維持 long2016/tip40um，既有呼叫端行為不變。
+    %   ⚠ 本檔仍放在 utils/long2016_hexapole_halfcut/（移動檔案要先問使用者）。
+    MODEL = gv('model', 'long2016_hexapole_halfcut');
+    GEOM  = gv('geom',  '');
+    if isempty(GEOM) && strcmp(MODEL,'long2016_hexapole_halfcut'), GEOM = 'tip40um'; end
+    cfg     = model_config(MODEL, GEOM);
     VARIANT = gv('variant', cfg.default_variant);
     QRY     = gv('query', []);
 
@@ -201,10 +207,13 @@ end
 function N_nodes = count_fld_nodes(cfg, variant, R)
 % Step 1-a：數該球內**空氣中**的 .fld 原始格點（座標 persistent 快取）。
     persistent XYZ KEY
-    if isempty(KEY) || ~strcmp(KEY, variant)
+    % [MODIFIED 2026-08-15] key 加上 fld_dir：不同 model 的 variant 都叫 'maxwell'，
+    %   只用 variant 當 key 會讓第二個 model 拿到第一個的格點（跨模型污染）。
+    ckey = [cfg.fld_dir '|' variant];
+    if isempty(KEY) || ~strcmp(KEY, ckey)
         raw = extract_maxwell_data(cfg, 'all', variant);
         XYZ = [raw.x, raw.y, raw.z];              % 全域座標 [m]
-        KEY = variant;
+        KEY = ckey;
     end
     r2  = XYZ(:,1).^2 + XYZ(:,2).^2 + (XYZ(:,3) - cfg.SPH_OFST).^2;
     in  = r2 <= R^2;
@@ -262,7 +271,8 @@ function lat = lattice_cached(cfg, variant)
 % 讀 .fld -> 組成規則格查表（persistent 快取，同 session 只讀一次）。
 %   ⚠ 用座標反推 (i,j,k) 再散射，**與檔案列順序無關** —— 不假設 z 最快。
     persistent LAT KEY
-    if ~isempty(KEY) && strcmp(KEY, variant), lat = LAT;  return; end
+    lkey = [cfg.fld_dir '|' variant];      % [MODIFIED 2026-08-15] 同上：key 須含 model
+    if ~isempty(KEY) && strcmp(KEY, lkey), lat = LAT;  return; end
 
     raw = extract_maxwell_data(cfg, 'all', variant);          % [T]、Maxwell frame
     N   = numel(raw.x);   N_I = size(raw.B,3);
@@ -295,7 +305,7 @@ function lat = lattice_cached(cfg, variant)
     end
 
     lat = struct('n',n, 'o',o, 'h',h, 'N_I',N_I, 'V',V);
-    LAT = lat;   KEY = variant;
+    LAT = lat;   KEY = lkey;
     fprintf('  [lattice] %d x %d x %d、格距 %.1f/%.1f/%.1f um、z 範圍 %.4f ~ %.4f mm\n', ...
             n(1), n(2), n(3), h*1e6, zg(1)*1e3, zg(end)*1e3);
 end

@@ -1,4 +1,4 @@
-function [tri, npts] = conv_design(R, cfg, F, USE_BIAS, here, l0)
+function [tri, npts] = conv_design(R, cfg, F, USE_BIAS, here, l0, sg)
 % conv_design -- 取某取樣半徑 R 的「收斂點設計」三元組 (N_r, N_phi, N_theta)
 % =========================================================================
 %   ⚠ 這是**引擎**（無對應圖），被 plot_err_hist_shell.m / plot_err_hist_overlay.m
@@ -18,11 +18,23 @@ function [tri, npts] = conv_design(R, cfg, F, USE_BIAS, here, l0)
 %   here     : paper_fig_plot/ 的絕對路徑（用來找 data/ 快取）
 % =========================================================================
     if nargin < 6 || isempty(l0), l0 = 0.5e-3; end
+    % [ADDED 2026-08-15] sg：傳給 sphere_grid_sample 的 model 選項（.model/.geom）。
+    %   空 = long2016（既有行為）。另可用 .ki_gate=false 放寬判準（見下）。
+    if nargin < 7 || isempty(sg), sg = struct(); end
+    SG = struct('frame','actuator');
+    if isfield(sg,'model'), SG.model = sg.model; end
+    if isfield(sg,'geom'),  SG.geom  = sg.geom;  end
+    KI_GATE = true;   if isfield(sg,'ki_gate'), KI_GATE = logical(sg.ki_gate); end
+    % [ADDED 2026-08-15] ki_req=false → **K̄_I 完全不參與判準**，只用 l_hat + g_I 收斂
+    %   （使用者拍板，用於 zhi_peng：六極不等強，K̄_I 的物理結構條件本來就不適用）。
+    %   ki_gate 只放寬「非對角全負」；ki_req 才是「這條判準要不要算」。
+    KI_REQ  = true;   if isfield(sg,'ki_req'),  KI_REQ  = logical(sg.ki_req);  end
+    is_long = ~isfield(sg,'model') || strcmp(sg.model,'long2016_hexapole_halfcut');
     TOL = 0.005;   KWIN = 10;   NDMAX = 150;
 
-    % ---- 先查 R-sweep 快取 ----
+    % ---- 先查 R-sweep 快取（**只對 long2016 有效**：那顆快取是它專屬的）----
     df = fullfile(here, 'data', 'full_vs_conv_vs_R_maxwell.mat');
-    if exist(df, 'file')
+    if is_long && exist(df, 'file')
         D  = load(df);
         ia = find(abs(D.R_um - R*1e6) < 1e-6, 1);
         if ~isempty(ia)
@@ -42,7 +54,8 @@ function [tri, npts] = conv_design(R, cfg, F, USE_BIAS, here, l0)
     for q = 1:NDMAX, TRI(q,:) = t;  [~,j] = min(t./w);  t(j) = t(j)+1;  end
     [ell, gv] = deal(nan(1,NDMAX));   ok = false(1,NDMAX);
     for q = 1:NDMAX
-        [x,y,z,B] = sphere_grid_sample(R, [], struct('frame','actuator','NRPT',TRI(q,:)));
+        o = SG;   o.NRPT = TRI(q,:);
+        [x,y,z,B] = sphere_grid_sample(R, [], o);
         P = [x y z];   np = size(P,1);
         Bs = zeros(3*np, size(B,3));
         for j = 1:size(B,3), Bs(:,j) = reshape(B(:,:,j).', [], 1); end
@@ -51,12 +64,14 @@ function [tri, npts] = conv_design(R, cfg, F, USE_BIAS, here, l0)
             [K, gv(q)] = solve_current(l, e, cfg.Pc_base, P, Bs, F);
             ell(q) = l*1e6;
             od = K(~eye(6));   [~,am] = max(abs(K),[],2);
-            ok(q) = all(od < 0) && all(diag(K) > 0) && isequal(am(:).', 1:6);
+            % KI_GATE=false 時放寬「非對角全負」（六極不等強的設計，如 zhi_peng，
+            %   該條恆不成立 → 判準永遠達不到）；對角全正 + 對角占優仍要求。
+            ok(q) = all(diag(K) > 0) && isequal(am(:).', 1:6) && (~KI_GATE || all(od < 0));
         catch
         end
         ie = fstab(ell(1:q), TOL, KWIN);
         ig = fstab(gv(1:q),  TOL, KWIN);
-        ik = ftrue(ok(1:q), KWIN);
+        if KI_REQ, ik = ftrue(ok(1:q), KWIN); else, ik = 1; end   % ki_req=false → 只看 l_hat + g_I
         if ~isnan(ie) && ~isnan(ig) && ~isnan(ik)
             tri  = TRI(max([ie ig ik]), :);
             npts = prod(tri);

@@ -1,9 +1,9 @@
 function plot_ref_planes_3d()
-% plot_ref_planes_3d -- paper 圖(Section4_C):R=150µm 取樣球殼 + 三 actuator 參考切面 + 6 極方向
+% plot_ref_planes_3d -- paper 圖(Section4_C):R=500µm 球殼 + 三 actuator 參考切面 + 6 極方向
 % =========================================================================
-%   全場景在 R=0.15mm(150µm 取樣殼)上:綠色線框球殼 + 三過球心大圓盤(actuator 座標系
+%   全場景在 R=500µm 殼上:綠色線框球殼 + 三過球心大圓盤(actuator 座標系
 %   x_a=P1, y_a=P3, z_a=P5,magic-angle 兩兩正交):ref_{x_ay_a}(藍)/ref_{y_az_a}(橘)/ref_{x_az_a}(紫)。
-%   6 磁極方向落在 150µm 殼面(紅點 + P1..P6)。單位 mm。
+%   6 磁極方向落在 500µm 殼面(紅點 + P1..P6)。單位 µm。
 %   規則:粗體框圖變體 A(同尺度立方 → box off + daspect + 手動 draw_box_edges 省最近角3邊、字體36)、
 %         圖例移上方水平(含綠殼說明)、每軸 3 個內縮 tick。
 %   輸出 → figures/paper_fig/Section4_C/ref_planes_3d.png。
@@ -17,7 +17,8 @@ function plot_ref_planes_3d()
     addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
     c = model_config('long2016_hexapole_halfcut','tip40um');
 
-    R = 0.15;                                                     % mm（= 150µm 取樣殼半徑）
+    R = 500;                                                      % µm（球殼半徑；[MODIFIED] 150 -> 500 µm，
+                                                                  %     全場景幾何都由 R 導出，故刻度直接變 µm）
 
     % actuator 座標軸(measure frame):x_a=P1, y_a=P3, z_a=P5 尖端方向(magic-angle 正交)
     tip  = [c.pole_tip_x; c.pole_tip_y; c.pole_tip_z_wp];
@@ -26,7 +27,7 @@ function plot_ref_planes_3d()
 
     fig = figure('Color','w','Position',[80 60 1040 1020]);  ax = axes(fig);  hold on;
 
-    % 綠色 150µm 線框球殼(取樣區)
+    % 綠色 500µm 線框球殼
     [sx,sy,sz] = sphere(40);
     surf(R*sx, R*sy, R*sz, 'FaceColor',[0.45 0.78 0.55], 'FaceAlpha',0.10, ...
          'EdgeColor',[0.35 0.68 0.45], 'EdgeAlpha',0.30, 'LineWidth',0.3, 'FaceLighting','none');
@@ -51,13 +52,14 @@ function plot_ref_planes_3d()
     plot3(0,0,0,'k+','MarkerSize',15,'LineWidth',2.6);
 
     % ---- 框/視角(變體 A:同尺度立方 → box off + daspect + 手動框邊)----
-    bh = 1.2*R;                                                 % mm（收緊、球殼填滿框、減少上方空白）
+    bh = 1.2*R;                                                 % µm（收緊、球殼填滿框、減少上方空白）
     grid off; box off; daspect([1 1 1]);
     xlim([-bh bh]); ylim([-bh bh]); zlim([-bh bh]);
     view(120, 25);                                              % 先設 view(draw_box_edges 用 campos)
     set(ax,'Position',[0.11 0.07 0.79 0.79]);                 % 軸留邊(刻度數字不裁)、框往上撐縮短與圖例距離
     set(ax,'FontSize',36,'FontWeight','bold','LineWidth',3.0,'TickLength',[0.022 0.022]);   % 刻度小線標保留
-    set(ax,'XTick',[-0.15 0 0.15],'YTick',[-0.15 0 0.15],'ZTick',[-0.15 0 0.15]);   % 每軸 3 個 tick：-0.15/0/0.15
+    set(ax,'XTick',[-500 0 500],'YTick',[-500 0 500],'ZTick',[-500 0 500]);   % 每軸 3 個 tick：-500/0/500 µm
+    ax.XAxis.TickLabelRotation = 0;  ax.YAxis.TickLabelRotation = 0;  ax.ZAxis.TickLabelRotation = 0;
     % （軸標題 x_m/y_m/z_m 皆移除；只留刻度數字）
     draw_box_edges(bh, 3.0);                                     % 手動框邊:省最近角 3 邊
     ax.Clipping='off';  ax.Toolbar.Visible='off';
@@ -73,7 +75,7 @@ function plot_ref_planes_3d()
 
     out = fullfile(figdir,'ref_planes_3d.png');
     exportgraphics(fig, out, 'Resolution', 200);
-    fprintf('wrote %s (R=%.2f mm shell + 3 actuator ref planes + 6 pole dirs)\n', out, R);
+    fprintf('wrote %s (R=%.0f um shell + 3 actuator ref planes + 6 pole dirs)\n', out, R);
     close(fig);
 end
 
