@@ -13,7 +13,8 @@
 ! ====================================================================
 Finish
 /CLEAR,NOSTART
-RESUME,'mesh_graded','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\db\geom\mesh_graded'
+! [MODIFIED 2026-08-17] was db\geom\mesh_graded (never existed); hung meshes are R300/R500/R700 -> point at R700 (main variant)
+RESUME,'mesh_graded','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\db\mesh\mesh_graded_R700'
 /PREP7
 
 mv_lo = 99            ! 下極支撐座 檢視材料

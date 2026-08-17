@@ -9,7 +9,7 @@
 !   SAVE -> db/geom/singlepole/mesh_singlepole.db (NO /SOLU, NO MAG BC). MKS metre.
 !   mesh/solve SEPARATED: solve deck MT_Sim_SinglePole.txt RESUMEs this .db.
 ! ============================================================================
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\geom\singlepole\filled'
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\mesh\singlepole\filled'
 Finish
 /cle
 /CLEAR,NOSTART

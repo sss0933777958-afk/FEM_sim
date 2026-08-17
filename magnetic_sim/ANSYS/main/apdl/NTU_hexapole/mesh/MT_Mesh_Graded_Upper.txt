@@ -18,7 +18,7 @@
 !   Sensor 加密球 = 2 顆 R0.15mm air 球 @ (13.15,-0.99,-0.41)/(13.15,-0.99,+0.66) mm（pole0 frame）。
 ! ============================================================================
 
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\NTU_hexapole\db\geom\mesh_graded_upper'
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\NTU_hexapole\db\mesh\mesh_graded_upper'
 Finish
 /cle
 /CLEAR,NOSTART

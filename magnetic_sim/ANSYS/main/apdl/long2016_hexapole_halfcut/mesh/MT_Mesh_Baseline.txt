@@ -9,7 +9,7 @@
 ! ============================================================================
 !****/CWD,'C:\Users\feilong\Desktop\Fei Long Ansys\Magnetic Tweezers LowPermeability'
 !****/CWD,'D:\Fei Long ANSYS\Magnetic Tweezers LowPermeability'
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\geom\mesh_baseline'   ! [KUO] baseline smrt5 mesh-only（SAVE 寫 mesh_baseline.db 進 db/）
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\mesh\mesh_baseline'   ! [KUO] baseline smrt5 mesh-only（SAVE 寫 mesh_baseline.db 進 db/）
 
 Finish
 /cle

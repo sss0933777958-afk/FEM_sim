@@ -16,7 +16,7 @@
 ! [ADDED 2026-07-15] 階段①磁極 + 階段②導柱 + 階段③yoke；[ADDED 2026-07-17] 階段④6襯套；材料/元素/BC/coil 之後階段加。
 ! ============================================================================
 
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\NTU_hexapole\db\geom\full_assembly'
+! [MODIFIED 2026-08-17] /CWD removed - db/geom/ retired; working dir now comes from launcher -dir
 
 Finish
 /cle

@@ -12,7 +12,7 @@
 /CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\sim\gap200_sb_graded'
 /CLEAR,NOSTART
 /TITLE, Long2016 halfcut graded gap200 mu_eff on support base (coil5)
-RESUME,'mesh_graded','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\geom\mesh_graded'
+RESUME,'mesh_graded','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\mesh\graded'
 
 /PREP7
 *afun,DEG

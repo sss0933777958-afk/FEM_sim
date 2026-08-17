@@ -8,7 +8,7 @@
 !   幾何 block = 照 mesh/MT_Mesh_Graded.txt verbatim（yoke+6極 VADD、內/中球+外圓柱、VOVLAP、VATT）。
 ! ============================================================================
 
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\geom\sensor_misplace'
+! [MODIFIED 2026-08-17] /CWD removed - db/geom/ retired; working dir now comes from launcher -dir
 Finish
 /cle
 /CLEAR,NOSTART

@@ -8,7 +8,7 @@
 /CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\db\sim\gap_200um_solve'
 /CLEAR,NOSTART
 /TITLE, hung_hexapole geometric 200um air-slab gap - coil 5
-RESUME,'mesh_graded','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\db\geom\mesh_graded_basegap'
+RESUME,'mesh_graded','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\db\mesh\mesh_graded_basegap'
 
 /PREP7
 *afun,DEG

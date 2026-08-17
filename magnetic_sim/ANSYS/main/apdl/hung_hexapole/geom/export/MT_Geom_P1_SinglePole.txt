@@ -8,7 +8,7 @@
 ! Extracted from MT_Geom_FullAssembly.txt (fc_pi=1 only; no other poles/yoke/upper).
 ! Output -> IGES/dif_singlepole_dim/hung_p1.iges  (patched copy in model_check/)
 ! =======================================
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\db\geom\geom_p1_singlepole'
+! [MODIFIED 2026-08-17] /CWD removed - db/geom/ retired; working dir now comes from launcher -dir
 
 /PREP7
 *afun, DEG
@@ -232,7 +232,7 @@ NUMCMP, KP
  hung P1 single-pole: %I volumes
 
 ALLSEL, ALL
-IGESOUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\IGES\dif_singlepole_dim\hung_p1', 'iges'
+IGESOUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\model_check\hung_hexapole\hung_p1', 'iges'
 
 FINISH
 /EXIT, NOSAV

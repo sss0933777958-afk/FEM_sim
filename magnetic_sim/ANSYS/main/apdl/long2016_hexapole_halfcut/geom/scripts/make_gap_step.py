@@ -25,7 +25,7 @@ from OCP.BRepGProp import BRepGProp
 
 ROOT = r"G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main"
 NAME = sys.argv[1] if len(sys.argv) > 1 else "long2016_hexapole_gap_300um"
-IGES = ROOT + r"\ANSYS_data\long2016_hexapole_halfcut\db\geom_hexvariants\%s.iges" % NAME
+IGES = ROOT + r"\model_check\long_fei\%s.iges" % NAME   # [MODIFIED 2026-08-17] db/geom/ retired; IGESOUT now writes here
 OUT  = ROOT + r"\model_check\long_fei\%s.step" % NAME
 
 def bbox(shape):

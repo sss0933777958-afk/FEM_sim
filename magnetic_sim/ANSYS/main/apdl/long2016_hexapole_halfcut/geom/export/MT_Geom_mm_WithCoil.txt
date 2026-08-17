@@ -15,7 +15,7 @@
 
 ! [MODIFIED 2026-08-04] 原 /CWD 指向 ANSYS_data\...\geom_mm_withcoil（從未建立、deck 無法執行）。
 !   改指既有的 IGES 中繼 scratch（per main/CLAUDE.md：IGES 中繼走 db/geom/geom_hexvariants）。
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\geom\geom_hexvariants'
+! [MODIFIED 2026-08-17] /CWD removed - db/geom/ retired; working dir now comes from launcher -dir
 
 Finish
 /cle

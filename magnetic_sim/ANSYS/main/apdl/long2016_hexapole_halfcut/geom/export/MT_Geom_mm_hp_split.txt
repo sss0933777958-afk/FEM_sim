@@ -296,6 +296,6 @@ VPLOT
 ! ===== IGES export =====
 ALLSEL, ALL
 ! [MODIFIED] Absolute path so IGES lands in magnetic_sim/ANSYS/main/model_check/ even though /CWD is elsewhere
-IGESOUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\model_check\long2016_hexapole_halfcut\Geom_hp_split', 'iges'
+IGESOUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\model_check\long_fei\Geom_hp_split', 'iges'
 
 FINISH

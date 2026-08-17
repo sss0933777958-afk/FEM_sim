@@ -7,7 +7,7 @@
 !   (ANSYS IGES has blank units-name -> SolidWorks defaults to INCH; same trick as hung).
 ! Output -> IGES/long_fei/singlepole_tipcut_x0p6.iges  (patched copy in model_check/long_fei/)
 ! ====================================================================
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\geom\geom_singlepole_variants'
+! [MODIFIED 2026-08-17] /CWD removed - db/geom/ retired; working dir now comes from launcher -dir
 
 Finish
 /cle

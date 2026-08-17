@@ -17,7 +17,7 @@
 !   材料/網格分區一律 by location+size（VOVLAP/booleans 會清 VATT，volume 編號不可硬編）。
 ! ============================================================================
 
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\geom\geom_hexvariants'
+! [MODIFIED 2026-08-17] /CWD removed - db/geom/ retired; working dir now comes from launcher -dir
 Finish
 /cle
 /CLEAR,NOSTART
@@ -380,17 +380,17 @@ ALLSEL, ALL
 ALLSEL, ALL
 ALLSEL, BELOW, VOLU
 *if, GAP_CFG, eq, 0, then
-    IGESOUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\geom\geom_hexvariants\long2016_hexapole_gap_300um', 'iges'
+    IGESOUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\model_check\long_fei\long2016_hexapole_gap_300um', 'iges'
 *elseif, GAP_CFG, eq, 1, then
-    IGESOUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\geom\geom_hexvariants\long2016_hexapole_gapdist', 'iges'
+    IGESOUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\model_check\long_fei\long2016_hexapole_gapdist', 'iges'
 *elseif, GAP_CFG, eq, 2, then
-    IGESOUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\geom\geom_hexvariants\long2016_hexapole_gap_400um', 'iges'
+    IGESOUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\model_check\long_fei\long2016_hexapole_gap_400um', 'iges'
 *elseif, GAP_CFG, eq, 3, then
-    IGESOUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\geom\geom_hexvariants\long2016_hexapole_protgap_200um', 'iges'
+    IGESOUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\model_check\long_fei\long2016_hexapole_protgap_200um', 'iges'
 *elseif, GAP_CFG, eq, 5, then
-    IGESOUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\geom\geom_hexvariants\long2016_hexapole_gap_calibrate', 'iges'
+    IGESOUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\model_check\long_fei\long2016_hexapole_gap_calibrate', 'iges'
 *else
-    IGESOUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\geom\geom_hexvariants\long2016_hexapole_protgap_t200b180', 'iges'
+    IGESOUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\model_check\long_fei\long2016_hexapole_protgap_t200b180', 'iges'
 *endif
 FINISH
 /EXIT, NOSAV

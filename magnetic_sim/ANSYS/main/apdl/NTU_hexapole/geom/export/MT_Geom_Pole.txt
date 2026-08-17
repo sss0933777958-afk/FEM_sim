@@ -18,7 +18,7 @@
 ! ============================================================================
 
 ! [MODIFIED] /CWD -> NTU db scratch (ANSYS .db/.out stay there, not in apdl source)
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\NTU_hexapole\db\geom\geom_export'
+! [MODIFIED 2026-08-17] /CWD removed - db/geom/ retired; working dir now comes from launcher -dir
 
 Finish
 /cle
@@ -80,8 +80,7 @@ ALLSEL, ALL
 ! ---- [ADDED] IGES export (path by unit) -----------------------------------
 *if, UNIT_MM, eq, 1, then
     IGESOUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\model_check\NTU_hexapole\pole', 'iges'
-*else
-    IGESOUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\IGES\NTU_hexapole\pole', 'iges'
+! [MODIFIED 2026-08-17] metre-unit IGESOUT removed - only mm IGES is needed
 *endif
 
 SAVE

@@ -7,7 +7,7 @@
 ! Pole 尺寸來自 Mag_Pole_Bottom.STEP
 ! =======================================
 
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\db\geom\mesh_graded_basegap'
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\db\mesh\mesh_graded_basegap'
 
 /PREP7
 /UNITS, MKS

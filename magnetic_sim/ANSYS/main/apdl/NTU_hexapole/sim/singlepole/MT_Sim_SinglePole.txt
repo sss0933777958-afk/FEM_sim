@@ -13,7 +13,7 @@ Finish
 /FILNAME,sim_singlepole,1
 
 ! ----- restore mesh-only model (geometry + mesh + materials + sensor spheres) -----
-RESUME,'mesh_graded','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\NTU_hexapole\db\geom\mesh_graded\'
+RESUME,'mesh_graded','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\NTU_hexapole\db\mesh\mesh_graded\'
 
 /PREP7
 *afun, DEG

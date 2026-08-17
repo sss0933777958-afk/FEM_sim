@@ -9,7 +9,7 @@
 ! Derived from MT_Geom_Export_mm_SinglePole.txt + MT_Geom_mm_WithCoil.txt.
 ! Output -> IGES/dif_singlepole_dim/long_p1.iges  (patched copy in model_check/)
 ! ====================================================================
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\geom\geom_p1_singlepole'
+! [MODIFIED 2026-08-17] /CWD removed - db/geom/ retired; working dir now comes from launcher -dir
 
 Finish
 /cle
@@ -157,7 +157,7 @@ NUMCMP, VOLU
 
 ! ===== IGES export (mm magnitudes; flag patched 6->2 by PowerShell AFTER run) =====
 ! (volume hierarchy still selected from above -> orphan KPs excluded)
-IGESOUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\IGES\dif_singlepole_dim\long_p1', 'iges'
+IGESOUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\model_check\long_fei\long_p1', 'iges'
 
 FINISH
 /EXIT, NOSAV

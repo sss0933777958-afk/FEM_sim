@@ -18,7 +18,7 @@
 !   材料/網格分區一律 by location+size（VOVLAP 會清 VATT，volume 編號不可硬編）。
 ! ============================================================================
 
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\NTU_hexapole\db\geom\mesh_graded'
+/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\NTU_hexapole\db\mesh\mesh_graded'
 Finish
 /cle
 /CLEAR,NOSTART

@@ -25,7 +25,7 @@
 
 FINISH
 /CLEAR,NOSTART
-RESUME,'mesh_graded','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\geom\mesh_graded_basegap\'
+RESUME,'mesh_graded','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\mesh\mesh_graded_basegap\'
 /PREP7
 
 ! ---- 6 sensor centres (ANSYS frame [m]) = build_sensor_geometry (upper real FEM angle) ----

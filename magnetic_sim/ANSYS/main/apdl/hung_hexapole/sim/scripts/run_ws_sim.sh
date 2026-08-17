@@ -37,7 +37,7 @@ def sub(t, old, new, label):
 # CWD -> db/sim/<tag>
 t=sub(t, r"\db\sim\gap_200um_solve", r"\db\sim\%s"%tag, "CWD")
 # RESUME -> my variant mesh
-t=sub(t, r"db\geom\mesh_graded_basegap", r"db\mesh\mesh_graded_%s"%tag, "RESUME-mesh")
+t=sub(t, r"db\mesh\mesh_graded_basegap", r"db\mesh\mesh_graded_%s"%tag, "RESUME-mesh")
 # energise coil N (canonical energises coil1 at 'R,1,1,TURNS*1')
 #   號誌維持 TURNS*1（正）→ raw FEM 六極全 sink，與 R300/R700 一致；
 #   翻號由 MATLAB config s_source=[-1×6] 全域處理，deck 端不可自行改號誌。

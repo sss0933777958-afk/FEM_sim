@@ -1,6 +1,6 @@
 !****/CWD,'C:\Users\feilong\Desktop\Fei Long Ansys\Magnetic Tweezers LowPermeability'
 !****/CWD,'D:\Fei Long ANSYS\Magnetic Tweezers LowPermeability'
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\geom\graded_p2\coil1'   ! [MODIFIED] graded-mesh, P1-as-SOURCE, P2-region export
+! [MODIFIED 2026-08-17] /CWD removed - db/geom/ retired; working dir now comes from launcher -dir
 ! [MESH] graded — 極 0.3mm / yoke 1.5mm / 尖端 LESIZE 20µm / outer air 4mm（密網格，region-graded）
 
 Finish
