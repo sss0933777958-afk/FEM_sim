@@ -8,7 +8,7 @@
 | 無氣隙（同網格 slab 翻鋼、與 gap 同節點對照） | **`no_gap`** |
 
 對應 memory：`feedback_gap_nogap_folder_convention`
-相關規則：`modify-existing-files.md`、`no-structure-change-without-ask`、`sim-cleanup.md`、`db-folder-retention.md`。
+相關規則：`modify-existing-files.md`、`no-structure-change-without-ask`、`ansys-db-cleanup.md`。
 
 ---
 
@@ -30,4 +30,4 @@
 
 ## 何時不適用
 - 非 gap/nogap 的獨立分析（`singlepole`、`sensor` 等本來就別的模型/主題）——各自命名，不受此兩夾限制。
-- 純 mesh `.db` 夾（`mesh_graded*`）——mesh 不綁 variant 名，另循 `db-folder-retention`。
+- 純 mesh `.db` 夾（`mesh_graded*`）——mesh 不綁 variant 名，另循 `ansys-db-cleanup`。

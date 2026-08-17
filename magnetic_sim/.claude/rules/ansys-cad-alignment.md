@@ -11,7 +11,7 @@
 **動手前必須先讀完此規則全文**。
 
 對應 memory:`feedback_ansys_cad_alignment.md`
-相關規則:`.claude/rules/sim-cleanup.md`;model-check SOP 見 `magnetic_sim/ANSYS/main/doc/workflows/model-check.md`
+相關規則:`.claude/rules/ansys-db-cleanup.md`;model-check SOP 見 `magnetic_sim/ANSYS/main/doc/workflows/model-check.md`
 相關 memory:`feedback_step_geom_extraction.md`(STEP 抽尺寸方法論)
 
 ---

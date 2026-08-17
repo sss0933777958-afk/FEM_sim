@@ -27,4 +27,4 @@ ANSYS_data/
 - **讀結果前先查 `<model>/RESULTS_MAP.md`**，並照 `.claude/rules/result-read-safety.md` 三層防呆（回報路徑+指紋→核對→不對就停）。`coilN` vs `coilN_gap_200um` 節點數相同，只能靠 |B| 區分。
 - **gitignore**：`.dat/.db/.cdb/.rmg/.esav/...` 等 FEM 重產物不進 git（見 repo `.gitignore`）。
 - 讀取一律用 resolver `ansys_path('<model>','coilN',...)`（在 `../matlab/<model>/common/`），不要硬寫絕對路徑。
-- 清理副產物前**必讀** `.claude/rules/sim-cleanup.md`（預設 half-clean）。
+- 清理副產物前**必讀** `.claude/rules/ansys-db-cleanup.md`（geom/ 整層刪、mesh/+sim/ 留主檔）。

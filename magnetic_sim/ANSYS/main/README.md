@@ -73,7 +73,7 @@ ANSYS="G:\ANSYS Inc\v252\ansys\bin\winx64\MAPDL.exe"
 3. **禁止使用 `backup/` 的資料與程式**；常數一律走 `model_config(model, geom)`。
 4. **改 ANSYS 幾何前先量 CAD**；不一致不可自己選值，通報使用者拍板。
 5. **畫圖前先問風格選項**；場圖畫真實 FEM 節點、不內插（除非明示並標示）。
-6. **清 sim 前先讀 `sim-cleanup.md`**，預設 half-clean（保 `.db` + 主 `.rmg`）。
+6. **清 db / sim 前先讀 `ansys-db-cleanup.md`**（`geom/` 整層刪、`mesh/`+`sim/` 留主檔）。
 7. 對外一律用 **P1–P6**（paper 名）；APDL coil index 只在改 deck / raw 脈絡時提。
 
 完整清單見 `CLAUDE.md` 的 Quick Triggers 與 `../../.claude/rules/`（21 條）。

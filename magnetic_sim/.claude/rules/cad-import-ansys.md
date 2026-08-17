@@ -7,7 +7,7 @@
 （primitive 逼近複雜 B-spline 錐/T 字/半切件不收斂、來回「錯很多」；hung_hexapole 驗證通過此匯入法）。
 
 對應 memory：`reference_cad_import_step_to_ansys.md`
-相關規則：`ansys-cad-alignment.md`（CAD=source of truth、原點對齊）、`sim-cleanup.md`
+相關規則：`ansys-cad-alignment.md`（CAD=source of truth、原點對齊）、`ansys-db-cleanup.md`
 相關 memory：[[iges-nurbs-measure-trap]]、[[ansys-cad-alignment]]
 
 ---
@@ -86,7 +86,7 @@ hung 出 **97 vol / 540 area / 680 kp**、bbox ±62.5mm、原點置中。
 
 ---
 
-## 產物落點 + 清理（照 db-folder-retention / sim-cleanup + apdl 規則）
+## 產物落點 + 清理（照 ansys-db-cleanup + apdl 規則）
 - **`.py` / `.bat` 腳本**（`step_to_iges.py` / `sc_step_to_parasolid.py` / `ac4para252.bat`）→ `apdl/<model>/geom/scripts/`。
   ⚠ **不可放 `geom/import/`**：apdl 的 `geom/import/` 依規則**只放 `.txt`**（+ 標準 README）。
 - **`.txt` APDL deck**（`MT_Input_ANF.txt`）→ `apdl/<model>/geom/import/`。

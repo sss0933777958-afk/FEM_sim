@@ -53,7 +53,7 @@
 - NEVER 未經批准改幾何參數 / 元素型別 / 材料屬性。
 - NEVER 改 alpha（54.74°）或 R_norm_xy / R_norm_z 公式；NEVER 產生違反對極正交的配置。
 - NEVER 移除 BC 區塊（`[ADDED]` block）。
-- NEVER 清 sim（rm intermediates / result dir）前沒讀 `sim-cleanup.md` 全文；NEVER 用 `--full` 除非使用者**明確同意**（預設 half-clean，保 `.db` + 主 `.rmg`）；NEVER 繞過 helper 手刻 `rm` ANSYS 檔。
+- NEVER 清 db / sim（rm intermediates / result dir）前沒讀 `ansys-db-cleanup.md` 全文；NEVER 刪 `db/geom/` 前沒掃「>100MB 的 .db」（錯置的網格孤本）；NEVER 寫 `rm -f <jobname>*`（會連主 `.rmg`+`.db` 一起刪）。
 - NEVER 改 ANSYS 幾何 / `mt_constants` 前沒量對應 CAD；不一致**不自己選值**，通報使用者拍板（`ansys-cad-alignment.md`）。
 - NEVER 用內插畫場圖 / 把內插當 raw 呈現（除非明示）。
 
@@ -74,7 +74,7 @@
 | 資料夾 | 是什麼 / 放什麼 | 要找資料去這裡 |
 |---|---|---|
 | `CAD_model/` | SolidWorks 原檔 + STEP（幾何 **source of truth**） | 量尺寸、出圖前對齊 CAD |
-| ~~`IGES/`~~ | **已刪除（2026-07-13）**：交付一律走 STEP（`deliver-step-for-check`）；IGES 中繼走 scratch（`ANSYS_data/<model>/db/geom_hexvariants/`）。⚠ 部分舊 export deck 仍 `IGESOUT` 到此路徑 → 重跑前需先建目錄或改指 scratch/model_check | 交付看 `model_check/` STEP |
+| ~~`IGES/`~~ | **已刪除（2026-07-13）**：交付一律走 STEP（`deliver-step-for-check`）。**IGES 中繼（2026-08-17 起）一律寫進各自的 `model_check/<model>/`** —— 原本的中繼位置 `db/geom/geom_hexvariants/` 隨 `db/geom/` 整層退役（`ansys-db-cleanup`）。所有 `IGESOUT` 已改指、`make_gap_step.py` 同步改讀該處 | 交付看 `model_check/` STEP |
 | `model_check/` | 交付檢查用 mm STEP（+ 舊 IGES）；`IGESIN` 匯入用 | **交付幾何檢查、建 mesh 前匯入** |
 | `apdl/` | APDL 腳本：`<model>/{geom,sim,postproc}/`（+ sweep） | 改幾何/參數/重跑 sim 的 input |
 | `ANSYS_data/` | FEM 輸出 `<model>/<case>/`（`.dat` 場 / `.db` 模型 / `.cdb`） | **讀 FEM 結果**（.dat） |
@@ -129,8 +129,7 @@ cd magnetic_sim/ANSYS/backup/hexapole-long2016
 | 觸發 | 規則檔 |
 |---|---|
 | 讀/載入 ANSYS 結果、抽 .dat、算矩陣/fit/畫場圖前 | `result-read-safety.md`（三層防呆 + `ANSYS_data/<topic>/RESULTS_MAP.md`） |
-| 清 sim / 清 results / 磁碟滿 | `sim-cleanup.md`（先讀全文；預設 half-clean） |
-| 清 `db/` 夾 | `db-folder-retention.md`（只留 `.db`+主 `.rmg`） |
+| 清 `db/` / 清 sim / 清 results / 磁碟滿 | `ansys-db-cleanup.md`（`geom/` 整層刪、`mesh/`+`sim/` 留主檔；刪 `geom/` 前必掃錯置網格 db） |
 | 寫/搬 `.mat` | `matlab-output-layout.md`（放程式旁 `data/`） |
 | 動 `results/` | `results-pdf-only.md`（只放 PDF） |
 | 畫任何圖 | `figure-style.md`（先問風格）+ `figure-output.md`（輸出實檔覆蓋迭代） |

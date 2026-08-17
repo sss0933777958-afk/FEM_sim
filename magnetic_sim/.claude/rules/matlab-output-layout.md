@@ -20,7 +20,7 @@ matlab/<model>/<activity>[/<subfolder>]/data/*.mat
 - **`MATLAB_data/` 已移除（2026-06-26 遷移完成）**：全部 `.mat` 已落到各活動的 local `data/`；**不要再產生或引用 `MATLAB_data/` 路徑**。
 - **`matlab_path()` resolver 已 deprecated**：新舊腳本一律用自身 root 變數算 `fullfile(<本功能組夾>,'data')`，不再經 resolver 寫 `.mat`。
 - **與 ANSYS_data 的 `data/` 區分**：
-  - `ANSYS_data/<model>/data/` = FEM **`.dat` 場**（+ `.db/.cdb` 等交付）白名單（見 sim-cleanup「歸檔資料夾保留原則」）。
+  - `ANSYS_data/<model>/data/` = FEM **`.dat` 場**（+ `.db/.cdb` 等交付）白名單（見 `ansys-db-cleanup.md`「絕對不可清」）。
   - `matlab/<model>/<activity>/data/` = **MATLAB `.mat` 分析成果**（本規則）。兩者不同樹、不同內容物。
 
 ## 觸發片語（任一即套用）
@@ -32,4 +32,4 @@ matlab/<model>/<activity>[/<subfolder>]/data/*.mat
 - 純繪圖（只出 `.png`）/ 純讀 FEM `.dat`、不產 `.mat` 的腳本。
 - `figures/paper_fig_plot/data/`（論文圖的快取 `.mat`）——那是繪圖組自己的快取夾，不受本規則的 `<activity>/data/` 命名限制。
 
-相關：`db-folder-retention.md`、`results-pdf-only.md`、memory `feedback_matlab_local_data_layout`。
+相關：`ansys-db-cleanup.md`、`results-pdf-only.md`、memory `feedback_matlab_local_data_layout`。

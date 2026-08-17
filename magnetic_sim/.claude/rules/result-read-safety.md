@@ -8,7 +8,7 @@
 對應清單（single source of truth）：各 topic 的 `magnetic_sim/ANSYS/main/ANSYS_data/<topic>/RESULTS_MAP.md`
 （目前已建：`magnetic_sim/ANSYS/main/ANSYS_data/long2016_hexapole_halfcut/RESULTS_MAP.md`）
 
-相關規則：`.claude/rules/sim-cleanup.md`
+相關規則：`.claude/rules/ansys-db-cleanup.md`
 相關 memory：[[verify-before-act]]、[[long-fei-b-bar-matrix-v4]]、[[smrt4-unreliable-halfcut]]
 
 ---

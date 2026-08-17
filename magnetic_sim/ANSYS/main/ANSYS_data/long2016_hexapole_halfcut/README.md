@@ -7,7 +7,7 @@ Long Fei 2016「下極半切」六極 hexapole 的 **FEM 模擬輸出**（`.dat`
 
 > **交付檔白名單原則**：本資料夾只保留「交付檔」——`.dat`（場結果）、`.db`/`.cdb`（mesh/模型）、`.md`。
 > 所有 ANSYS 過度檔（`.rmg/.full/.esav/.rst/.out/.err/.log/.bat/.DSP*/.stat/.page*/scratch` …）一律不留。
-> 詳見 `.claude/rules/sim-cleanup.md` §「歸檔資料夾保留原則」。
+> 詳見 `.claude/rules/ansys-db-cleanup.md`。
 
 ---
 

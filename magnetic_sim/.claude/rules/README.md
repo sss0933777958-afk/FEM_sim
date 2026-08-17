@@ -5,7 +5,7 @@
 **內容**（21 條，逐條一行用途）：
 - `ansys-cad-alignment.md` — ANSYS 幾何尺寸必對齊 CAD（STEP/IGES = source of truth）；改幾何前必量 CAD、不一致必通報。
 - `result-read-safety.md` — 讀 ANSYS 結果三層防呆（讀前回報消歧、讀後核指紋、以 RESULTS_MAP 為準），避免讀錯 case。
-- `sim-cleanup.md` — 清 sim 副產物 SOP：6 項不可影響 + 2 項不可失去能力、強制 dry-run、預設 half-clean、`--full` 須明確同意。
+- `ansys-db-cleanup.md` — **（2026-08-17 由 `sim-cleanup.md` + `db-folder-retention.md` 合併）** `ANSYS_data/<model>/db/` 三層政策：`geom/` **整層刪**（可由 deck 重生）、`mesh/` 保主 `.db`+主 log、`sim/` 再加主 `.rmg`；⚠ **刪 `geom/` 前必先 `find -size +100M`** —— 實測 20 顆網格 db（29.2 GB、19 顆孤本、含指紋基準網格）被錯放在該層；含保留白名單、主檔 vs worker 判別、`rm -f <job>*` 陷阱、GUI scratch 夾整夾刪、強制 dry-run + 使用者批准。
 - `apdl-editing.md` — APDL 腳本編輯規則（`[ADDED]`/`[MODIFIED]` 標記、6 coil 只差 CURR_ARRAY、保留 `D,ALL,MAG,0`）。
 - `cad-import-ansys.md` — 複雜 CAD(STEP)→ANSYS 真實幾何匯入通用法（STEP→SpaceClaim `.x_t`→`ac4para` ANF→MAPDL `/INPUT`；別 primitive 硬拼、別 IGESIN/~PARAIN）。
 - `deliver-step-for-check.md` — ANSYS 建完幾何**交付使用者疊 CAD 檢查一律出 STEP**（不出 ANSYS IGES：被 SW/OCC 讀成英吋 ×25.4，flag/name 都救不了）；用 OCC 產 mm STEP（`write.step.unit=MM`）。
@@ -22,7 +22,6 @@
 - `no-backup-data.md` — **禁止使用 `backup/` 的資料與程式**（禁 `addpath(backup)`、禁讀其 `.m/.mat/.dat`）；模型設定一律走 live `model_config(...)`。起因＝`paper_fig_plot/` 有 12 支吃 `backup/.../mt_constants.m`，看不到 CAD 實測的真實錐體幾何。
 
 **（2026-07-06 由 `magnetic_sim/ANSYS/main/rules/` 移入本層，改為全域自動載入）**：
-- `db-folder-retention.md` — `ANSYS_data/<model>/db/` 子夾只留 `.db` + 主 `.rmg`（無 digit），殘留禁留。
 - `matlab-output-layout.md` — MATLAB `.mat` 放產生它的程式旁 `data/`（`matlab/<model>/<activity>/data/`；`MATLAB_data/` 已移除）。
 - `results-pdf-only.md` — Calibration 的 `results/<model>/{single,eighteen}/` 只放 `.pdf`（`.mat/.tex/.aux` 不留）。
 - `figure-style.md` — 圖表風格 preset；**畫圖前必先問使用者要哪個風格選項**（①粗體框圖：大字粗體/box/無 grid/tick 減半/單位 `()`；3D 框體 A 立方 daspect / B 異質軸 pbaspect 兩變體依幾何選）；10^0/無單位不標；直方圖 nb=180；**同類比較圖共用 colorbar/clim（禁各自 auto-scale）**；**圖例一律照 `plot_sensor_B_hist.m` 範本**（northoutside + 寬度切齊框 + 黑粗框 + FS24 + 兩欄「系列｜統計值」）。

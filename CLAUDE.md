@@ -11,7 +11,7 @@
 ## Quick Triggers
 - 當工作涉及 `magnetic_sim/ANSYS/main/` 目錄（cwd 在 magnetic_sim/ANSYS/main/、編輯 magnetic_sim/ANSYS/main/* 檔案）時，參照 `magnetic_sim/ANSYS/main/CLAUDE.md`（含資料夾架構地圖 + 產物落點），所有新產物寫進 magnetic_sim/ANSYS/main/ 下對應子目錄，不得寫到其他設計目錄或外部路徑
 - 當使用者要求 SolidWorks 出檔／解析 STEP／寫 MT_Geom／檢查模型 等操作時（自然語觸發，例「出 STEP」「解析 STEP」「建 APDL 幾何」「檢查模型」），對應 SOP 在 `magnetic_sim/ANSYS/main/doc/workflows/`（入口 `workflows/README.md`）
-- 當工作涉及「**清 sim 副產物 / 清 ANSYS results / 磁碟滿 / 整理 result dir / cleanup sim**」等清理動作時，**動手前必須先完整讀 `magnetic_sim/.claude/rules/sim-cleanup.md`**；該規則寫死「6 項不可影響工作 + 2 項不可失去能力」criteria、強制 dry-run、預設 half-clean（保 `.db` + 主 `.rmg`）、`--full` 要使用者明確批准；helper script `magnetic_sim/ANSYS/main/apdl/common/clean_sim_dir.sh`
+- 當工作涉及「**清 db / 清 sim 副產物 / 清 ANSYS results / 磁碟滿 / 整理 result dir**」等清理動作時，**動手前必須先完整讀 `magnetic_sim/.claude/rules/ansys-db-cleanup.md`**；該規則寫死 `db/` 三層政策（`geom/` 整層刪、`mesh/` 保主 `.db`+主 log、`sim/` 再加主 `.rmg`）、**刪 `geom/` 前必先掃 >100MB 的錯置網格 db**、保留白名單、強制 dry-run 與使用者批准
 - 當使用者貼一個 `model_check/<model>/<...>.iges|.step` 路徑時，**Claude 必須從路徑第二層認出這是哪個物理模型**（`long_fei` = Long Fei 半切六極 / `hung_hexapole` / `NTU_hexapole`），把它當作後續對話的「當前討論模型」，**不要問「這是哪個模型？」**
 - 當工作涉及「**改 ANSYS 幾何 / 改 mt_constants / 寫新 APDL 幾何腳本 / 對齊 CAD / ANSYS 跟 CAD 不一致**」等動作時，**動手前必須先完整讀 `magnetic_sim/.claude/rules/ansys-cad-alignment.md`**；該規則寫死「CAD STEP/IGES 是 source of truth、ANSYS 數值必對齊 CAD、改前必量 CAD、不一致必通報使用者由其拍板、預設 Path A(改 ANSYS)」
 - 當工作涉及「**跑 COMSOL / LiveLink / mphserver / 連 COMSOL server / 跑 .mph**」等動作時（非活躍；`.mph` 模型在 `magnetic_sim/COMSOL/mph/`，腳本與 launcher 已不存在），連線法見 SOP `magnetic_sim/ANSYS/main/doc/workflows/comsol-livelink.md`：獨立啟 `comsolmphserver.exe` + 另一個 `matlab.exe -batch` 內 `mphstart(2036)` 兩個 process，**不要用整合式 `comsolmphserver matlab`**（Win + R2025b 壞）
@@ -115,9 +115,9 @@ These constraints apply to ALL hexapole designs in this repo. They are non-negot
 - NEVER change geometry parameters without explicit user approval
 - NEVER modify element types or material properties without approval
 - NEVER remove boundary condition section (`[ADDED]` block near line 500)
-- NEVER 跑任何 sim 清理（rm intermediates / rm result dir）前未先讀 `magnetic_sim/.claude/rules/sim-cleanup.md` 全文 — 該規則寫死「6 項不可影響工作 + 2 項不可失去能力」criteria；違反 = 違規
-- NEVER 用 `--full` 模式清 sim 副產物 unless 使用者**明確同意**（預設一律 half-clean，保 `.db` + 主 `.rmg`）
-- NEVER 繞過 helper `magnetic_sim/ANSYS/main/apdl/common/clean_sim_dir.sh` 直接手刻 `rm` ANSYS 檔（會跟規則的保留清單不同步）
+- NEVER 跑任何 db / sim 清理（rm intermediates / rm result dir）前未先讀 `magnetic_sim/.claude/rules/ansys-db-cleanup.md` 全文；違反 = 違規
+- NEVER 刪 `db/geom/` 前未先掃「>100MB 的 .db」——那是錯置的**網格** db（孤本、含指紋基準網格），必須先搬進 `db/mesh/`
+- NEVER 寫 `rm -f <jobname>*` 清 ANSYS 檔（會連主 `.rmg` + `.db` 一起刪）——用規則裡的針對性 pattern
 - NEVER 改 ANSYS 幾何尺寸或 mt_constants 前未先量對應 CAD（SolidWorks STEP/IGES）並比對；發現不一致**不可自己選一個值**，必須通報使用者由其拍板（per `magnetic_sim/.claude/rules/ansys-cad-alignment.md`）
 - NEVER change alpha (54.74 deg) or the R_norm_xy / R_norm_z formulas
 - NEVER produce a pole configuration that violates pair-axis orthogonality
