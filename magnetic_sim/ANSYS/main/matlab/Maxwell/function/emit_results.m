@@ -2,7 +2,8 @@ function emit_results(matfile)
 %EMIT_RESULTS  讀校正結果 .mat（自描述、含 base/設定）→ 排版 LaTeX → xelatex → PDF。
 %   emit_results(matfile)
 %   依 rec.base 分 current / voltage 兩版；落點
-%     results/<model>/<eighteen|single>/model_results_<base>_<variant>.pdf
+%     results/<model>/<eighteen|single>/<base>_R<半徑><_N點數><_tag>.pdf
+%     例：current_R150_N528.pdf、voltage_R150_N80_soff3mm.pdf
 %   （single=USE_BIAS false、eighteen=true）。清中間檔只留 pdf。
     rec = load(matfile);
     T   = emit_tex();
@@ -17,12 +18,25 @@ function emit_results(matfile)
     if strcmp(rec.base,'voltage') && isfield(rec,'SOFF_upper') && abs(rec.SOFF_upper-4.572e-3) > 1e-9
         soffsfx = sprintf('_soff%gmm', rec.SOFF_upper*1e3);
     end
-    % [ADDED 2026-08-03] 取樣半徑非定案 150µm → 檔名加 _R<NNN>，不覆蓋既有 R150 結果（同 soffsfx 慣例）
-    rsfx = '';
-    if isfield(rec,'R_select') && abs(rec.R_select - 150e-6) > 1e-12
-        rsfx = sprintf('_R%d', round(rec.R_select*1e6));
+    % [MODIFIED 2026-08-17 使用者拍板] **檔名縮短**。資料夾 results/<model>/<single|eighteen>/
+    %   已表明模型與參數版本、Maxwell 分支由整棵樹決定 → 檔名只留「base + 半徑 + 點數 +
+    %   非預設標記」。
+    %     舊：model_results_current_maxwell_convN528.pdf        （38 字元）
+    %     新：current_R150_N528.pdf                             （17 字元）
+    %   規則：
+    %     _R<NNN>  取樣球半徑 [µm]，一律標（不再只在 ≠150 時標）
+    %     _N<點數> 用等測度網格降取樣時才有（全格點版沒有此段）
+    %     _<tag>   VARIANT 去掉分支名 'maxwell' 與 'convN<n>' 後的殘餘（如 k22_0p8340、mesh0p06）
+    %     _soff<N>mm  voltage 且 sensor 距非定案 4.572mm（見上）
+    rsfx = sprintf('_R%d', round(rec.R_select*1e6));
+    nsfx = '';
+    if isfield(rec,'GRID_NRPT') && ~isempty(rec.GRID_NRPT)
+        nsfx = sprintf('_N%d', rec.npts);
     end
-    stem     = sprintf('model_results_%s_%s%s%s', rec.base, rec.VARIANT, soffsfx, rsfx);
+    vtag = regexprep(rec.VARIANT, '^maxwell_?', '');    % 去分支名
+    vtag = regexprep(vtag, '_?convN\d+', '');           % 點數改由 _N<點數> 表示
+    if ~isempty(vtag), vtag = ['_' vtag]; end
+    stem     = sprintf('%s%s%s%s%s', rec.base, rsfx, nsfx, vtag, soffsfx);
     tex_path = fullfile(out_dir, [stem '.tex']);
     pdf_path = fullfile(out_dir, [stem '.pdf']);
     pole = {'P1','P2','P3','P4','P5','P6'};
@@ -42,7 +56,10 @@ function emit_results(matfile)
             T.mat(fid, 'F~[\mathrm{A}]', F_ex, pole, '');
             T.scalar_unit(fid, '{}^{B}\hat{g}_{I}', rec.gI_hat, 'mT/A');
             if isfield(rec,'NMAE')
-                fprintf(fid, '\\[ \\mathrm{NMAE} = \\dfrac{\\sum_i |\\varepsilon_i|}{\\sum_i |b_i|}\\cdot 100 = %.2f\\%% \\]\n', rec.NMAE);
+                % [MODIFIED 2026-08-17 使用者拍板] 向量範數版（b̄ = Σ_jΣ_i‖b_ij‖/N_p）
+                fprintf(fid, ['\\[ \\mathrm{NMAE} = \\dfrac{\\sum_j\\sum_i \\left\\| b_{ij} - ' ...
+                              'S_i\\,{}^{B}\\hat{g}_{I}\\bar{K}_{I}F_j \\right\\| / N_p}{\\bar{b}}' ...
+                              '\\cdot 100 = %.2f\\%% \\]\n'], rec.NMAE);
             end
             cunit = 'mT/A';
         case 'voltage'
@@ -56,7 +73,10 @@ function emit_results(matfile)
             T.mat(fid, 'V~[\mathrm{mV}]', rec.V(:,p2a), pole, '');
             T.scalar_unit(fid, '{}^{B}\hat{g}_{V}', rec.gV_hat, 'mT/mV');
             if isfield(rec,'NMAE')                            % [MODIFIED 2026-08-15] voltage 也印 NMAE（同 current 定義與版式）
-                fprintf(fid, '\\[ \\mathrm{NMAE} = \\dfrac{\\sum_i |\\varepsilon_i|}{\\sum_i |b_i|}\\cdot 100 = %.2f\\%% \\]\n', rec.NMAE);
+                % [MODIFIED 2026-08-17] 向量範數版；voltage 的模型項是 ᴮĝ_V·D̄·V_j
+                fprintf(fid, ['\\[ \\mathrm{NMAE} = \\dfrac{\\sum_j\\sum_i \\left\\| b_{ij} - ' ...
+                              'S_i\\,{}^{B}\\hat{g}_{V}\\bar{D}V_j \\right\\| / N_p}{\\bar{b}}' ...
+                              '\\cdot 100 = %.2f\\%% \\]\n'], rec.NMAE);
             end
             cunit = 'mT/mV';
         otherwise

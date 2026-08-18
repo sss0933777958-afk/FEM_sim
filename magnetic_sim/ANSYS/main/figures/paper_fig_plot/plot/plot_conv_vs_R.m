@@ -151,13 +151,17 @@ end
 function [rms, nmae] = eval_on_grid(P0, B0, r, Pc_base)
 % 拿校正出來的 (l, e, G) 去預測**真實 FEM 格點**的場，算殘差。
 %   rms  = sqrt(J/N)              J = 殘差平方和、N = 殘差項數（點 x 3 分量 x 6 激發）[mT]
-%   nmae = mean|res| / mean|B|    兩者皆對全部殘差項取平均 [%]
+%   nmae = 向量範數版（[MODIFIED 2026-08-18] 與 solve_current/solve_voltage 對齊）：
+%          Σ_j Σ_i ‖res_ij‖ / Σ_j Σ_i ‖B_ij‖ · 100，先逐「點×激發」取 3 維殘差長度再相加。
+%          舊的分量版 `mean|res|/mean|B|` 已作廢（規則 calibration-transfer-matrix-output 附則三）。
     if ~isfinite(r.l), rms = NaN;  nmae = NaN;  return; end
     Pc  = make_Pc(r.e, Pc_base);
     S   = build_S(r.l, Pc, P0);
     res = S*r.G - B0;
     rms  = sqrt(sum(res(:).^2) / numel(res));
-    nmae = 100 * mean(abs(res(:))) / mean(abs(B0(:)));
+    e_ij = sqrt(sum(reshape(res, 3, []).^2, 1));       % 每點每激發的 ‖res‖
+    b_ij = sqrt(sum(reshape(B0,  3, []).^2, 1));
+    nmae = 100 * sum(e_ij) / sum(b_ij);
 end
 
 % ============================================================================

@@ -103,25 +103,41 @@ function plot_svd_polar(USE_BIAS, R_um, SRC, MODEL, GEOM)
     [RR, TH] = meshgrid(r_um, th);
 
     ex = [1;0;0];   ey = [0;1;0];   ez = [0;0;1];    % actuator 三軸
-    Clab = '$\mathbf{\mathcal{C}\;[(mT/A)^{3}]}$';
+    Clab = '$\mathbf{\mathcal{C}^{1/3}\;[mT/A]}$';
     Klab = '$\mathbf{\kappa}$';
 
     % 三個切面：(u, v, w) = 面內兩基底 + 面法向（判哪些極落在面內）
     FACE = { 'xaya', ex, ey, ez, '$\mathbf{x_{a}\!-\!y_{a}\;plane}$';
              'xaza', ex, ez, ey, '$\mathbf{x_{a}\!-\!z_{a}\;plane}$';
              'yaza', ey, ez, ex, '$\mathbf{y_{a}\!-\!z_{a}\;plane}$' };
-    for a = 1:size(FACE,1)
-        [fname, u, v, w, ttl] = FACE{a,:};
-        [C, K] = ck_grid(RR, TH, u, v, ell_m, Hhat, Pc);
-        fprintf('  %s：C %.0f ~ %.0f (mT/A)^3   kappa %.3f ~ %.3f\n', ...
-                fname, min(C(:)), max(C(:)), min(K(:)), max(K(:)));
-        % [FIXED 2026-08-15] 檔名必須帶 msfx，否則不同 model 會互相覆蓋（已踩過：
-        %   zhi_peng 的圖蓋掉 long2016 的六張）。long2016 的 msfx='' → 檔名不變。
-        render_polar(RR, TH, C, Clab, R_um, Pc, u, v, w, ttl, ...
-                     fullfile(figdir, sprintf('gain_polar_%s_%s%s.png', fname, lower(SRC), msfx)));
-        render_polar(RR, TH, K, Klab, R_um, Pc, u, v, w, ttl, ...
-                     fullfile(figdir, sprintf('iso_polar_%s_%s%s.png', fname, lower(SRC), msfx)));
+    % [MODIFIED 2026-08-18 使用者拍板] 版面重排：
+    %   ① x_a-y_a 與 x_a-z_a **左右並排成一張圖**、共用一支 colorbar（放最右邊）
+    %   ② y_a-z_a **獨立一張**
+    %   ③ 但**三個切面共用同一個色階**（clim 取三面全域 min/max）→ 三張圖可直接互比
+    %   故必須先把三個切面都算完、定出全域 clim，才能開始畫。
+    NF = size(FACE,1);
+    Cv = cell(NF,1);   Kv = cell(NF,1);
+    for a = 1:NF
+        [fname, u, v, ~, ~] = FACE{a,:};
+        [Cv{a}, Kv{a}] = ck_grid(RR, TH, u, v, ell_m, Hhat, Pc);
+        fprintf('  %s：C^(1/3) %.3f ~ %.3f mT/A   kappa %.3f ~ %.3f\n', ...
+                fname, min(Cv{a}(:)), max(Cv{a}(:)), min(Kv{a}(:)), max(Kv{a}(:)));
     end
+    clC = [min(cellfun(@(x)min(x(:)),Cv)), max(cellfun(@(x)max(x(:)),Cv))];
+    clK = [min(cellfun(@(x)min(x(:)),Kv)), max(cellfun(@(x)max(x(:)),Kv))];
+    fprintf('  共用色階：C^(1/3) %.3f ~ %.3f mT/A｜kappa %.3f ~ %.3f\n', clC, clK);
+
+
+    % [FIXED 2026-08-15] 檔名必須帶 msfx，否則不同 model 會互相覆蓋。
+    P12 = [1 2];   P3 = 3;                    % 1=xaya 2=xaza（並排）／3=yaza（獨立）
+    render_polar(RR, TH, Cv, Clab, R_um, Pc, FACE, P12, clC, @jet, ...
+        fullfile(figdir, sprintf('gain_polar_xaya_xaza_%s%s.png', lower(SRC), msfx)));
+    render_polar(RR, TH, Cv, Clab, R_um, Pc, FACE, P3,  clC, @jet, ...
+        fullfile(figdir, sprintf('gain_polar_yaza_%s%s.png', lower(SRC), msfx)));
+    render_polar(RR, TH, Kv, Klab, R_um, Pc, FACE, P12, clK, @jet, ...
+        fullfile(figdir, sprintf('iso_polar_xaya_xaza_%s%s.png', lower(SRC), msfx)));
+    render_polar(RR, TH, Kv, Klab, R_um, Pc, FACE, P3,  clK, @jet, ...
+        fullfile(figdir, sprintf('iso_polar_yaza_%s%s.png', lower(SRC), msfx)));
 end
 
 % ============================================================================
@@ -132,85 +148,124 @@ function [C, K] = ck_grid(RR, TH, u, v, ell_m, Hhat, Pc)
         p  = (RR(a)*1e-6) * (u*cos(TH(a)) + v*sin(TH(a)));   % 3×1 [m]
         Dk = p/ell_m - Pc;                                    % 3×6（無因次）
         sv = svd( (Dk ./ (vecnorm(Dk).^3)) * Hhat );
-        C(a) = prod(sv);   K(a) = sv(3)/sv(1);
+        % [MODIFIED 2026-08-18 使用者拍板] C 改回報**三個奇異值相乘後開三次方根**
+        %   （幾何平均）→ 單位由 (mT/A)^3 變成 mT/A，量級與 g_I 同級、好解讀。
+        C(a) = prod(sv)^(1/3);   K(a) = sv(3)/sv(1);
     end
 end
 
 % ============================================================================
-function render_polar(RR, TH, val, clab, R, Pc, u, v, w, ttl, out)
-    FSA = 26;   % 角度標籤
-    FSR = 20;   % 半徑環標籤
-    FSP = 26;   % 磁極標籤
-    FSC = 32;   % colorbar
+function render_polar(RR, TH, vals, clab, R, Pc, FACE, idx, cl, cmapf, out)
+% 多面板極座標熱圖。idx = 要畫的切面索引（[1 2] → 左右並排；純量 → 單張）。
+%   cl = **共用色階** [lo hi]（由呼叫端跨三個切面算出），所有面板與 colorbar 都用它。
+%   cmapf = colormap 函式 handle。gain / iso 目前**都用 @jet**
+%     （2026-08-18 曾把 iso 改 @turbo 增強低值區對比，使用者拍板改回原色）。
+%   colorbar 只畫一支、放**最右邊**。
+% [MODIFIED 2026-08-18 使用者拍板]
+%   ③ 半徑環標籤**不加白底**、黑色粗體
+%   ④ P1..P6 標籤：一度移除後**又加回**（使用者要求）
+    % [MODIFIED 2026-08-18] 字級全部統一 **36**，照 figure-style「字體大小統一 = 36
+    %   （所有 paper 圖通用）：刻度數字、軸標題/colorbar 標題同 36」。
+    %   極座標圖的「刻度數字」= 角度標籤 + 半徑環標籤，故一併 36。
+    FSA = 36;   % 角度標籤（= 方位刻度數字）
+    % [MODIFIED 2026-08-18 使用者拍板] 半徑環標籤 36 -> **30**：36 級時四個標籤沿
+    %   120° 方位排下來會撐出圓盤、並與角度標籤打架（其餘字級維持規則的 36）。
+    FSR = 30;   % 半徑環標籤（= 徑向刻度數字）
+    FSP = 36;   % 磁極標籤
+    FSC = 36;   % colorbar 刻度數字與標題
+    np  = numel(idx);
     X = RR.*cos(TH);   Y = RR.*sin(TH);
 
-    fig = figure('Color','w','Position',[80 80 1180 980]);
-    ax  = axes(fig);   hold(ax,'on');
-    surf(ax, X, Y, zeros(size(X)), val, 'EdgeColor','none');
-    view(ax,2);   shading(ax,'interp');
-    colormap(ax, jet);   clim(ax, [min(val(:)) max(val(:))]);
-    axis(ax,'equal');    axis(ax,'off');
-
-    % ---- 極座標網格 overlay（畫在高 z、view(2) 下蓋住填色）----
-    zt  = max(val(:)) + 1;
-    thg = linspace(0, 2*pi, 360);
-    rla = 107*pi/180;                                  % 半徑標籤角度（避開 spoke，且離 90° 標籤遠一點）
-    % 半徑環：取整數刻度（figure-style）。R=500 → 125/250/375/500；R=150 → 50/100/150
-    if     mod(R,4) == 0, s = R/4;
-    elseif mod(R,3) == 0, s = R/3;
-    else,                 s = round(R/4);
-    end
-    rings = s:s:R;
-    for rr = rings
-        plot3(ax, rr*cos(thg), rr*sin(thg), zt*ones(size(thg)), '-', ...
-              'Color',[.35 .35 .35], 'LineWidth',1.2);
-        text(ax, rr*cos(rla), rr*sin(rla), zt, sprintf('%d\\mum', rr), ...
-             'FontSize',FSR, 'FontWeight','bold', 'Color','k', ...
-             'HorizontalAlignment','center', 'BackgroundColor','w', 'Margin',1);
-    end
-    for a = 0:30:330
-        ar = a*pi/180;
-        plot3(ax, [0 R*cos(ar)], [0 R*sin(ar)], [zt zt], '-', ...
-              'Color',[.35 .35 .35], 'LineWidth',1.0);
-        text(ax, 1.28*R*cos(ar), 1.28*R*sin(ar), sprintf('%d\\circ', a), ...
-             'HorizontalAlignment','center', 'FontSize',FSA, 'FontWeight','bold');
+    % [MODIFIED 2026-08-18 使用者拍板] ① 拿掉上方的切面標題方框 → 座標軸往上撐滿；
+    %   ② colorbar 依 figure-style「Colorbar 寬度（paper 合併圖）」：寬度 = 佔圖寬的
+    %      **固定比例 CBW_RATIO = 0.009**（細長條）。normalized 單位本身就是「佔圖寬比例」，
+    %      故直接把寬度設成 CBW_RATIO —— 兩張圖（寬 2120 / 1180 px）縮到同寬時視覺同粗。
+    %   ③ 並往內收緊：colorbar 左緣只離右側面板 0.010，不再留大片空白。
+    CBW_RATIO = 0.009;
+    if np == 1
+        fig = figure('Color','w','Position',[80 80 1180 980]);
+        AXP = {[0.020 0.030 0.780 0.940]};
+        CBP = [0.815 0.105 CBW_RATIO 0.790];
+    else
+        fig = figure('Color','w','Position',[80 80 2120 980]);
+        AXP = {[0.005 0.030 0.440 0.940], [0.435 0.030 0.440 0.940]};
+        CBP = [0.885 0.105 CBW_RATIO 0.790];
     end
 
-    % ---- 面內磁極標記（|Pc_k · w| ≈ 0 → 該極落在此切面上）----
-    for k = 1:size(Pc,2)
-        dk = Pc(:,k) / norm(Pc(:,k));
-        if abs(dk.'*w) < 0.15          % 門檻放寬到 0.15：eighteen 的下極離面 0.114（面外極是 ~1.0，仍分得開）
-            tk = atan2(dk.'*v, dk.'*u);
-            plot3(ax, R*cos(tk), R*sin(tk), zt+1, 'o', 'MarkerSize',13, ...
-                  'MarkerFaceColor',[0.90 0.90 0.90], 'MarkerEdgeColor',[0.5 0 0.12], 'LineWidth',2.0);
-            % [MODIFIED 2026-08-15] P 標籤移到**圓外**，且沿切線**逆時針錯開 10°**：
-            %   六個極正好落在 0/90/180/270°，與角度標籤同方向 —— 不錯開的話兩個文字框
-            %   必然沿同一半徑排隊、互相擠壓（放多遠都一樣）。錯開後離最近的角度標籤 20°。
-            tlab = tk + 10*pi/180;
-            text(ax, 1.13*R*cos(tlab), 1.13*R*sin(tlab), zt+1, sprintf('P%d',k), ...
-                 'FontSize',FSP, 'FontWeight','bold', 'Color',[0.5 0 0.12], ...
-                 'HorizontalAlignment','center', 'BackgroundColor','w', 'Margin',1, ...
-                 'EdgeColor',[0.5 0 0.12]);
+    for q = 1:np
+        [~, u, v, w, ~] = FACE{idx(q),:};
+        val = vals{idx(q)};
+        ax  = axes(fig, 'Position', AXP{q});   hold(ax,'on');
+        surf(ax, X, Y, zeros(size(X)), val, 'EdgeColor','none');
+        view(ax,2);   shading(ax,'interp');
+        colormap(ax, cmapf(256));   clim(ax, cl);   % 三個切面共用色階
+        axis(ax,'equal');    axis(ax,'off');
+
+        % ---- 極座標網格 overlay（畫在高 z、view(2) 下蓋住填色）----
+        zt  = cl(2) + 1;
+        thg = linspace(0, 2*pi, 360);
+        % [MODIFIED 2026-08-18 使用者拍板] 半徑標籤方位：107° → **120°**。
+        %   ⚠ 120° 正好是 spoke（每 30° 一根）的方位，標籤會壓在那條線上。
+        %   （曾短暫改成依底色亮度自動選角，已作廢。）
+        rla = 120*pi/180;
+        if     mod(R,4) == 0, sr = R/4;
+        elseif mod(R,3) == 0, sr = R/3;
+        else,                 sr = round(R/4);
+        end
+        for rr = sr:sr:R
+            plot3(ax, rr*cos(thg), rr*sin(thg), zt*ones(size(thg)), '-', ...
+                  'Color',[.35 .35 .35], 'LineWidth',1.2);
+            % ③ 無白底（不設 BackgroundColor/Margin）
+            % [MODIFIED 2026-08-18 使用者拍板] 半徑環標籤：黑色粗體（曾短暫改紅，已還原）
+            text(ax, rr*cos(rla), rr*sin(rla), zt, sprintf('%d\\mum', rr), ...
+                 'FontSize',FSR, 'FontWeight','bold', 'Color','k', ...
+                 'HorizontalAlignment','center');
+        end
+        for aa = 0:30:330
+            ar = aa*pi/180;
+            plot3(ax, [0 R*cos(ar)], [0 R*sin(ar)], [zt zt], '-', ...
+                  'Color',[.35 .35 .35], 'LineWidth',1.0);
+            text(ax, 1.40*R*cos(ar), 1.40*R*sin(ar), sprintf('%d\\circ', aa), ...
+                 'HorizontalAlignment','center', 'FontSize',FSA, 'FontWeight','bold');
+        end
+
+        % ---- 面內磁極標記（|Pc_k · w| ≈ 0 → 該極落在此切面上）----
+        %   [MODIFIED 2026-08-18 使用者拍板] 標籤整體外移：角度 1.28R→1.40R、
+        %   P 標籤 1.13R→1.20R（兩者間距由 0.15R 拉開到 0.20R，下方 P4/P6 與 270° 不再貼合）。
+        for k = 1:size(Pc,2)
+            dk = Pc(:,k) / norm(Pc(:,k));
+            if abs(dk.'*w) < 0.15
+                tk = atan2(dk.'*v, dk.'*u);
+                plot3(ax, R*cos(tk), R*sin(tk), zt+1, 'o', 'MarkerSize',13, ...
+                      'MarkerFaceColor',[0.90 0.90 0.90], ...
+                      'MarkerEdgeColor',[0.5 0 0.12], 'LineWidth',2.0);
+                % [MODIFIED 2026-08-18] P 標籤加回（使用者要求）。放**圓外** 1.13R，
+                %   並沿切線逆時針錯開 10° —— 六個極正好落在 0/90/180/270°，與角度
+                %   標籤同方向，不錯開的話兩個文字框會沿同一半徑排隊互相擠壓。
+                tlab = tk + 10*pi/180;
+                text(ax, 1.20*R*cos(tlab), 1.20*R*sin(tlab), zt+1, sprintf('P%d',k), ...
+                     'FontSize',FSP, 'FontWeight','bold', 'Color',[0.5 0 0.12], ...
+                     'HorizontalAlignment','center', 'BackgroundColor','w', 'Margin',1, ...
+                     'EdgeColor',[0.5 0 0.12]);
+            end
+        end
+        % [MODIFIED 2026-08-18] 字級 26→36 後，1.28R 的角度標籤會頂到框外 →
+        %   外緣由 1.42R 放寬到 1.75R（標籤外移後仍不被裁；圓盤相對變小）。
+        xlim(ax, [-1.75*R 1.75*R]);   ylim(ax, [-1.75*R 1.75*R]);
+        ax.Toolbar.Visible = 'off';
+        hold(ax,'off');
+
+        % [MODIFIED 2026-08-18] 切面標題方框已移除（使用者拍板）。
+        if q == np                                  % colorbar 只掛一支、放最右
+            cb = colorbar(ax);
+            cb.FontSize = FSC;   cb.FontWeight = 'bold';
+            cb.Label.Interpreter = 'latex';          % 先設 Interpreter 再設 String
+            cb.Label.String = clab;   cb.Label.FontSize = FSC;
+            if numel(cb.Ticks) >= 5, cb.Ticks = cb.Ticks(1:2:end); end
+            set(ax, 'Position', AXP{q});             % colorbar 會擠壓 axes → 還原
+            cb.Position = CBP;
         end
     end
-    xlim(ax, [-1.42*R 1.42*R]);   ylim(ax, [-1.42*R 1.42*R]);
-
-    cb = colorbar(ax);
-    cb.FontSize = FSC;   cb.FontWeight = 'bold';
-    cb.Label.Interpreter = 'latex';                    % 先設 Interpreter 再設 String
-    cb.Label.String = clab;   cb.Label.FontSize = FSC;
-    if numel(cb.Ticks) >= 5, cb.Ticks = cb.Ticks(1:2:end); end
-    ax.Toolbar.Visible = 'off';
-    hold(ax,'off');
-
-    % [MODIFIED 2026-08-15] 切面標題改成**方框樣式**（使用者指定）：黑粗框 + 白底，
-    %   與圖例的外框一致；用 annotation 放在 axes 上方（不佔 axes 座標範圍）。
-    drawnow;
-    axp = get(ax,'Position');
-    annotation(fig, 'textbox', [axp(1)+axp(3)/2-0.16, 0.925, 0.32, 0.062], ...
-        'String', ttl, 'Interpreter','latex', 'FontSize',FSC, ...
-        'HorizontalAlignment','center', 'VerticalAlignment','middle', ...
-        'EdgeColor','k', 'LineWidth',2.5, 'BackgroundColor','w', 'FitBoxToText','off');
 
     exportgraphics(fig, out, 'Resolution', 200);
     fprintf('wrote %s\n', out);

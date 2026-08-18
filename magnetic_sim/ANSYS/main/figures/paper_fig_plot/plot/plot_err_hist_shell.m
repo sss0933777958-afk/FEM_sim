@@ -12,8 +12,9 @@ function plot_err_hist_shell(USE_BIAS, Rum, Rsplit, SPLIT)
 %      **各組各自正規化成百分比**（兩組樣本數差很多：R=300 內共 14082 點，其中
 %      r<=150 只有 1771 點）—— 比較的是分布形狀，不是絕對數量。
 %
-%   直方圖規則（figure-style「分布 / 疊圖直方圖」）：nb=180、兩組**共用 edges**、
-%   FaceAlpha、mean 以 xline 虛線標、圖例兩欄（左欄系列、右欄該系列的統計值）。
+%   直方圖規則（figure-style「分布 / 疊圖直方圖」）：nb=180、兩組**共用 edges**、FaceAlpha。
+%   [MODIFIED 2026-08-17 使用者拍板] **不再畫 mean 虛線**，圖例也隨之只列系列、不列統計值。
+%   mean 仍算出來並印在 console 供追溯。
 %   風格①粗體框圖：box on、grid off、刻度 FS28 粗體、軸標題 FS36 LaTeX \mathbf、
 %   x 起訖只標數字不畫 tick、y 取 3 個內縮 tick。
 %
@@ -126,8 +127,7 @@ function plot_err_hist_shell(USE_BIAS, Rum, Rsplit, SPLIT)
         p2 = histcounts(e2, edg) / numel(e2) * 100;
         h1 = bar(ax, ctr, p1, 1, 'FaceColor',cIN,  'FaceAlpha',ALPH, 'EdgeColor','k', 'LineWidth',0.3);
         h2 = bar(ax, ctr, p2, 1, 'FaceColor',cOUT, 'FaceAlpha',ALPH, 'EdgeColor','k', 'LineWidth',0.3);
-        m1 = xline(ax, mu1, '--', 'Color',cM1, 'LineWidth',2.8);
-        m2 = xline(ax, mu2, '--', 'Color',cM2, 'LineWidth',2.8);
+        % [MODIFIED 2026-08-17 使用者拍板] 不再畫 mean 虛線（見檔頭說明）
         pAll = [p1 p2];
     elseif strcmp(MODE,'stack')
         % **共用分母 numel(eAll)** → 兩段疊起來剛好等於「不分層」時的整體分布，
@@ -138,16 +138,14 @@ function plot_err_hist_shell(USE_BIAS, Rum, Rsplit, SPLIT)
         hb(1).FaceColor = cIN;    hb(1).FaceAlpha = ALPH;
         hb(2).FaceColor = cOUT;   hb(2).FaceAlpha = ALPH;
         h1 = hb(1);   h2 = hb(2);
-        muA = mean(eAll);
-        mA  = xline(ax, muA, '--', 'Color',cM1, 'LineWidth',2.8);
+        muA = mean(eAll);                             % [MODIFIED 2026-08-17] 不再畫 mean 虛線
         pAll = p1 + p2;                               % 堆疊後的總高度
         fprintf('  堆疊：整體 mean=%.4f mT；內層佔 %.1f%%、外層佔 %.1f%% 的樣本\n', ...
                 muA, 100*numel(e1)/numel(eAll), 100*numel(e2)/numel(eAll));
     else
         pA = histcounts(eAll, edg) / numel(eAll) * 100;
         hA = bar(ax, ctr, pA, 1, 'FaceColor',cIN, 'FaceAlpha',ALPH, 'EdgeColor','k', 'LineWidth',0.3);
-        muA = mean(eAll);
-        mA  = xline(ax, muA, '--', 'Color',cM1, 'LineWidth',2.8);
+        muA = mean(eAll);                             % [MODIFIED 2026-08-17] 不再畫 mean 虛線
         pAll = pA;
         fprintf('  不分層：mean=%.4f mT  max=%.4f mT（%d 個殘差樣本）\n', muA, maxE, numel(eAll));
     end
@@ -171,35 +169,35 @@ function plot_err_hist_shell(USE_BIAS, Rum, Rsplit, SPLIT)
     xlabel(ax, '$\mathbf{Residual\;(mT)}$',    'Interpreter','latex', 'FontSize',36);
     ylabel(ax, '$\mathbf{Percentage\;(\%)}$',  'Interpreter','latex', 'FontSize',36);
 
-    % 圖例：左欄 = 系列、右欄 = 該系列的統計值（house 標準）
-    if strcmp(MODE,'overlay')
+    % 圖例：只列系列（[MODIFIED 2026-08-17] mean 虛線移除 → 統計值欄一併移除）
+    if strcmp(MODE,'overlay') || strcmp(MODE,'stack')
         % R 大寫；外層標成明確區間 150 < R <= 300（不用開放的 R > 150）
-        lg = legend(ax, [h1 h2 m1 m2], ...
+        lg = legend(ax, [h1 h2], ...
             {sprintf('R \\leq %d {\\mu}m', Rsplit), ...
-             sprintf('%d < R \\leq %d {\\mu}m', Rsplit, Rum), ...
-             sprintf('Inner mean = %.3f mT', mu1),  sprintf('Outer mean = %.3f mT', mu2)}, ...
+             sprintf('%d < R \\leq %d {\\mu}m', Rsplit, Rum)}, ...
             'Interpreter','tex', 'Location','northoutside', 'NumColumns',2);
-    elseif strcmp(MODE,'stack')
-        lg = legend(ax, [h1 h2 mA], ...
-            {sprintf('R \\leq %d {\\mu}m', Rsplit), ...
-             sprintf('%d < R \\leq %d {\\mu}m', Rsplit, Rum), ...
-             sprintf('Mean = %.3f mT', mean(eAll))}, ...
-            'Interpreter','tex', 'Location','northoutside', 'NumColumns',3);
     else
-        lg = legend(ax, [hA mA], ...
-            {sprintf('R \\leq %d {\\mu}m', Rum), ...
-             sprintf('Mean = %.3f mT', mean(eAll))}, ...
-            'Interpreter','tex', 'Location','northoutside', 'NumColumns',2);
+        lg = legend(ax, hA, {sprintf('R \\leq %d {\\mu}m', Rum)}, ...
+            'Interpreter','tex', 'Location','northoutside', 'NumColumns',1);
     end
     lg.FontSize = 24;  lg.FontWeight = 'bold';
     lg.Box = 'on';     lg.EdgeColor = 'k';   lg.LineWidth = 2.5;
     ax.Toolbar.Visible = 'off';   hold(ax,'off');
 
     drawnow;
-    axp = get(ax,'Position');   lgp = get(lg,'Position');   lgh = lgp(4);
+    axp = get(ax,'Position');   lgp = get(lg,'Position');
+    lgw = lgp(3);   lgh = lgp(4);
     GAPN = 0.022;   newTop = 1 - lgh - GAPN - 0.006;
     axp(4) = newTop - axp(2);   set(ax,'Position',axp);
-    set(lg, 'Position', [axp(1), newTop + GAPN, axp(3), lgh]);
+    % [MODIFIED 2026-08-18] 圖例寬度**自動貼合內容**（figure-style「圖例寬度自動貼合內容」）：
+    %   原本無條件 set 成 axp(3)（整個座標框寬），MODE='single' 只有一則短標籤
+    %   （如 `R ≤ 150 µm`）時會拉出一條又寬又空的長框。改為自然寬度 < 框寬 70%
+    %   就保持自然寬度並置中，否則才切齊座標框左右緣。
+    if lgw < 0.70*axp(3)
+        set(lg, 'Position', [axp(1) + (axp(3)-lgw)/2, newTop + GAPN, lgw, lgh]);
+    else
+        set(lg, 'Position', [axp(1), newTop + GAPN, axp(3), lgh]);
+    end
 
     mstr = 'single';  if USE_BIAS, mstr = 'eighteen'; end
     % shell = 各自正規化的疊圖；conv = 單一分布（不分層 或 依半徑分色堆疊）

@@ -37,7 +37,10 @@ function emit_results(matfile)
             T.mat(fid, 'F~[\mathrm{A}]', F_ex, pole, '');
             T.scalar_unit(fid, '{}^{B}\hat{g}_{I}', rec.gI_hat, 'mT/A');
             if isfield(rec,'NMAE')
-                fprintf(fid, '\\[ \\mathrm{NMAE} = \\dfrac{\\sum_i |\\varepsilon_i|}{\\sum_i |b_i|}\\cdot 100 = %.2f\\%% \\]\n', rec.NMAE);
+                % [MODIFIED 2026-08-17 使用者拍板] 向量範數版（與 Maxwell 分支同步）
+                fprintf(fid, ['\\[ \\mathrm{NMAE} = \\dfrac{\\sum_j\\sum_i \\left\\| b_{ij} - ' ...
+                              'S_i\\,{}^{B}\\hat{g}_{I}\\bar{K}_{I}F_j \\right\\| / N_p}{\\bar{b}}' ...
+                              '\\cdot 100 = %.2f\\%% \\]\n'], rec.NMAE);
             end
             cunit = 'mT/A';
         case 'voltage'
@@ -51,7 +54,10 @@ function emit_results(matfile)
             T.mat(fid, 'V~[\mathrm{mV}]', rec.V(:,p2a), pole, '');
             T.scalar_unit(fid, '{}^{B}\hat{g}_{V}', rec.gV_hat, 'mT/mV');
             if isfield(rec,'NMAE')                            % [MODIFIED 2026-08-15] voltage 也印 NMAE（同 current 定義與版式）
-                fprintf(fid, '\\[ \\mathrm{NMAE} = \\dfrac{\\sum_i |\\varepsilon_i|}{\\sum_i |b_i|}\\cdot 100 = %.2f\\%% \\]\n', rec.NMAE);
+                % [MODIFIED 2026-08-17] 向量範數版（與 Maxwell 分支同步）
+                fprintf(fid, ['\\[ \\mathrm{NMAE} = \\dfrac{\\sum_j\\sum_i \\left\\| b_{ij} - ' ...
+                              'S_i\\,{}^{B}\\hat{g}_{V}\\bar{D}V_j \\right\\| / N_p}{\\bar{b}}' ...
+                              '\\cdot 100 = %.2f\\%% \\]\n'], rec.NMAE);
             end
             cunit = 'mT/mV';
         otherwise

@@ -81,68 +81,48 @@
 
 ---
 
-# 🔒 附則二：K̄(2,2) 固定 0.8340 → **current 與 voltage 必須共用同一顆 G**（強制）
+# 🔒 附則三：擬合誤差一律印 **NMAE（向量範數版）**，不印 RMSPE（強制）
 
-**使用者拍板（2026-08-05）**：long2016 半切六極的 **K̄(2,2) 固定為 0.8340**（依「上磁極全錐應強於半切下磁極」
-的物理判準設定；自由擬合值 Maxwell 0.8309 / APDL 0.8173）。連帶的**硬性要求**：
-
-> **G 一改，`voltage_base` 的 G 必須跟 `current_base` 的 G 一模一樣。**
-
-## 為什麼必須一樣（不是選項）
-
-`solve_current` 與 `solve_voltage` 的 `G = (AᵀA)\(AᵀBstack)` **是同一個電荷擬合**（只吃 WP 場，
-與 sensor 位置無關），兩者本來就逐位相同（實測 `max|G_voltage − G_current| = 0`）。
-只在 current 端改 G 而 voltage 端沿用舊 G ⇒ 同一顆物理電荷出現兩個版本、K̄_I 與 D̄ 不自洽。
-
-## 實作要點
-
-0. **[ADDED 2026-08-10] 已參數化，不要再 inline 手改**：`matlab/Maxwell/main/main.m` 的 **`K22_SET`**
-   （預設 `[]` = 自由擬合）；設 `0.8340` 即產生本變體，輸出檔名自動加 `_k22_0p8340`。
-   實作在 `solve_current.m` / `solve_voltage.m` 的可選第 7 引數（**兩支逐字相同的 G 修改**，
-   以強制滿足下面第 2 點）。`solve_current` 另 assert `F=identity`（K̄(2,2)=(5/6)·G(2,2)/G(1,1) 才成立）。
-1. **只改 `G(2,2)`** → `(6/5)·0.8340·G(1,1)`；`ℓ̂`、`e`、其餘 35 個 G 元素**不動**。
-   gauge 除的是 `G(1,1)`（未動）⇒ K̄ 其餘元素、`ĝ_I` **完全不變**。
-2. **voltage 端套用同一顆 G**：`H_V=(G·Vᵀ)/(V·Vᵀ)` → `D̄`、`ĝ_V` 重算（`V` 沿用原 `.mat`，不必重載 sensor 場）。
-3. **RMSPE 兩邊必相同**（同一顆 G、同一份 WP 場）：Maxwell R150 eighteen = **0.3381%**（自由解 0.3074%）。
-   對不上就是有一邊沒同步。
-4. **檔名**：variant 加 tag `maxwell_k22_0p8340` → `model_results_{current,voltage}_maxwell_k22_0p8340.pdf`；
-   **不覆蓋**自由擬合版（`..._maxwell.pdf` 保留）。`.mat` 另存 `K22_set` / `K22_free` 兩欄供追溯。
-5. **PDF 內不印說明**（使用者拍板）；**揭露寫在 `matlab/Maxwell/results/README.md`**
-   —— 該 README 是這件事的 single source of truth，改動要同步。
-
-## ⚠ 使用限制（寫論文時）
-
-- K̄(2,2) / D̄(2,2) 是**約束值**，**不可**表述成「最小平方擬合得到」（自由擬合會給 0.8309 / 1.0103）。
-- 本版的 G **不再是** `argmin‖S·G − B‖`；從 `.mat` 的 ℓ̂/e 重算 G 會得到自由解。
-- 依據：該方向對資料近乎退化 —— 強制 0.8340 只讓 RMSPE +0.031 pp；連 ℓ̂+e 全放重擬合僅 +0.0002 pp
-  （APDL 實測 0.4695%→0.4696%）。裸對角的排序會隨取樣半徑（R=100 三對全反 / R≥180 三對全正）
-  與求解器（APDL 三對全反）翻動，本身不帶物理資訊。
-
-## 何時觸發本附則
-
-- 動到 K̄(2,2) / G / `k22_0p8340` 變體、或重跑 current|voltage 任一邊時 → **兩邊都要重出**。
-- 換資料源（換網格 / 換 R / 換求解器）而要沿用此約束時 → 重新計算 `(6/5)·0.8340·G(1,1)`，不可沿用舊的 G(2,2) 數值。
-
----
-
-# 🔒 附則三：擬合誤差一律印 **NMAE**，不印 RMSPE（強制）
-
-**使用者拍板（2026-08-15）**：Calibration 結果 PDF 的擬合誤差指標，**由 RMSPE 改為 NMAE**。
+**使用者拍板（2026-08-15 改用 NMAE；2026-08-17 改為向量範數版）**。
 
 | | 定義 | 出現位置 |
 |---|---|---|
-| ~~RMSPE~~（**停用**） | `sqrt(Σεᵢ² / Σbᵢ²)·100` | 只留在 `.mat`（`rec.RMSPE`）供追溯，**PDF 不印** |
-| **NMAE**（現行） | **`Σ|εᵢ| / Σ|bᵢ| · 100`** | current 與 voltage 的 PDF 都印這個 |
+| ~~RMSPE~~（**停用**） | `sqrt(Σεᵢ² / Σbᵢ²)·100` | 只留 `.mat`（`rec.RMSPE`），**PDF 不印** |
+| ~~NMAE-L1~~（**已作廢**） | `Σ\|εᵢ\| / Σ\|bᵢ\| · 100`（逐**分量**絕對值） | 只留 `.mat`（`rec.NMAE_L1`），**PDF 不印** |
+| **NMAE**（現行） | **`[ Σ_j Σ_i ‖b_ij − S_i·ᴮĝ·M̄·u_j‖ / N_p ] / b̄ · 100`** | current 與 voltage 的 PDF 都印這個 |
 
-- ε = `S·G − Bstack`（模型減 FEM），與 RMSPE 同一顆殘差，只是換成 **L1**（RMSPE 是 L2）。
-- 分母同樣是**同一批** b 的絕對值和 —— 不要改成 `mean(|b|)` 或逐點 norm，否則與既有數字不可比。
+其中 `M̄·u_j` = current 的 `K̄_I·F_j` / voltage 的 `D̄·V_j`；`b̄ = Σ_j Σ_i ‖b_ij‖ / N_p`（**與分子同結構**，
+故 `N_p` 對消、比值無因次）。
+
+- **關鍵差異**：先把每個「點 i × 激發 j」的 **3 維殘差取歐氏長度 ‖ε_ij‖** 再相加，
+  不是逐分量取絕對值。同一份殘差下 **新值必 < 舊 L1 值**（實測比值穩定在 **0.73~0.76**）。
+- `S_i·ĝ·M̄·u_j ≡ S_i·G_j`（因 `Ĥ·u = G`），故實作直接用 `S*G − Bstack` 當殘差，只改**聚合方式**：
+  ```matlab
+  e_ij = sqrt(sum(reshape(resid,  3, []).^2, 1));   % 每點每激發的 ‖ε‖
+  b_ij = sqrt(sum(reshape(Bstack, 3, []).^2, 1));
+  rm.NMAE = sum(e_ij) / sum(b_ij) * 100;
+  ```
+  ⚠ `reshape(·,3,[])` 正確的前提是 Bstack 以 `[bx;by;bz]` 逐點堆疊（現行 `main.m` 即如此）。
+  ⚠ 唯一例外：`h11 < 0` 的退化區（ĝ 已取 abs）`ĝ·M̄·u = −G`，該區間本就判定不可用。
 - 實作位置（**四支 solve + 兩支 emit，兩個分支都要同步**）：
   - `matlab/{Maxwell,APDL/Calibration_using_FEM_modeling}/function/solve_current.m`、`solve_voltage.m`
-    → 算 `rm.NMAE`（`rm.RMSPE` 保留不刪）
+    → 算 `rm.NMAE` 與 `rm.NMAE_L1`（`rm.RMSPE` 保留不刪）
   - 兩支 `main/main.m` → `rec.NMAE = rm.NMAE`
-  - 兩支 `function/emit_results.m` → LaTeX 改成
-    `\[ \mathrm{NMAE} = \dfrac{\sum_i |\varepsilon_i|}{\sum_i |b_i|}\cdot 100 = %.2f\% \]`
-- **舊 PDF 上的 RMSPE 數字不可與新的 NMAE 並列比較**（L2 vs L1，NMAE 通常較小）。要比就一起重跑。
+  - 兩支 `function/emit_results.m` → LaTeX（current 版，voltage 把 `\hat{g}_{I}\bar{K}_{I}F_j` 換成 `\hat{g}_{V}\bar{D}V_j`）：
+    `\[ \mathrm{NMAE} = \dfrac{\sum_j\sum_i \left\| b_{ij} - S_i\,{}^{B}\hat{g}_{I}\bar{K}_{I}F_j \right\| / N_p}{\bar{b}}\cdot 100 = %.2f\% \]`
+- **三代指標的數字互不可並列比較**（RMSPE=L2 / NMAE-L1=分量 L1 / NMAE=向量範數）。要比就一起重跑。
+
+## 換指標時的回填法（已驗證可重複，2026-08-15 建立、2026-08-17 再次沿用）
+
+`.mat` 沒存 `P`/`Bstack`，但存了設定。做法＝**從 `.mat` 的
+`model/GEOM/VARIANT/DATASET/R_select/GRID_NRPT` 重建取樣點，再用存著的 `l_hat/e/Fmap/V`
+呼叫原 `solve_*` 取殘差** —— 只重算誤差、不重跑擬合。
+
+- **驗證判準＝「RMSPE 與 `.mat` 逐位相同」**（2026-08-17 實測 12/12 皆 `0.0e+00`）。對不上就跳過不寫入。
+- `rec.VARIANT` 存的是**輸出名**（含 `_convN…/_k22_…/_soff…`），要
+  `regexprep(rec.VARIANT,'_convN\d+|_k22_[0-9p]+|_soff[0-9p]+mm','')` 剝掉才是資料 variant。
+  ⚠ `maxwell_mesh0p06` 是**真的資料 variant**，不可剝。
+- 回填後把 `rec.NMAE` 寫回 `.mat` 再 `emit_results`，否則 `.mat` 與 PDF 不同調。
 
 ## ⚠ 連帶：sensor 距非定案值時輸出檔名要帶 tag
 
@@ -155,7 +135,6 @@
 ## 觸發片語
 - 「改 calibration 結果輸出 / emit_results」
 - 「RMSPE / NMAE / 擬合誤差指標」
-- 「K̄(2,2) / k22 / 固定對角 / current 與 voltage 的 G 要一致」
 - 「加印 / 輸出 ᴮĤ / H_I / H_V / 物理轉移矩陣」
 - 「加印 e/ℓ̂ / 無因次偏移 / 電荷格 Pc」
 - 新增 Calibration variant 要出結果 PDF 時

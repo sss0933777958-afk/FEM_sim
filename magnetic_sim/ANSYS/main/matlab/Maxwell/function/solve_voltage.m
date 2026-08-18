@@ -5,7 +5,7 @@ function [D_bar, gV_hat, G, rm] = solve_voltage(l_hat, e, Pc_base, P, Bstack, V,
 %     P     : Np×3 [m]；Bstack：3Np×6 all-source [mT]；V：6×6 sensor 電壓矩陣 [mV]（all-source）
 %     K22_set（可選）：K̄(2,2) 物理約束值（[]=自由擬合）。見下方 [ADDED] 段。
 %   Pc=make_Pc(e) → A=build_S(l,Pc) → G=(AᵀA)\(AᵀBstack)（6×N_I profiled 電荷）。
-%   H_V=(G·Vᵀ)/(V·Vᵀ)；gV_hat=(6/5)H_V(1,1)[mT/mV]；D_bar=(5/(6·H_V(1,1)))·H_V（gauge D̄(1,1)=5/6）；
+%   H_V=(G·Vᵀ)/(V·Vᵀ)；gV_hat=(6/5)|H_V(1,1)|[mT/mV]；D_bar=(5/(6·H_V(1,1)))·H_V（gauge D̄(1,1)=5/6）；
 %   rm=𝒞/κ（逐節點 svd(S·(gV_hat·D_bar))）。
     if nargin < 7, K22_set = []; end
     Pc = make_Pc(e, Pc_base);
@@ -22,13 +22,25 @@ function [D_bar, gV_hat, G, rm] = solve_voltage(l_hat, e, Pc_base, P, Bstack, V,
     end
 
     H_V    = (G * V.') / (V * V.');                  % Ĥ_V（un-gauged）
-    gV_hat = (6/5) * H_V(1,1);                       % ĝ_V [mT/mV]
+    % [MODIFIED 2026-08-17 使用者拍板] ĝ_V 取 |H_V(1,1)|，與 solve_current 的 ĝ_I 同步
+    %   （「h11 一律取絕對值」）。理由與副作用見 solve_current.m 的對應註解：
+    %   增益由**單一元素** (1,1) 定義，退化取樣（小 R）會讓它翻負、畫出假的負增益。
+    %   ⚠ H_V(1,1)>0 的正常結果**完全不受影響**（abs 是恆等）。
+    %   ⚠ 副作用（僅在 H_V(1,1)<0 時）：D̄ 的 gauge 仍除**帶號**的 H_V(1,1)，
+    %     故該情形下 ĝ_V·D̄ = −H_V，恆等式 ᴮĤ_V = ĝ_V·D̄ = H_V 不成立。
+    %   ⚠ 𝒞 / κ 不受影響：control_metrics 取 svd，整體變號不改奇異值。
+    gV_hat = (6/5) * abs(H_V(1,1));                  % ĝ_V [mT/mV]
     D_bar  = (5/(6*H_V(1,1))) * H_V;                 % D̄，gauge D̄(1,1)=5/6
     rm     = control_metrics(P, gV_hat*D_bar, l_hat, Pc);   % 𝒞/κ（物理 Ĥ_V=ĝ·D̄）
     resid    = A*G - Bstack;                          % [ADDED] 擬合殘差 ε [mT]（與 solve_current 同定義）
     rm.RMSPE = sqrt(sum(resid(:).^2) / sum(Bstack(:).^2)) * 100;   % RMSPE [%] = sqrt(Σε²/Σb²)·100
-    % [ADDED 2026-08-15 使用者拍板] PDF 改印 NMAE（L1 版）；RMSPE 仍算、只存 .mat 供追溯。
-    rm.NMAE  = sum(abs(resid(:))) / sum(abs(Bstack(:))) * 100;     % NMAE [%] = Σ|ε|/Σ|b|·100
+    % [MODIFIED 2026-08-17 使用者拍板] NMAE 改為**向量範數**版（與 solve_current 同步）：
+    %   NMAE = [ Σ_j Σ_i ‖b_ij − S_i·ᴮĝ_V·D̄·V_j‖ / N_p ] / b̄ · 100，
+    %   b̄ = Σ_j Σ_i ‖b_ij‖ / N_p。理由與注意事項見 solve_current.m 的對應註解。
+    e_ij     = sqrt(sum(reshape(resid,  3, []).^2, 1));   % 1×(Np·N_I) 每點每激發的 ‖ε‖
+    b_ij     = sqrt(sum(reshape(Bstack, 3, []).^2, 1));
+    rm.NMAE  = sum(e_ij) / sum(b_ij) * 100;                        % NMAE [%]
+    rm.NMAE_L1 = sum(abs(resid(:))) / sum(abs(Bstack(:))) * 100;   % 舊 L1 分量版，留存追溯
     if ~isempty(K22_set)                              % [ADDED] 約束值與自由值一併回報，供 .mat 追溯
         rm.K22_set = K22_set;   rm.K22_free = rm_K22_free;
     end

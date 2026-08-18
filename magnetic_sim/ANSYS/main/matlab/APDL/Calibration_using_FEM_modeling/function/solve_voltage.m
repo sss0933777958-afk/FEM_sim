@@ -4,20 +4,27 @@ function [D_bar, gV_hat, G, rm] = solve_voltage(l_hat, e, Pc_base, P, Bstack, V)
 %     l_hat : 有效長度 [m]；e：17×1 偏移；Pc_base：3×6 理想電荷格
 %     P     : Np×3 [m]；Bstack：3Np×6 all-source [mT]；V：6×6 sensor 電壓矩陣 [mV]（all-source）
 %   Pc=make_Pc(e) → A=build_S(l,Pc) → G=(AᵀA)\(AᵀBstack)（6×N_I profiled 電荷）。
-%   H_V=(G·Vᵀ)/(V·Vᵀ)；gV_hat=(6/5)H_V(1,1)[mT/mV]；D_bar=(5/(6·H_V(1,1)))·H_V（gauge D̄(1,1)=5/6）；
+%   H_V=(G·Vᵀ)/(V·Vᵀ)；gV_hat=(6/5)|H_V(1,1)|[mT/mV]；D_bar=(5/(6·H_V(1,1)))·H_V（gauge D̄(1,1)=5/6）；
 %   rm=𝒞/κ（逐節點 svd(S·(gV_hat·D_bar))）。
     Pc = make_Pc(e, Pc_base);
     A  = build_S(l_hat, Pc, P);
     G  = (A.'*A) \ (A.'*Bstack);                     % 6×N_I
 
     H_V    = (G * V.') / (V * V.');                  % Ĥ_V（un-gauged）
-    gV_hat = (6/5) * H_V(1,1);                       % ĝ_V [mT/mV]
+    % [MODIFIED 2026-08-17 使用者拍板] ĝ_V 取 |H_V(1,1)|，與 solve_current 的 ĝ_I 同步。
+    %   與 Maxwell 分支 function/solve_voltage.m 同步（該檔有完整理由與副作用說明）。
+    %   摘要：增益由單一元素 (1,1) 定義，退化取樣會讓它翻負；H_V(1,1)>0 時 abs 是恆等。
+    gV_hat = (6/5) * abs(H_V(1,1));                  % ĝ_V [mT/mV]
     D_bar  = (5/(6*H_V(1,1))) * H_V;                 % D̄，gauge D̄(1,1)=5/6
     rm     = control_metrics(P, gV_hat*D_bar, l_hat, Pc);   % 𝒞/κ（物理 Ĥ_V=ĝ·D̄）
     resid    = A*G - Bstack;                          % [ADDED] 擬合殘差 ε [mT]（與 solve_current 同定義）
     rm.RMSPE = sqrt(sum(resid(:).^2) / sum(Bstack(:).^2)) * 100;   % RMSPE [%] = sqrt(Σε²/Σb²)·100
-    % [ADDED 2026-08-15 使用者拍板] PDF 改印 NMAE（L1 版）；RMSPE 仍算、只存 .mat 供追溯。
-    rm.NMAE  = sum(abs(resid(:))) / sum(abs(Bstack(:))) * 100;     % NMAE [%] = Σ|ε|/Σ|b|·100
+    % [MODIFIED 2026-08-17 使用者拍板] NMAE 改為**向量範數**版（與 Maxwell 分支同步）：
+    %   NMAE = [ Σ_j Σ_i ‖b_ij − S_i·ᴮĝ_V·D̄·V_j‖ / N_p ] / b̄ · 100，b̄ = Σ_j Σ_i ‖b_ij‖ / N_p。
+    e_ij     = sqrt(sum(reshape(resid,  3, []).^2, 1));   % 每點每激發的 ‖ε‖
+    b_ij     = sqrt(sum(reshape(Bstack, 3, []).^2, 1));
+    rm.NMAE  = sum(e_ij) / sum(b_ij) * 100;                        % NMAE [%]
+    rm.NMAE_L1 = sum(abs(resid(:))) / sum(abs(Bstack(:))) * 100;   % 舊 L1 分量版，留存追溯
 end
 
 % ---- 控制範圍指標：逐節點 svd(S·Ĥ) → 𝒞=∏σ、κ=σ₃/σ₁ ----

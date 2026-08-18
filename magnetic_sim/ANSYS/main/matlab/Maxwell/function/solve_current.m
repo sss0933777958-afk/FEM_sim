@@ -5,7 +5,7 @@ function [KI_bar, gI_hat, G, rm] = solve_current(l_hat, e, Pc_base, P, Bstack, F
 %     P     : Np×3 [m]；Bstack：3Np×6 all-source [mT]；F：6×N_I coil→pole 連接矩陣
 %     K22_set（可選）：K̄(2,2) 物理約束值（[]=自由擬合）。見下方 [ADDED] 段。
 %   Pc=make_Pc(e) → S=build_S(l,Pc) → G=(SᵀS)\(SᵀBstack)（6×N_I profiled 電荷）。
-%   H_I=G·Fᵀ(FFᵀ)⁻¹；gI_hat=(6/5)H_I(1,1)[mT/A]；KI_bar=(5/(6·G(1,1)))·H_I（gauge K̄(1,1)=5/6）；
+%   H_I=G·Fᵀ(FFᵀ)⁻¹；gI_hat=(6/5)|H_I(1,1)|[mT/A]；KI_bar=(5/(6·G(1,1)))·H_I（gauge K̄(1,1)=5/6）；
 %   rm=𝒞/κ（逐節點 svd(S·(gI_hat·KI_bar))）。
     if nargin < 7, K22_set = []; end
     Pc = make_Pc(e, Pc_base);
@@ -26,13 +26,32 @@ function [KI_bar, gI_hat, G, rm] = solve_current(l_hat, e, Pc_base, P, Bstack, F
     end
 
     H_I    = G * F.' / (F * F.');                    % Ĥ_I（un-gauged）
-    gI_hat = (6/5) * H_I(1,1);                       % ĝ_I [mT/A]
+    % [MODIFIED 2026-08-17 使用者拍板] ĝ_I 取 |H_I(1,1)|，增益一律回報**大小**。
+    %   起因：ĝ_I 由**單一元素** H_I(1,1)（=P1 自激發電荷）定義，是所有輸出量裡最脆弱的。
+    %   R<=40um 取樣時六顆電荷近簡併，G 的下極對角整層翻負（P1/P3/P6 −33/−26/−34、
+    %   上極 +45/+48/+45）→ ĝ_I 被 (1,1) 的負號直接繼承，畫出 −40 mT/A 的假谷。
+    %   ⚠ 對 R>=60um 的既有結果**完全無影響**（G(1,1) 恆正，abs 是恆等）。
+    %   ⚠ 副作用（僅在 G(1,1)<0 的退化區）：K̄_I 的 gauge 仍除**帶號**的 G(1,1)，
+    %     故此時 ĝ_I·K̄_I = −H_I，規則 calibration-transfer-matrix-output.md 的
+    %     恆等式 ᴮĤ_I = ĝ_I·K̄_I = H_I 不再成立。該區間本來就判定為不可用，不另處理。
+    %   ⚠ 𝒞 / κ 不受影響：control_metrics 取 svd，整體變號不改奇異值。
+    gI_hat = (6/5) * abs(H_I(1,1));                  % ĝ_I [mT/A]
     KI_bar = (5/(6*G(1,1))) * H_I;                   % K̄_I，gauge K̄(1,1)=5/6
     rm     = control_metrics(P, gI_hat*KI_bar, l_hat, Pc);   % 𝒞/κ（物理 Ĥ_I=ĝ·K̄）
     resid    = S*G - Bstack;                          % 擬合殘差 ε [mT]（模型 S·G vs FEM b）
     rm.RMSPE = sqrt(sum(resid(:).^2) / sum(Bstack(:).^2)) * 100;   % RMSPE [%] = sqrt(Σε²/Σb²)·100
-    % [ADDED 2026-08-15 使用者拍板] PDF 改印 NMAE（L1 版）；RMSPE 仍算、只存 .mat 供追溯。
-    rm.NMAE  = sum(abs(resid(:))) / sum(abs(Bstack(:))) * 100;     % NMAE [%] = Σ|ε|/Σ|b|·100
+    % [MODIFIED 2026-08-17 使用者拍板] NMAE 改為**向量範數**版：
+    %   NMAE = [ Σ_j Σ_i ‖b_ij − S_i·ᴮĝ_I·K̄_I·F_j‖ / N_p ] / b̄ · 100，
+    %   b̄ = Σ_j Σ_i ‖b_ij‖ / N_p（同結構 → N_p 對消，比值無因次）。
+    %   ⚠ 與舊版（逐**分量**取絕對值 Σ|ε|/Σ|b|）不同：這裡先把每個「點×激發」的 3 維殘差
+    %     取歐氏長度 ‖ε_ij‖ 再相加。同一份殘差下新值必 ≥ 舊值（‖·‖₂ ≥ 各分量平均）。
+    %   ⚠ S_i·ĝ·K̄·F_j ≡ S_i·G_j（因 Ĥ_I·F = G），故實作用 S*G；僅在退化區 h11<0
+    %     （ĝ 已取 abs）兩者差一個整體負號，該區間本就判定不可用。
+    %   reshape(·,3,[]) 依 Bstack 的堆疊順序 [bx;by;bz] 逐點成行，欄 = (點, 激發)。
+    e_ij     = sqrt(sum(reshape(resid,  3, []).^2, 1));   % 1×(Np·N_I) 每點每激發的 ‖ε‖
+    b_ij     = sqrt(sum(reshape(Bstack, 3, []).^2, 1));   % 同上的 ‖b‖
+    rm.NMAE  = sum(e_ij) / sum(b_ij) * 100;                        % NMAE [%]
+    rm.NMAE_L1 = sum(abs(resid(:))) / sum(abs(Bstack(:))) * 100;   % 舊 L1 分量版，留存追溯
     if ~isempty(K22_set)                              % [ADDED] 約束值與自由值一併回報，供 .mat 追溯
         rm.K22_set = K22_set;   rm.K22_free = rm_K22_free;
     end

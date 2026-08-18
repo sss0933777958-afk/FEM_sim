@@ -65,10 +65,12 @@ function plot_err_hist_overlay(SRC, Rsel_um, CONV)
             line(ax, [edg1(i) edg1(i)], [0 pct1(i)], 'Color','k', 'LineWidth',0.5);   % 全高垂直邊
         end
     end
-    % 兩個分布的 mean 虛線(深藍=single、深紅=eighteen)
+    % [MODIFIED 2026-08-17 使用者拍板] **不再畫 mean 虛線**（連同其圖例條目一併移除）。
+    %   mean 仍算出來、印在 console 供追溯；要恢復就把下面兩行 xline 取消註解並加回圖例。
     mu0 = mean(err0);  mu1 = mean(err1);
-    ml0 = xline(ax, mu0, '--', 'Color',[0.00 0.00 0.00], 'LineWidth',2.8);   % single mean 0.250（黑，高對比）
-    ml1 = xline(ax, mu1, '--', 'Color',[0.00 0.60 0.00], 'LineWidth',2.8);   % eighteen mean 0.038（深綠，高對比）
+    fprintf('  mean：single %.4f mT / eighteen %.4f mT（圖上不再標虛線）\n', mu0, mu1);
+    % ml0 = xline(ax, mu0, '--', 'Color',[0.00 0.00 0.00], 'LineWidth',2.8);   % single mean（黑）
+    % ml1 = xline(ax, mu1, '--', 'Color',[0.00 0.60 0.00], 'LineWidth',2.8);   % eighteen mean（深綠）
 
     box(ax,'on');  grid(ax,'off');
     set(ax,'FontSize',FS,'FontWeight','bold','LineWidth',2.5,'TickLength',[.015 .015],'TickDir','out');
@@ -85,11 +87,8 @@ function plot_err_hist_overlay(SRC, Rsel_um, CONV)
     text(ax, xr(2), -0.022*ytop, sprintf('%g',xr(2)), 'HorizontalAlignment','center', ...
          'VerticalAlignment','top', 'FontSize',FS,'FontWeight','bold','Clipping','off');
     hLegR = bar(ax, NaN, NaN, 'FaceColor',cR, 'FaceAlpha',0.60, 'EdgeColor','k', 'LineWidth',1.2);   % 只給圖例：紅框加黑邊(實際紅 bar 仍無邊)
-    % [MODIFIED] 圖例移到圖框外「上方」、**兩列**(NumColumns=2 為欄優先填充 → 條目 1,2 = 左欄兩列、
-    %   3,4 = 右欄兩列，故 [h0 hLegR ml0 ml1] 恰為「第一列 Single、第二列 Eighteen」)。
-    %   欄距不用白字墊 —— 下面會強制圖例寬度 = 座標軸寬度，兩欄自動平均散開。
-    lg = legend([h0 hLegR ml0 ml1], {'Single parameter', 'Eighteen parameters', ...
-                sprintf('Single mean = %.3f mT', mu0), sprintf('Eighteen mean = %.3f mT', mu1)}, ...
+    % [MODIFIED 2026-08-17] mean 虛線移除 → 圖例只剩兩個系列，兩欄一列。
+    lg = legend([h0 hLegR], {'Single parameter', 'Eighteen parameters'}, ...
                 'Interpreter','tex', 'Location','northoutside', 'NumColumns',2);
     lg.FontSize = 24;  lg.FontWeight = 'bold';  lg.Box = 'on';  lg.EdgeColor = 'k';  lg.LineWidth = 2.5;
     xlabel(ax, '$\mathbf{Residual\;(mT)}$', ...
@@ -101,12 +100,18 @@ function plot_err_hist_overlay(SRC, Rsel_um, CONV)
     % [ADDED] 圖例框:①左右邊界對齊圖框(寬度=ax 寬、x 起點同 ax，兩欄自動平均散開)
     %                ②壓低 ax 上緣，讓圖例底線與圖框上緣「留明確間隙」、不相黏
     drawnow;
-    axp = get(ax,'Position');  lgh = get(lg,'Position');  lgh = lgh(4);
+    axp = get(ax,'Position');  lgp = get(lg,'Position');  lgw = lgp(3);  lgh = lgp(4);
     GAPN   = 0.022;                          % 圖例底線 ↔ 圖框上緣的間隙(normalized)
     newTop = 1 - lgh - GAPN - 0.006;         % ax 新上緣(頂端留 0.006 給圖例外框)
     axp(4) = newTop - axp(2);                % 只壓上緣、下緣不動
     set(ax, 'Position', axp);
-    set(lg, 'Position', [axp(1), newTop + GAPN, axp(3), lgh]);
+    % [MODIFIED 2026-08-17] 條目由 4 個減為 2 個 → 依 figure-style「圖例寬度自動貼合內容」：
+    %   自然寬度 < 框寬 70% 就保持自然寬度並置中，否則才切齊座標框左右緣。
+    if lgw < 0.70*axp(3)
+        set(lg, 'Position', [axp(1) + (axp(3)-lgw)/2, newTop + GAPN, lgw, lgh]);
+    else
+        set(lg, 'Position', [axp(1), newTop + GAPN, axp(3), lgh]);
+    end
 
     % [MODIFIED 2026-08-03] 檔名一律明確標「求解器_半徑」（overlay 本身含 single+eighteen，不標模型）
     cstr = ''; if CONV, cstr = '_conv'; end

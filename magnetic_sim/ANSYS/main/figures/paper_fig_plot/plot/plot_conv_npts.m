@@ -1,20 +1,24 @@
 function plot_conv_npts(force)
-% plot_conv_npts -- R=150um：l_hat、K_I、g_I 隨取樣點數的收斂（三張圖，判到收斂就收手）
+% plot_conv_npts -- R=150um：l_hat、g_I 隨取樣點數的收斂（兩張圖，判到收斂就收手）
 % =========================================================================
 %   沿「按比例輪流 +1」的等測度網格階梯（起點 [1 2 3]、權重 1 : 3 : 3pi）逐個設計擬合，
 %   同時追兩件事：
 %
 %   圖 A  l_hat vs 點數                     → ell_vs_npts_conv_maxwell_R150.png
 %         含 N=0 錨點（值 = 初值 l0 = 500 um，畫在 log 軸最左端、端點標 0）。
-%         收斂判準：第一個設計 i，其後**連續 7 步**「相對前一點」變化率皆 < 0.5%。
+%         收斂判準：第一個設計 i，其後**連續 10 步**「相對前一點」變化率皆 < 0.5%
+%         （視窗 KELL；10 段變化率 ⇒ 涵蓋 v(i)..v(i+10) 共 11 個設計點）。
+%         [MODIFIED 2026-08-17] 使用者拍板：**圖上不再畫收斂點虛線**（判定照舊）。
 %
-%   圖 B  K_I 的 Frobenius 相對變化 vs 點數 → kifrob_vs_npts_conv_maxwell_R150.png
-%         縱軸 = ||K_i - K_{i-1}||_F / ||K_{i-1}||_F * 100 [%]，**線性刻度**。
-%         曲線**從第 2 個設計起**（第 1 個沒有前一點可比），無 N=0 錨點。
-%         收斂判準：第一個 i，其後**連續 5 步**該值皆 < 0.5%。
+%   圖 B  [REMOVED 2026-08-17] K_I 的 Frobenius 相對變化 vs 點數（使用者拍板不需要）。
+%         縱軸曾是 ||K_i - K_{i-1}||_F / ||K_{i-1}||_F * 100 [%]，收斂判準為
+%         「第一個 i，其後連續 10 步該值 < 0.5%」（視窗 KKI）。
+%         ⚠ **計算保留**（console 報告 + 快取 S.fro1/fro2 + sweep 早停的六判準之一），
+%         只是不再出圖 —— 拿掉計算會改變早停時機、縮短快取涵蓋的設計範圍。
 %
 %   圖 C  g_I_hat vs 點數                   → gain_vs_npts_conv_maxwell_R150.png
-%         [ADDED 2026-08-13] 收斂判準與 l_hat 同一把尺（後 5 步相對變化 < 0.5%）。
+%         [ADDED 2026-08-13] 收斂判準與 l_hat 同一把尺（後 10 步相對變化 < 0.5%）。
+%         [MODIFIED 2026-08-17] 使用者拍板：**圖上不再畫收斂點虛線**（判定照舊）。
 %         無 N=0 錨點（g_I 沒有初值）；小 N 端近簡併值離譜，只畫 N >= 20。
 %
 %   ⚠ K_I 的號誌條件（off-diag 全負、對角全正）**不列入本腳本的判準**：本腳本圖 B 用的是
@@ -91,13 +95,19 @@ function plot_conv_npts(force)
     A1  = [l0*1e6,     S.ell1(1:ic)];
     A2  = [l0*1e6,     S.ell2(1:ic)];
     fprintf('\n[圖A] 截到索引 %d（N=%d）＝收斂點後 3 個設計\n', ic, S.N(ic));
-    mk('ell', NA, A1, A2, idx2N(S.N,S.iell1), idx2N(S.N,S.iell2), ...
+    % [MODIFIED 2026-08-17] 使用者拍板：本圖**不畫收斂點虛線**（Nc 傳 NaN 即不畫）。
+    %   收斂點仍照常判定並印在 console / 存進快取，只是不畫在圖上。
+    mk('ell', NA, A1, A2, NaN, NaN, ...
        '$\mathbf{\hat{\ell}\;(micro\;meter)}$', true, figdir, [], 'linear');
 
-    %% ---- 圖 B：K_I 的 Frobenius 相對變化（從第 2 個設計起）----------------
-    m   = 2:numel(S.N);
-    mk('kifrob', S.N(m), S.fro1(m), S.fro2(m), idx2N(S.N,S.ifro1), idx2N(S.N,S.ifro2), ...
-       '$\mathbf{\|\Delta \bar{K}_{I}\|_{F}/\|\bar{K}_{I}\|_{F}\;(\%)}$', false, figdir);
+    %% ---- 圖 B：K_I 的 Frobenius 相對變化 —— [REMOVED 2026-08-17] -----------
+    % 使用者拍板：這張圖不需要了，`kifrob_vs_npts_conv_maxwell_R150.png` 已刪除。
+    % ⚠ Frobenius 的**計算**刻意保留（`S.fro1/fro2`、`S.ifro1/ifro2`、console 報告、
+    %   sweep 早停的六判準之一）—— 拿掉會改變早停時機、讓快取涵蓋的設計範圍縮短。
+    % 要恢復這張圖，把下面兩行取消註解即可：
+    %   m = 2:numel(S.N);
+    %   mk('kifrob', S.N(m), S.fro1(m), S.fro2(m), idx2N(S.N,S.ifro1), idx2N(S.N,S.ifro2), ...
+    %      '$\mathbf{\|\Delta \bar{K}_{I}\|_{F}/\|\bar{K}_{I}\|_{F}\;(\%)}$', false, figdir);
 
     %% ---- 圖 C：g_I_hat（無 N=0 錨點：g_I 沒有初值）------------------------
     % [ADDED 2026-08-13] 判準加入 g_I 後補這張。**從階梯第一個設計（N=6）畫起**，
@@ -107,7 +117,8 @@ function plot_conv_npts(force)
     %   （曾試線性軸：N=6~30 的 9 個點會壓在最左緣、single 的震盪看不清 → 還原回對數。）
     icg = min(numel(S.N), max([S.igI1, S.igI2]) + 3);
     fprintf('[圖C] 截到索引 %d（N=%d）＝收斂點後 3 個設計\n', icg, S.N(icg));
-    mk('gain', S.N(1:icg), S.gI1(1:icg), S.gI2(1:icg), idx2N(S.N,S.igI1), idx2N(S.N,S.igI2), ...
+    % [MODIFIED 2026-08-17] 同圖 A：**不畫收斂點虛線**。
+    mk('gain', S.N(1:icg), S.gI1(1:icg), S.gI2(1:icg), NaN, NaN, ...
        '$\mathbf{{}^{B}\hat{g}_{I}\;(mT/A)}$', false, figdir, [6 8 10], 'logexp');
 end
 
