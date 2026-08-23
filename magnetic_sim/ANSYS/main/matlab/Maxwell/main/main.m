@@ -8,7 +8,7 @@ clear; clc;
 %% ---- per-run 調參（不進 config）---------------------------------------------
 MODEL    = 'long2016_hexapole_halfcut';
 GEOM     = 'tip40um';       % config 幾何變體：long2016 用 tip40um|tip400um；hung/NTU 用 ''（flat config）
-VARIANT  = 'maxwell';       % '' = 用該 geom 的 default_variant；'maxwell'=Sphere1mm 0.1mm、'maxwell_mesh0p06'=0.06mm
+VARIANT  = '';       % '' = 用該 geom 的 default_variant；'maxwell'=Sphere1mm 0.1mm、'maxwell_mesh0p06'=0.06mm
 DATASET  = 'all';
 BASE     = 'voltage';       % 'current' | 'voltage'
 USE_BIAS = true;            % e 開關：false=fix(single)、true=18-param(eighteen)
@@ -21,20 +21,38 @@ I_actual = 1;               % 驅動電流 [A]（= FEM 激發）
 %             輸出變體名自動加 _k22_0p8340（不覆蓋自由擬合版）。
 %   ⚠ 一旦設定，**current 與 voltage 兩邊都要用同一個值重跑**（兩邊必須共用同一顆 G）。
 K22_SET  = [];
-% [ADDED 2026-08-13] 取樣點來源。[] = 球內**全部** .fld 格點（既有行為，不變）；
-%   給 [N_r N_phi N_theta] 則改用 **等測度網格**（sphere_grid_sample）只取那麼多點——
-%   用來重現「收斂點的點數就夠」這件事。R=150um 的收斂點：single (1,2,4)=8 點、
-%   eighteen (1,2,3)=6 點（判準：其後連續 7 步相對前一步 < 0.5%，只看 l_hat）。
+% [MODIFIED 2026-08-23 使用者拍板] 工作空間的取樣設計改由**收斂迴圈自動決定**
+%   （原本是手填三元組）。三種給法：
+%     'auto'    跑收斂階梯自動決定 (N_r,N_phi,N_theta)  <- 定案做法
+%     []        R 球內**全部** .fld 格點（R150 -> 1791 點；全取樣基準，不迴圈）
+%     [a b c]   手動指定設計（重現舊結果用，不迴圈）
+%   R=150um 既有收斂設計：long2016 single (3,8,22)=528 / eighteen (2,4,10)=80；
+%   zhi_peng R500 maxwell_split single (1,3,8)=24 / eighteen (1,2,5)=10。
 %   輸出檔名自動加 _convN<點數>，不覆蓋全格點版。
-GRID_NRPT = [2 4 10];
+GRID_NRPT = 'auto';
+% ---- 收斂判準（工作空間球）：後 KWIN 步「l_hat 與 g_I」變化率都 < TOL，且 K_I_bar 合物理
+%   ⚠ 判準序列固定用 solve_current 的 [l_hat, g_I]（**兩個 base 都是**），與 2026-08-23
+%     之前的 conv_design 同一把尺 —— 這樣既有記錄的 N_c 值才可比。voltage 的
+%     solve_voltage 在收斂之後才跑一次。
+CONV_SEED    = [1 2 3];     % 階梯種子
+CONV_TOL     = 0.005;       % 變化率門檻（0.5%）
+CONV_KWIN    = 10;          % 連續穩定步數
+CONV_NDMAX   = 150;         % 最多掃幾級
+CONV_KI_GATE = true;        % false = 放寬「K_I_bar 非對角全負」（六極不等強，如 zhi_peng）
+CONV_KI_REQ  = true;        % false = K_I_bar 完全不參與判準，只看 l_hat + g_I
 % 通用化旗標（'' → 由 cfg 提供預設；特例幾何自動吃自己的設定，不用手動改）
 INTERP_TO = '';             % '' 正常；否則把本 variant 場內插到此參考 geom 的 R≤R_select 點雲（公平比較）
-V_METHOD  = '';             % '' → cfg.v_method（'csv-tet' 預設 / 'scattered'）
+V_METHOD  = '';             % '' → cfg.v_method（現行 'grid' = 規則格三線性；另有 'scattered' / 'csv-tet'）
 % voltage-only 取樣調參
-SOFF_upper = 3.0e-3;        % 上極 sensor 沿錐面距極尖 [m]（定案值 4.572e-3）
-SOFF_lower = 3.0e-3;        % [ADDED] 下極 sensor 沿錐面距極尖 [m]（原寫死 4.572e-3；兩層要一起移才與示意圖一致）
-n_uniform  = 500;           % 每 sensor 圓柱撒點數（[MODIFIED 2026-08-06] 使用者拍板統一 500；
-                            %   取樣標準誤 ≈ (σ/μ)/√n ≈ 2.4%/22.4 ≈ 0.11%。舊結果用 1e4（0.024%））
+SOFF_upper = 5.0e-3;        % 上極 sensor 沿錐面距極尖 [m]（定案值 4.572e-3）
+SOFF_lower = 5.0e-3;        % [ADDED] 下極 sensor 沿錐面距極尖 [m]（原寫死 4.572e-3；兩層要一起移才與示意圖一致）
+% [REMOVED 2026-08-23 使用者拍板] n_uniform **廢除** —— 每 sensor 的取樣設計不再手填，
+%   改由「conv_design_sensor 產點 <-> build_V_matrix 組 V」的收斂迴圈自動決定（見下）。
+%   舊定案手填值是等測度網格 (3,20,3)=180 點/sensor（比舊亂數 500 點準 11 倍）；
+%   收斂迴圈實測會停在 (3,13,2)=78 點，下游 g_V 只差 0.009%、NMAE 完全相同。
+SEN_SEED = [1 3 2];         % sensor 階梯種子（地板 N_theta>=3、N_z>=2 由 conv_design_sensor 內建）
+SEN_TOL  = 0.001;           % 判準：V 的 36 個元素**全部**離密參考 < 0.1%
+SEN_REF  = [10 100 10];     % 密參考設計（10000 點/sensor；自身誤差 0.0042%）
 sensor_r   = 0.15e-3;       % sensor 圓柱半徑 [m]
 axial_tol  = 0.10e-3;       % sensor 圓柱高（沿 n+）[m]
 
@@ -43,7 +61,7 @@ here  = fileparts(mfilename('fullpath'));                    % .../Maxwell/main
 CAL   = fileparts(here);                                     % .../Maxwell
 SOLV  = fileparts(CAL);                                      % .../main/matlab
 ANSYS = fileparts(fileparts(fileparts(SOLV)));               % .../ANSYS
-addpath(fullfile(CAL, 'function'));                                     % pipeline + import_maxwell_fld/filter_iron_nodes/interp_field_to_points
+addpath(fullfile(CAL, 'function'));                                     % pipeline + import_maxwell_fld / filter_iron_nodes / conv_design_ws
 addpath(fullfile(CAL, 'common_path'));                                  % 共用路徑 resolver（如有）
 addpath(fullfile(CAL, 'utils'));                                          % [ADDED 2026-08-08] pole_sensor_geometry（sensor 幾何唯一來源）
 
@@ -54,34 +72,105 @@ if isempty(INTERP_TO), INTERP_TO = getdef(cfg, 'interp_to', '');     end
 if isempty(V_METHOD),  V_METHOD  = getdef(cfg, 'v_method', 'csv-tet'); end
 
 raw = extract_maxwell_data(cfg, DATASET, VARIANT);          % 純讀 .fld（Maxwell frame, T）
-if isempty(INTERP_TO)
-    ad = build_actuator_data(raw, cfg);                     % → actuator frame, mT, all-source
-    [P, Bstack, npts] = cfg.select_ball(ad, R_select);
-    Pc_base = ad.Pc_base;
-else
-    % 特例：把本 variant 場內插到「參考 geom」的點雲（同數量同分布，公平比較，如 tip400→tip40）
-    cfg_ref = model_config(MODEL, INTERP_TO);
-    raw_ref = extract_maxwell_data(cfg_ref, DATASET, cfg_ref.default_variant);
-    ad_ref  = build_actuator_data(raw_ref, cfg_ref);
-    [P, ~, npts] = cfg_ref.select_ball(ad_ref, R_select);   % 參考點雲
-    Bstack  = interp_field_to_points(cfg, VARIANT, cfg.R_act, P, getdef(cfg,'r_loc',0.6e-3));
-    Pc_base = cfg.Pc_base;                                   % 本 variant 的電荷格（非 canonical）
+if ~isempty(INTERP_TO)
+    % [REMOVED 2026-08-23 使用者拍板] 「內插到參考 geom 點雲」這條路已停用。
+    %   它靠 function/interp_field_to_points.m，而那支呼叫的 extract_ansys_data
+    %   **只存在於 APDL 分支**（Maxwell 樹下沒有）-> 在純 Maxwell path 上必定
+    %   Undefined function。該檔已刪除。
+    error('main:interpToRemoved', ...
+          ['INTERP_TO=''%s'' 已停用：interp_field_to_points 於 2026-08-23 刪除' char(10) ...
+           '（它相依 APDL 分支的 extract_ansys_data，在 Maxwell 樹下無法運作）。'], INTERP_TO);
 end
-% [ADDED 2026-08-13] 改用等測度網格取樣（只在 GRID_NRPT 非空時生效）。
-%   場一律由 sphere_grid_sample 從同一份 .fld 以三線性內插取得，回傳已在 actuator frame、
-%   單位 mT；Maxwell 的 s_source 全 +1 故不需翻號。Pc_base 直接取 cfg（與 ad 相同）。
-if ~isempty(GRID_NRPT)
-    addpath(fullfile(CAL, 'utils', MODEL));                 % sphere_grid_sample
-    [gx, gy, gz, gB] = sphere_grid_sample(R_select, [], ...
-        struct('frame','actuator', 'NRPT',GRID_NRPT, 'variant',VARIANT));
-    P    = [gx, gy, gz];    npts = size(P,1);
-    Bstack = zeros(3*npts, size(gB,3));
-    for j = 1:size(gB,3), Bstack(:,j) = reshape(gB(:,:,j).', [], 1); end
-    Pc_base = cfg.Pc_base;
-    fprintf('[grid] 改用等測度網格 (%d,%d,%d) → %d 點（取代球內全部格點）\n', GRID_NRPT, npts);
+ad      = build_actuator_data(raw, cfg);                    % → actuator frame, mT, all-source
+Pc_base = ad.Pc_base;
+F = zeros(6, cfg.N_I);
+for j = 1:cfg.N_I, F(cfg.apdl_to_paper_idx(j), j) = 1; end
+
+%% ---- ① sensor 取樣設計收斂（voltage only）----------------------------------
+%  [ADDED 2026-08-23 使用者拍板] conv_design_sensor **只產點** -> build_V_matrix
+%  內插組 V -> 這裡判「離密參考的偏差」。收斂後 V 就定住，不參與 ② 的迭代。
+V = [];   sen_tri = [];   dev = NaN;
+if strcmp(BASE, 'voltage')
+    % Maxwell 的 sensor 場是**另一組匯出**（WP 細格框 ±0.6mm 涵蓋不到 WP 外 ~4.5mm 的
+    % sensor）→ 另載 dataset='voltage' 的粗格，只餵 build_V_matrix；上面的電荷擬合
+    % 仍用 WP 細格 raw。兩者同一個 Maxwell 座標框，可直接並用。
+    raw_v = extract_maxwell_data(cfg, 'voltage', VARIANT);
+    fprintf('[voltage] sensor 場格點 %d（WP 擬合場格點 %d）\n', numel(raw_v.x), numel(raw.x));
+    bV = @(t) build_V_matrix(cfg, VARIANT, raw_v, cfg.S_hall, SOFF_upper, t, ...
+                             sensor_r, axial_tol, [], V_METHOD, SOFF_lower);
+    [~,~,~,~,si] = conv_design_sensor(SEN_SEED(1), SEN_SEED(2), SEN_SEED(3), ...
+        struct('ladder',CONV_NDMAX, 'sensor_r',sensor_r, 'axial_tol',axial_tol));
+    Vref = bV(SEN_REF);
+    fprintf('[sensor] 密參考 (%d,%d,%d) = %d 點/sensor\n', SEN_REF, prod(SEN_REF));
+    sen_hit = false;
+    for q = 1:size(si.ladder,1)
+        sen_tri = si.ladder(q,:);
+        V   = bV(sen_tri);
+        dev = max(abs(V(:) - Vref(:)) ./ abs(Vref(:)));      % 36 個元素全部要過
+        if dev < SEN_TOL
+            fprintf(['[sensor] 收斂設計 (%d,%d,%d)、%d 點/sensor' ...
+                     '（掃了 %d 級，最大偏差 %.4f%%）\n'], sen_tri, prod(sen_tri), q, dev*100);
+            sen_hit = true;   break
+        end
+    end
+    assert(sen_hit, 'sensor：%d 級內未達 %.3f%%（最後一級 (%d,%d,%d) 偏差 %.4f%%）', ...
+           CONV_NDMAX, SEN_TOL*100, sen_tri, dev*100);
 end
 
-[e, l_hat, J] = fitting(P, Bstack, Pc_base, l0, USE_BIAS);
+%% ---- ②③④ 產點+取場 -> 校正 -> 判收斂（迴圈由 main 驅動）--------------------
+%  [ADDED 2026-08-23 使用者拍板] conv_design_ws **只做「決定內插點位置 + 三線性取場」**；
+%  校正（fitting / solve_*）與判斷都在這裡。
+wsopt = struct('model',MODEL, 'geom',GEOM, 'variant',VARIANT, 'frame','actuator');
+AUTO  = ischar(GRID_NRPT) || isstring(GRID_NRPT);
+if AUTO
+    assert(strcmpi(GRID_NRPT,'auto'), 'GRID_NRPT 必為 ''auto'' | [] | [N_r N_phi N_theta]');
+    [~,~,~,wi] = conv_design_ws(CONV_SEED(1), CONV_SEED(2), CONV_SEED(3), R_select, ...
+                                struct('ladder',CONV_NDMAX));
+    LADW = wi.ladder;
+else
+    LADW = [];                                              % 不迴圈，只跑一次
+end
+
+nq  = 1;   if AUTO, nq = size(LADW,1); end
+SER = nan(nq,2);   OKV = false(1,nq);   tri_ws = [];   ws_hit = ~AUTO;
+for q = 1:nq
+    % ② 產點 + 三線性取場
+    if AUTO
+        tri_ws = LADW(q,:);
+        [P, Bstack, ~, gi] = conv_design_ws(tri_ws(1), tri_ws(2), tri_ws(3), R_select, wsopt);
+        npts = gi.npts_kept;
+    elseif isempty(GRID_NRPT)
+        [P, Bstack, npts] = cfg.select_ball(ad, R_select);  % 全格點基準
+    else
+        tri_ws = GRID_NRPT(:).';
+        [P, Bstack, ~, gi] = conv_design_ws(tri_ws(1), tri_ws(2), tri_ws(3), R_select, wsopt);
+        npts = gi.npts_kept;
+        fprintf('[grid] 手動指定設計 (%d,%d,%d) → %d 點\n', tri_ws, npts);
+    end
+
+    % ③ 校正（在 main）
+    [e, l_hat, J] = fitting(P, Bstack, Pc_base, l0, USE_BIAS);
+    [KI_bar, gI_hat, G, rm] = solve_current(l_hat, e, Pc_base, P, Bstack, F, K22_SET);
+    if ~AUTO, break; end
+
+    % ④ 判收斂：l_hat 與 g_I 都穩 ∧ K_I_bar 合物理
+    SER(q,:) = [l_hat*1e6, gI_hat];
+    od = KI_bar(~eye(6));   [~,am] = max(abs(KI_bar),[],2);
+    OKV(q) = all(diag(KI_bar) > 0) && isequal(am(:).',1:6) && (~CONV_KI_GATE || all(od < 0));
+    is = fstab_all(SER(1:q,:), CONV_TOL, CONV_KWIN);
+    ik = 1;   if CONV_KI_REQ, ik = ftrue(OKV(1:q), CONV_KWIN); end
+    if ~isnan(is) && ~isnan(ik)
+        tri_ws = LADW(max([is ik]), :);                     % 收斂點是**判準起點**那一級
+        fprintf('[ws] 收斂設計 (%d,%d,%d)、%d 點（掃了 %d 級）\n', ...
+                tri_ws, prod(tri_ws), q);
+        [P, Bstack, ~, gi] = conv_design_ws(tri_ws(1), tri_ws(2), tri_ws(3), R_select, wsopt);
+        npts = gi.npts_kept;
+        [e, l_hat, J] = fitting(P, Bstack, Pc_base, l0, USE_BIAS);
+        [KI_bar, gI_hat, G, rm] = solve_current(l_hat, e, Pc_base, P, Bstack, F, K22_SET);
+        ws_hit = true;   break
+    end
+end
+assert(ws_hit, 'workspace：%d 級內未達判準（最後一級 (%d,%d,%d)）', CONV_NDMAX, LADW(end,:));
 
 %% ---- 共用結果紀錄（rec = 結果 + 設定，自描述）------------------------------
 rec = struct('base',BASE, 'l_hat',l_hat, 'e',e, 'J',J, 'npts',npts, ...
@@ -93,20 +182,14 @@ rec = struct('base',BASE, 'l_hat',l_hat, 'e',e, 'J',J, 'npts',npts, ...
 %% ---- 後段（base 分兩路）-----------------------------------------------------
 switch BASE
     case 'current'
-        F = zeros(6, cfg.N_I);
-        for j = 1:cfg.N_I, F(cfg.apdl_to_paper_idx(j), j) = 1; end
-        [KI_bar, gI_hat, G, rm] = solve_current(l_hat, e, Pc_base, P, Bstack, F, K22_SET);
+        % KI_bar / gI_hat / G / rm 已在 ③ 算出（判準與最終結果共用同一次 solve_current）
         rec.KI_bar = KI_bar;  rec.gI_hat = gI_hat;  rec.G = G;  rec.Fmap = F;
     case 'voltage'
-        % [MODIFIED] Maxwell 的 sensor 場是**另一組匯出**（WP 細格框 ±0.6mm 涵蓋不到
-        %   WP 外 ~4.5mm 的 sensor）→ 這裡另載 dataset='voltage' 的粗格，只餵 build_V_matrix；
-        %   上面的電荷擬合仍用 WP 細格 raw。兩者同一個 Maxwell 座標框，可直接並用。
-        raw_v = extract_maxwell_data(cfg, 'voltage', VARIANT);
-        fprintf('[voltage] sensor 場格點 %d（WP 擬合場格點 %d）\n', numel(raw_v.x), numel(raw.x));
-        [V, ~] = build_V_matrix(cfg, VARIANT, raw_v, cfg.S_hall, SOFF_upper, n_uniform, sensor_r, axial_tol, [], V_METHOD, SOFF_lower);
-        rec.SOFF_upper = SOFF_upper;  rec.SOFF_lower = SOFF_lower;   % [ADDED] 記進 .mat（emit_results 據此加檔名後綴）
-        % [ADDED 2026-08-06] sensor 取樣參數一併記進 .mat（自描述；先前查不到「這筆是幾點算的」）
-        rec.n_uniform = n_uniform;  rec.sensor_r = sensor_r;  rec.axial_tol = axial_tol;
+        % V 已在 ① 由收斂迴圈定出（conv_design_sensor 產點 -> build_V_matrix 組 V）
+        rec.SOFF_upper = SOFF_upper;  rec.SOFF_lower = SOFF_lower;   % emit_results 據此加檔名後綴
+        % sensor 取樣參數一併記進 .mat（自描述）
+        rec.sen_tri = sen_tri;  rec.sensor_r = sensor_r;  rec.axial_tol = axial_tol;
+        rec.SEN_REF = SEN_REF;  rec.SEN_TOL = SEN_TOL;
         [D_bar, gV_hat, G, rm] = solve_voltage(l_hat, e, Pc_base, P, Bstack, V, K22_SET);
         rec.D_bar = D_bar;  rec.gV_hat = gV_hat;  rec.G = G;  rec.V = V;
     otherwise
@@ -126,10 +209,12 @@ else
     VAR_OUT = VARIANT;
 end
 % [ADDED 2026-08-13] 等測度網格取樣 → 檔名加 _convN<點數>，與全格點版並存
-if ~isempty(GRID_NRPT)
-    VAR_OUT     = sprintf('%s_convN%d', VAR_OUT, npts);
-    rec.VARIANT = VAR_OUT;
-    rec.GRID_NRPT = GRID_NRPT;
+%   [MODIFIED 2026-08-23] tri_ws 空 = 全格點模式（不加 tag）；'auto' 與手動指定都加。
+if ~isempty(tri_ws)
+    VAR_OUT       = sprintf('%s_convN%d', VAR_OUT, npts);
+    rec.VARIANT   = VAR_OUT;
+    rec.GRID_NRPT = tri_ws;
+    rec.conv_auto = AUTO;
 end
 
 %% ---- 存 .mat（自描述）------------------------------------------------------
@@ -160,4 +245,22 @@ emit_results(matfile);
 %% ---- local ------------------------------------------------------------------
 function v = getdef(s, f, d)   % cfg 有欄位 f 且非空就用，否則預設 d
     if isfield(s, f) && ~isempty(s.(f)), v = s.(f); else, v = d; end
+end
+
+function i0 = fstab_all(SER, tol, K)
+% 第一個 i，使其後連續 K 步「每一個序列」相對前一步的變化率都 < tol。
+    i0 = NaN;   if size(SER,1) < K+1, return; end
+    rel = abs(diff(SER,1,1)) ./ abs(SER(1:end-1,:));       % (n-1) x nser
+    mx  = max(rel, [], 2);                                  % 每步取最嚴的那個序列
+    for i = 1:numel(mx)-K+1
+        if all(mx(i:i+K-1) < tol), i0 = i;  return; end
+    end
+end
+
+function i0 = ftrue(v, K)
+% 第一個 i，使 v(i..i+K-1) 全為 true。
+    i0 = NaN;
+    for i = 1:numel(v)-K+1
+        if all(v(i:i+K-1)), i0 = i;  return; end
+    end
 end
