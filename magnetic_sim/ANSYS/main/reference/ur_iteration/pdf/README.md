@@ -1,4 +1,4 @@
-# doc/ur_iteration/pdf/ — μ_r 迭代編譯 PDF
+# reference/ur_iteration/pdf/ — μ_r 迭代編譯 PDF
 
 **用途**：存放 μ_r 迭代驗證 .tex 的**編譯 PDF**。
 **內容**：`iterative_validation.pdf`（μ_r 迭代驗證流程）。

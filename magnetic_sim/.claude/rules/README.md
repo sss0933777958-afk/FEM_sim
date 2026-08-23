@@ -18,7 +18,7 @@
 - `gap-nogap-folder-convention.md` — 氣隙變體資料夾**只准 `gap_200um` + `no_gap` 兩個名字**（跨 data/db/apdl 各層），禁止增殖平行 gap 名夾。
 - `modify-existing-files.md` — 要改腳本一律**改現有那支**（首選參數化），不要複製成 `_v2`/變體檔；產物落新夾則允許。
 - `simulation-constraints.md` — APDL 幾何/材料/求解器硬約束（alpha=54.74° FIXED、tip 公式鎖定、元素型別、BC）。
-- `unit-reference.md` — 單位統一慣例（ℓ̂ µm／b mT／ĝ_I mT/A／V mV／R_a A/Wb／力 pN），source of truth = doc/Unit Reference Sheet PDF。
+- `unit-reference.md` — 單位統一慣例（ℓ̂ µm／b mT／ĝ_I mT/A／V mV／R_a A/Wb／力 pN），source of truth = reference/Unit Reference Sheet PDF。
 - `no-backup-data.md` — **禁止使用 `backup/` 的資料與程式**（禁 `addpath(backup)`、禁讀其 `.m/.mat/.dat`）；模型設定一律走 live `model_config(...)`。起因＝`paper_fig_plot/` 有 12 支吃 `backup/.../mt_constants.m`，看不到 CAD 實測的真實錐體幾何。
 
 **（2026-07-06 由 `magnetic_sim/ANSYS/main/rules/` 移入本層，改為全域自動載入）**：

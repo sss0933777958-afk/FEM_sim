@@ -8,4 +8,4 @@
 
 **命名 / 慣例**：`.SLDPRT` 元件母檔；topic 名 `long_fei` = 下游 `long2016_hexapole_halfcut`（同物理模型，命名不一致）。
 
-**相關**：`../README.md`、`doc/workflows/cad-export.md`。
+**相關**：`../README.md`、`reference/workflows/cad-export.md`。

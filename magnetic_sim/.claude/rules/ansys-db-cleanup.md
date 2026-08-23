@@ -99,7 +99,7 @@ rm -f <job>_*.rmg  <job>*.esav  <job>*.full  <job>*.DSP*  <job>*.page*  <job>*.s
 
 - 任何 `.dat`（FEM 場，MATLAB 的交付物）、`.mat` `.csv` `.npz` `.cdb`
 - `matlab/` 全部（腳本 ＋ `data/`）、`figures/` 全部、`apdl/` 全部
-- `CAD_model/` `model_check/` `doc/` `comsol/` `reference/`
+- `CAD_model/` `model_check/` `comsol/` `reference/`（原 `doc/` 已於 2026-08-23 併入 `reference/`）
 - 任何 `.git/` 內容
 
 ## 強制流程

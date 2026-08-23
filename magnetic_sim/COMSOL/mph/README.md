@@ -6,4 +6,4 @@
 - `kuo_quadrupole/` — Kuo 4-pole MEMS Quadrupole 的 `.mph`。
 - `long2016_hexapole_halfcut/` — Long Fei 六極下極半切 hexapole 的 `.mph`（DC / AC / BH 變體）。
 
-**相關**：上層求解器層見 `../README.md`；LiveLink 連線法見 `../../ANSYS/main/doc/workflows/comsol-livelink.md`；COMSOL mm 座標探測坑見 memory `feedback_comsol_mm_coord_pitfall`。各夾檔案清單見對應子夾 README。
+**相關**：上層求解器層見 `../README.md`；LiveLink 連線法見 `../../ANSYS/main/reference/workflows/comsol-livelink.md`；COMSOL mm 座標探測坑見 memory `feedback_comsol_mm_coord_pitfall`。各夾檔案清單見對應子夾 README。

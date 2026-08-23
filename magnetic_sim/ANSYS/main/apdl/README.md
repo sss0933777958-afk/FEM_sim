@@ -21,5 +21,5 @@ apdl/
 - 改動標 `[ADDED]` / `[MODIFIED]`（English comments），見 `.claude/rules/apdl-editing.md`。
 - 多 coil 腳本**只差 `CURR_ARRAY`**，其餘同步；`D,ALL,MAG,0` 邊界必存在。
 - 改幾何尺寸前對齊 CAD（`ansys-cad-alignment.md`）。
-- 跑 FEM / 後處理 SOP：`doc/workflows/{apdl-fem-run,apdl-postproc}.md`。
+- 跑 FEM / 後處理 SOP：`reference/workflows/{apdl-fem-run,apdl-postproc}.md`。
 - 解出來的結果存到 `../ANSYS_data/<model>/<case>/`。

@@ -10,7 +10,7 @@
 
 對應 memory：`feedback_deliver_step_for_check.md`
 相關規則：`ansys-cad-alignment.md`（CAD=source of truth）、`cad-import-ansys.md`（OCC/OCP 已在用）。
-相關 SOP：`doc/workflows/{cad-export,iges-sync-quick,model-check}.md`（那些是 **SolidWorks→export** 方向，跟本規則的 **ANSYS→交付** 方向不同）。
+相關 SOP：`reference/workflows/{cad-export,iges-sync-quick,model-check}.md`（那些是 **SolidWorks→export** 方向，跟本規則的 **ANSYS→交付** 方向不同）。
 
 ---
 
@@ -62,6 +62,6 @@ w=STEPControl_Writer(); w.Transfer(comp, STEPControl_AsIs); w.Write(out_step)
 - 「出檔給你/使用者檢查」/「交付幾何」/「疊 CAD 檢查」/「模型建完給你看」/「輸出 IGES 給我檢查」（→ 改出 STEP）
 
 ## 何時不適用
-- **ANSYS 自己 `IGESIN` 匯入**用的 `model_check/`（機器→機器，非給 SolidWorks 看）——仍走 `doc/workflows/{cad-export,iges-sync-quick}.md` 的 IGES flow。
+- **ANSYS 自己 `IGESIN` 匯入**用的 `model_check/`（機器→機器，非給 SolidWorks 看）——仍走 `reference/workflows/{cad-export,iges-sync-quick}.md` 的 IGES flow。
 - FEM 求解 / 後處理用 ANSYS `.db`（不涉交付檢查）。
 - 使用者明確要 IGES（並自行處理單位）。

@@ -1,4 +1,4 @@
-# doc/charge_model_fitting/general/ — 跨模型擬合方法通法
+# reference/charge_model_fitting/general/ — 跨模型擬合方法通法
 
 **用途**：跨變體 / 純理論的點電荷擬合**方法通法**說明（不綁特定 model），詳述三種等級擬合方法的完整推導、演算法步驟、MATLAB code 與數值範例。
 **內容**：`charge_model_fitting_methods.md`（[A] 共用 ℓ 球面擬合 2 參數 → [J] 6-coil joint 自由 3D 24 參數 → [B-6x] ℓ+δ 全激勵 19 參數★定案；含三方法對比與何時用哪個）。

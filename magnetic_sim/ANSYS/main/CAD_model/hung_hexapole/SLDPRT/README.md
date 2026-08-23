@@ -8,4 +8,4 @@
 
 **命名 / 慣例**：`0.46mm` / `0.67mm` = 極尖距變體，`_V*` = 設計修訂，`_20um` = tip 圓角變體；`zhipeng` 為原作者原始件名。
 
-**相關**：`../README.md`、`doc/workflows/cad-export.md`。
+**相關**：`../README.md`、`reference/workflows/cad-export.md`。

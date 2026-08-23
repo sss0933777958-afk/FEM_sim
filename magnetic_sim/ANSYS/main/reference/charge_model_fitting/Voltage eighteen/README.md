@@ -1,4 +1,4 @@
-# doc/charge_model_fitting/Hall_sensor_base_no_fix_l/ — no-fix-ℓ 成本函數推導
+# reference/charge_model_fitting/Hall_sensor_base_no_fix_l/ — no-fix-ℓ 成本函數推導
 
 **用途**：Hall-sensor 校正「**不固定 ℓ̂**」(no-fix-ℓ；profiled ℓ / 18-param bias 電荷模型) 流程的
 成本函數推導文件。對應程式包：

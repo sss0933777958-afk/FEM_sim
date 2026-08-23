@@ -8,7 +8,7 @@
 - `baseline/` — `MT_Sim_P1..P6.txt`：Long Fei verbatim 基準（含 VADD 合併的正確 topology），6 顆極自激解。
 - `gap100um_mueq/` — **舊單段式 μ_r 等效氣隙的唯一保留 deck**：6 顆 coil（MAT_PROT μ_r=56 模 7mm post + 上下各 50µm=100µm gap）。μ_eff=56 < 翻負臨界 ~72 → P2←P1 翻負（磁通匯進 P2）；coil2-6 的 gap100 場只此 deck 能產（`calib_gap100um.m` 在讀）。
   - 舊單段式 `gap_200um/`(μ31)／`gap20um_mueq/`(μ156)／`gap2um_mueq/`(μ259) deck **已退場**（被 2 段式 `mueq_sweep` 取代；既有 `data/coilN/gap<X>um_mueq/` 仍在，其中 gap200 已是 2-seg 場）。
-- `mueq_sweep/` — **2 段式 μ_eff gap sweep（2026-06-26 由 `gap_sweep_2seg` 併入，取代舊 μ∈{120,90,60} 單檔版）**：`MT_Sim_P1_mueq_sweep.txt`（P1 掃 gap∈{0,50,100,150,200}µm）+ `MT_Sim_coil2to6_gap200.txt`（coil2–6 各自激 @gap200）。RESUME `mesh_baseline.db`（baseline smrt5，同 baseline 網格）→ 加 `MAT_PROT_UP=5/MAT_PROT_LO=6` + EMODIF（上 3 protrusion μ_up／下 3 μ_lo，**上下分開**）→ coilN=+1 raw + BC → magsolv → 各匯 `data/coilN/gap<X>um_mueq/`。μ_eff 用 `doc/effective_permeability/effective_permeability.pdf` **兩段式串聯磁阻公式**（x=0 強制 280；gap200 μ_up59.3／μ_lo71.0，比舊單段 31 溫和）。\|B\|max 隨 gap 遞減 1.126→0.978 T（gap0=baseline 驗證 OK）。scratch CWD=`db/mueq_sweep`。
+- `mueq_sweep/` — **2 段式 μ_eff gap sweep（2026-06-26 由 `gap_sweep_2seg` 併入，取代舊 μ∈{120,90,60} 單檔版）**：`MT_Sim_P1_mueq_sweep.txt`（P1 掃 gap∈{0,50,100,150,200}µm）+ `MT_Sim_coil2to6_gap200.txt`（coil2–6 各自激 @gap200）。RESUME `mesh_baseline.db`（baseline smrt5，同 baseline 網格）→ 加 `MAT_PROT_UP=5/MAT_PROT_LO=6` + EMODIF（上 3 protrusion μ_up／下 3 μ_lo，**上下分開**）→ coilN=+1 raw + BC → magsolv → 各匯 `data/coilN/gap<X>um_mueq/`。μ_eff 用 `reference/effective_permeability/effective_permeability.pdf` **兩段式串聯磁阻公式**（x=0 強制 280；gap200 μ_up59.3／μ_lo71.0，比舊單段 31 溫和）。\|B\|max 隨 gap 遞減 1.126→0.978 T（gap0=baseline 驗證 OK）。scratch CWD=`db/mueq_sweep`。
 - `lower_filled/` — 下極填滿 full-cone 變體 solve：`MT_Sim_LowerFilled_coil1.txt`（RESUME graded `mesh_lowerfilled.db`）+ `MT_Sim_LowerFilled_smrt5_coil1.txt`（**2026-06-26**，RESUME 純 smrt5 `mesh_lowerfilled_smrt5.db`）。coil1=−1（P1 SOURCE，FEM 端翻號）→ `data/coil1/lower_filled/`。
 - `graded/` — region-graded 密網格的 P1-as-SOURCE 求解：`MT_Sim_P1_graded.txt`（只匯 R<2mm wp）；`MT_Sim_P1_graded_p2reg.txt`（**[MODIFIED]** 加匯「P2 整根極區域」box x −55→5mm；Z 上界 `SPH_OFST+34e-3` 涵蓋 holder 頂，輸出 `*_p2reg_full`，給 P2 whole-pole 磁路圖補支撐座箭頭）。
 - `resolve/` — RESUME P1 graded master `.db`、只改 coil 電流重解 P2..P6（跳過 meshing）。
@@ -41,4 +41,4 @@
 
 > 慣例：新增 / 改 deck 時，務必在 `/CWD` 後補上 `! [MESH] <scheme>` 標頭，並同步本表。
 
-**相關**：見 `../README.md`、`../../../CLAUDE.md`、`.claude/rules/{apdl-editing,fit-current-matches-sim,result-read-safety}.md`、`doc/workflows/apdl-fem-run.md`。
+**相關**：見 `../README.md`、`../../../CLAUDE.md`、`.claude/rules/{apdl-editing,fit-current-matches-sim,result-read-safety}.md`、`reference/workflows/apdl-fem-run.md`。

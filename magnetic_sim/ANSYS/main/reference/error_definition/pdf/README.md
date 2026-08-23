@@ -1,4 +1,4 @@
-# doc/error_definition/pdf/ — 誤差定義編譯 PDF
+# reference/error_definition/pdf/ — 誤差定義編譯 PDF
 
 **用途**：存放誤差定義 .tex 的**編譯 PDF**。
 **內容**：`nrmse.pdf`（NRMSE 兩種正規化方式）。

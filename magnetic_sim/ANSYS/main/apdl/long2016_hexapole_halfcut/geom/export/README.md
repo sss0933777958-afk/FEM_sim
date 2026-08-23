@@ -17,4 +17,4 @@
 
 **命名 / 慣例**：`MT_Geom_Export*`；`_mm` = mm 版、無後綴 = metre 版、變體 tag 接在後（`_gap200um`/`_sphtip`/`_HollowProt`）；改動標 `[ADDED]`/`[MODIFIED]`；R_norm=500e-6 等尺寸先對齊 CAD 才改。
 
-**相關**：見 `../README.md`、`doc/workflows/{cad-export,iges-sync-quick}.md`、`.claude/rules/{apdl-editing,ansys-cad-alignment}.md`。
+**相關**：見 `../README.md`、`reference/workflows/{cad-export,iges-sync-quick}.md`、`.claude/rules/{apdl-editing,ansys-cad-alignment}.md`。

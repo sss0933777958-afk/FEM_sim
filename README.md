@@ -22,7 +22,7 @@ FEM_sim/                     通用 FEM 模擬容器
 │       │   ├── ANSYS_data/  FEM .dat/.db (gitignored)
 │       │   ├── MATLAB_data/ MATLAB outputs (.mat/.csv)
 │       │   ├── figures/     Figures (.png)
-│       │   └── ...          CAD/ IGES/ comsol/ mph/ doc/ ...
+│       │   └── ...          CAD/ IGES/ comsol/ mph/ reference/ ...
 │       └── backup/          歸檔（非活躍設計）
 │           ├── hexapole-long2016/  Long 2016 dissertation hexapole design
 │           └── hung/        Hung hexapole design

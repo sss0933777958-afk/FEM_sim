@@ -1,4 +1,4 @@
-# doc/charge_model_fitting/fitting_derivation/pdf/ — 通用推導編譯 PDF
+# reference/charge_model_fitting/fitting_derivation/pdf/ — 通用推導編譯 PDF
 
 **用途**：存放通用推導 .tex 的**編譯 PDF**，以及來源報告的 PDF 版。
 **內容**：`fitting.pdf`、`initial_guess_cjk.pdf`、`k11_derivation.pdf`、`Magnetic hexapole model.pdf`、`Calibration using FEM modeling_V2.pdf`、`no_fix_l.pdf`。

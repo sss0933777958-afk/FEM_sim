@@ -8,4 +8,4 @@
 
 **命名 / 慣例**：`.SLDPRT` 元件、`.SLDASM` 組合件；變體後綴 `_V2`、`_fabricate`、`ScaleDown` 表示設計修訂/製程版本。
 
-**相關**：`../README.md`、出檔 SOP `doc/workflows/cad-export.md`。
+**相關**：`../README.md`、出檔 SOP `reference/workflows/cad-export.md`。

@@ -1,4 +1,4 @@
-# doc/Solve_B_matrix/long2016_hexapole_halfcut/scripts/ — B_S 矩陣 LaTeX 原稿
+# reference/Solve_B_matrix/long2016_hexapole_halfcut/scripts/ — B_S 矩陣 LaTeX 原稿
 
 **用途**：存放本 topic B_S / V_out/V_in 矩陣推導的 **LaTeX 原稿（.tex）**，含 MATLAB auto-gen 的矩陣 body 片段。
 **內容**：`Bs_derivation.tex`（B_S 代數推導）、`Bbar_S_4p572_body.tex`（baseline 面積平均矩陣）、`Bbar_S_4p572_gap200um_body.tex`（μ_r 等效氣隙變體）、`Vout_Vin_4p572_body.tex`（量測端電壓比矩陣）。

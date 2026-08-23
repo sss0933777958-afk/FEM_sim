@@ -1,4 +1,4 @@
-# doc/Hall_snesor_base_force_model/ — Hall-sensor 力模型 notation
+# reference/Force_model_fitting/Hall_snesor_base_force_model/ — Hall-sensor 力模型 notation
 
 **用途**：Hall-sensor 為基礎的「探針受力」力模型的符號 / 推導文件（notation 對照）。
 

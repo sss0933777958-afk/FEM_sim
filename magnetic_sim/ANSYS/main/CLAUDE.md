@@ -80,7 +80,7 @@
 | `ANSYS_data/` | FEM 輸出 `<model>/<case>/`（`.dat` 場 / `.db` 模型 / `.cdb`） | **讀 FEM 結果**（.dat） |
 | `matlab/` | MATLAB 分析碼 `<model>/<功能組>/code/...` + `figures/` + `results/` + **`data/`（`.mat` 成果）** | 跑分析、畫圖、**讀/寫 `.mat`** |
 | ~~`MATLAB_data/`~~ | **已移除（2026-06-26）**：遷到各活動 `matlab/<model>/<activity>/data/`；`matlab_path()` deprecated | `.mat` 改去 `matlab/.../data/` |
-| `doc/` | LaTeX 原稿 + 編譯 PDF + `workflows/`(SOP) | 推導、報告、流程 SOP |
+| `reference/` | LaTeX 原稿 + 編譯 PDF + `workflows/`(SOP) + 論文 PDF | 推導、報告、流程 SOP |
 | `.claude/` | Claude Code 本地設定（`settings.local.json`） | 非工作產物，通常不動 |
 
 ## 資料流 pipeline（一條龍）
@@ -93,7 +93,7 @@ CAD_model (SLDPRT/STEP)
    → ANSYS_data/<model>/<case>/*.dat (場) + *.db (模型)
    → matlab/<model>/<功能組>/code (讀 .dat 做 fit/矩陣/校正/畫圖)
    → matlab/<model>/<功能組>/data/*.mat (成果)  +  .../figures/*.png (圖)  +  .../results/*.pdf
-   → doc/<主題>/ (LaTeX/PDF 報告)
+   → reference/<主題>/ (LaTeX/PDF 報告)
 ```
 
 ## Resolver（路徑解析，不要硬寫絕對路徑）
@@ -138,7 +138,7 @@ cd magnetic_sim/ANSYS/backup/hexapole-long2016
 | 交付幾何給使用者檢查 | `deliver-step-for-check.md`（一律出 STEP） |
 | charge fit / 改 I_actual | `fit-current-matches-sim.md`（I = FEM 激發 1A） |
 | Calibration_using_FEM_modeling 結構 | `calibration-shared-structure.md`（結構凍結、改先問）、`calibration-transfer-matrix-output.md`、`actuator-frame.md`、`charge-model-source-convention.md`、`pole-coil-numbering.md`、`unit-reference.md` |
-| 出 STEP / 解析 STEP / 建 APDL 幾何 / 檢查模型 / 跑 COMSOL 等 SOP | `doc/workflows/`（入口 `workflows/README.md`；部分為 kuo 時代遺留） |
+| 出 STEP / 解析 STEP / 建 APDL 幾何 / 檢查模型 / 跑 COMSOL 等 SOP | `reference/workflows/`（入口 `workflows/README.md`；部分為 kuo 時代遺留） |
 | 產物落點 / 資料夾架構 | 本檔「資料夾架構地圖」+ 各夾 `README.md` |
 
 ## Detailed Docs（long2016 深技術）

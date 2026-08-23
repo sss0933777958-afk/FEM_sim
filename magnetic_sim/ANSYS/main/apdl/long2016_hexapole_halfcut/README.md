@@ -13,4 +13,4 @@
 
 **命名 / 慣例**：`MT_Geom*` = 幾何、`MT_Sim_*` = 求解、`MT_Mesh_*` = mesh、`MT_Dump_*` = 後處理；6 顆 coil 腳本只差 `CURR_ARRAY`（coil N = 1，其餘 0）；改動標 `[ADDED]`/`[MODIFIED]`（英文註解）；`D,ALL,MAG,0` 邊界必存在於 `/SOLU` 前；改幾何尺寸先對齊 CAD（`ansys-cad-alignment.md`）；極一律用紙上名 P1-P6。
 
-**相關**：見 `../README.md`、`../../CLAUDE.md`、`.claude/rules/apdl-editing.md`、`doc/workflows/apdl-fem-run.md`。
+**相關**：見 `../README.md`、`../../CLAUDE.md`、`.claude/rules/apdl-editing.md`、`reference/workflows/apdl-fem-run.md`。

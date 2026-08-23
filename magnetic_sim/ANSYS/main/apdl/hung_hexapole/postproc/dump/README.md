@@ -9,4 +9,4 @@
 
 **命名 / 慣例**：`MT_Dump_<pole>_<region>.txt`；只 RESUME + POST1，不 /SOLU、不改幾何；`NLIST,...,COORD` 抽座標、`PRNSOL,B,COMP` 抽分量；改動標 `[ADDED]`/`[MODIFIED]`。
 
-**相關**：見 `../README.md`、`doc/workflows/apdl-postproc.md`、`.claude/rules/result-read-safety.md`。
+**相關**：見 `../README.md`、`reference/workflows/apdl-postproc.md`、`.claude/rules/result-read-safety.md`。

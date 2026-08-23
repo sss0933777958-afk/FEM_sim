@@ -27,7 +27,7 @@
 | `ANSYS_data/<model>/` | FEM 輸出：`data/<variant>/coilN/*.dat`（場）、`db/{geom,mesh,sim}/`（模型） | **讀 FEM 結果** |
 | `matlab/` | 分析碼，第一層分 `APDL/` 與 `Maxwell/` 兩個**求解器分支** | 校正、算矩陣、畫圖、讀寫 `.mat` |
 | `figures/` | `paper_fig/Section*/`（論文圖）+ `paper_fig_plot/{plot,data}`（產生端）+ `.pptx` | 論文圖 |
-| `doc/` | LaTeX 推導 / 報告 PDF + `workflows/`（操作 SOP） | 推導、跑流程前查 SOP |
+| `reference/` | LaTeX 推導 / 報告 PDF + `workflows/`（操作 SOP）+ 論文 PDF | 推導、跑流程前查 SOP |
 | `.claude/` | Claude Code 本地設定 | 通常不動 |
 
 > ⚠ `IGES/` 與 `MATLAB_data/` **已移除**：交付一律出 STEP（`model_check/`），`.mat` 一律放
@@ -44,7 +44,7 @@ CAD_model (SLDPRT/STEP，source of truth)
   → matlab/{APDL,Maxwell}/.../main/main.m                校正管線
   → data/<model>/.mat  +  results/<model>/*.pdf  +  figures/
   → figures/paper_fig_plot/plot/*.m  →  figures/paper_fig/Section*/*.png
-  → doc/<主題>/                                          報告
+  → reference/<主題>/                                    報告
 ```
 
 ## 跑一次校正

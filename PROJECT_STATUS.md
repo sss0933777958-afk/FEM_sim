@@ -21,7 +21,7 @@ FEM_sim/                         通用 FEM 容器（CLAUDE.md / README / .claud
     │   │   ├── ANSYS_data/      FEM 輸出 .dat/.db（gitignore 重產物）
     │   │   ├── matlab/          MATLAB 分析（<model>/<功能組>/code，含 common/ resolver）
     │   │   ├── MATLAB_data/     分析成果 .mat/.csv
-    │   │   └── doc/             LaTeX/PDF + workflows SOP
+    │   │   └── reference/       LaTeX/PDF + workflows SOP + 論文 PDF
     │   └── backup/              歸檔（非活躍）：hexapole-long2016、hung
     └── COMSOL/mph/              COMSOL .mph 模型（gitignore，本地）
 ```

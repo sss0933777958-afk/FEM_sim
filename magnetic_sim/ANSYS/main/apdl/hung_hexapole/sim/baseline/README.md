@@ -8,4 +8,4 @@
 
 **命名 / 慣例**：`MT_Sim_P<N>.txt`；6 支**只差 `CURR_ARRAY`**（coil N=1 其餘 0），其餘必同步；`D,ALL,MAG,0` 必在 `/SOLU` 前；保留 `!****` 原註解；FEM 激發電流＝1A（fit 時模型 I 必對齊，見 `fit-current-matches-sim`）；改動標 `[ADDED]`/`[MODIFIED]`。
 
-**相關**：見 `../README.md`、`.claude/rules/{apdl-editing,fit-current-matches-sim,result-read-safety}.md`、`doc/workflows/apdl-fem-run.md`。
+**相關**：見 `../README.md`、`.claude/rules/{apdl-editing,fit-current-matches-sim,result-read-safety}.md`、`reference/workflows/apdl-fem-run.md`。

@@ -19,5 +19,5 @@ CAD_model/
 
 ## 規則
 - 改 ANSYS 幾何 / `mt_constants` 前**必先量對應 CAD**，不一致須通報使用者拍板（per `ansys-cad-alignment.md`）。
-- 出 STEP/IGES 流程：`doc/workflows/cad-export.md`。
-- STEP 抽參數做參數表：`doc/workflows/step-to-apdl.md`。
+- 出 STEP/IGES 流程：`reference/workflows/cad-export.md`。
+- STEP 抽參數做參數表：`reference/workflows/step-to-apdl.md`。

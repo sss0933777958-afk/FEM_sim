@@ -1,4 +1,4 @@
-# doc/ur_iteration/ — μ_r 迭代驗證
+# reference/ur_iteration/ — μ_r 迭代驗證
 
 **用途**：磁性鋼相對磁導率 μ_r 的迭代求解 / 驗證推導 —— 因 B-H 非線性，用迭代法收斂 μ_r 並驗證場結果（iterative validation）。
 **內容**：`scripts/`（.tex 原稿）+ `pdf/`（編譯 PDF）。代表檔：`iterative_validation`（μ_r 迭代驗證流程）。

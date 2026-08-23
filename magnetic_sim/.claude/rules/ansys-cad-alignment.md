@@ -11,7 +11,7 @@
 **動手前必須先讀完此規則全文**。
 
 對應 memory:`feedback_ansys_cad_alignment.md`
-相關規則:`.claude/rules/ansys-db-cleanup.md`;model-check SOP 見 `magnetic_sim/ANSYS/main/doc/workflows/model-check.md`
+相關規則:`.claude/rules/ansys-db-cleanup.md`;model-check SOP 見 `magnetic_sim/ANSYS/main/reference/workflows/model-check.md`
 相關 memory:`feedback_step_geom_extraction.md`(STEP 抽尺寸方法論)
 
 ---
@@ -50,7 +50,7 @@
 2. 寫進 `magnetic_sim/ANSYS/main/apdl/<topic>/geom/<variant>_params.md` 參數表
 3. APDL 腳本所有數字**只從參數表引用**,不寫死
 
-對應 SOP:`magnetic_sim/ANSYS/main/doc/workflows/step-to-apdl.md`
+對應 SOP:`magnetic_sim/ANSYS/main/reference/workflows/step-to-apdl.md`
 
 ### 4. 發現不一致時必通報
 

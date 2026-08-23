@@ -12,4 +12,4 @@
 
 **命名 / 慣例**：`MT_Geom_Export*` 幾何匯出、`MT_Mesh_*` mesh-only；`_mm` 後綴 = SolidWorks 相容 mm 版、無後綴 = MKS metre 版；改動標 `[ADDED]`/`[MODIFIED]`；改尺寸（R_norm、POLE_R、YOKE…）前先量對齊 CAD，不可自選 round number。
 
-**相關**：見 `../README.md`、`../../../CLAUDE.md`、`.claude/rules/apdl-editing.md`、`doc/workflows/{cad-export,step-to-apdl,apdl-geom-build}.md`。
+**相關**：見 `../README.md`、`../../../CLAUDE.md`、`.claude/rules/apdl-editing.md`、`reference/workflows/{cad-export,step-to-apdl,apdl-geom-build}.md`。

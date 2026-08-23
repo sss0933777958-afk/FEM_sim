@@ -14,4 +14,4 @@
 
 **命名 / 慣例**：產生器以底線 `_` 開頭（`_generate_*.py`）標示為輔助腳本；產生的 .txt 才是 FEM input；改 .py 後須重跑產生對應 .txt，勿手改產物與產生器脫鉤。
 
-**相關**：見 `../README.md`、`../export/README.md`、`../../sim/scripts/README.md`、`doc/workflows/cad-export.md`。
+**相關**：見 `../README.md`、`../export/README.md`、`../../sim/scripts/README.md`、`reference/workflows/cad-export.md`。

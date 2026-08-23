@@ -2,8 +2,8 @@
 
 **使用者拍板（2026-07-06）**：本專案（hexapole / single-pole lumped-parameter 建模與校正）**所有討論、圖、結果 PDF、變數註解的單位，統一照 Unit Reference Sheet**。
 
-**source of truth**：`magnetic_sim/ANSYS/main/doc/Unit Reference Sheet/pdf/Unit_Reference_Sheet.pdf`
-（原稿 `.../doc/Unit Reference Sheet/scripts/Unit_Reference_Sheet.tex`）
+**source of truth**：`magnetic_sim/ANSYS/main/reference/Unit Reference Sheet/pdf/Unit_Reference_Sheet.pdf`
+（原稿 `.../reference/Unit Reference Sheet/scripts/Unit_Reference_Sheet.tex`）
 
 相關規則：`figure-style.md`（圖 + 結果 PDF 的數值標註：10^0 / 無單位不標）、`fit-current-matches-sim.md`。
 

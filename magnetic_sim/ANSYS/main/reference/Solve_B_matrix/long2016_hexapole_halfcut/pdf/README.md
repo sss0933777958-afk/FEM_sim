@@ -1,4 +1,4 @@
-# doc/Solve_B_matrix/long2016_hexapole_halfcut/pdf/ — B_S 矩陣編譯 PDF
+# reference/Solve_B_matrix/long2016_hexapole_halfcut/pdf/ — B_S 矩陣編譯 PDF
 
 **用途**：存放本 topic B_S 矩陣推導 .tex 的**編譯產物 PDF**。
 **內容**：`Bs_derivation.pdf`、`Bs_matrix.pdf`、`D_matrix_hexapole.pdf`、`dh_derivation.pdf`、`b_matrix.pdf`（B 矩陣**公式** `B_ij=V_out/V_in`）。

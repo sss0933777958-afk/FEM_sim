@@ -1,10 +1,10 @@
-# doc/ — 文件（LaTeX 推導 / 報告）+ 流程 SOP
+# reference/ — 文件（LaTeX 推導 / 報告）+ 流程 SOP + 論文 PDF
 
 技術推導、報告 LaTeX 原稿與編譯 PDF，以及 Claude 可 follow 的跨主題流程 SOP。
 
 ## 結構
 ```
-doc/
+reference/
 ├── workflows/                ← ★ 流程 SOP（cad-export / apdl-fem-run / charge-model-fit / …）
 │                               入口見 workflows/README.md
 ├── charge_model_fitting/     ← 電荷模型擬合推導（fitting_derivation / general / <model>/）

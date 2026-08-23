@@ -10,4 +10,4 @@
 
 **命名 / 慣例**：`MT_Dump_*` / `MT_Post_*`；後處理腳本不改幾何/不求解；座標選取用 `NSEL` 範圍框；輸出 .dat 命名含 coil index 與區域 tag（`_wp`/`_circuit`）；改動標 `[ADDED]`/`[MODIFIED]`。
 
-**相關**：見 `../README.md`、`./dump/README.md`、`doc/workflows/apdl-postproc.md`、`.claude/rules/{apdl-editing,result-read-safety}.md`。
+**相關**：見 `../README.md`、`./dump/README.md`、`reference/workflows/apdl-postproc.md`、`.claude/rules/{apdl-editing,result-read-safety}.md`。

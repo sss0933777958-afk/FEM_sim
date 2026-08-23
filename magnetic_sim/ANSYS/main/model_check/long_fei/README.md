@@ -42,4 +42,4 @@
 
 **命名 / 慣例**：⚠ 同一物理模型在 `model_check/` 用 topic 名 **`long_fei`**，但在 `IGES/`、`ANSYS_data/`、`apdl/` 仍用 **`long2016_hexapole_halfcut`**。與 `IGES/` 對應、須同步。MKS 轉換用 **flag 2 / 重 export**，不可抄 hung sed 6→1。`WithCoil`/`hp_split` 為由 STEP 直轉的額外變體（IGES/ 側無同名件）。
 
-**相關**：`../README.md`、`../../IGES/long2016_hexapole_halfcut/`、`doc/workflows/iges-sync-quick.md`。
+**相關**：`../README.md`、`../../IGES/long2016_hexapole_halfcut/`、`reference/workflows/iges-sync-quick.md`。

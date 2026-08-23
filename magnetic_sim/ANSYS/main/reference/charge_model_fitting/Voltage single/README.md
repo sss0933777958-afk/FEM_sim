@@ -1,4 +1,4 @@
-# doc/charge_model_fitting/Hall_snesor_base_fix_l/ — fix-ℓ 成本函數推導
+# reference/charge_model_fitting/Hall_snesor_base_fix_l/ — fix-ℓ 成本函數推導
 
 **用途**：Hall-sensor 校正「**固定 ℓ̂、求每極 d**」(fix-ℓ) 流程的成本函數推導文件。
 對應程式包：`matlab/long2016_hexapole_halfcut/Calibration_using_FEM_modeling/Hall_sensor_base_fix_dir/`
