@@ -1,7 +1,7 @@
 function plot_sphere_grid_3d(R_um, SPEC, MONO, force)
-% plot_sphere_grid_3d -- 球內「等測度網格」取樣點的 3D 分布（sphere_grid_sample 的配比）
+% plot_sphere_grid_3d -- 球內「等測度網格」取樣點的 3D 分布（conv_design_ws 的配比）
 % =========================================================================
-%   直接呼叫 matlab/Maxwell/utils/long2016_hexapole_halfcut/sphere_grid_sample.m
+%   直接呼叫 matlab/Maxwell/function/conv_design_ws.m
 %   產點（不另抄一份配比公式），把該球內的查詢點畫成 3D 散點。
 %
 %   用法
@@ -14,7 +14,7 @@ function plot_sphere_grid_3d(R_um, SPEC, MONO, force)
 %     MONO  true = 所有點同一個藍色；false（預設）= 依所屬殼上色（turbo）
 %     force true = 重新產點（否則讀快取）
 %
-%   配比（見 sphere_grid_sample 檔頭）：N_r : N_phi : N_theta = 1 : 3 : 3pi
+%   配比（見 conv_design_ws 檔頭）：N_r : N_phi : N_theta = 1 : 3 : 3pi
 %     r     = R * u^(1/3)        u_k = (k-0.5)/N_r        等分 r^3   （等體積殼）
 %     phi   = acos(1 - 2*w)      w_j = (j-0.5)/N_phi      等分 cos phi（等面積帶）
 %     theta = 2*pi*v             v_i = (i-0.5)/N_theta    等分 theta
@@ -61,7 +61,10 @@ function plot_sphere_grid_3d(R_um, SPEC, MONO, force)
     here   = fileparts(fileparts(mfilename('fullpath')));           % → paper_fig_plot/
     figdir = fullfile(fileparts(here), 'paper_fig', 'Section2_E');
     if ~exist(figdir,'dir'); mkdir(figdir); end
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Maxwell\utils\long2016_hexapole_halfcut');
+    % [MODIFIED 2026-08-21] 舊路徑 utils/long2016_hexapole_halfcut 已不存在；
+    %   conv_design_ws 在 Maxwell/function/。
+    CALMW = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Maxwell';
+    addpath(fullfile(CALMW,'function'), fullfile(CALMW,'utils'), fullfile(CALMW,'common_path'));
 
     %% ---- 產點（呼叫真正的取樣器，確保圖與程式一致）------------------------
     cachef = fullfile(here, 'data', sprintf('sphere_grid_R%d_%s.mat', R_um, tag));
@@ -69,13 +72,16 @@ function plot_sphere_grid_3d(R_um, SPEC, MONO, force)
         S = load(cachef);   P = S.P;   info = S.info;
         fprintf('由快取載入 %s（%d 點）\n', cachef, size(P,1));
     else
+        % [MODIFIED 2026-08-23] conv_design_ws 已併入 conv_design_ws：
+        %   純量 SPEC = 過取樣倍率 c（由配比反解三元組）；1x3 = 直接給三元組。
         if isscalar(SPEC)
-            [x, y, z, ~, info] = sphere_grid_sample(R_um*1e-6, SPEC, struct('frame',FRAME));
+            [Pm, ~, ~, info] = conv_design_ws([], [], [], R_um*1e-6, ...
+                                   struct('frame',FRAME, 'c',SPEC, 'quiet',false));
         else
-            [x, y, z, ~, info] = sphere_grid_sample(R_um*1e-6, [], ...
-                                    struct('frame',FRAME, 'NRPT',SPEC));
+            [Pm, ~, ~, info] = conv_design_ws(SPEC(1), SPEC(2), SPEC(3), R_um*1e-6, ...
+                                   struct('frame',FRAME, 'quiet',false));
         end
-        P = [x, y, z] * 1e6;                               % m → um
+        P = Pm * 1e6;                                      % m → um
         save(cachef, 'P', 'info');
         fprintf('已存 %s（%d 點）\n', cachef, size(P,1));
     end

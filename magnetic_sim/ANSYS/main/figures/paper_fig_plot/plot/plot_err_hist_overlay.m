@@ -32,11 +32,12 @@ function plot_err_hist_overlay(SRC, Rsel_um, CONV)
     % ---- 兩模型各擬合一次 → 逐節點×激發 絕對殘差 (mT) ----
     if CONV
         addpath(fullfile(CAL,'utils'), fullfile(CAL,'utils','long2016_hexapole_halfcut'));
-        [Pa, Ba, na] = conv_set(Rum, cfg, F, false, here);
-        [Pb, Bb, nb_] = conv_set(Rum, cfg, F, true,  here);
-        fprintf('N_c：single %d 點｜eighteen %d 點（評估集 = %d 個真實格點）\n', na, nb_, npts);
-        err0 = fit_abs_resid(P, Bstack, Pc_base, F, npts, false, Pa, Ba);
-        err1 = fit_abs_resid(P, Bstack, Pc_base, F, npts, true,  Pb, Bb);
+        ca = conv_set(Rum, cfg, false, CAL);
+        cb = conv_set(Rum, cfg, true,  CAL);
+        fprintf('N_c：single %d 點｜eighteen %d 點（評估集 = %d 個真實格點）\n', ...
+                ca.npts, cb.npts, npts);
+        err0 = fit_abs_resid(P, Bstack, Pc_base, F, npts, false, ca);
+        err1 = fit_abs_resid(P, Bstack, Pc_base, F, npts, true,  cb);
     else
         err0 = fit_abs_resid(P, Bstack, Pc_base, F, npts, false);   % single_param (無 bias)
         err1 = fit_abs_resid(P, Bstack, Pc_base, F, npts, true);    % eighteen_param (有 bias)
@@ -45,26 +46,30 @@ function plot_err_hist_overlay(SRC, Rsel_um, CONV)
     fprintf('single_param  : mean=%.4f mT  max=%.4f mT  CV=%.1f%%\n', mean(err0), max(err0), cv0);
     fprintf('eighteen_param: mean=%.4f mT  max=%.4f mT  CV=%.1f%%\n', mean(err1), max(err1), cv1);
 
-    % ---- 各自用自己的 edges(不共用;各自然解析度、nb=180),只是畫在同一 x 軸 ----
-    nb  = 180;
-    edg0 = linspace(0, max(err0), nb+1);  ctr0 = (edg0(1:end-1)+edg0(2:end))/2;   % single 0~0.88
-    edg1 = linspace(0, max(err1), nb+1);  ctr1 = (edg1(1:end-1)+edg1(2:end))/2;   % eighteen 0~0.21（自己的細 bin）
-    pct0 = histcounts(err0, edg0) / numel(err0) * 100;
-    pct1 = histcounts(err1, edg1) / numel(err1) * 100;
+    % ---- 兩組**共用同一個 bin 寬**（使用者拍板 2026-08-19）--------------------
+    %   原本兩組各自用自己的值域鋪滿 nb=180 個 bin，bin 寬差 8.57 倍
+    %   （single 5.258 µT / eighteen 0.613 µT）→ 兩個直方圖的**視覺面積不相等**
+    %   （面積 = 100% × bin 寬），高度就不能互比，這正是審查意見指出的問題。
+    %   共用 bin 寬後兩者面積都是 100%×BINW，高度差才真正代表集中程度。
+    %   BINW 取 2.8 µT：eighteen 分到約 40 個 bin（形狀看得出單峰 + 右尾），
+    %   single 峰值仍有約 100 筆樣本（雜訊 ~10%）。兩組樣本數相同且固定
+    %   （1771 格點 × 6 激發 = 10626 筆），所以「紅色 bin 變多」與「藍色變平滑」
+    %   本質上互相排斥，2.8 µT 是折衷點。
+    BINW = 2.8e-3;                                   % 共用 bin 寬 [mT]
+    hi   = max([err0(:); err1(:)]);
+    edg  = 0 : BINW : (ceil(hi/BINW)*BINW);          % 共用 edges
+    ctr0 = (edg(1:end-1)+edg(2:end))/2;   ctr1 = ctr0;
+    pct0 = histcounts(err0, edg) / numel(err0) * 100;
+    pct1 = histcounts(err1, edg) / numel(err1) * 100;
+    fprintf('共用 bin 寬 %.2f uT：全域 %d 個 bin｜eighteen 佔 %d 個｜single 峰值 %.2f%% (~%.0f 筆)、eighteen 峰值 %.2f%% (~%.0f 筆)\n', BINW*1e3, numel(edg)-1, ceil(max(err1)/BINW), max(pct0), max(pct0)/100*numel(err0), max(pct1), max(pct1)/100*numel(err1));
 
     [cB, cR] = pick_bar_colors(Rum);   % [MODIFIED] 長條配色依取樣半徑分組（同 plot_err_hist 的 pick_colors）
     FS = 28;
     fig = figure('Color','w','Position',[100 100 1100 830]);  ax = axes(fig);  hold(ax,'on');   % [MODIFIED] 加高補償外置兩列圖例
-    h0 = bar(ax, ctr0, pct0, 1, 'FaceColor',cB, 'FaceAlpha',0.60, 'EdgeColor','k', 'LineWidth',0.3);   % 亮藍(single) + 黑細邊
-    h1 = bar(ax, ctr1, pct1, 1, 'FaceColor',cR, 'FaceAlpha',0.60, 'EdgeColor','none');                 % 紅(eighteen) 無邊；帶透明看得到交錯
-    % 紅色：沿輪廓畫連續黑線(silhouette)+ 挑幾根 bar 從上到下畫垂直黑邊
-    stairs(ax, edg1, [pct1 pct1(end)], 'Color','k', 'LineWidth',0.5);   % 頂部輪廓(粗度同垂直邊 0.5)
-    stepV = 4;
-    for i = 1:stepV:numel(pct1)
-        if pct1(i) > 0
-            line(ax, [edg1(i) edg1(i)], [0 pct1(i)], 'Color','k', 'LineWidth',0.5);   % 全高垂直邊
-        end
-    end
+    % [MODIFIED 2026-08-20 使用者拍板] **黑色線段全部拿掉**：兩組都不畫邊，
+    %   原本紅色的 stairs 頂部輪廓 + 每 4 根一條的垂直黑邊也一併移除。
+    h0 = bar(ax, ctr0, pct0, 1, 'FaceColor',cB, 'FaceAlpha',0.60, 'EdgeColor','none');   % 亮藍(single)
+    h1 = bar(ax, ctr1, pct1, 1, 'FaceColor',cR, 'FaceAlpha',0.60, 'EdgeColor','none');   % 紅(eighteen)
     % [MODIFIED 2026-08-17 使用者拍板] **不再畫 mean 虛線**（連同其圖例條目一併移除）。
     %   mean 仍算出來、印在 console 供追溯；要恢復就把下面兩行 xline 取消註解並加回圖例。
     mu0 = mean(err0);  mu1 = mean(err1);
@@ -74,8 +79,12 @@ function plot_err_hist_overlay(SRC, Rsel_um, CONV)
 
     box(ax,'on');  grid(ax,'off');
     set(ax,'FontSize',FS,'FontWeight','bold','LineWidth',2.5,'TickLength',[.015 .015],'TickDir','out');
-    [xr_, xt_] = xlim_pick(SRC, max(err0));   % [MODIFIED] 用 single(fix) 的殘差定刻度;apdl 沿用定案值
-    xlim(ax, xr_);  set(ax,'XTick', xt_);
+    % [MODIFIED 2026-08-20 使用者拍板] 橫軸端點必須是**乾淨的數**（整數或 0.N）。
+    %   ⬆ **作廢**：2026-08-19 曾改成「右端畫到資料結束處 `edg(end)`」-> 端點變成
+    %   **0.946**，是直接從資料搬來的尾數，違反端點規則。改回用 xlim_pick 的
+    %   nice 上界（maxE=0.946 -> [0, 1]），內部刻度仍是 0.2/0.4/0.6/0.8。
+    [xr_, xt_] = xlim_pick(SRC, max(err0));
+    xlim(ax, xr_);   set(ax,'XTick', xt_);
     % [REVERTED 2026-08-03] 縱軸維持原作法（使用者拍板；同 plot_err_hist）：
     %   ylim 貼齊資料最大值(進位到 0.1)、tick 取 linspace 的 3 個內縮值。
     ymax = max([pct0 pct1]);  ytop = ceil(ymax*10)/10;  ylim(ax,[0 ytop]);
@@ -86,32 +95,20 @@ function plot_err_hist_overlay(SRC, Rsel_um, CONV)
          'VerticalAlignment','top', 'FontSize',FS,'FontWeight','bold','Clipping','off');
     text(ax, xr(2), -0.022*ytop, sprintf('%g',xr(2)), 'HorizontalAlignment','center', ...
          'VerticalAlignment','top', 'FontSize',FS,'FontWeight','bold','Clipping','off');
-    hLegR = bar(ax, NaN, NaN, 'FaceColor',cR, 'FaceAlpha',0.60, 'EdgeColor','k', 'LineWidth',1.2);   % 只給圖例：紅框加黑邊(實際紅 bar 仍無邊)
-    % [MODIFIED 2026-08-17] mean 虛線移除 → 圖例只剩兩個系列，兩欄一列。
-    lg = legend([h0 hLegR], {'Single parameter', 'Eighteen parameters'}, ...
-                'Interpreter','tex', 'Location','northoutside', 'NumColumns',2);
+    hLegR = bar(ax, NaN, NaN, 'FaceColor',cR, 'FaceAlpha',0.60, 'EdgeColor','none');   % 只給圖例的紅色色塊（也不加黑邊）
+    % [MODIFIED 2026-08-19 使用者拍板] 圖例改放**座標框內右上角**（原本在框外上方）；
+    %   每列一個系列、mean 併入該列（不畫 mean 虛線）。右上角本來就是空的，省版面。
+    lg = legend([h0 hLegR], ...
+                ... % [MODIFIED 2026-08-20 使用者拍板] 圖例拿掉 Mean（同 shell）；數值仍印 console
+                {'Single parameter', 'Eighteen parameters'}, ...
+                'Interpreter','tex', 'Location','northeast', 'NumColumns',1);
     lg.FontSize = 24;  lg.FontWeight = 'bold';  lg.Box = 'on';  lg.EdgeColor = 'k';  lg.LineWidth = 2.5;
+    lg.Color = 'w';
     xlabel(ax, '$\mathbf{Residual\;(mT)}$', ...
            'Interpreter','latex', 'FontSize',36);      % 絕對殘差軸標題(標準數學字體、36 粗)
     ylabel(ax, '$\mathbf{Percentage\;(\%)}$', ...
            'Interpreter','latex', 'FontSize',36);      % [ADDED] 百分比縱軸標題(同 err_hist 風格)
     ax.Toolbar.Visible = 'off';  hold(ax,'off');
-
-    % [ADDED] 圖例框:①左右邊界對齊圖框(寬度=ax 寬、x 起點同 ax，兩欄自動平均散開)
-    %                ②壓低 ax 上緣，讓圖例底線與圖框上緣「留明確間隙」、不相黏
-    drawnow;
-    axp = get(ax,'Position');  lgp = get(lg,'Position');  lgw = lgp(3);  lgh = lgp(4);
-    GAPN   = 0.022;                          % 圖例底線 ↔ 圖框上緣的間隙(normalized)
-    newTop = 1 - lgh - GAPN - 0.006;         % ax 新上緣(頂端留 0.006 給圖例外框)
-    axp(4) = newTop - axp(2);                % 只壓上緣、下緣不動
-    set(ax, 'Position', axp);
-    % [MODIFIED 2026-08-17] 條目由 4 個減為 2 個 → 依 figure-style「圖例寬度自動貼合內容」：
-    %   自然寬度 < 框寬 70% 就保持自然寬度並置中，否則才切齊座標框左右緣。
-    if lgw < 0.70*axp(3)
-        set(lg, 'Position', [axp(1) + (axp(3)-lgw)/2, newTop + GAPN, lgw, lgh]);
-    else
-        set(lg, 'Position', [axp(1), newTop + GAPN, axp(3), lgh]);
-    end
 
     % [MODIFIED 2026-08-03] 檔名一律明確標「求解器_半徑」（overlay 本身含 single+eighteen，不標模型）
     cstr = ''; if CONV, cstr = '_conv'; end
@@ -127,7 +124,7 @@ function [c0, c1] = pick_bar_colors(Rum)
 %   其他(R300…)：紫 #7B52AB (single) / 橘 #E69F00 (eighteen)
 %   ⚠ mean 虛線不隨之改——一律黑(single)/深綠(eighteen)，中性色在兩組長條上都看得清。
     if Rum == 150
-        c0 = [0.10 0.35 1.00];      c1 = [0.85 0.10 0.10];
+        c0 = [0.05 0.10 0.95];      c1 = [0.85 0.10 0.10];   % [MODIFIED 2026-08-20] 藍統一成深藍
     else
         c0 = [0.482 0.322 0.671];   c1 = [0.902 0.624 0.000];
     end
@@ -199,22 +196,49 @@ end
 
 
 % ---- 擬合 + 逐節點×激發 絕對殘差 |S·G − Bstack| (mT) ----
-function [Pq, Bq, np] = conv_set(Rum, cfg, F, USE_BIAS, here)
-% [ADDED 2026-08-13] 取該 R 的 N_c 收斂設計 → 產減量取樣點與場（校正用）。
-    tri = conv_design(Rum*1e-6, cfg, F, USE_BIAS, here);
-    [x,y,z,B] = sphere_grid_sample(Rum*1e-6, [], struct('frame','actuator','NRPT',tri));
-    Pq = [x y z];   np = size(Pq,1);
-    Bq = zeros(3*np, size(B,3));
-    for j = 1:size(B,3), Bq(:,j) = reshape(B(:,:,j).', [], 1); end
+function cal = conv_set(Rum, cfg, USE_BIAS, CAL)
+% [MODIFIED 2026-08-23 使用者拍板] 原本是「取 N_c 設計 -> 產減量點與場」，
+%   現在改成**直接讀 main.m 產完的校正結果**（校正已搬回 main.m）。
+%   ⚠ CONV=true 只支援 SRC='maxwell'：N_c 機制全在 Maxwell 分支。
+    MODEL_ = 'long2016_hexapole_halfcut';   VARIANT_ = cfg.default_variant;
+    % ---- 讀 main.m 產的收斂設計校正結果（不再自己重跑階梯 + 校正）--------
+    %   [MODIFIED 2026-08-23 使用者拍板] 校正與收斂判準已搬回 main.m
+    %   （conv_design_ws / conv_design_sensor 只負責決定內插點位置與取場），
+    %   繪圖端改成**接收 main 產完的結果** -> 圖與結果 PDF 保證出自同一次校正。
+    %   ⚠ 該組合必須先跑過 main.m（GRID_NRPT='auto'）；找不到就報錯，不猜。
+    %   ⚠ 同一組合可能有多顆 convN 檔（舊實驗留下的，例如 long2016 R150
+    %     eighteen 就有 convN6/convN80/convN88）-> 只認 conv_auto==true 那顆。
+    md_ = fullfile(CAL, 'data', MODEL_, '.mat');
+    tg_ = 'single';   if USE_BIAS, tg_ = 'eighteen'; end
+    dd_ = dir(fullfile(md_, sprintf('calib_current_%s_convN*_R%03d_%s.mat', ...
+                                    VARIANT_, round(Rum), tg_)));
+    if numel(dd_) > 1
+        ok_ = false(1, numel(dd_));
+        for k_ = 1:numel(dd_)
+            f_ = fullfile(md_, dd_(k_).name);   w_ = whos('-file', f_);
+            if ismember('conv_auto', {w_.name})
+                r_ = load(f_, 'conv_auto');   ok_(k_) = logical(r_.conv_auto);
+            end
+        end
+        dd_ = dd_(ok_);
+    end
+    assert(numel(dd_) == 1, ['找到 %d 顆收斂校正 .mat（需恰好 1 顆）。請先跑 ' ...
+           'main.m：MODEL=''%s''、R_select=%ge-6、USE_BIAS=%d、GRID_NRPT=''auto''。'], ...
+           numel(dd_), MODEL_, Rum, USE_BIAS);
+    cal = load(fullfile(md_, dd_(1).name));
 end
 
 % ============================================================================
-function err = fit_abs_resid(P, Bstack, Pc_base, F, npts, USE_BIAS, Pc_cal, Bc_cal)
-% [MODIFIED 2026-08-13] 可選第 7/8 引數：**用另一組點校正**（N_c 減量設計），
-%   再拿 (P, Bstack)（該 R 內全部真實格點）當評估集。不給就是原行為（同一組點校正+評估）。
-    if nargin < 7 || isempty(Pc_cal), Pc_cal = P;  Bc_cal = Bstack; end
-    [e, l_hat, ~] = fitting(Pc_cal, Bc_cal, Pc_base, 0.5e-3, USE_BIAS);
-    [~, ~, G]     = solve_current(l_hat, e, Pc_base, Pc_cal, Bc_cal, F);
+function err = fit_abs_resid(P, Bstack, Pc_base, F, npts, USE_BIAS, cal)
+% [MODIFIED 2026-08-23] 可選第 7 引數 cal：**直接用 main.m 產的校正結果**
+%   （e / l_hat / G，由 N_c 減量設計擬合而來），再拿 (P, Bstack)（該 R 內全部
+%   真實格點）當評估集。不給就是原行為（同一組點校正 + 評估）。
+    if nargin >= 7 && ~isempty(cal)
+        e = cal.e;   l_hat = cal.l_hat;   G = cal.G;
+    else
+        [e, l_hat, ~] = fitting(P, Bstack, Pc_base, 0.5e-3, USE_BIAS);
+        [~, ~, G]     = solve_current(l_hat, e, Pc_base, P, Bstack, F);
+    end
     Pc = make_Pc(e, Pc_base);
     pbar = P / l_hat;  S = zeros(3*npts, 6);
     for k = 1:6, d = pbar - Pc(:,k).'; r3 = sum(d.^2,2).^1.5; S(:,k) = reshape((d./r3).', 3*npts, 1); end

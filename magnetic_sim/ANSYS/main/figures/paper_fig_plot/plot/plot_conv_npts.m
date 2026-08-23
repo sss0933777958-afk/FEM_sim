@@ -143,10 +143,11 @@ function S = sweep(MODEL, GEOM, R, l0, TOL, KELL, KKI, BUFFER, NDMAX)
     done_at = NaN;
 
     for q = 1:NDMAX
-        [x,y,z,B] = sphere_grid_sample(R, [], struct('frame','actuator','NRPT',TRI(q,:)));
-        P  = [x y z];   N(q) = size(P,1);
-        Bs = zeros(3*N(q), size(B,3));
-        for j = 1:size(B,3), Bs(:,j) = reshape(B(:,:,j).', [], 1); end
+        % [MODIFIED 2026-08-23] sphere_grid_sample 已併入 conv_design_ws；
+        %   它直接回 P 與 Bstack（原本要自己 reshape 那三行不必了）。
+        [P, Bs] = conv_design_ws(TRI(q,1), TRI(q,2), TRI(q,3), R, ...
+                                 struct('frame','actuator'));
+        N(q) = size(P,1);
 
         [ell1(q), K1(:,:,q), ki1(q), gI1(q)] = fit_one(P, Bs, cfg.Pc_base, l0, false, F);
         [ell2(q), K2(:,:,q), ki2(q), gI2(q)] = fit_one(P, Bs, cfg.Pc_base, l0, true,  F);

@@ -108,10 +108,10 @@ function S = sweep_R(MODEL, GEOM, l0, here)
         for m = 1:2
             tri = TRI{m}(a,:);
             if any(tri == 0), continue; end             % 該 R 在 full_vs_conv 未達判準
-            [x,y,z,B] = sphere_grid_sample(R, [], struct('frame','actuator','NRPT',tri));
-            P  = [x y z];   np = size(P,1);
-            Bs = zeros(3*np, size(B,3));
-            for j = 1:size(B,3), Bs(:,j) = reshape(B(:,:,j).', [], 1); end
+            % [MODIFIED 2026-08-23] sphere_grid_sample 已併入 conv_design_ws。
+            [P, Bs] = conv_design_ws(tri(1), tri(2), tri(3), R, ...
+                                     struct('frame','actuator'));
+            np = size(P,1);
             r = fit_pack(P, Bs, cfg.Pc_base, l0, m==2, F);
             [rms, nmae] = eval_on_grid(P0, B0, r, cfg.Pc_base);
             rmsc = sqrt(r.J / numel(Bs));               % numel(Bs) = 3·N_c·6（純量項數）

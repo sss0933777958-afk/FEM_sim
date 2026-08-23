@@ -1,4 +1,4 @@
-function plot_svd_polar(USE_BIAS, R_um, SRC, MODEL, GEOM)
+function plot_svd_polar(USE_BIAS, R_um, SRC, MODEL, GEOM, VARIANT)
 % plot_svd_polar -- 控制指標 C（gain）與 κ（iso）在三個 actuator 參考切面上的極座標熱圖
 % =========================================================================
 %   **Maxwell 版**（資料源 = matlab/Maxwell 的 long2016 校正結果）。
@@ -51,6 +51,10 @@ function plot_svd_polar(USE_BIAS, R_um, SRC, MODEL, GEOM)
     CAL = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Maxwell';
     addpath(fullfile(CAL,'function'), fullfile(CAL,'utils'), fullfile(CAL,'common_path'));
     cfg = model_config(MODEL, GEOM);
+    % [ADDED 2026-08-21] variant 參數化。'' → cfg.default_variant（既有呼叫端行為不變）。
+    %   同一個 model 有多版場時（zhi_peng：maxwell / maxwell_split）**必須明給**，否則
+    %   conv_design_ws 會退回 default_variant、**靜默**用到舊場。
+    if nargin < 6 || isempty(VARIANT), VARIANT = cfg.default_variant; end
 
     tag = 'single';  if USE_BIAS, tag = 'eighteen'; end
     if strcmpi(SRC, 'apdl')
@@ -68,7 +72,7 @@ function plot_svd_polar(USE_BIAS, R_um, SRC, MODEL, GEOM)
         %   全格點 calib .mat（那是 R<=150 內全部 1771 個 .fld 格點），改成就地找該 R 的
         %   收斂點設計，用那 N_c 個等測度網格點擬合。
         R_FIT = 150;
-        addpath(fullfile(CAL,'utils','long2016_hexapole_halfcut'));   % sphere_grid_sample
+        % [MODIFIED 2026-08-23] 取樣+取場已併入 conv_design_ws（上方已 addpath）
         F = zeros(6, cfg.N_I);
         for j = 1:cfg.N_I, F(cfg.apdl_to_paper_idx(j), j) = 1; end
         %   ki_gate：K̄_I「非對角全負」這道閘只對 long2016 成立；六極不等強的設計
@@ -76,25 +80,42 @@ function plot_svd_polar(USE_BIAS, R_um, SRC, MODEL, GEOM)
         %   非 long2016：K̄_I 的物理結構條件不適用（六極不等強）→ **完全不納入判準**，
         %   收斂點只由 l_hat 與 g_I 決定（使用者拍板 2026-08-15）。
         is_l2016 = strcmp(MODEL,'long2016_hexapole_halfcut');
-        sg = struct('model',MODEL, 'geom',GEOM, ...
+        sg = struct('model',MODEL, 'geom',GEOM, 'variant',VARIANT, ...
                     'ki_gate', is_l2016, 'ki_req', is_l2016);
-        [tri, Nc] = conv_design(R_FIT*1e-6, cfg, F, USE_BIAS, here, cfg.R_norm, sg);
-        assert(all(tri > 0), '%s：R=%d um 找不到收斂點設計', MODEL, R_FIT);
-        og = struct('frame','actuator', 'NRPT',tri, 'model',MODEL, 'geom',GEOM);
-        [gx, gy, gz, gB] = sphere_grid_sample(R_FIT*1e-6, [], og);
-        Pq = [gx gy gz];
-        Bq = zeros(3*size(Pq,1), size(gB,3));
-        for j = 1:size(gB,3), Bq(:,j) = reshape(gB(:,:,j).', [], 1); end
-        [e_fit, l_fit] = fitting(Pq, Bq, cfg.Pc_base, cfg.R_norm, USE_BIAS);
-        [KI, gI, ~, rm] = solve_current(l_fit, e_fit, cfg.Pc_base, Pq, Bq, F);
-        S = struct('l_hat',l_fit, 'e',e_fit, 'gI_hat',gI, 'KI_bar',KI, ...
-                   'npts',Nc, 'NMAE',rm.NMAE);
+        % ---- 讀 main.m 產的收斂設計校正結果（不再自己重跑階梯 + 校正）--------
+        %   [MODIFIED 2026-08-23 使用者拍板] 校正與收斂判準已搬回 main.m
+        %   （conv_design_ws / conv_design_sensor 只負責決定內插點位置與取場），
+        %   繪圖端改成**接收 main 產完的結果** -> 圖與結果 PDF 保證出自同一次校正。
+        %   ⚠ 該組合必須先跑過 main.m（GRID_NRPT='auto'）；找不到就報錯，不猜。
+        %   ⚠ 同一組合可能有多顆 convN 檔（舊實驗留下的，例如 long2016 R150
+        %     eighteen 就有 convN6/convN80/convN88）-> 只認 conv_auto==true 那顆。
+        md_ = fullfile(CAL, 'data', MODEL, '.mat');
+        tg_ = 'single';   if USE_BIAS, tg_ = 'eighteen'; end
+        dd_ = dir(fullfile(md_, sprintf('calib_current_%s_convN*_R%03d_%s.mat', ...
+                                        VARIANT, round(R_FIT), tg_)));
+        if numel(dd_) > 1
+            ok_ = false(1, numel(dd_));
+            for k_ = 1:numel(dd_)
+                f_ = fullfile(md_, dd_(k_).name);   w_ = whos('-file', f_);
+                if ismember('conv_auto', {w_.name})
+                    r_ = load(f_, 'conv_auto');   ok_(k_) = logical(r_.conv_auto);
+                end
+            end
+            dd_ = dd_(ok_);
+        end
+        assert(numel(dd_) == 1, ['找到 %d 顆收斂校正 .mat（需恰好 1 顆）。請先跑 ' ...
+               'main.m：MODEL=''%s''、R_select=%ge-6、USE_BIAS=%d、GRID_NRPT=''auto''。'], ...
+               numel(dd_), MODEL, R_FIT, USE_BIAS);
+        cal = load(fullfile(md_, dd_(1).name));
+        S = struct('l_hat',cal.l_hat, 'e',cal.e, 'gI_hat',cal.gI_hat, ...
+                   'KI_bar',cal.KI_bar, 'npts',cal.npts, 'NMAE',cal.NMAE);
+        tri = cal.GRID_NRPT;   Nc = cal.npts;
         fprintf('  N_c = %d 點，設計 (%d,%d,%d)\n', Nc, tri);
         ell_m = S.l_hat;                       % [m]
         Hhat  = S.gI_hat * S.KI_bar;           % ᴮĤ_I [mT/A]
         Pc    = make_Pc(S.e, cfg.Pc_base);     % 3×6 電荷格（actuator frame、無因次）
-        fprintf('資料 Maxwell %s / %s（N_c 降取樣校正 @R=%d um）\n  l_hat=%.1f um  g_I=%.4f mT/A  N_c=%d  NMAE=%.2f%%\n', ...
-                MODEL, tag, R_FIT, ell_m*1e6, S.gI_hat, S.npts, S.NMAE);
+        fprintf('資料 Maxwell %s / %s / %s（N_c 降取樣校正 @R=%d um）\n  l_hat=%.1f um  g_I=%.4f mT/A  N_c=%d  NMAE=%.2f%%\n', ...
+                MODEL, VARIANT, tag, R_FIT, ell_m*1e6, S.gI_hat, S.npts, S.NMAE);
     end
 
     % ---- 極座標網格（連續評估，非 FEM 節點）----
@@ -103,10 +124,12 @@ function plot_svd_polar(USE_BIAS, R_um, SRC, MODEL, GEOM)
     [RR, TH] = meshgrid(r_um, th);
 
     ex = [1;0;0];   ey = [0;1;0];   ez = [0;0;1];    % actuator 三軸
-    Clab = '$\mathbf{\mathcal{C}^{1/3}\;[mT/A]}$';
+    % [MODIFIED 2026-08-18 使用者拍板] 標籤拿掉 ^{1/3}（數值仍是三個奇異值的幾何平均、單位 mT/A）
+    Clab = '$\mathbf{\mathcal{C}\;[mT/A]}$';
     Klab = '$\mathbf{\kappa}$';
 
     % 三個切面：(u, v, w) = 面內兩基底 + 面法向（判哪些極落在面內）
+    %   （2026-08-18：曾加「面內兩軸名稱」兩欄，使用者拍板只留軸線、不標名 → 已收回）
     FACE = { 'xaya', ex, ey, ez, '$\mathbf{x_{a}\!-\!y_{a}\;plane}$';
              'xaza', ex, ez, ey, '$\mathbf{x_{a}\!-\!z_{a}\;plane}$';
              'yaza', ey, ez, ex, '$\mathbf{y_{a}\!-\!z_{a}\;plane}$' };
@@ -173,23 +196,34 @@ function render_polar(RR, TH, vals, clab, R, Pc, FACE, idx, cl, cmapf, out)
     FSR = 30;   % 半徑環標籤（= 徑向刻度數字）
     FSP = 36;   % 磁極標籤
     FSC = 36;   % colorbar 刻度數字與標題
+    % [ADDED 2026-08-20 使用者拍板] 顏色軸：**起點與終點都要有數值**、刻度等距、
+    %   數字為整數或一位小數 0.N。做法：把 clim **往外擴到乾淨邊界**再均分。
+    [cl2, ctk] = cbar_ticks(cl);
     np  = numel(idx);
     X = RR.*cos(TH);   Y = RR.*sin(TH);
 
     % [MODIFIED 2026-08-18 使用者拍板] ① 拿掉上方的切面標題方框 → 座標軸往上撐滿；
     %   ② colorbar 依 figure-style「Colorbar 寬度（paper 合併圖）」：寬度 = 佔圖寬的
     %      **固定比例 CBW_RATIO = 0.009**（細長條）。normalized 單位本身就是「佔圖寬比例」，
-    %      故直接把寬度設成 CBW_RATIO —— 兩張圖（寬 2120 / 1180 px）縮到同寬時視覺同粗。
+    %      故直接把寬度設成 CBW_RATIO —— 兩張圖（寬 2025 / 1180 px）縮到同寬時視覺同粗。
     %   ③ 並往內收緊：colorbar 左緣只離右側面板 0.010，不再留大片空白。
     CBW_RATIO = 0.009;
     if np == 1
         fig = figure('Color','w','Position',[80 80 1180 980]);
-        AXP = {[0.020 0.030 0.780 0.940]};
+        % [MODIFIED 2026-08-18 使用者拍板] 單張與並排**圓盤大小/圖高要一致**：plot box 已鎖正方形，
+        %   邊長 = min(軸寬, 軸高)。兩個版面的軸高都是 0.940*980 = 921 px，只要把軸寬都設成
+        %   **大於 921 px**，邊長就同由高度決定 → 圓一樣大、匯出圖高一樣。
+        %   （並排 0.440*2060 = 906 px、單張 0.780*1180 = 920 px，兩個都偏小且不相等。）
+        AXP = {[0.0150 0.030 0.790 0.940]};
         CBP = [0.815 0.105 CBW_RATIO 0.790];
     else
-        fig = figure('Color','w','Position',[80 80 2120 980]);
-        AXP = {[0.005 0.030 0.440 0.940], [0.435 0.030 0.440 0.940]};
-        CBP = [0.885 0.105 CBW_RATIO 0.790];
+        % [MODIFIED 2026-08-18 使用者拍板] 中間收緊：兩面板中心距 912 -> 817 px（各往中間 ~48 px），
+        %   圖寬同步 2120 -> 2025、colorbar 左移，右側留白與單張版一致。
+        %   收緊上限 = 左panel 的 0 度標籤與右panel 的 180 度標籤不可相碰；
+        %   實測空白由 249 px 縮到 ~60 px（PNG 寬 4015 的 1.5%），仍未接觸。
+        fig = figure('Color','w','Position',[80 80 2060 980]);
+        AXP = {[0.0033 0.030 0.450 0.940], [0.4305 0.030 0.450 0.940]};
+        CBP = [0.8772 0.105 CBW_RATIO 0.790];
     end
 
     for q = 1:np
@@ -198,8 +232,8 @@ function render_polar(RR, TH, vals, clab, R, Pc, FACE, idx, cl, cmapf, out)
         ax  = axes(fig, 'Position', AXP{q});   hold(ax,'on');
         surf(ax, X, Y, zeros(size(X)), val, 'EdgeColor','none');
         view(ax,2);   shading(ax,'interp');
-        colormap(ax, cmapf(256));   clim(ax, cl);   % 三個切面共用色階
-        axis(ax,'equal');    axis(ax,'off');
+        colormap(ax, cmapf(256));   clim(ax, cl2);  % 三個切面共用色階（已擴到乾淨邊界）
+        axis(ax,'off');
 
         % ---- 極座標網格 overlay（畫在高 z、view(2) 下蓋住填色）----
         zt  = cl(2) + 1;
@@ -215,21 +249,23 @@ function render_polar(RR, TH, vals, clab, R, Pc, FACE, idx, cl, cmapf, out)
         for rr = sr:sr:R
             plot3(ax, rr*cos(thg), rr*sin(thg), zt*ones(size(thg)), '-', ...
                   'Color',[.35 .35 .35], 'LineWidth',1.2);
-            % ③ 無白底（不設 BackgroundColor/Margin）
-            % [MODIFIED 2026-08-18 使用者拍板] 半徑環標籤：黑色粗體（曾短暫改紅，已還原）
-            text(ax, rr*cos(rla), rr*sin(rla), zt, sprintf('%d\\mum', rr), ...
-                 'FontSize',FSR, 'FontWeight','bold', 'Color','k', ...
-                 'HorizontalAlignment','center');
+            % [MODIFIED 2026-08-18 使用者拍板] **半徑數字拿掉**（只留環線）——所有極座標圖通用。
         end
         for aa = 0:30:330
             ar = aa*pi/180;
             plot3(ax, [0 R*cos(ar)], [0 R*sin(ar)], [zt zt], '-', ...
                   'Color',[.35 .35 .35], 'LineWidth',1.0);
-            text(ax, 1.40*R*cos(ar), 1.40*R*sin(ar), sprintf('%d\\circ', aa), ...
-                 'HorizontalAlignment','center', 'FontSize',FSA, 'FontWeight','bold');
+            % [MODIFIED 2026-08-18 使用者拍板] **角度數字拿掉**（只留 spoke 線）——所有極座標圖通用。
+            %   （同日稍早的「只標 0/90/180/270」已被此次取代。）
         end
 
-        % ---- 面內磁極標記（|Pc_k · w| ≈ 0 → 該極落在此切面上）----
+        % ---- 面內座標軸：穿過圓心的兩根軸（使用者拍板 2026-08-18）----
+        %   由圓心指向 0 度（橫軸）與 90 度（縱軸）的黑色箭頭。**只有軸線、不標軸名**
+        %   （軸名 x_a/y_a/z_a 一度加過，使用者拍板拿掉）；長度 0.90R -> **0.45R**。
+        LAX = 0.45*R;
+        draw_axis(ax, [1 0], LAX, zt+2);        % 橫軸 -> 0 度
+        draw_axis(ax, [0 1], LAX, zt+2);        % 縱軸 -> 90 度
+
         %   [MODIFIED 2026-08-18 使用者拍板] 標籤整體外移：角度 1.28R→1.40R、
         %   P 標籤 1.13R→1.20R（兩者間距由 0.15R 拉開到 0.20R，下方 P4/P6 與 270° 不再貼合）。
         for k = 1:size(Pc,2)
@@ -242,16 +278,23 @@ function render_polar(RR, TH, vals, clab, R, Pc, FACE, idx, cl, cmapf, out)
                 % [MODIFIED 2026-08-18] P 標籤加回（使用者要求）。放**圓外** 1.13R，
                 %   並沿切線逆時針錯開 10° —— 六個極正好落在 0/90/180/270°，與角度
                 %   標籤同方向，不錯開的話兩個文字框會沿同一半徑排隊互相擠壓。
-                tlab = tk + 10*pi/180;
-                text(ax, 1.20*R*cos(tlab), 1.20*R*sin(tlab), zt+1, sprintf('P%d',k), ...
+                % [MODIFIED 2026-08-18] 角度數字沒了，10 度錯開（原為避開同半徑的角度標籤）也不需要
+                %   → 錯開歸零、P 標籤正對磁極方位；半徑 1.20R -> 1.15R。
+                tlab = tk;
+                text(ax, 1.15*R*cos(tlab), 1.15*R*sin(tlab), zt+1, sprintf('P%d',k), ...
                      'FontSize',FSP, 'FontWeight','bold', 'Color',[0.5 0 0.12], ...
                      'HorizontalAlignment','center', 'BackgroundColor','w', 'Margin',1, ...
                      'EdgeColor',[0.5 0 0.12]);
             end
         end
-        % [MODIFIED 2026-08-18] 字級 26→36 後，1.28R 的角度標籤會頂到框外 →
-        %   外緣由 1.42R 放寬到 1.75R（標籤外移後仍不被裁；圓盤相對變小）。
-        xlim(ax, [-1.75*R 1.75*R]);   ylim(ax, [-1.75*R 1.75*R]);
+        % [MODIFIED 2026-08-18 使用者拍板] 角度 / 半徑數字拿掉後，圓外只剩 P 標籤（1.15R）
+        %   → 外緣 1.75R 收到 **1.35R**：圓盤放大、版面緊湊。
+        xlim(ax, [-1.35*R 1.35*R]);   ylim(ax, [-1.35*R 1.35*R]);
+        % [FIXED 2026-08-18] 圓被壓成橢圓的根因：`axis equal` 是在 surf 之後、格線 plot3
+        %   （帶 z = zt）之前呼叫的，之後 ZLim 被撐開 → 當時定下的 plot box 比例失效，
+        %   x/y 就各自被拉去填滿 Position（906 x 921 px → 橫向壓 1.6%）。
+        %   正解：x/y 範圍本來就相等 → 直接把 plot box 鎖成正方形（z 是虛擬軸，view(2) 不管它）。
+        set(ax, 'DataAspectRatioMode','auto', 'PlotBoxAspectRatio',[1 1 1]);
         ax.Toolbar.Visible = 'off';
         hold(ax,'off');
 
@@ -261,7 +304,9 @@ function render_polar(RR, TH, vals, clab, R, Pc, FACE, idx, cl, cmapf, out)
             cb.FontSize = FSC;   cb.FontWeight = 'bold';
             cb.Label.Interpreter = 'latex';          % 先設 Interpreter 再設 String
             cb.Label.String = clab;   cb.Label.FontSize = FSC;
-            if numel(cb.Ticks) >= 5, cb.Ticks = cb.Ticks(1:2:end); end
+            % [MODIFIED 2026-08-20] 不再「減半」（那會把上緣丟掉）：直接給均分刻度，
+            %   首尾就是 clim 兩端 -> 起點與終點都有數字。
+            cb.Limits = cl2;   cb.Ticks = ctk;
             set(ax, 'Position', AXP{q});             % colorbar 會擠壓 axes → 還原
             cb.Position = CBP;
         end
@@ -273,6 +318,45 @@ function render_polar(RR, TH, vals, clab, R, Pc, FACE, idx, cl, cmapf, out)
 end
 
 % ============================================================================
+% ============================================================================
+function [cl2, tk] = cbar_ticks(cl)
+% [ADDED 2026-08-20 使用者拍板] colorbar 刻度：
+%   • **起點與終點都要有數值**（首尾刻度就坐在 clim 兩端）
+%   • 刻度**等距**
+%   • 每個數字是**整數或一位小數 0.N**
+% 做法：選一個步長 s（一位小數以內的 nice 值），把 clim **往外**擴到 s 的倍數，
+%   區間數 n 取最接近 4（= 5 個刻度）。往外擴對顏色映射的影響是均勻拉伸，
+%   三個切面共用同一個 cl2，互比性不受影響。
+    cand = [0.1 0.2 0.5 1 2 5 10 20 50 100 200 500];      % 全部是一位小數以內
+    bs = [];   bd = inf;
+    for s = cand
+        lo = floor(cl(1)/s + 1e-9)*s;
+        hi = ceil( cl(2)/s - 1e-9)*s;
+        n  = round((hi-lo)/s);
+        if n >= 3 && n <= 6 && abs(n-4) < bd
+            bd = abs(n-4);   bs = [lo hi s];
+        end
+    end
+    if isempty(bs)                                        % 保險：直接四等分
+        bs = [cl(1) cl(2) (cl(2)-cl(1))/4];
+    end
+    lo = bs(1);   hi = bs(2);   s = bs(3);
+    tk  = round((lo:s:hi)/0.1)*0.1;                       % 抹掉浮點尾巴
+    cl2 = [tk(1) tk(end)];                                % ← 用 tk 定 clim，首尾才不會差一個 ulp 被丟掉
+end
+
+% ============================================================================
+function draw_axis(ax, d, Lx, z)
+% 由圓心指向 d（面內單位向量）的黑色箭頭軸：桿 + 兩翼箭頭
+%   （自己畫、不用 quiver：quiver 的頭大小綁資料尺度，換 R 就變形）
+    d = d(:).'/norm(d);   n = [-d(2) d(1)];        % 面內法向（用來畫兩翼）
+    tip = Lx*d;
+    plot3(ax, [0 tip(1)], [0 tip(2)], [z z], '-', 'Color','k', 'LineWidth',3.0);
+    hl = 0.15*Lx;   hw = 0.06*Lx;                  % 箭頭長 / 半寬（綁軸長，縮軸時等比縮）
+    b  = tip - hl*d;
+    plot3(ax, [tip(1) b(1)+hw*n(1)], [tip(2) b(2)+hw*n(2)], [z z], '-', 'Color','k', 'LineWidth',3.0);
+    plot3(ax, [tip(1) b(1)-hw*n(1)], [tip(2) b(2)-hw*n(2)], [z z], '-', 'Color','k', 'LineWidth',3.0);
+end
 function Pc = make_Pc(e17, Pc_base)
 % 電荷格 Pc = Pc_base + E(e)（含 e6z 約束；與 solve_current 內的版本一致）
     if isempty(e17) || all(e17(:) == 0), Pc = Pc_base;  return; end

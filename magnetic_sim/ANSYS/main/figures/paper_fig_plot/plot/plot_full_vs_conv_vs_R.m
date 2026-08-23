@@ -21,7 +21,7 @@ function plot_full_vs_conv_vs_R(force)
 %
 %   資料來源
 %     全格點：既有快取 data/ell_gain_sweep_maxwell{,_bias}.mat（plot_ell_gain_vs_R 產）
-%     減量  ：sphere_grid_sample 逐 R 重算（點數固定、只有球半徑變）
+%     減量  ：conv_design_ws 逐 R 重算（點數固定、只有球半徑變）
 %
 %   R = 60:20:500，起點與 *_vs_R_conv_maxwell.png 那組統一
 %   （R<=50 時六顆電荷在小球內幾乎不可分辨，g_I 會翻負，實測 R=50 給 -8.1 mT/A）。
@@ -219,10 +219,10 @@ function [ell_um, gI, n, tri, isfb] = conv_fit(R, TRI, cfg, l0, USE_BIAS, F, TOL
     ok = false(1,nD);   i0 = NaN;
     for q = 1:nD
         try
-            [x,y,z,B] = sphere_grid_sample(R, [], struct('frame','actuator','NRPT',TRI(q,:)));
-            P  = [x y z];   np(q) = size(P,1);
-            Bs = zeros(3*np(q), size(B,3));
-            for j = 1:size(B,3), Bs(:,j) = reshape(B(:,:,j).', [], 1); end
+            % [MODIFIED 2026-08-23] conv_design_ws 已併入 conv_design_ws。
+            [P, Bs] = conv_design_ws(TRI(q,1), TRI(q,2), TRI(q,3), R, ...
+                                     struct('frame','actuator'));
+            np(q) = size(P,1);
             [e, l] = fitting(P, Bs, cfg.Pc_base, l0, USE_BIAS);
             [K, gIv(q)] = solve_current(l, e, cfg.Pc_base, P, Bs, F);
             ell(q) = l*1e6;

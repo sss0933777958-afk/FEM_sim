@@ -1,7 +1,7 @@
 function plot_ell_gain_vs_grid(QTY, DESIGN, force)
 % plot_ell_gain_vs_grid -- 校正參數隨「取樣點數」的變化（等測度網格族）
 % =========================================================================
-%   取樣半徑固定 R = 150 um，取樣點由 sphere_grid_sample 產生（格心取樣、三線性內插取場）。
+%   取樣半徑固定 R = 150 um，取樣點由 conv_design_ws 產生（格心取樣、三線性內插取場）。
 %   四種掃描設計（DESIGN）：
 %
 %   'ratio'   三方向等比例放大，維持配比 N_r:N_phi:N_theta = 1:3:3pi
@@ -282,13 +282,16 @@ function S = sweep_designs(MODEL, GEOM, R, specs, l0)
         P = [];   B = [];
         if isfield(sp,'ring_r')                      % 自訂環（measure frame，赤道面）
             Q = ring_query(sp.ring_r, sp.ring_n);
-            [x,y,z,Bq] = sphere_grid_sample([], [], struct('frame','actuator','query',Q));
-            P = [x y z];   B = Bq;
+            % [MODIFIED 2026-08-23] conv_design_ws 已併入 conv_design_ws；
+            %   query 模式的原始形狀場（Np x 3 x N_I）從 info.B 取。
+            [P, ~, ~, iq] = conv_design_ws([], [], [], [], ...
+                                struct('frame','actuator','query',Q));
+            B = iq.B;
         end
         if isfield(sp,'NRPT')                        % 等測度網格（可與環併用）
-            [x,y,z,Bq] = sphere_grid_sample(R, [], ...
-                struct('frame','actuator','NRPT',sp.NRPT,'N_nodes',n0));
-            P = [P; x y z];   B = cat(1, B, Bq);
+            [Pg, ~, ~, ig] = conv_design_ws(sp.NRPT(1), sp.NRPT(2), sp.NRPT(3), R, ...
+                                 struct('frame','actuator','N_nodes',n0));
+            P = [P; Pg];   B = cat(1, B, ig.B);
         end
         Bs = zeros(3*size(P,1), size(B,3));
         for j = 1:size(B,3), Bs(:,j) = reshape(B(:,:,j).', [], 1); end
@@ -335,13 +338,14 @@ function S = sweep_hybrid(MODEL, GEOM, R, l0)
     for k = 1:numel(rin)
         Q(p+(1:nin(k)),:) = rin(k) * fib_sphere(nin(k));   p = p + nin(k);
     end
-    [x,y,z,Bi] = sphere_grid_sample([], [], struct('frame','actuator','query',Q));
-    Pi = [x y z];   ki = round(vecnorm(Pi,2,2) / 5e-6);        % 每點屬於第幾層（半徑判定）
+    [Pi, ~, ~, ii_] = conv_design_ws([], [], [], [], ...
+                          struct('frame','actuator','query',Q));
+    Bi = ii_.B;      ki = round(vecnorm(Pi,2,2) / 5e-6);       % 每點屬於第幾層（半徑判定）
 
     % ---- 外層：(5,15,47) 等體積 5 殼 ----
-    [x,y,z,Bo] = sphere_grid_sample(R, [], ...
-        struct('frame','actuator','NRPT',[10 15 47],'N_nodes',n0));   % 10 顆殼（角向不動）
-    Po = [x y z];   ro = vecnorm(Po,2,2);
+    [Po, ~, ~, io_] = conv_design_ws(10, 15, 47, R, ...
+                          struct('frame','actuator','N_nodes',n0));   % 10 顆殼（角向不動）
+    Bo = io_.B;     ro = vecnorm(Po,2,2);
     rshell = unique(round(ro*1e9))/1e9;                        % 5 個殼半徑
     [~, ko] = min(abs(ro - rshell(:).'), [], 2);
     fprintf('[外層] 殼半徑 [um] = %s（每殼 %d 點）\n', ...
