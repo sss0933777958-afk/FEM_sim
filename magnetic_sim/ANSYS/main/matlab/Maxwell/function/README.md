@@ -4,7 +4,12 @@
 本檔是**逐函式速查**（每支在幹嘛、吃什麼、吐什麼、有什麼坑）；整體管線總覽、目錄結構、跑法請看
 **上一層的 `../README.md`**，兩者互補、不重覆。
 
-> 結構凍結：這 12 支檔的切分與職責已定案，**不得擅自新增/改名/搬移/合併**（改既有檔內文不受限）。
+> 結構凍結：檔案的切分與職責已定案，**不得擅自新增/改名/搬移/合併**（改既有檔內文不受限）。
+> [MODIFIED 2026-08-23 使用者拍板] 取樣器**收斂成兩支 `conv_design_*`**：
+> `conv_design.m`（原本一支兩用）拆成 `conv_design_ws.m`（球）與 `conv_design_sensor.m`
+> （圓柱），並把 `sphere_grid_sample.m` 與 `Sensor_grid_sample.m` **整支併進對應那支**
+> （兩檔已刪除）。兩支各自自足、**不共用外部引擎檔** —— 三線性內插那段兩邊各一份，
+> 是這個決定的代價（改一邊要同步另一邊）。
 > 見 `.claude/rules/calibration-shared-structure.md`。
 
 ---
@@ -21,7 +26,7 @@ model_config
                       └► save data/<model>/.mat/ ─► emit_results ─(emit_tex)─► results/<model>/{single,eighteen}/*.pdf
 ```
 - `build_actuator_data` 回傳的資料包這裡叫 `ad`（**不是** D̄ 矩陣 —— D̄ 是 `solve_voltage` 的產物）。
-- `interp_field_to_points` 只在「公平比較」路徑（`INTERP_TO≠''`，如 tip400→tip40）取代 `build_actuator_data`+`select_ball`。
+- ~~`interp_field_to_points`~~ 已於 2026-08-23 刪除（見下表）；`INTERP_TO≠''` 現在會直接報錯。
 - 括號內 `import_ansys_data` / `filter_iron_nodes` 是內部 helper，不由 main 直接呼叫。
 
 ---
@@ -61,10 +66,28 @@ model_config
 | **build_V_matrix.m** | `[V, exc_sign] = build_V_matrix(cfg, variant, raw, S_hall, SOFF_upper, n_uniform, sensor_r, axial_tol, sensor_override, V_METHOD)` | 電壓提取。sensor 幾何優先序：`sensor_override` > `cfg.sensor_pos/n` > 內建錐面公式。每 sensor 圓柱撒 `n_uniform` 點內插 raw 場，`V=S_hall·⟨B·n̂⟩[mV]`。兩內插法：`csv-tet`（預設，重建 tet mesh 重心內插，需 CSV mesh==solve mesh）、`scattered`（`scatteredInterpolant`，CSV≠solve mesh 時如 tip400）。最後套 all-source 欄號誌。|
 | **solve_voltage.m** | `[D_bar, gV_hat, G, rm] = solve_voltage(l_hat, e, Pc_base, P, Bstack, V)` | solve_current 的電壓版，改由 6×6 sensor 電壓 `V[mV]` 驅動：`H_V=(G·Vᵀ)/(V·Vᵀ)`、`gV_hat=(6/5)H_V(1,1)[mT/mV]`、gauge `D_bar=(5/(6·H_V(1,1)))·H_V`（`D̄(1,1)=5/6`）+ 同樣 𝒞/κ。|
 
+### 取樣器（產點：各維度數量 + 內插位置 + 配比增量）
+兩支同一套方法（等分累積測度、取格心），差在幾何：球 vs 圓柱。都**只產查詢點的位置**，
+配比決定「各維度要幾個點」，階梯決定「加點時該加哪一軸」。
+
+| 檔 | 簽章 | 做什麼 |
+|---|---|---|
+| **conv_design_ws.m** | `[P,Bstack,tri,info] = conv_design_ws(N_r,N_φ,N_θ, R, opt)` | **球**：①設計階梯決定三整數 ②產點 ③濾鐵 ④規則格三線性內插取場 ⑤轉 actuator frame。配比固定 `N_r : N_φ : N_θ = 1 : 3 : 3π`；`r = R·u^(1/3)`、`φ = acos(1−2w)`、`θ = 2πv`（皆取格心 `(index−0.5)/N`）。回**已是 `fitting`/`solve_*` 要的形狀**（`P` Np×3、`Bstack` 3Np×6）；原始形狀場在 `info.B`。五種給法：`.ladder` 只出階梯表 / `.step` 取階梯第 q 級 / 明給三整數 / `.N_target`(或 `.c`) 由配比反解 / `.query` 任意點取場。**不做校正、不判收斂** —— 那兩件事在 `main.m`。|
+| **conv_design_sensor.m** | `[x,y,z,B,tri,info] = conv_design_sensor(N_r,N_θ,N_z, opt)` | **圓柱**（Hall 感測器體積平均用）：同樣①階梯 ②產點 ③三線性內插取場，只差**不濾鐵、不轉 frame**（sensor 法線是全域框的量）。配比 `N_r : N_θ : N_z = 1 : 2π : √2·(H/R)`（**多一個形狀參數 H/R**，不是常數）；`r = R·√u`、`θ = 2πv`、`z = H·w`。⚠ 內建退化地板 `N_θ≥3`、`N_z≥2`（見檔頭實測表）。`.center` `.axis` `.span` 決定擺位；正交基底與 `build_V_matrix` 的亂數版逐字相同。`nargout<4` 時只產點、不讀場。**組 V 交給 `build_V_matrix`**。|
+⚠ **配比階梯**（兩支各有一份逐字相同的 local `ladder_`）：
+`s = t./w; [~,j] = min(s); t(j) = t(j)+1;`。因為格子邊長 `edge_i ∝ w_i/t_i = 1/s_i`，
+`min(s)` 就是**最長的那條邊** → 切它一刀。平手時 `min` 取第一個索引 → 優先序固定。
+
+⚠ 感測器圓柱 `R=150µm、H=100µm`（`main.m` 的 `sensor_r`/`axial_tol`）→ `H/R=0.667`、
+配比 `1 : 6.283 : 0.943`。**N_θ 權重最大**，階梯絕大多數步都在加 N_θ；若場主要沿軸向變化，
+誤差會由 N_z 主導，要用 `.NRTZ` 明給較大的 N_z。
+
+---
+
 ### 內插（公平比較路徑）
 | 檔 | 簽章 | 做什麼 |
 |---|---|---|
-| **interp_field_to_points.m** | `Bstack_t = interp_field_to_points(cfg, variant, R_act, P_target, R_loc)` | 把某變體的 6-coil WP 場內插到參考 geom 的點雲 `P_target`（actuator frame），讓變體（如 tip400）能在 baseline 的 `R≤R_select` 節點上取樣做**同數量同分布**比較。回 all-source `Bstack_t`（3Np×6），凸包外會 NaN 並警告。|
+| ~~**interp_field_to_points.m**~~ | — | **[REMOVED 2026-08-23]** 它呼叫只存在於 APDL 分支的 `extract_ansys_data`，在純 Maxwell path 上必定 `Undefined function`。`main.m` 的 `INTERP_TO` 分支改成明確報錯。要復活的話：來源是規則格，應改用 `conv_design_ws` 的 `.query` 模式做三線性，而不是把 APDL 的 `scatteredInterpolant` 版本搬回來。|
 
 ### 輸出（LaTeX→PDF）
 | 檔 | 簽章 | 做什麼 |

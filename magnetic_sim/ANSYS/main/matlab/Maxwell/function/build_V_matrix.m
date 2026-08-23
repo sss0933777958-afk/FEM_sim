@@ -17,6 +17,11 @@ function [V, exc_sign, sensor_pos, sensor_n, dbg] = build_V_matrix(cfg, variant,
 %     ③ utils/pole_sensor_geometry（**sensor 幾何唯一來源**；CAD 實測錐體 + 真實氣隙）
 %   V_METHOD：'csv-tet'（預設；讀 sensor_local CSV 建 tet 重心內插——需 CSV 與 solve mesh 同網格）
 %             'scattered'（座標式 scatteredInterpolant 直接對 raw solve 場取樣——CSV≠solve mesh 時用，如 tip400）。
+%             'grid'（**建議**；2026-08-23 加）：Maxwell 的 .fld 是規則格 —— 直接「定位格子
+%               + 三線性內插」，與工作空間那條（conv_design_ws）用**完全同一套**內插。
+%               比 'scattered' 快得多：不必在 13.9M 格點上做 6 次鄰域距離搜尋、也不必建
+%               108 次 Delaunay。⚠ 兩者都是分片線性但**不逐位相同**（Delaunay 把立方格
+%               切四面體、三線性在立方格內做張量積），換過去 V 會有同階的微小變動。
 %   需 ansys_path + readmatrix + triangulation/pointLocation（csv-tet）/ scatteredInterpolant（scattered）在 path。
     if nargin < 5  || isempty(SOFF_upper), SOFF_upper = 4.572e-3; end
     if nargin < 6  || isempty(n_uniform),  n_uniform  = 1e4;      end
@@ -40,19 +45,45 @@ function [V, exc_sign, sensor_pos, sensor_n, dbg] = build_V_matrix(cfg, variant,
             'soff_upper', SOFF_upper, 'soff_lower', SOFF_lower, 'face_lower', FACE_lower));
     end
 
-    % ② 每 sensor 圓柱內均勻撒 n_uniform 點（ANSYS 框、rng 可重現）——兩法共用
-    rng(0);
-    cen = zeros(3,6);  samp = cell(1,6);
+    % ② 每 sensor 圓柱內取 n_uniform 點（ANSYS 框）——兩內插法共用
+    % [MODIFIED 2026-08-21 使用者拍板] n_uniform 現在兩用：
+    %   **純量** -> 舊的 Monte Carlo 亂數撒點（rng(0) 可重現）；既有結果逐位不變。
+    %   **1x3**  -> [N_r N_theta N_z] 等測度網格（conv_design_sensor），確定性、
+    %              密度精確均勻。下游完全不必改：兩種撒法都是「體積均勻」，
+    %              所以後面那個未加權 mean 依然是合法的體積平均。
+    %   ⚠ 網格版的正交基底與下面亂數版**逐字相同**（conv_design_sensor 內同一段），
+    %     兩者落在同一個局部框，可逐點對照。
+    GRID = ~isscalar(n_uniform);
+    if ~GRID, rng(0); end
+    cen = zeros(3,6);  samp = cell(1,6);  sfld = cell(1,6);
     for i = 1:6
         ci = sensor_pos(:,i) + [0;0;cfg.SPH_OFST];    % WP 框 → ANSYS 框
         cen(:,i) = ci;
         ni = sensor_n(:,i);
-        t1 = [-ni(2); ni(1); 0]; if norm(t1) < 1e-9, t1 = [1;0;0]; end
-        t1 = t1/norm(t1);  t2 = cross(ni, t1);
-        a  = axial_tol * rand(n_uniform,1);
-        rr = sensor_r  * sqrt(rand(n_uniform,1));     % √U → 面積均勻
-        th = 2*pi      * rand(n_uniform,1);
-        samp{i} = ci.' + a.*ni.' + (rr.*cos(th)).*t1.' + (rr.*sin(th)).*t2.';
+        if GRID
+            % [MODIFIED 2026-08-23 使用者拍板] Sensor_grid_sample 與 sphere_grid_sample
+            %   都已併入 conv_design_sensor（兩檔已刪除）。分工：conv_design_sensor
+            %   做「產點 + 三線性內插取場」，本檔**只組 V**（投影到 n̂ 再取體積平均）
+            %   —— 即「build_V_matrix 從 conv_design_sensor 拿資料」。
+            [sx, sy, sz, sB] = conv_design_sensor(n_uniform(1), n_uniform(2), n_uniform(3), ...
+                struct('sensor_r', sensor_r, 'axial_tol', axial_tol, ...
+                       'center', ci, 'axis', ni, 'span', 'base', 'raw', raw, ...
+                       'variant', variant, 'model', cfg.model, 'geom', cfg.geom));
+            samp{i} = [sx, sy, sz];   sfld{i} = sB;
+        else
+            t1 = [-ni(2); ni(1); 0]; if norm(t1) < 1e-9, t1 = [1;0;0]; end
+            t1 = t1/norm(t1);  t2 = cross(ni, t1);
+            a  = axial_tol * rand(n_uniform,1);
+            rr = sensor_r  * sqrt(rand(n_uniform,1));     % √U → 面積均勻
+            th = 2*pi      * rand(n_uniform,1);
+            samp{i} = ci.' + a.*ni.' + (rr.*cos(th)).*t1.' + (rr.*sin(th)).*t2.';
+        end
+    end
+    if GRID
+        fprintf('  [V] sensor 取樣＝等測度網格 (%d,%d,%d) = %d 點/sensor\n', ...
+                n_uniform, size(samp{1},1));
+    else
+        fprintf('  [V] sensor 取樣＝亂數 %d 點/sensor（rng(0)）\n', n_uniform);
     end
 
     % ③ 內插 raw 場到撒點 → V=S_hall·⟨B·n̂⟩[mV]（依 V_METHOD 分兩法）
@@ -64,8 +95,10 @@ function [V, exc_sign, sensor_pos, sensor_n, dbg] = build_V_matrix(cfg, variant,
             R_loc = 1.5e-3;
             if isfield(cfg,'sensor_r_loc') && ~isempty(cfg.sensor_r_loc), R_loc = cfg.sensor_r_loc; end
             [V, dbg] = vmat_scattered(raw, samp, cen, sensor_n, S_hall, N_I, R_loc, dbg);
+        case 'grid'
+            [V, dbg] = vmat_grid(sfld, sensor_n, S_hall, N_I, dbg);
         otherwise
-            error('build_V_matrix: V_METHOD 必為 ''csv-tet'' | ''scattered''（得 ''%s''）', V_METHOD);
+            error('build_V_matrix: V_METHOD 必為 ''csv-tet'' | ''scattered'' | ''grid''（得 ''%s''）', V_METHOD);
     end
 
     % ④ all-source：翻下極激發欄（= cfg.s_source 對應激發極；與 build_actuator_data 一致）
@@ -128,6 +161,27 @@ function [V, dbg] = vmat_scattered(raw, samp, cen, sensor_n, S_hall, N_I, R_loc,
             bn = Bp * ni;                            % 逐點 b·n̂⁺ [mT]
             V(i,kc) = S_hall * mean(bn, 'omitnan');
             % [ADDED 2026-08-06] 逐點診斷：∠(b, n̂⁺) = acos( (b·n̂)/‖b‖ )
+            bm = vecnorm(Bp, 2, 2);
+            dbg.ang{i,kc}  = acosd(min(1, max(-1, bn./bm)));
+            dbg.bn{i,kc}   = bn;
+            dbg.bmag{i,kc} = bm;
+        end
+    end
+end
+
+% ---- grid：場已由 conv_design_sensor 內插好，本函式**只組 V** ----------------
+%   [MODIFIED 2026-08-23 使用者拍板] 原本是呼叫 conv_design_ws 的 query 模式
+%   自己內插；現在三線性已併進 conv_design_sensor（與 conv_design_ws 對稱），
+%   這裡拿到的 sfld{i} 就是該 sensor 撒點上的場 [mT]（全域框，與撒點 1:1）。
+%   盒外檢查也已移進 conv_design_sensor（它 assert 撒點必須全部落在 .fld 盒內）。
+function [V, dbg] = vmat_grid(sfld, sensor_n, S_hall, N_I, dbg)
+    V = zeros(6, N_I);
+    for i = 1:6
+        ni = sensor_n(:,i);
+        for kc = 1:N_I
+            Bp = sfld{i}(:,:,kc);                            % [mT]
+            bn = Bp * ni;
+            V(i,kc) = S_hall * mean(bn, 'omitnan');
             bm = vecnorm(Bp, 2, 2);
             dbg.ang{i,kc}  = acosd(min(1, max(-1, bn./bm)));
             dbg.bn{i,kc}   = bn;
