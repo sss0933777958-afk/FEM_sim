@@ -44,14 +44,15 @@ CONV_KI_REQ  = true;        % false = K_I_bar 完全不參與判準，只看 l_h
 INTERP_TO = '';             % '' 正常；否則把本 variant 場內插到此參考 geom 的 R≤R_select 點雲（公平比較）
 V_METHOD  = '';             % '' → cfg.v_method（現行 'grid' = 規則格三線性；另有 'scattered' / 'csv-tet'）
 % voltage-only 取樣調參
-SOFF_upper = 5.0e-3;        % 上極 sensor 沿錐面距極尖 [m]（定案值 4.572e-3）
-SOFF_lower = 5.0e-3;        % [ADDED] 下極 sensor 沿錐面距極尖 [m]（原寫死 4.572e-3；兩層要一起移才與示意圖一致）
+SOFF_upper = 4.572e-3;        % 上極 sensor 沿錐面距極尖 [m]（定案值 4.572e-3）
+SOFF_lower = 4.572e-3;        % [ADDED] 下極 sensor 沿錐面距極尖 [m]（原寫死 4.572e-3；兩層要一起移才與示意圖一致）
 % [REMOVED 2026-08-23 使用者拍板] n_uniform **廢除** —— 每 sensor 的取樣設計不再手填，
 %   改由「conv_design_sensor 產點 <-> build_V_matrix 組 V」的收斂迴圈自動決定（見下）。
 %   舊定案手填值是等測度網格 (3,20,3)=180 點/sensor（比舊亂數 500 點準 11 倍）；
 %   收斂迴圈實測會停在 (3,13,2)=78 點，下游 g_V 只差 0.009%、NMAE 完全相同。
 SEN_SEED = [1 3 2];         % sensor 階梯種子（地板 N_theta>=3、N_z>=2 由 conv_design_sensor 內建）
 SEN_TOL  = 0.001;           % 判準：V 的 36 個元素**全部**離密參考 < 0.1%
+SEN_KWIN = 10;              % ...且要**連續 SEN_KWIN 級**都過（見下方迴圈註解）
 SEN_REF  = [10 100 10];     % 密參考設計（10000 點/sensor；自身誤差 0.0042%）
 sensor_r   = 0.15e-3;       % sensor 圓柱半徑 [m]
 axial_tol  = 0.10e-3;       % sensor 圓柱高（沿 n+）[m]
@@ -98,23 +99,43 @@ if strcmp(BASE, 'voltage')
     fprintf('[voltage] sensor 場格點 %d（WP 擬合場格點 %d）\n', numel(raw_v.x), numel(raw.x));
     bV = @(t) build_V_matrix(cfg, VARIANT, raw_v, cfg.S_hall, SOFF_upper, t, ...
                              sensor_r, axial_tol, [], V_METHOD, SOFF_lower);
-    [~,~,~,~,si] = conv_design_sensor(SEN_SEED(1), SEN_SEED(2), SEN_SEED(3), ...
+    % ⚠ info 是**第 6 個**輸出（三線性併入後多了 B）；少一個 ~ 會拿到 tri 而非 info。
+    [~,~,~,~,~,si] = conv_design_sensor(SEN_SEED(1), SEN_SEED(2), SEN_SEED(3), ...
         struct('ladder',CONV_NDMAX, 'sensor_r',sensor_r, 'axial_tol',axial_tol));
     Vref = bV(SEN_REF);
     fprintf('[sensor] 密參考 (%d,%d,%d) = %d 點/sensor\n', SEN_REF, prod(SEN_REF));
+    % [MODIFIED 2026-08-23 使用者拍板] 判準由「第一次低於門檻就停」改成
+    %   **連續 SEN_KWIN 級都低於門檻**，與 ws 那條的穩健度看齊（原本 ws 要連續 10 步、
+    %   sensor 只要一次，兩者不對等；實測第一次過關是 0.0985% 對門檻 0.100%，
+    %   只差 1.5%，靠單一級決定太脆弱）。
+    %   ⚠ 這裡**維持 'ref' 判準**（離密參考的偏差），只是多要求連續 KWIN 級 ——
+    %     **不可**改成 ws 那種「相對前一步的變化率」：實測 sensor 端那條會連兩次
+    %     假收斂（5 點 / 8 點，實際誤差都是 0.6%），因為階梯在角向緩慢爬升時
+    %     「變化率小」與「離真值近」是兩回事。
+    %   收斂設計取**連續窗的第一級**（與 ws 的 q_hit 同慣例）。
     sen_hit = false;
+    sen_ok  = false(1, size(si.ladder,1));
+    sen_dev = nan(1, size(si.ladder,1));
     for q = 1:size(si.ladder,1)
-        sen_tri = si.ladder(q,:);
-        V   = bV(sen_tri);
+        V   = bV(si.ladder(q,:));
         dev = max(abs(V(:) - Vref(:)) ./ abs(Vref(:)));      % 36 個元素全部要過
-        if dev < SEN_TOL
+        sen_ok(q) = dev < SEN_TOL;   sen_dev(q) = dev;
+        i0 = ftrue(sen_ok(1:q), SEN_KWIN);
+        if ~isnan(i0)
+            sen_tri = si.ladder(i0,:);
+            V = bV(sen_tri);                                 % 回到窗首那級重算 V
             fprintf(['[sensor] 收斂設計 (%d,%d,%d)、%d 點/sensor' ...
-                     '（掃了 %d 級，最大偏差 %.4f%%）\n'], sen_tri, prod(sen_tri), q, dev*100);
+                     '（掃了 %d 級；第 %d~%d 級連續 %d 次 < %.3f%%，' ...
+                     '窗內偏差 %.4f~%.4f%%）\n'], ...
+                    sen_tri, prod(sen_tri), q, i0, i0+SEN_KWIN-1, SEN_KWIN, ...
+                    SEN_TOL*100, min(sen_dev(i0:i0+SEN_KWIN-1))*100, ...
+                    max(sen_dev(i0:i0+SEN_KWIN-1))*100);
             sen_hit = true;   break
         end
     end
-    assert(sen_hit, 'sensor：%d 級內未達 %.3f%%（最後一級 (%d,%d,%d) 偏差 %.4f%%）', ...
-           CONV_NDMAX, SEN_TOL*100, sen_tri, dev*100);
+    assert(sen_hit, ['sensor：%d 級內沒有連續 %d 級 < %.3f%%' ...
+                     '（最後一級 (%d,%d,%d) 偏差 %.4f%%）'], ...
+           CONV_NDMAX, SEN_KWIN, SEN_TOL*100, si.ladder(end,:), sen_dev(end)*100);
 end
 
 %% ---- ②③④ 產點+取場 -> 校正 -> 判收斂（迴圈由 main 驅動）--------------------
@@ -189,7 +210,7 @@ switch BASE
         rec.SOFF_upper = SOFF_upper;  rec.SOFF_lower = SOFF_lower;   % emit_results 據此加檔名後綴
         % sensor 取樣參數一併記進 .mat（自描述）
         rec.sen_tri = sen_tri;  rec.sensor_r = sensor_r;  rec.axial_tol = axial_tol;
-        rec.SEN_REF = SEN_REF;  rec.SEN_TOL = SEN_TOL;
+        rec.SEN_REF = SEN_REF;  rec.SEN_TOL = SEN_TOL;  rec.SEN_KWIN = SEN_KWIN;
         [D_bar, gV_hat, G, rm] = solve_voltage(l_hat, e, Pc_base, P, Bstack, V, K22_SET);
         rec.D_bar = D_bar;  rec.gV_hat = gV_hat;  rec.G = G;  rec.V = V;
     otherwise
