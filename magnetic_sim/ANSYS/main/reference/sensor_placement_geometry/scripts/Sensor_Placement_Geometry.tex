@@ -1,0 +1,307 @@
+\documentclass[12pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage{mathptmx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage[a4paper,top=1.6cm,bottom=1.6cm,left=2.3cm,right=2.3cm]{geometry}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{4pt}
+
+\newcommand{\ehat}[1]{\mathbf{e}_{#1}}
+\newcommand{\rhat}{\hat{\mathbf{r}}}
+\newcommand{\that}{\hat{\mathbf{t}}}
+\newcommand{\nhat}{\hat{\mathbf{n}}}
+\newcommand{\dir}{\operatorname{dir}}
+
+\begin{document}
+
+\begin{center}
+\large\textbf{Hall-Sensor Placement Geometry on a Conical Pole}\\[2pt]
+\normalsize Derivation of $\;\mathbf{p}=\mathbf{T}+s_{\mathrm{ax}}\ehat{2}+R(s_{\mathrm{ax}})\,\rhat+a\,\ehat{3}$
+\end{center}
+
+\vspace{2pt}
+\hrule
+\vspace{8pt}
+
+\textbf{Scope.} This note derives the closed-form construction used by
+\texttt{utils/pole\_sensor\_geometry.m}, which is the single source of truth for the
+six Hall-sensor centres $\mathbf{p}_i$ and their outward normals $\nhat_i^{+}$.
+All vectors are expressed in the WP frame (origin at the common sphere centre of the
+six pole tips) in metres. The construction is per-pole; the index $i$ is dropped.
+
+\section{Direction convention}
+
+Every direction below is written with the elevation--azimuth helper
+\begin{equation}
+\dir(\varepsilon,\theta)=
+\begin{bmatrix}\cos\varepsilon\cos\theta\\ \cos\varepsilon\sin\theta\\ \sin\varepsilon\end{bmatrix},
+\qquad
+\dir(\varepsilon,\theta)\cdot\dir(\varepsilon',\theta)=\cos(\varepsilon-\varepsilon').
+\label{eq:dir}
+\end{equation}
+The second identity is the only algebra needed to check orthogonality inside a
+meridian plane: two directions sharing the azimuth $\theta$ are orthogonal iff their
+elevations differ by $90^\circ$.
+
+Per-pole inputs: azimuth $\theta$ (pole angles $0,180,120,300,60,240^\circ$ for
+$P_1\ldots P_6$) and the layer flag (lower / upper).
+
+\section{Pole tip and pole axis}
+
+\textbf{Tip.} The six tips lie on a sphere of radius $\ell=R_{\mathrm{norm}}$. The
+magic-angle elevation follows from the locked hexapole constraints
+$R_{\mathrm{norm},xy}=\ell\sqrt{2/3}$, $R_{\mathrm{norm},z}=\ell/\sqrt{3}$:
+\begin{equation}
+\psi_0=\arctan\!\frac{R_{\mathrm{norm},z}}{R_{\mathrm{norm},xy}}
+      =\arctan\frac{1}{\sqrt2}=35.2644^\circ ,
+\qquad
+\ehat{1}=\dir\!\big(\sigma_\ell\psi_0,\ \theta\big),\qquad
+\mathbf{T}=\ell\,\ehat{1},
+\label{eq:tip}
+\end{equation}
+with $\sigma_\ell=-1$ for a lower pole and $+1$ for an upper pole.
+
+\textbf{Axis.} The cone axis $\ehat{2}$ points from the tip \emph{towards the base}
+(direction of increasing axial station $s$):
+\begin{equation}
+\ehat{2}=\dir(\varepsilon,\theta),\qquad
+\varepsilon=\begin{cases}
+0 & \text{lower pole (horizontal axis)}\\
+\varepsilon_{\mathrm{up}}=36.5895^\circ & \text{upper pole}.
+\end{cases}
+\label{eq:axis}
+\end{equation}
+
+\textbf{Remark (do not confuse $\ehat{1}$ with $\ehat{2}$).} The tip direction and the
+pole axis are \emph{different} vectors. For a lower pole $\ehat{1}$ has elevation
+$-35.2644^\circ$ while $\ehat{2}$ is horizontal; for an upper pole the elevations are
+$+35.2644^\circ$ and $+36.5895^\circ$. Only $\ehat{1}$ carries the magic angle --- it is
+fixed by the orthogonality/common-sphere constraints. The axis inclination
+$\varepsilon_{\mathrm{up}}$ is the physical tilt of the machined pole and is an
+independent number.
+
+\section{The local triad and the radial vector \boldmath$\rhat$}
+
+This is the part that is easy to forget. Fix a pole. Two more unit vectors are built
+so that $\{\ehat{2},\rhat_0,\that\}$ is orthonormal:
+\begin{align}
+\rhat_0 &= \dir\!\big(\varepsilon+\sigma\,90^\circ,\ \theta\big),
+  &&\sigma=\begin{cases}-1 & \text{lower pole}\\ +1 & \text{upper pole}\end{cases}
+  \label{eq:rad0}\\[2pt]
+\that &= \begin{bmatrix}-\sin\theta\\ \cos\theta\\ 0\end{bmatrix}.
+  \label{eq:tanv}
+\end{align}
+
+\textbf{Why these are orthonormal.} $\ehat{2}$ and $\rhat_0$ share the azimuth
+$\theta$ and their elevations differ by exactly $90^\circ$, so
+$\ehat{2}\cdot\rhat_0=\cos(\mp90^\circ)=0$ by \eqref{eq:dir}. The vector $\that$ is
+horizontal and perpendicular to the azimuthal direction
+$[\cos\theta,\sin\theta,0]^{\mathsf T}$, hence perpendicular to \emph{any}
+$\dir(\cdot,\theta)$; in particular $\that\perp\ehat{2}$ and $\that\perp\rhat_0$.
+
+\textbf{Geometric meaning.}
+\begin{itemize}\itemsep2pt
+\item $\ehat{2},\rhat_0$ span the \emph{meridian plane} --- the vertical plane
+      containing the pole axis (azimuth $\theta$). $\rhat_0$ is the radial direction
+      inside that plane, pointing away from the axis.
+\item The sign $\sigma$ selects \emph{which side} of the axis the sensor is mounted on.
+      A lower pole is the half-cut part: the mounting face is its \textbf{bottom} cone
+      surface, so $\sigma=-1$ tilts $\rhat_0$ downwards. An upper pole is a full cone
+      and is mounted on the upper side, so $\sigma=+1$.
+\item $\that$ is tangential --- perpendicular to the meridian plane. It is only needed
+      to rotate the mounting point around the pole axis.
+\end{itemize}
+
+\textbf{Azimuthal placement around the axis.} Rotating $\rhat_0$ about $\ehat{2}$ by an
+angle $\psi$ stays in the plane spanned by $\rhat_0$ and $\that$ (both are
+perpendicular to $\ehat{2}$), so Rodrigues' formula collapses to
+\begin{equation}
+\boxed{\ \rhat(\psi)=\cos\psi\;\rhat_0+\sin\psi\;\that\ }
+\label{eq:rhat}
+\end{equation}
+with $\rhat(\psi)\perp\ehat{2}$ and $\|\rhat(\psi)\|=1$ for all $\psi$. The canonical
+sensor azimuth is $\psi=0$, i.e. $\rhat=\rhat_0$, which places the sensor in the
+meridian plane --- directly below (lower) or above (upper) the pole axis.
+
+\textbf{Caveat on the sense of rotation.} A direct evaluation of the cross product
+gives $\ehat{2}\times\rhat_0=-\sigma\,\that$. Therefore \eqref{eq:rhat} is a
+right-handed rotation about $\ehat{2}$ by $-\sigma\psi$: the sense of increasing $\psi$
+is opposite between the two layers. This is immaterial at the default $\psi=0$ and for
+symmetric sweeps, but it must be kept in mind if a signed azimuthal offset is ever
+imposed.
+
+\section{The real cone: virtual apex, radius, and outward normal}
+
+\subsection{Virtual apex}
+
+The pole is not a mathematically sharp cone: the tip is rounded with a fillet of
+radius $r_f=40\ \mu$m, and the conical surface is \emph{tangent} to that sphere. Let
+$\beta$ be the true half-cone angle. For a sphere of radius $r_f$ inscribed tangentially
+in a cone of half-angle $\beta$, the distance from the apex to the sphere centre is
+$r_f/\sin\beta$. Placing the sphere centre at axial station $s=r_f$ (so that the
+foremost point of the sphere --- the physical tip $\mathbf{T}$ --- sits at $s=0$), the
+apex lies \emph{outside} the material at
+\begin{equation}
+s=-e_v,\qquad
+\boxed{\ e_v=\frac{r_f}{\sin\beta}-r_f\ }\;\approx\;0.16\ \mathrm{mm}.
+\label{eq:apex}
+\end{equation}
+
+\subsection{Cone radius}
+
+Measuring the axial station $s$ from the physical tip, the distance from the virtual
+apex is $e_v+s$, so
+\begin{equation}
+R(s)=(e_v+s)\tan\beta,
+\qquad
+R(0)=e_v\tan\beta\approx 0.033\ \mathrm{mm}\neq 0 .
+\label{eq:radius}
+\end{equation}
+The non-zero intercept is the whole point: \textbf{at the axial position of the tip the
+cone surface already has a finite radius}. Anchoring the mounting point at the ideal
+tip with $R=0$ is what used to push the sensor into the steel (Sec.~\ref{sec:old}).
+
+\subsection{Outward normal}
+
+Parametrise the cone surface by $(s,\psi)$:
+\begin{equation}
+\mathbf{P}(s,\psi)=\mathbf{T}+s\,\ehat{2}+R(s)\,\rhat(\psi).
+\end{equation}
+The generator (slant) direction is
+\begin{equation}
+\hat{\mathbf{g}}
+=\frac{\partial\mathbf{P}/\partial s}{\|\partial\mathbf{P}/\partial s\|}
+=\frac{\ehat{2}+\tan\beta\,\rhat}{\sqrt{1+\tan^2\beta}}
+=\cos\beta\,\ehat{2}+\sin\beta\,\rhat .
+\label{eq:gen}
+\end{equation}
+The surface normal lies in the meridian-like plane $\mathrm{span}\{\ehat{2},\rhat\}$,
+is perpendicular to $\hat{\mathbf{g}}$, and must point away from the axis
+($\nhat\cdot\rhat>0$). The unique unit vector satisfying all three is
+\begin{equation}
+\boxed{\ \ehat{3}\;=\;\nhat^{+}\;=\;\cos\beta\,\rhat-\sin\beta\,\ehat{2}\ }
+\label{eq:normal}
+\end{equation}
+since $\hat{\mathbf{g}}\cdot\ehat{3}=\cos\beta\sin\beta-\sin\beta\cos\beta=0$ and
+$\ehat{3}\cdot\rhat=\cos\beta>0$. At $\psi=0$ this is exactly
+$\dir\!\big(\varepsilon+\sigma(\beta+90^\circ),\theta\big)$, i.e. the axis direction
+rotated by $\sigma(90^\circ+\beta)$ inside the meridian plane.
+
+\section{Axial station from the slant offset}
+
+$\mathrm{SOFF}$ is defined as the \textbf{slant distance measured along the generator},
+starting from the ``red point'' --- the point of the generator at the same axial station
+as the tip, i.e. $(s,R)=(0,\,e_v\tan\beta)$. Advancing a slant distance
+$\mathrm{SOFF}$ along $\hat{\mathbf{g}}$ advances the axial station by its $\ehat{2}$
+component, hence
+\begin{equation}
+\boxed{\ s_{\mathrm{ax}}=\mathrm{SOFF}\cdot\cos\beta\ }
+\label{eq:sax}
+\end{equation}
+with the design value $\mathrm{SOFF}=4.572$~mm ($=0.18$~inch).
+
+\textbf{Convention.} Quoting a mounting offset always means the \emph{full} slant
+distance measured in the meridian plane, \emph{including} its leading segment: saying
+``$\mathrm{SOFF}=4$~mm'' already contains the portion $t_{\tan}$ that is pressed
+against the fillet rather than the cone, and the whole $4$~mm is then projected onto
+the axis by $\cos\beta$. The CAD-measured fillet segments are $t_{\tan}=0.0328$~mm
+(lower) and $0.0311$~mm (upper); they are recorded only for drawing the pole outline
+and do \emph{not} enter \eqref{eq:sax}.
+
+\textbf{History.} An earlier revision used
+$s_{\mathrm{ax}}=(\mathrm{SOFF}-t_{\tan})\cos\beta+t_{\tan}$, which measured
+$\mathrm{SOFF}$ from the physical tip and treated the leading segment as purely
+axial. The two differ by $t_{\tan}(1-\cos\beta)\approx0.6\ \mu$m, three orders of
+magnitude below the air gap, so no downstream result changed.
+
+\section{Assembly}
+
+Stacking \eqref{eq:tip}, \eqref{eq:sax}, \eqref{eq:radius}, \eqref{eq:rhat} and
+\eqref{eq:normal}, and lifting the sensor off the surface by the air gap
+$a=0.41$~mm along the outward normal:
+\begin{equation}
+\boxed{\;
+\mathbf{p}
+=\underbrace{\mathbf{T}}_{\text{tip}}
++\underbrace{s_{\mathrm{ax}}\,\ehat{2}}_{\text{slide along axis}}
++\underbrace{R(s_{\mathrm{ax}})\,\rhat(\psi)}_{\text{out to the cone surface}}
++\underbrace{a\,\ehat{3}}_{\text{lift off the surface}}\;}
+\label{eq:assembly}
+\end{equation}
+
+Read left to right, the four terms are: start at the pole tip; slide along the axis to
+the correct axial station; step radially outwards until you reach the actual cone
+surface at that station; then lift perpendicular to that surface by the air gap.
+Because the last step uses the true surface normal \eqref{eq:normal}, the perpendicular
+distance from the sensor centre to the cone surface is \emph{exactly} $a$ by
+construction.
+
+\subsection*{Degenerate case: flat mounting face}
+
+For the lower pole the option \texttt{face\_lower='flat'} mounts the sensor on the
+half-cut plane instead of the bottom cone. That plane \emph{contains} the pole axis,
+so there is no radial stand-off and no slant projection:
+\begin{equation}
+s_{\mathrm{ax}}=\mathrm{SOFF},\qquad R=0,\qquad \nhat^{+}=\hat{\mathbf{z}},
+\qquad \mathbf{p}=\mathbf{T}+\mathrm{SOFF}\,\ehat{2}+a\,\hat{\mathbf{z}} .
+\end{equation}
+The azimuth $\psi$ has no meaning for a plane and is ignored.
+
+\section{Numerical values (long2016 half-cut, CAD-measured cone)}
+\label{sec:num}
+
+$\ell=0.5$~mm, $r_f=0.04$~mm, $\mathrm{SOFF}=4.572$~mm, $a=0.41$~mm.
+The two layers have \emph{different} measured cone slopes
+($\tan\beta=0.20330$ lower, $0.19463$ upper; a $4.4\%$ difference).
+
+\begin{center}
+\begin{tabular}{lccccc}
+\toprule
+Layer & $\beta$ [deg] & $e_v$ [mm] & $s_{\mathrm{ax}}$ [mm] & $R(s_{\mathrm{ax}})$ [mm] & poles \\
+\midrule
+Lower & 11.4916 & 0.16078 & 4.48035 & 0.94354 & $P_1,P_3,P_6$ \\
+Upper & 11.0138 & 0.16937 & 4.48779 & 0.90642 & $P_2,P_4,P_5$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Spot check for $P_1$ ($\theta=0$, lower, $\psi=0$): $\ehat{2}=[1,0,0]^{\mathsf T}$,
+$\rhat_0=\dir(-90^\circ,0)=[0,0,-1]^{\mathsf T}$, so \eqref{eq:normal} gives
+\[
+\nhat^{+}=\cos\beta\,[0,0,-1]^{\mathsf T}-\sin\beta\,[1,0,0]^{\mathsf T}
+=[-0.1992,\ 0,\ -0.9800]^{\mathsf T},
+\]
+which is what the code returns. The normal tilts $\beta$ away from straight-down,
+as it must for a surface whose generator is inclined by $\beta$ to the axis.
+
+\section{Why the naive construction fails}
+\label{sec:old}
+
+A tempting shortcut is to anchor at the ideal tip and walk the slant distance directly:
+$\mathbf{p}=\mathbf{T}+\mathrm{SOFF}\cdot\dir(\varepsilon+\sigma\beta,\theta)+a\,\ehat{3}$.
+This ignores the finite radius $R(0)=e_v\tan\beta\approx0.033$~mm at the tip station,
+so the mounting point is placed \emph{inside} the steel. The resulting perpendicular
+distance to the \emph{real} cone surface is
+\[
+0.3635\ \mathrm{mm}\ \text{(lower)},\qquad 0.4012\ \mathrm{mm}\ \text{(upper)},
+\]
+instead of the specified $0.41$~mm --- an $11\%$ error on the lower poles, and
+inconsistent between layers. The construction \eqref{eq:assembly} removes both defects:
+the stand-off is exactly $a$ on every pole.
+
+\vspace{6pt}
+\hrule
+\vspace{4pt}
+{\footnotesize
+\textbf{Implementation:} \texttt{matlab/Maxwell/utils/pole\_sensor\_geometry.m}
+(and the identical copy under \texttt{matlab/APDL/Calibration\_using\_FEM\_modeling/utils/}).
+Consumers: \texttt{build\_V\_matrix.m} and every script that draws sensors or pole
+outlines --- none of them may re-derive this geometry locally.\par
+\textbf{Related:} \texttt{.claude/rules/ansys-cad-alignment.md} (CAD is the source of
+truth); memory \texttt{long2016-pole-cone-geometry} (STEP measurements and how they
+were taken).}
+
+\end{document}
