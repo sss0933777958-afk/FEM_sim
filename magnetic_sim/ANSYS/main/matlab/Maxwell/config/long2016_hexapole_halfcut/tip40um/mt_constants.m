@@ -38,7 +38,11 @@ function c = mt_constants()
     c.fld_variant_subdir = false;                     % .fld 直接放 fld_dir，不再進 variant 子夾
 
     % Maxwell 無 ANSYS 的 sensor_local tet CSV → V 矩陣一律走座標式 scatteredInterpolant
-    c.v_method          = 'scattered';
+    % [MODIFIED 2026-08-23 使用者拍板] 'scattered' -> 'grid'：Maxwell 的 .fld 是規則格，
+    %   直接定位格子做三線性內插，與工作空間（conv_design_ws）用同一套實作。
+    %   實測快 11 倍（52.5 s -> 4.9 s）、V 差異 max 0.31% / median 0.068%（分片線性的
+    %   兩種切法之差，同階）。⚠ 既有 voltage .mat 用 'scattered' 算的，無法逐位重現。
+    c.v_method          = 'grid';
     c.sensor_r_loc      = 1.5e-3;                     % scattered 取源鄰域半徑 [m]（0.1mm 格 → 約 1.4 萬點/sensor）
 
     % ===== ② 幾何 / 物理常數（與 APDL 版逐行等價）=====
