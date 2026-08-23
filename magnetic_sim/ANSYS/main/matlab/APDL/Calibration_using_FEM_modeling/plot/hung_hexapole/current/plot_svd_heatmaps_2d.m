@@ -65,7 +65,7 @@ function render_polar(RR, TH, val, clab, R, flipcmap, dhat, u, v, w, out)
     view(ax,2);  shading(ax,'interp');
     cmap = jet;  if flipcmap, cmap = flipud(cmap); end
     colormap(ax, cmap);  caxis(ax, [min(val(:)) max(val(:))]);
-    axis(ax,'equal');  axis(ax,'off');
+    axis(ax,'off');
 
     % ---- 極座標網格 overlay（畫在高 z、view(2) 蓋在填色之上）----
     zt  = max(val(:)) + 1;
@@ -73,15 +73,12 @@ function render_polar(RR, TH, val, clab, R, flipcmap, dhat, u, v, w, out)
     rla = 100*pi/180;                                          % 徑向標籤角度（避開 spoke）
     for rr = (0.25:0.25:1)*R
         plot3(ax, rr*cos(thg), rr*sin(thg), zt*ones(size(thg)), '-', 'Color',[.35 .35 .35], 'LineWidth',0.9);
-        text(ax, rr*cos(rla), rr*sin(rla), zt, sprintf('%d\\mum',round(rr)), ...     % 環上標半徑
-             'FontSize',12,'FontWeight','bold','Color','k','HorizontalAlignment','center', ...
-             'BackgroundColor','w','Margin',1);
+        % [MODIFIED 2026-08-18 使用者拍板] 半徑數字拿掉（只留環線）——所有極座標圖通用
     end
     for a = 0:30:330
         ar = a*pi/180;
         plot3(ax, [0 R*cos(ar)], [0 R*sin(ar)], [zt zt], '-', 'Color',[.35 .35 .35], 'LineWidth',0.8);
-        text(ax, 1.09*R*cos(ar), 1.09*R*sin(ar), sprintf('%d\\circ',a), ...
-             'HorizontalAlignment','center','FontSize',15,'FontWeight','bold');
+        % [MODIFIED 2026-08-18 使用者拍板] 角度數字拿掉（只留 spoke 線）——所有極座標圖通用
     end
 
     % ---- 磁極投影標記：面內極（|d̂·w|≈0）在 rim r=R 標紅點 + P k（尖端剛好落 R_norm 面）----
@@ -97,7 +94,11 @@ function render_polar(RR, TH, val, clab, R, flipcmap, dhat, u, v, w, out)
                  'EdgeColor',[0.5 0 0.12]);
         end
     end
-    xlim(ax,[-1.20*R 1.20*R]);  ylim(ax,[-1.20*R 1.20*R]);
+    % [MODIFIED 2026-08-18] 圓外已無文字 -> 外緣 1.20R 收到 1.05R（版面緊湊）
+    xlim(ax,[-1.05*R 1.05*R]);  ylim(ax,[-1.05*R 1.05*R]);
+    % [FIXED 2026-08-18] 同 plot_svd_polar：axis equal 在格線 plot3(z=zt) 之前呼叫會失效，
+    %   圓會被拉成橢圓 → x/y 範圍相等時直接鎖正方形 plot box。
+    set(ax, 'DataAspectRatioMode','auto', 'PlotBoxAspectRatio',[1 1 1]);
 
     cint = 'tex'; if startsWith(strtrim(clab),'$'), cint = 'latex'; end
     cb = colorbar(ax); cb.FontSize = 16; cb.FontWeight = 'bold';

@@ -31,7 +31,8 @@ function [pos, nhat, geo] = pole_sensor_geometry(cfg, opt)
 %
 % SOFF 語意 = **沿貼附面自極尖量的斜面距離**（定案 4.572e-3 m = 0.18 inch）。最前面
 % t_tan 那一段是倒圓、不在錐面上，所以只有 (SOFF - t_tan) 要乘 cos(beta)。
-% t_tan = **下極 0.03 mm / 上極 0.04 mm**（使用者定義，2026-08-14）。
+% t_tan = **下極 0.0328 mm / 上極 0.0311 mm**（CAD 量測，2026-08-20）；沿子午面的斜距，
+%   已包含在 SOFF 內。
 %   使用者慣例：**任何沿貼附面自極尖量的長度，都已內含這一段**（下 0.03、上 0.04）。
 %   （歷史：曾用 CAD STEP 實測 0.0322 mm 六極共用，= 球切錐理論值 r_f*(1-sin beta)
 %    的 0.0320/0.0324。改成 0.03/0.04 後 s_ax 只差 -0.04/+0.14 um，量級可忽略。）
@@ -75,7 +76,13 @@ function [pos, nhat, geo] = pole_sensor_geometry(cfg, opt)
     SOFF_L = gv('soff_lower', 4.572e-3);
     FACE_L = gv('face_lower', 'cone');
     AIR    = gv('air',        0.41e-3);
-    T_TAN  = gv('t_tan',      [0.03e-3, 0.04e-3]);   % [下極, 上極] SOFF 內含的倒圓段長
+    % [MODIFIED 2026-08-20 使用者 CAD 量測、拍板] 下極 0.0328 / 上極 0.0311 mm。
+    %   定義：沿**子午面（母線方向）**量的斜距，是 SOFF 最前端壓在倒圓上的那一段。
+    %   使用者慣例：**講 SOFF = 4 mm 就是已經包含這 0.0311 mm**，接著
+    %       s_ax = SOFF * cos(beta)          <- 整段斜距一起投影到 e2
+    %   所以 t_tan **不參與 s_ax 計算**，只是記錄「倒圓段有多長」，
+    %   供繪圖腳本截錐面輪廓的前端用。
+    T_TAN  = gv('t_tan',      [0.0328e-3, 0.0311e-3]);   % [下極, 上極] 倒圓段斜距 [m]
     PSI    = gv('psi',        0);
     if isscalar(PSI), PSI = repmat(PSI, 1, 6); end
 
