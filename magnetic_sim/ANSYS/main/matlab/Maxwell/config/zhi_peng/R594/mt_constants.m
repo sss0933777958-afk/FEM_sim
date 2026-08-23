@@ -21,14 +21,20 @@ function c = mt_constants()
     c.regions           = {'all'};
     c.R_load            = [];
 
-    c.fld_dir           = 'D:\Maxwell_sim\Zhi_peng\export';
+    % [MODIFIED 2026-08-18] .fld 已搬進 R594/ 子夾（因為新增了 R500 變體，兩組並存）。
+    %   原路徑 'D:\Maxwell_sim\Zhi_peng\export' 現在只有 R500/ 與 R594/ 兩個子夾、沒有 .fld。
+    c.fld_dir           = 'D:\Maxwell_sim\Zhi_peng\export\R594';
     c.fld_files         = {'B_p1.fld','B_p2.fld','B_p3.fld','B_p4.fld','B_p5.fld','B_p6.fld'};
     %   [MODIFIED 2026-08-15] **六個 .fld 都已匯出**，且框已由薄片改成立方體（原註解已過時）：
     %   實測 header：Min [-2mm -2mm -1.66mm]  Max [2mm 2mm 2.34mm]  Grid [0.02mm]³
     %   → 201 x 201 x 201 = 8,120,601 格點/檔（每檔 ~1.15 GB，六檔約 6.9 GB）。
     %   z 框中心 = (-1.66+2.34)/2 = 0.34 mm，與工作區中面 WP_Z_CAD = 0.343 mm 一致。
     c.fld_variant_subdir = false;
-    c.v_method          = 'scattered';
+    % [MODIFIED 2026-08-23 使用者拍板] 'scattered' -> 'grid'：Maxwell 的 .fld 是規則格，
+    %   直接定位格子做三線性內插，與工作空間（conv_design_ws）用同一套實作。
+    %   實測快 11 倍（52.5 s -> 4.9 s）、V 差異 max 0.31% / median 0.068%（分片線性的
+    %   兩種切法之差，同階）。⚠ 既有 voltage .mat 用 'scattered' 算的，無法逐位重現。
+    c.v_method          = 'grid';
 
     % ===== ② 幾何（CAD 實測；長度單位 [m]）=====
     % --- magic-angle 六極尖端 ---
