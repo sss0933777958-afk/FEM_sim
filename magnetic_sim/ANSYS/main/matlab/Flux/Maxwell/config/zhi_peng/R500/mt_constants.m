@@ -39,6 +39,13 @@ function c = mt_constants()
     c.fld_files_variant.maxwell       = c.fld_files;
     c.fld_files_variant.maxwell_split = {'B_p1_split.fld','B_p2_split.fld','B_p3_split.fld', ...
                                          'B_p4_split.fld','B_p5_split.fld','B_p6_split.fld'};
+    % [ADDED 2026-08-24] 'maxwell_gap' = 氣隙版重解（匯在**平行資料夾** export\R500_gap\），
+    %   用該夾的 *_split.fld（WP 細格，與上面兩版同框同步距：
+    %   Min [-2 -2 -1.711] mm / Max [2 2 2.289] mm / Grid [0.02]^3 → 201^3 格點，header 逐字一致）。
+    %   同夾另有 *_glob（±27 mm / 0.2 mm 全機粗格，另一種用途，未路由；且 p6 匯出不完整）。
+    c.fld_dir_variant.maxwell_gap = 'D:\Maxwell_sim\Zhi_peng\export\R500_gap';
+    c.fld_files_variant.maxwell_gap = {'B_p1_split.fld','B_p2_split.fld','B_p3_split.fld', ...
+                                       'B_p4_split.fld','B_p5_split.fld','B_p6_split.fld'};
     c.fld_variant_subdir = false;
     % [MODIFIED 2026-08-23 使用者拍板] 'scattered' -> 'grid'：Maxwell 的 .fld 是規則格，
     %   直接定位格子做三線性內插，與工作空間（conv_design_ws）用同一套實作。

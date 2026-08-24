@@ -10,6 +10,7 @@ function raw = extract_maxwell_data(cfg, dataset, variant)
 %     cfg.fld_files          （可選）1×N_I cell，各 coil 的 .fld 檔名；
 %                            未給則預設 sprintf('coil%d.fld', k)
 %     cfg.fld_variant_subdir （可選 true）→ 路徑再進 variant 子夾
+%     cfg.fld_dir_variant.<variant>（可選）→ 該 variant 專屬的**獨立資料夾**（凌駕 fld_dir）
 %   ⚠ N_I 個 .fld 必須是「同一組匯出格點」（x/y/z 逐點相同）才能疊成 raw.B —— 內建檢查、不符即報錯。
 %   ⚠ dataset 對 Maxwell 只是「標記」（一個 .fld = 一個場，無 all/wp/circuit 之分）。
 %
@@ -43,8 +44,16 @@ function raw = extract_maxwell_data(cfg, dataset, variant)
                  'model',model, 'variant',variant, 'dataset',dataset);
 end
 
-% ---- local：解析 .fld 資料夾（可選 variant 子夾）----
+% ---- local：解析 .fld 資料夾（可選 variant 專屬夾 / variant 子夾）----
+%   [ADDED 2026-08-24] cfg.fld_dir_variant.<variant> → 該 variant 的**獨立資料夾**
+%   （例：zhi_peng R500 的 gap 變體匯在 export\R500_gap\，與 export\R500\ 平行，
+%     不是它的子夾）。沒給該欄位時行為與先前逐字相同。
 function fdir = fld_dir_for(cfg, variant)
+    if ~isempty(variant) && isfield(cfg,'fld_dir_variant') ...
+            && isfield(cfg.fld_dir_variant, variant) && ~isempty(cfg.fld_dir_variant.(variant))
+        fdir = cfg.fld_dir_variant.(variant);
+        return
+    end
     base = cfg.fld_dir;
     if isfield(cfg,'fld_variant_subdir') && ~isempty(cfg.fld_variant_subdir) ...
             && cfg.fld_variant_subdir && ~isempty(variant)
