@@ -55,6 +55,13 @@ function plot_svd_polar(USE_BIAS, R_um, SRC, MODEL, GEOM, VARIANT)
     %   同一個 model 有多版場時（zhi_peng：maxwell / maxwell_split）**必須明給**，否則
     %   conv_design_ws 會退回 default_variant、**靜默**用到舊場。
     if nargin < 6 || isempty(VARIANT), VARIANT = cfg.default_variant; end
+    % [ADDED 2026-08-24] 檔名補上 **variant** 後綴：同一個 model 有多版場（zhi_peng 的
+    %   maxwell / maxwell_split / maxwell_gap）時，只帶 model 會**互相覆蓋**。
+    %   非預設 variant 才加，且照 short-names 規則剝掉整棵樹都一樣的分支名 'maxwell'
+    %   -> 'maxwell_gap' 變 '_gap'、'maxwell_split' 變 '_split'。
+    if ~strcmpi(VARIANT, cfg.default_variant)
+        msfx = [msfx '_' regexprep(VARIANT, '^maxwell_?', '')];
+    end
 
     tag = 'single';  if USE_BIAS, tag = 'eighteen'; end
     if strcmpi(SRC, 'apdl')
@@ -325,16 +332,30 @@ function [cl2, tk] = cbar_ticks(cl)
 %   • 刻度**等距**
 %   • 每個數字是**整數或一位小數 0.N**
 % 做法：選一個步長 s（一位小數以內的 nice 值），把 clim **往外**擴到 s 的倍數，
-%   區間數 n 取最接近 4（= 5 個刻度）。往外擴對顏色映射的影響是均勻拉伸，
+%   區間數 n 限制在 3~6。往外擴對顏色映射的影響是均勻拉伸，
 %   三個切面共用同一個 cl2，互比性不受影響。
-    cand = [0.1 0.2 0.5 1 2 5 10 20 50 100 200 500];      % 全部是一位小數以內
-    bs = [];   bd = inf;
+%
+% [MODIFIED 2026-08-24] 挑選判準由「n 最接近 4」改成「**跨度最小**（= 資料覆蓋最大）」，
+%   同分再取整數刻度。起因：舊判準只管刻度好不好看、不管浪費多少色階 ——
+%   zhi_peng gap 的資料 19.90~30.83 被撐成 clim [15,35]，**只用到色條的 54.6%**，
+%   而同一支腳本畫的無氣隙版（31.86~51.10 -> [30,55]）用了 77.0%。兩張圖的色階
+%   利用率差 22 個百分點，看起來就像「分布不一樣」（實測空間形狀只差 3%）。
+%   新判準給 gap [18,33]（覆蓋 72.8%、中心落在 34.2% vs 無氣隙的 32.2%）。
+%   ⚠ 已逐一驗算：**既有的其他圖 clim 完全不變** —— no gap C [30,55]、
+%     long2016 C [13,18]、long2016 kappa [0,1]、zhi_peng kappa [0,0.8] 都是原值。
+%   ⚠ cand 補上 3（figure-style 的 nice 清單本來就有），[18,33] 才生得出來。
+    cand = [0.1 0.2 0.3 0.5 1 2 3 5 10 20 30 50 100 200 500];
+    bs = [];   bsp = inf;   bint = -1;
     for s = cand
         lo = floor(cl(1)/s + 1e-9)*s;
         hi = ceil( cl(2)/s - 1e-9)*s;
         n  = round((hi-lo)/s);
-        if n >= 3 && n <= 6 && abs(n-4) < bd
-            bd = abs(n-4);   bs = [lo hi s];
+        if n < 3 || n > 6, continue; end
+        sp   = hi - lo;                                   % 跨度：越小 = 資料覆蓋越大
+        tkq  = lo:s:hi;
+        isI  = double(all(abs(tkq - round(tkq)) < 1e-9)); % 1 = 刻度全整數（同分時優先）
+        if sp < bsp - 1e-9 || (abs(sp - bsp) < 1e-9 && isI > bint)
+            bsp = sp;   bint = isI;   bs = [lo hi s];
         end
     end
     if isempty(bs)                                        % 保險：直接四等分
