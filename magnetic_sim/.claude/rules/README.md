@@ -2,7 +2,7 @@
 
 **用途**：每個 `.md` 是一條 Claude Code 工作規則，依工作情境（觸發片語 / 涉及的目錄）自動載入；強制規則須「動手前先讀全文」。對應觸發片語總表見 `../../CLAUDE.md` 的 Quick Triggers。
 
-**內容**（21 條，逐條一行用途）：
+**內容**（22 條，逐條一行用途）：
 - `ansys-cad-alignment.md` — ANSYS 幾何尺寸必對齊 CAD（STEP/IGES = source of truth）；改幾何前必量 CAD、不一致必通報。
 - `result-read-safety.md` — 讀 ANSYS 結果三層防呆（讀前回報消歧、讀後核指紋、以 RESULTS_MAP 為準），避免讀錯 case。
 - `ansys-db-cleanup.md` — **（2026-08-17 由 `sim-cleanup.md` + `db-folder-retention.md` 合併）** `ANSYS_data/<model>/db/` 三層政策：`geom/` **整層刪**（可由 deck 重生）、`mesh/` 保主 `.db`+主 log、`sim/` 再加主 `.rmg`；⚠ **刪 `geom/` 前必先 `find -size +100M`** —— 實測 20 顆網格 db（29.2 GB、19 顆孤本、含指紋基準網格）被錯放在該層；含保留白名單、主檔 vs worker 判別、`rm -f <job>*` 陷阱、GUI scratch 夾整夾刪、強制 dry-run + 使用者批准。
@@ -19,6 +19,8 @@
 - `modify-existing-files.md` — 要改腳本一律**改現有那支**（首選參數化），不要複製成 `_v2`/變體檔；產物落新夾則允許。
 - `simulation-constraints.md` — APDL 幾何/材料/求解器硬約束（alpha=54.74° FIXED、tip 公式鎖定、元素型別、BC）。
 - `unit-reference.md` — 單位統一慣例（ℓ̂ µm／b mT／ĝ_I mT/A／V mV／R_a A/Wb／力 pN），source of truth = reference/Unit Reference Sheet PDF。
+- `short-names.md` — **檔名一律要短**（2026-08-24 使用者拍板，升格為全 repo 通則）：路徑講過的事檔名不再講一次、
+  變體後綴 3–6 字元、只留會撞名的欄位、資料夾名同此；判準＝超過 ~25 字元就檢查重複。既有檔不強制回溯改名。
 - `no-backup-data.md` — **禁止使用 `backup/` 的資料與程式**（禁 `addpath(backup)`、禁讀其 `.m/.mat/.dat`）；模型設定一律走 live `model_config(...)`。起因＝`paper_fig_plot/` 有 12 支吃 `backup/.../mt_constants.m`，看不到 CAD 實測的真實錐體幾何。
 
 **（2026-07-06 由 `magnetic_sim/ANSYS/main/rules/` 移入本層，改為全域自動載入）**：

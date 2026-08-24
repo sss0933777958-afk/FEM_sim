@@ -139,6 +139,7 @@ cd magnetic_sim/ANSYS/backup/hexapole-long2016
 | charge fit / 改 I_actual | `fit-current-matches-sim.md`（I = FEM 激發 1A） |
 | Calibration_using_FEM_modeling 結構 | `calibration-shared-structure.md`（結構凍結、改先問）、`calibration-transfer-matrix-output.md`、`actuator-frame.md`、`charge-model-source-convention.md`、`pole-coil-numbering.md`、`unit-reference.md` |
 | 出 STEP / 解析 STEP / 建 APDL 幾何 / 檢查模型 / 跑 COMSOL 等 SOP | `reference/workflows/`（入口 `workflows/README.md`；部分為 kuo 時代遺留） |
+| **新建任何檔案 / 取檔名 / 命名 variant** | `short-names.md`（檔名一律要短：路徑講過的別再講、後綴 3–6 字元） |
 | 產物落點 / 資料夾架構 | 本檔「資料夾架構地圖」+ 各夾 `README.md` |
 
 ## Detailed Docs（long2016 深技術）
