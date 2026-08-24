@@ -1,4 +1,4 @@
-function plot_gain_iso_hist(USE_BIAS, R_FIT, R_EVAL, force, BINW)
+function plot_gain_iso_hist(USE_BIAS, R_FIT, R_EVAL, force, BINW, CMP)
 % plot_gain_iso_hist -- 兩個六極設計的控制指標分布疊圖（Long Fei vs Zhi-Peng）
 % =========================================================================
 %   [MODIFIED 2026-08-21 使用者要求] **校正半徑與評估半徑分離**：
@@ -30,6 +30,19 @@ function plot_gain_iso_hist(USE_BIAS, R_FIT, R_EVAL, force, BINW)
 %   百分比縱軸）。[MODIFIED 2026-08-21] 照 err_hist 家族的定案：**不畫 mean 虛線、
 %   長條不描黑邊、圖例只列系列名**；mean / CV / min / max 一律印在 console。
 %   輸出 → figures/paper_fig/Section4_C/{gain_cbrt,iso}_hist_maxwell_<tag>.png
+%
+%   [ADDED 2026-08-24] 第 6 個引數 CMP 選「比哪兩組」（其餘流程完全共用）：
+%     'design'（預設）Design A = long2016 / Design B = zhi_peng R500 maxwell_split
+%                     -> 輸出檔名與行為與先前**逐字相同**
+%     'gap'           No gap   = zhi_peng R500 maxwell_split（無氣隙）
+%                     Have gap = zhi_peng R500 maxwell_gap（100 um 氣隙重解）
+%                     -> {gain_cbrt,iso}_hist_gap_<tag>_R<eval>.png
+%     顏色（2026-08-24 使用者要求，由原本的相反配色互換而來）：
+%       No gap   -> 深藍 [0.05 0.10 0.95]（值高、落右）
+%       Have gap -> 紅   [0.85 0.10 0.10]（值低、落左）
+%     ⚠ 連帶：'design' 圖裡 zhi_peng maxwell_split = Design B 是**紅**，本圖它是
+%       **藍** -> 同一份場在兩張圖不同色，跨圖對色時要注意。'ab_gap' 的 Have gap
+%       則與本圖一致（都紅）。
 % =========================================================================
     clc;
     if nargin < 1 || isempty(USE_BIAS), USE_BIAS = false; end
@@ -71,8 +84,30 @@ function plot_gain_iso_hist(USE_BIAS, R_FIT, R_EVAL, force, BINW)
     %   顏色照「顏色 = 模型」慣例：Long Fei 深藍、Zhi-Peng 紅。
     %   [MODIFIED 2026-08-21 使用者拍板] 圖例名改成 **Design A / Design B**（原 Long Fei /
     %   Zhi-Peng）；console 仍印 model 名，追溯不受影響。
-    MD = { 'long2016_hexapole_halfcut', 'tip40um', '',              'Design A',  [0.05 0.10 0.95];
-           'zhi_peng',                  'R500',    'maxwell_split', 'Design B',  [0.85 0.10 0.10] };
+    if nargin < 6 || isempty(CMP), CMP = 'design'; end
+    switch lower(CMP)
+        case 'design'
+            MD = { 'long2016_hexapole_halfcut', 'tip40um', '',              'Design A',  [0.05 0.10 0.95];
+                   'zhi_peng',                  'R500',    'maxwell_split', 'Design B',  [0.85 0.10 0.10] };
+            gstem = sprintf('gain_cbrt_hist_maxwell_%s_R%d', tag, R_EVAL);
+            kstem = sprintf('iso_hist_maxwell_%s_R%d',       tag, R_EVAL);
+        case 'gap'
+            %   [MODIFIED 2026-08-24 使用者要求] 兩組顏色**互換**：No gap 深藍、Have gap 紅。
+            MD = { 'zhi_peng', 'R500', 'maxwell_split', 'No gap',   [0.05 0.10 0.95];
+                   'zhi_peng', 'R500', 'maxwell_gap',   'Have gap', [0.85 0.10 0.10] };
+            gstem = sprintf('gain_cbrt_hist_gap_%s_R%d', tag, R_EVAL);
+            kstem = sprintf('iso_hist_gap_%s_R%d',       tag, R_EVAL);
+        case 'ab_gap'
+            % [ADDED 2026-08-24] 同 'design'，但 Design B 換成**帶 100 um 氣隙**的重解
+            %   （zhi_peng R500 maxwell_gap）。圖例仍用 Design A / Design B —— 這是
+            %   同一組跨設計比較，只是 B 用了氣隙版；顏色也沿用 design 的藍/紅。
+            MD = { 'long2016_hexapole_halfcut', 'tip40um', '',            'Design A',  [0.05 0.10 0.95];
+                   'zhi_peng',                  'R500',    'maxwell_gap', 'Design B (Have gap)',  [0.85 0.10 0.10] };
+            gstem = sprintf('gain_cbrt_hist_abgap_%s_R%d', tag, R_EVAL);
+            kstem = sprintf('iso_hist_abgap_%s_R%d',       tag, R_EVAL);
+        otherwise
+            error('plot_gain_iso_hist:CMP', 'CMP 必為 design | gap | ab_gap（給了 %s）', CMP);
+    end
 
     nM = size(MD,1);   D = cell(1,nM);
     for a = 1:nM
@@ -103,7 +138,7 @@ function plot_gain_iso_hist(USE_BIAS, R_FIT, R_EVAL, force, BINW)
                 mean(S.kap), std(S.kap)/mean(S.kap)*100, min(S.kap), max(S.kap));
     end
     fprintf('%s\n', repmat('-',1,78));
-    fprintf('mean 比值（Zhi-Peng / Long Fei）：C^(1/3) %.3f 倍｜kappa %.3f 倍\n', ...
+    fprintf('mean 比值（%s / %s）：C^(1/3) %.3f 倍｜kappa %.3f 倍\n', MD{2,4}, MD{1,4}, ...
             mean(D{2}.Ccbrt)/mean(D{1}.Ccbrt), mean(D{2}.kap)/mean(D{1}.kap));
     fprintf('%s\n', repmat('=',1,78));
 
@@ -115,15 +150,25 @@ function plot_gain_iso_hist(USE_BIAS, R_FIT, R_EVAL, force, BINW)
     %   ⚠ [10,50] 是**針對 R_EVAL=500 的資料**挑的；換評估半徑資料範圍就不同（R<=150
     %     的 C^(1/3) 只落在 12.2~16.6 / 26.9~35.6），沿用會空掉一大半 → 其餘半徑走自動。
     XR_GAIN = [];   if R_EVAL == 500, XR_GAIN = [10 50]; end
+    % [ADDED 2026-08-24 使用者拍板] gap 比較（資料 23.13~40.77）明給 [20,45] + 刻度
+    %   25/30/35/40：整數、等距 5、且**兩端留白正好 = 刻度間距**（20->25、40->45 皆 5），
+    %   正是 figure-style 對 2D 軸的理想。代價是 4 根（偶數）—— 規則明訂
+    %   「為了湊整數而讓刻度變成 4 個是可以接受的」（優先序：整數 > 奇數 > 等距 > 留白）。
+    %   為何要明給：自動選刻度的 xticks_in **只收奇數根**，在 [20,45] 內唯一的 5 根解是
+    %   22.5/27.5/32.5/37.5/42.5（小數，違反「刻度一律整數」）；而 xlim_pick 若走自動
+    %   會挑總留白最小的 [23,41]，端點 23 與刻度 24（40 與 41 同理）只差一格的 5.6%、
+    %   數字擠成一團。⚠ 兩者都是**針對這組資料**挑的；換 R_EVAL 或換資料請拿掉走自動。
+    XT_GAIN = [];
+    if strcmpi(CMP,'gap') && R_EVAL == 150, XR_GAIN = [20 45];  XT_GAIN = [25 30 35 40]; end
     XR_ISO  = [];                       % κ 的自動結果 [0,1] 已是最緊、不必 override
     % [MODIFIED 2026-08-21] 檔名帶評估半徑 _R<eval>，讓不同 R_EVAL 的圖並存
     %   （原本沒帶，R150 版會直接蓋掉 R500 版）。
     render_overlay({D{1}.Ccbrt, D{2}.Ccbrt}, MD(:,4), MD(:,5), ...
         '$\mathbf{\mathcal{C}^{1/3}\;(mT/A)}$', ...
-        fullfile(figdir, sprintf('gain_cbrt_hist_maxwell_%s_R%d.png', tag, R_EVAL)), XR_GAIN, BW_G);
+        fullfile(figdir, [gstem '.png']), XR_GAIN, BW_G, XT_GAIN);
     render_overlay({D{1}.kap,   D{2}.kap},   MD(:,4), MD(:,5), ...
         '$\mathbf{\kappa}$', ...
-        fullfile(figdir, sprintf('iso_hist_maxwell_%s_R%d.png', tag, R_EVAL)), XR_ISO, BW_K);
+        fullfile(figdir, [kstem '.png']), XR_ISO, BW_K);
 end
 
 % ============================================================================
@@ -196,7 +241,7 @@ function S = compute_one(model, geom, variant, R_FIT, R_EVAL, USE_BIAS, here, CA
 end
 
 % ============================================================================
-function render_overlay(vals, names, cols, xlab, out, xrset, BINW)
+function render_overlay(vals, names, cols, xlab, out, xrset, BINW, xtset)
 % 兩組資料的疊圖直方圖（各自正規化成百分比 → 比較的是分布形狀）
 % [MODIFIED 2026-08-21 使用者拍板，比照 err_hist 家族]：
 %   ① 長條**不描黑邊**（EdgeColor 'none'）——細長條逐根描邊會糊成一團黑
@@ -207,6 +252,9 @@ function render_overlay(vals, names, cols, xlab, out, xrset, BINW)
 %      面積 = 100% × bin 寬，寬度不同就不能比高度）
     if nargin < 6, xrset = []; end
     if nargin < 7, BINW  = []; end
+    % [ADDED 2026-08-24] xtset = 明給刻度（[] = 由 xticks_in 自動選）。需要它是因為
+    %   xticks_in 只收奇數根，湊不出「整數 + 偶數根」這種合法組合（見呼叫端註解）。
+    if nargin < 8, xtset = []; end
     FS = 28;   ALPH = 0.60;   nb = 180;
     allv = [vals{1}(:); vals{2}(:)];
     if isempty(BINW)
@@ -244,7 +292,8 @@ function render_overlay(vals, names, cols, xlab, out, xrset, BINW)
     if isempty(xrset)
         [xr, xt] = xlim_pick(min(allv), max(allv));
     else
-        xr = xrset;   xt = xticks_in(xr);            % 使用者指定範圍 → 只挑內部刻度
+        xr = xrset;                                  % 使用者指定範圍
+        if isempty(xtset), xt = xticks_in(xr); else, xt = xtset; end
         for a = 1:2                                  % 落在視野外的樣本比例（誠實回報）
             f = 100*mean(vals{a}(:) < xr(1) | vals{a}(:) > xr(2));
             if f > 0, fprintf('  ⚠ %s 有 %.2f%% 的點落在視野 [%g, %g] 之外\n', ...
@@ -299,7 +348,12 @@ function [xr, xt] = xlim_pick(lo, hi)
 %   因此只能取 [10,45]（兩邊各空 4.4 / 4.2）。加了 s/4 之後可取 [12.5, 42.5]，
 %   刻度仍是整數 20/30/40，但留白縮到 1.86 / 1.73（少 58%）。
     rng_ = max(hi-lo, realmin);
-    cand = [1 2 2.5 5 10];
+    % [MODIFIED 2026-08-24] 步長候選補上 **3 與 4**，與 figure-style.md 的 nice 清單
+    %   [1 2 2.5 3 4 5 10] 對齊。少了 4 的時候，23.13~40.77 這種資料湊不出
+    %   「整數刻度 + 奇數根 + 貼緊資料」的解 -> 只能退到 [15,45] 配 20/30/40，
+    %   左邊留白 8.13（是右邊的 1.9 倍，使用者反映「左邊留太多」）。
+    %   有了 s=4 就有 [23,41] 配 24/28/32/36/40：5 根、整數、等距、留白 0.13/0.23。
+    cand = [1 2 2.5 3 4 5 10];
     xr = [];   xt = [];   best = [inf inf inf];
     for k = (floor(log10(rng_))-2) : (floor(log10(rng_))+1)
         for c = cand
@@ -307,9 +361,18 @@ function [xr, xt] = xlim_pick(lo, hi)
             for hq = [s/2, s/4]                            % 端點格（粗 / 細兩種都試）
                 b0 = floor(lo/hq)*hq;    b1 = ceil(hi/hq)*hq;
                 for o = [0, s/2]                           % 刻度相位
-                    for ext = 1:3
+                    for ext = 1:4
                         x0 = b0;   x1 = b1;
-                        if ext == 2, x0 = b0 - hq; elseif ext == 3, x1 = b1 + hq; end
+                        % [MODIFIED 2026-08-24] 加 ext==4「兩端同時往外推」。原本只有單邊
+                        %   (ext 2 或 3)，kappa 的 0.381~0.6439 因此無解 -> 掉進保底分支，
+                        %   端點變成 0.354683 / 0.670153、刻度 0.4248 這種四位小數還疊字。
+                        %   兩端同推才到得了唯一乾淨解 [0.3, 0.7]（刻度 0.4/0.5/0.6）。
+                        %   ⚠ 兩端同推留白必然較大 -> 排序上本來就墊底，只有在其他候選
+                        %     全被 isclean 刷掉時才會出線；既有可解的圖不受影響。
+                        if     ext == 2, x0 = b0 - hq;
+                        elseif ext == 3, x1 = b1 + hq;
+                        elseif ext == 4, x0 = b0 - hq;   x1 = b1 + hq;
+                        end
                         t = (ceil((x0-o)/s + 1e-9) : floor((x1-o)/s - 1e-9))*s + o;
                         t = t(t > x0+1e-9 & t < x1-1e-9);
                         n = numel(t);
@@ -342,7 +405,12 @@ function xt = xticks_in(xr)
 %   兩種相位都試（s 的整數倍 / 再偏半格），取最接近 5 根的。端點本身不放 tick
 %   —— 端點值由呼叫端以 text 標，照 figure-style「端點只標數字、不畫 tick mark」。
     span = xr(2) - xr(1);
-    cand = [1 2 2.5 5 10];
+    % [MODIFIED 2026-08-24] 步長候選補上 **3 與 4**，與 figure-style.md 的 nice 清單
+    %   [1 2 2.5 3 4 5 10] 對齊。少了 4 的時候，23.13~40.77 這種資料湊不出
+    %   「整數刻度 + 奇數根 + 貼緊資料」的解 -> 只能退到 [15,45] 配 20/30/40，
+    %   左邊留白 8.13（是右邊的 1.9 倍，使用者反映「左邊留太多」）。
+    %   有了 s=4 就有 [23,41] 配 24/28/32/36/40：5 根、整數、等距、留白 0.13/0.23。
+    cand = [1 2 2.5 3 4 5 10];
     xt = [];   bestd = inf;
     for k = (floor(log10(span))-2) : (floor(log10(span))+1)
         for c = cand
