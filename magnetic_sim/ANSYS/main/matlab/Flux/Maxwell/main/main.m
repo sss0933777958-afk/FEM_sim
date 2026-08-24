@@ -6,12 +6,12 @@
 clear; clc;
 
 %% ---- per-run 調參（不進 config）---------------------------------------------
-MODEL    = 'long2016_hexapole_halfcut';
-GEOM     = 'tip40um';       % config 幾何變體：long2016 用 tip40um|tip400um；hung/NTU 用 ''（flat config）
-VARIANT  = '';       % '' = 用該 geom 的 default_variant；'maxwell'=Sphere1mm 0.1mm、'maxwell_mesh0p06'=0.06mm
+MODEL    = 'zhi_peng';
+GEOM     = 'R500';          % config 幾何變體：long2016 用 tip40um|tip400um；hung/NTU 用 ''（flat config）
+VARIANT  = 'maxwell_gap';       % '' = 用該 geom 的 default_variant；'maxwell'=Sphere1mm 0.1mm、'maxwell_mesh0p06'=0.06mm
 DATASET  = 'all';
-BASE     = 'voltage';       % 'current' | 'voltage'
-USE_BIAS = true;            % e 開關：false=fix(single)、true=18-param(eighteen)
+BASE     = 'current';       % 'current' | 'voltage'
+USE_BIAS = false;           % e 開關：false=fix(single)、true=18-param(eighteen)
 R_select = 150e-6;          % 取點球半徑 [m]
 l0       = 0.5e-3;          % l_hat 初值 [m]
 I_actual = 1;               % 驅動電流 [A]（= FEM 激發）
@@ -29,7 +29,7 @@ K22_SET  = [];
 %   R=150um 既有收斂設計：long2016 single (3,8,22)=528 / eighteen (2,4,10)=80；
 %   zhi_peng R500 maxwell_split single (1,3,8)=24 / eighteen (1,2,5)=10。
 %   輸出檔名自動加 _convN<點數>，不覆蓋全格點版。
-GRID_NRPT = 'auto';
+GRID_NRPT = [];
 % ---- 收斂判準（工作空間球）：後 KWIN 步「l_hat 與 g_I」變化率都 < TOL，且 K_I_bar 合物理
 %   ⚠ 判準序列固定用 solve_current 的 [l_hat, g_I]（**兩個 base 都是**），與 2026-08-23
 %     之前的 conv_design 同一把尺 —— 這樣既有記錄的 N_c 值才可比。voltage 的
@@ -38,7 +38,7 @@ CONV_SEED    = [1 2 3];     % 階梯種子
 CONV_TOL     = 0.005;       % 變化率門檻（0.5%）
 CONV_KWIN    = 10;          % 連續穩定步數
 CONV_NDMAX   = 150;         % 最多掃幾級
-CONV_KI_GATE = true;        % false = 放寬「K_I_bar 非對角全負」（六極不等強，如 zhi_peng）
+CONV_KI_GATE = false;       % false = 放寬「K_I_bar 非對角全負」（六極不等強，如 zhi_peng）
 CONV_KI_REQ  = true;        % false = K_I_bar 完全不參與判準，只看 l_hat + g_I
 % 通用化旗標（'' → 由 cfg 提供預設；特例幾何自動吃自己的設定，不用手動改）
 INTERP_TO = '';             % '' 正常；否則把本 variant 場內插到此參考 geom 的 R≤R_select 點雲（公平比較）
@@ -191,7 +191,14 @@ for q = 1:nq
         ws_hit = true;   break
     end
 end
-assert(ws_hit, 'workspace：%d 級內未達判準（最後一級 (%d,%d,%d)）', CONV_NDMAX, LADW(end,:));
+% [FIXED 2026-08-24] 原本寫成 assert(ws_hit, ..., LADW(end,:))：MATLAB 會**先求值全部
+%   引數**再呼叫 assert，所以 GRID_NRPT=[] / 手動三元組（不迴圈、LADW 為空）時
+%   LADW(end,:) 必定丟「Index in position 1 is invalid」。等於 2026-08-23 改寫後
+%   這兩條非 auto 的路從來沒被跑通過。改成只在真的沒收斂時才去索引 LADW。
+if ~ws_hit
+    error('main:wsNotConverged', ...
+          'workspace：%d 級內未達判準（最後一級 (%d,%d,%d)）', CONV_NDMAX, LADW(end,:));
+end
 
 %% ---- 共用結果紀錄（rec = 結果 + 設定，自描述）------------------------------
 rec = struct('base',BASE, 'l_hat',l_hat, 'e',e, 'J',J, 'npts',npts, ...
