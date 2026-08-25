@@ -6,12 +6,12 @@
 clear; clc;
 
 %% ---- per-run 調參（不進 config）---------------------------------------------
-MODEL    = 'zhi_peng';
-GEOM     = 'R500';          % config 幾何變體：long2016 用 tip40um|tip400um；hung/NTU 用 ''（flat config）
-VARIANT  = 'maxwell_gap';       % '' = 用該 geom 的 default_variant；'maxwell'=Sphere1mm 0.1mm、'maxwell_mesh0p06'=0.06mm
+MODEL    = 'long2016_hexapole_halfcut';
+GEOM     = 'tip40um';       % config 幾何變體：long2016 用 tip40um|tip400um；hung/NTU 用 ''（flat config）
+VARIANT  = '';              % '' = 用該 geom 的 default_variant；'maxwell'=Sphere1mm 0.1mm、'maxwell_mesh0p06'=0.06mm
 DATASET  = 'all';
 BASE     = 'current';       % 'current' | 'voltage'
-USE_BIAS = false;           % e 開關：false=fix(single)、true=18-param(eighteen)
+USE_BIAS = true;            % e 開關：false=fix(single)、true=18-param(eighteen)
 R_select = 150e-6;          % 取點球半徑 [m]
 l0       = 0.5e-3;          % l_hat 初值 [m]
 I_actual = 1;               % 驅動電流 [A]（= FEM 激發）
@@ -29,7 +29,7 @@ K22_SET  = [];
 %   R=150um 既有收斂設計：long2016 single (3,8,22)=528 / eighteen (2,4,10)=80；
 %   zhi_peng R500 maxwell_split single (1,3,8)=24 / eighteen (1,2,5)=10。
 %   輸出檔名自動加 _convN<點數>，不覆蓋全格點版。
-GRID_NRPT = [];
+GRID_NRPT = [2 3 4];
 % ---- 收斂判準（工作空間球）：後 KWIN 步「l_hat 與 g_I」變化率都 < TOL，且 K_I_bar 合物理
 %   ⚠ 判準序列固定用 solve_current 的 [l_hat, g_I]（**兩個 base 都是**），與 2026-08-23
 %     之前的 conv_design 同一把尺 —— 這樣既有記錄的 N_c 值才可比。voltage 的
