@@ -57,9 +57,11 @@ function emit_results(matfile)
             T.scalar_unit(fid, '{}^{B}\hat{g}_{I}', rec.gI_hat, 'mT/A');
             if isfield(rec,'NMAE')
                 % [MODIFIED 2026-08-17 使用者拍板] 向量範數版（b̄ = Σ_jΣ_i‖b_ij‖/N_p）
+                % [MODIFIED 2026-08-26] i 跑的是**評估點雲**（R 內全部格點），非擬合取樣點
                 fprintf(fid, ['\\[ \\mathrm{NMAE} = \\dfrac{\\sum_j\\sum_i \\left\\| b_{ij} - ' ...
                               'S_i\\,{}^{B}\\hat{g}_{I}\\bar{K}_{I}F_j \\right\\| / N_p}{\\bar{b}}' ...
                               '\\cdot 100 = %.2f\\%% \\]\n'], rec.NMAE);
+                nmae_note(fid, rec);
             end
             cunit = 'mT/A';
         case 'voltage'
@@ -77,6 +79,7 @@ function emit_results(matfile)
                 fprintf(fid, ['\\[ \\mathrm{NMAE} = \\dfrac{\\sum_j\\sum_i \\left\\| b_{ij} - ' ...
                               'S_i\\,{}^{B}\\hat{g}_{V}\\bar{D}V_j \\right\\| / N_p}{\\bar{b}}' ...
                               '\\cdot 100 = %.2f\\%% \\]\n'], rec.NMAE);
+                nmae_note(fid, rec);
             end
             cunit = 'mT/mV';
         otherwise
@@ -106,6 +109,20 @@ function emit_results(matfile)
         if exist(f,'file'), delete(f); end
     end
     fprintf('已存 %s\n', pdf_path);
+end
+
+% ---- NMAE 的評估點雲說明（2026-08-26 起 out-of-sample）----
+%   舊 .mat 沒有 NMAE_on 欄位 -> 那些是 in-sample，照實標示，不要讓兩代數字被混讀。
+function nmae_note(fid, rec)
+    if isfield(rec,'NMAE_on') && strcmp(rec.NMAE_on,'eval points')
+        fprintf(fid, ['\\noindent\\small $i$ runs over all %d lattice points within ' ...
+                      '$R\\le%.0f~\\mu$m; the model itself was calibrated on %d sampled ' ...
+                      'points (out-of-sample).\\par\\normalsize\n'], ...
+                rec.Np_eval, rec.R_select*1e6, rec.npts);
+    else
+        fprintf(fid, ['\\noindent\\small $i$ runs over the %d points the model was ' ...
+                      'calibrated on (in-sample).\\par\\normalsize\n'], rec.npts);
+    end
 end
 
 % ---- 由 17 偏移建 E36（3×6，含 e6z 約束；不加 Pc_base）----

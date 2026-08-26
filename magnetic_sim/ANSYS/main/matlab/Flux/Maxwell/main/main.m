@@ -6,12 +6,12 @@
 clear; clc;
 
 %% ---- per-run 調參（不進 config）---------------------------------------------
-MODEL    = 'long2016_hexapole_halfcut';
-GEOM     = 'tip40um';       % config 幾何變體：long2016 用 tip40um|tip400um；hung/NTU 用 ''（flat config）
-VARIANT  = '';              % '' = 用該 geom 的 default_variant；'maxwell'=Sphere1mm 0.1mm、'maxwell_mesh0p06'=0.06mm
+MODEL    = 'zhi_peng';
+GEOM     = 'R500';          % config 幾何變體
+VARIANT  = 'maxwell_split';  % 志鵬現行模型（磁極切開重解版）；default 'maxwell' 是已被取代的舊匯出
 DATASET  = 'all';
 BASE     = 'current';       % 'current' | 'voltage'
-USE_BIAS = true;            % e 開關：false=fix(single)、true=18-param(eighteen)
+USE_BIAS = false;           % e 開關：false=fix(single)、true=18-param(eighteen)
 R_select = 150e-6;          % 取點球半徑 [m]
 l0       = 0.5e-3;          % l_hat 初值 [m]
 I_actual = 1;               % 驅動電流 [A]（= FEM 激發）
@@ -29,7 +29,7 @@ K22_SET  = [];
 %   R=150um 既有收斂設計：long2016 single (3,8,22)=528 / eighteen (2,4,10)=80；
 %   zhi_peng R500 maxwell_split single (1,3,8)=24 / eighteen (1,2,5)=10。
 %   輸出檔名自動加 _convN<點數>，不覆蓋全格點版。
-GRID_NRPT = [2 3 4];
+GRID_NRPT = [6 6 6];
 % ---- 收斂判準（工作空間球）：後 KWIN 步「l_hat 與 g_I」變化率都 < TOL，且 K_I_bar 合物理
 %   ⚠ 判準序列固定用 solve_current 的 [l_hat, g_I]（**兩個 base 都是**），與 2026-08-23
 %     之前的 conv_design 同一把尺 —— 這樣既有記錄的 N_c 值才可比。voltage 的
@@ -84,6 +84,15 @@ if ~isempty(INTERP_TO)
 end
 ad      = build_actuator_data(raw, cfg);                    % → actuator frame, mT, all-source
 Pc_base = ad.Pc_base;
+% [ADDED 2026-08-26 使用者拍板] 誤差指標的**評估點雲** = R 內全部 .fld 格點。
+%   solve_* 仍用取樣點 P 擬合出 G，但 NMAE / RMSPE 改在這組點上算 —— 也就是
+%   「用 N 個取樣點校正出來的模型，拿去擬合全格點的場」（out-of-sample）。
+%   ⚠ 舊行為是 in-sample（在取樣點自己身上算），對點數有系統性樂觀：實測 35 點的
+%     in-sample NMAE 2.60% 比全格點擬合的 2.81% 還「低」，純粹因為點少好配；同一顆
+%     模型拿去配全格點其實是 2.81%。故所有帶 _convN 的舊 PDF/.mat 的 NMAE 不可與新值並列。
+%   ⚠ GRID_NRPT=[]（全格點取樣）時評估點 = 取樣點，新舊值逐位相同。
+[P_ev, B_ev, npts_ev] = cfg.select_ball(ad, R_select);
+fprintf('[eval] NMAE 評估點雲：R<=%g um 內全部格點 %d 點\n', R_select*1e6, npts_ev);
 F = zeros(6, cfg.N_I);
 for j = 1:cfg.N_I, F(cfg.apdl_to_paper_idx(j), j) = 1; end
 
@@ -171,7 +180,7 @@ for q = 1:nq
 
     % ③ 校正（在 main）
     [e, l_hat, J] = fitting(P, Bstack, Pc_base, l0, USE_BIAS);
-    [KI_bar, gI_hat, G, rm] = solve_current(l_hat, e, Pc_base, P, Bstack, F, K22_SET);
+    [KI_bar, gI_hat, G, rm] = solve_current(l_hat, e, Pc_base, P, Bstack, F, K22_SET, P_ev, B_ev);
     if ~AUTO, break; end
 
     % ④ 判收斂：l_hat 與 g_I 都穩 ∧ K_I_bar 合物理
@@ -187,7 +196,7 @@ for q = 1:nq
         [P, Bstack, ~, gi] = conv_design_ws(tri_ws(1), tri_ws(2), tri_ws(3), R_select, wsopt);
         npts = gi.npts_kept;
         [e, l_hat, J] = fitting(P, Bstack, Pc_base, l0, USE_BIAS);
-        [KI_bar, gI_hat, G, rm] = solve_current(l_hat, e, Pc_base, P, Bstack, F, K22_SET);
+        [KI_bar, gI_hat, G, rm] = solve_current(l_hat, e, Pc_base, P, Bstack, F, K22_SET, P_ev, B_ev);
         ws_hit = true;   break
     end
 end
@@ -218,7 +227,7 @@ switch BASE
         % sensor 取樣參數一併記進 .mat（自描述）
         rec.sen_tri = sen_tri;  rec.sensor_r = sensor_r;  rec.axial_tol = axial_tol;
         rec.SEN_REF = SEN_REF;  rec.SEN_TOL = SEN_TOL;  rec.SEN_KWIN = SEN_KWIN;
-        [D_bar, gV_hat, G, rm] = solve_voltage(l_hat, e, Pc_base, P, Bstack, V, K22_SET);
+        [D_bar, gV_hat, G, rm] = solve_voltage(l_hat, e, Pc_base, P, Bstack, V, K22_SET, P_ev, B_ev);
         rec.D_bar = D_bar;  rec.gV_hat = gV_hat;  rec.G = G;  rec.V = V;
     otherwise
         error('BASE 必為 ''current'' | ''voltage''');
@@ -226,6 +235,11 @@ end
 rec.C_mean = rm.C_mean;  rec.kappa_mean = rm.kappa_mean;  rec.C_min = rm.C_min;  rec.kappa_worst = rm.kappa_worst;
 if isfield(rm,'RMSPE'), rec.RMSPE = rm.RMSPE; end
 if isfield(rm,'NMAE'),  rec.NMAE  = rm.NMAE;  end     % [ADDED 2026-08-15] 擬合 NMAE [%]（PDF 印這個）
+% [ADDED 2026-08-26] NMAE 現在是 out-of-sample（在 P_ev 全格點上算）。in-sample 版與
+%   評估點雲的描述一併存進 .mat，讓每顆結果都能自證是哪種算法。
+if isfield(rm,'NMAE_in'), rec.NMAE_in = rm.NMAE_in; end
+if isfield(rm,'NMAE_on'), rec.NMAE_on = rm.NMAE_on; end
+if isfield(rm,'Np_eval'), rec.Np_eval = rm.Np_eval; end
 
 % [ADDED 2026-08-10] K22 約束 → 輸出變體名加 tag（**資料載入仍用原 VARIANT**，只有輸出改名，
 %   故自由擬合版 model_results_*_maxwell.pdf 不會被覆蓋）。

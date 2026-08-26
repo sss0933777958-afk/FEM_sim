@@ -1,6 +1,8 @@
-function [D_bar, gV_hat, G, rm] = solve_voltage(l_hat, e, Pc_base, P, Bstack, V, K22_set)
+function [D_bar, gV_hat, G, rm] = solve_voltage(l_hat, e, Pc_base, P, Bstack, V, K22_set, Peval, Beval)
 %SOLVE_VOLTAGE  電壓側解參數：優化器解完 → 重建 S/Pc_bar → G → D̄ / ĝ_V / 𝒞κ。
-%   [D_bar, gV_hat, G, rm] = SOLVE_VOLTAGE(l_hat, e, Pc_base, P, Bstack, V, K22_set)
+%   [D_bar, gV_hat, G, rm] = SOLVE_VOLTAGE(l_hat, e, Pc_base, P, Bstack, V, K22_set, Peval, Beval)
+%     Peval / Beval（可選）：**評估**用的點雲與場 -> NMAE/RMSPE 改在那組點上算
+%       （out-of-sample）。不給就退回 in-sample。見 solve_current.m 的完整說明。
 %     l_hat : 有效長度 [m]；e：17×1 偏移；Pc_base：3×6 理想電荷格
 %     P     : Np×3 [m]；Bstack：3Np×6 all-source [mT]；V：6×6 sensor 電壓矩陣 [mV]（all-source）
 %     K22_set（可選）：K̄(2,2) 物理約束值（[]=自由擬合）。見下方 [ADDED] 段。
@@ -8,6 +10,8 @@ function [D_bar, gV_hat, G, rm] = solve_voltage(l_hat, e, Pc_base, P, Bstack, V,
 %   H_V=(G·Vᵀ)/(V·Vᵀ)；gV_hat=(6/5)|H_V(1,1)|[mT/mV]；D_bar=(5/(6·H_V(1,1)))·H_V（gauge D̄(1,1)=5/6）；
 %   rm=𝒞/κ（逐節點 svd(S·(gV_hat·D_bar))）。
     if nargin < 7, K22_set = []; end
+    if nargin < 8, Peval   = []; end
+    if nargin < 9, Beval   = []; end
     Pc = make_Pc(e, Pc_base);
     A  = build_S(l_hat, Pc, P);
     G  = (A.'*A) \ (A.'*Bstack);                     % 6×N_I
@@ -32,18 +36,32 @@ function [D_bar, gV_hat, G, rm] = solve_voltage(l_hat, e, Pc_base, P, Bstack, V,
     gV_hat = (6/5) * abs(H_V(1,1));                  % ĝ_V [mT/mV]
     D_bar  = (5/(6*H_V(1,1))) * H_V;                 % D̄，gauge D̄(1,1)=5/6
     rm     = control_metrics(P, gV_hat*D_bar, l_hat, Pc);   % 𝒞/κ（物理 Ĥ_V=ĝ·D̄）
-    resid    = A*G - Bstack;                          % [ADDED] 擬合殘差 ε [mT]（與 solve_current 同定義）
-    rm.RMSPE = sqrt(sum(resid(:).^2) / sum(Bstack(:).^2)) * 100;   % RMSPE [%] = sqrt(Σε²/Σb²)·100
-    % [MODIFIED 2026-08-17 使用者拍板] NMAE 改為**向量範數**版（與 solve_current 同步）：
+    % [MODIFIED 2026-08-17 使用者拍板] NMAE 為**向量範數**版（與 solve_current 同步）：
     %   NMAE = [ Σ_j Σ_i ‖b_ij − S_i·ᴮĝ_V·D̄·V_j‖ / N_p ] / b̄ · 100，
     %   b̄ = Σ_j Σ_i ‖b_ij‖ / N_p。理由與注意事項見 solve_current.m 的對應註解。
-    e_ij     = sqrt(sum(reshape(resid,  3, []).^2, 1));   % 1×(Np·N_I) 每點每激發的 ‖ε‖
-    b_ij     = sqrt(sum(reshape(Bstack, 3, []).^2, 1));
-    rm.NMAE  = sum(e_ij) / sum(b_ij) * 100;                        % NMAE [%]
-    rm.NMAE_L1 = sum(abs(resid(:))) / sum(abs(Bstack(:))) * 100;   % 舊 L1 分量版，留存追溯
+    % [MODIFIED 2026-08-26] out-of-sample：給了 (Peval, Beval) 就在那組點上算。
+    [rm.RMSPE_in, rm.NMAE_in, rm.NMAE_L1_in] = fitmetrics(A, G, Bstack);
+    if isempty(Peval)
+        rm.RMSPE = rm.RMSPE_in;   rm.NMAE = rm.NMAE_in;   rm.NMAE_L1 = rm.NMAE_L1_in;
+        rm.NMAE_on = 'fit points';   rm.Np_eval = size(P,1);
+    else
+        Ae = build_S(l_hat, Pc, Peval);               % 同一顆 G，kernel 重建在評估點上
+        [rm.RMSPE, rm.NMAE, rm.NMAE_L1] = fitmetrics(Ae, G, Beval);
+        rm.NMAE_on = 'eval points';  rm.Np_eval = size(Peval,1);
+    end
     if ~isempty(K22_set)                              % [ADDED] 約束值與自由值一併回報，供 .mat 追溯
         rm.K22_set = K22_set;   rm.K22_free = rm_K22_free;
     end
+end
+
+% ---- 擬合誤差指標：給定 kernel / 電荷 / 場，算 RMSPE、NMAE、舊 L1 版 ----
+function [rmspe, nmae, nmae_l1] = fitmetrics(S, G, B)
+    resid   = S*G - B;
+    rmspe   = sqrt(sum(resid(:).^2) / sum(B(:).^2)) * 100;
+    e_ij    = sqrt(sum(reshape(resid, 3, []).^2, 1));
+    b_ij    = sqrt(sum(reshape(B,     3, []).^2, 1));
+    nmae    = sum(e_ij) / sum(b_ij) * 100;
+    nmae_l1 = sum(abs(resid(:))) / sum(abs(B(:))) * 100;
 end
 
 % ---- 控制範圍指標：逐節點 svd(S·Ĥ) → 𝒞=∏σ、κ=σ₃/σ₁ ----
