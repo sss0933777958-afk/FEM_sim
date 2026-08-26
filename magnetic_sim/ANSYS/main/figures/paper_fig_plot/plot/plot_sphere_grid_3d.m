@@ -1,4 +1,4 @@
-function plot_sphere_grid_3d(R_um, SPEC, MONO, force)
+function plot_sphere_grid_3d(R_um, SPEC, MONO, force, MODEL, GEOM)
 % plot_sphere_grid_3d -- 球內「等測度網格」取樣點的 3D 分布（conv_design_ws 的配比）
 % =========================================================================
 %   直接呼叫 matlab/Maxwell/function/conv_design_ws.m
@@ -7,12 +7,17 @@ function plot_sphere_grid_3d(R_um, SPEC, MONO, force)
 %   用法
 %     plot_sphere_grid_3d(150, 2)              過取樣倍率 c = 2 → 內建配比 (5,15,47)
 %     plot_sphere_grid_3d(150, [1 2 3], true)  **直接指定三元組** + 單色（全藍）
+%     plot_sphere_grid_3d(150, [6 6 6], true, true, 'zhi_peng', 'R500')   志鵬
 %
 %   輸入
 %     R_um  取樣球半徑 [um]（預設 150）
 %     SPEC  純量 → 過取樣倍率 c；1x3 向量 → 直接給 [N_r N_phi N_theta]
 %     MONO  true = 所有點同一個藍色；false（預設）= 依所屬殼上色（turbo）
 %     force true = 重新產點（否則讀快取）
+%     MODEL / GEOM  取樣球所屬的模型（預設 long2016_hexapole_halfcut / tip40um）。
+%       ⚠ 等測度網格的**點位與模型無關**（只看 R 與三元組）；模型只影響 (a) 濾鐵會不會
+%         剔掉點、(b) 球心的 SPH_OFST。R=150um 時兩個模型都是 0 點被濾掉，所以同一組
+%         三元組畫出來的點雲完全一樣 —— 兩張圖的差別只在密度，不在幾何。
 %
 %   配比（見 conv_design_ws 檔頭）：N_r : N_phi : N_theta = 1 : 3 : 3pi
 %     r     = R * u^(1/3)        u_k = (k-0.5)/N_r        等分 r^3   （等體積殼）
@@ -34,6 +39,8 @@ function plot_sphere_grid_3d(R_um, SPEC, MONO, force)
     if nargin < 2 || isempty(SPEC), SPEC  = 2;     end
     if nargin < 3 || isempty(MONO), MONO  = false; end
     if nargin < 4 || isempty(force),force = false; end
+    if nargin < 5 || isempty(MODEL),MODEL = 'long2016_hexapole_halfcut'; end
+    if nargin < 6 || isempty(GEOM), GEOM  = 'tip40um';                   end
 
     FRAME = 'measure';                                     % 'measure'（預設）| 'actuator'
     FS    = 36;                                            % 字級（paper 圖統一）
@@ -57,13 +64,18 @@ function plot_sphere_grid_3d(R_um, SPEC, MONO, force)
 
     if isscalar(SPEC), tag = sprintf('c%g', SPEC);
     else,              tag = sprintf('%dx%dx%d', SPEC(1), SPEC(2), SPEC(3));   end
+    if ~strcmp(MODEL, 'long2016_hexapole_halfcut')      % 長飛不加尾綴（既有檔名沿用）
+        tag = [tag '_' regexprep(MODEL, '_.*$', '')];
+    end
 
     here   = fileparts(fileparts(mfilename('fullpath')));           % → paper_fig_plot/
     figdir = fullfile(fileparts(here), 'paper_fig', 'Section2_E');
     if ~exist(figdir,'dir'); mkdir(figdir); end
     % [MODIFIED 2026-08-21] 舊路徑 utils/long2016_hexapole_halfcut 已不存在；
     %   conv_design_ws 在 Maxwell/function/。
-    CALMW = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Maxwell';
+    % [MODIFIED 2026-08-26] matlab/ 於 2026-08-25 搬進 matlab/Flux/；舊路徑已不存在。
+    %   here = .../main/figures/paper_fig_plot -> 上兩層才是 .../main
+    CALMW = fullfile(fileparts(fileparts(here)), 'matlab', 'Flux', 'Maxwell');
     addpath(fullfile(CALMW,'function'), fullfile(CALMW,'utils'), fullfile(CALMW,'common_path'));
 
     %% ---- 產點（呼叫真正的取樣器，確保圖與程式一致）------------------------
@@ -76,10 +88,12 @@ function plot_sphere_grid_3d(R_um, SPEC, MONO, force)
         %   純量 SPEC = 過取樣倍率 c（由配比反解三元組）；1x3 = 直接給三元組。
         if isscalar(SPEC)
             [Pm, ~, ~, info] = conv_design_ws([], [], [], R_um*1e-6, ...
-                                   struct('frame',FRAME, 'c',SPEC, 'quiet',false));
+                                   struct('frame',FRAME, 'c',SPEC, 'quiet',false, ...
+                                          'model',MODEL, 'geom',GEOM));
         else
             [Pm, ~, ~, info] = conv_design_ws(SPEC(1), SPEC(2), SPEC(3), R_um*1e-6, ...
-                                   struct('frame',FRAME, 'quiet',false));
+                                   struct('frame',FRAME, 'quiet',false, ...
+                                          'model',MODEL, 'geom',GEOM));
         end
         P = Pm * 1e6;                                      % m → um
         save(cachef, 'P', 'info');
