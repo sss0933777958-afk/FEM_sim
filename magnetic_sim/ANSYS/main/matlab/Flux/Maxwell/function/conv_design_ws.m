@@ -356,8 +356,11 @@ end
 
 % ============================================================================
 function solver_path()
-    APDL = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
-    CAL  = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Maxwell';
+    % [MODIFIED 2026-08-27] Tree moved to matlab\Flux\; both hardcoded paths no longer
+    %   exist, so addpath silently failed and rmpath could not strip the real APDL copy
+    %   -> risk of the APDL model_config/solve_* shadowing the Maxwell ones.
+    CAL  = fileparts(fileparts(mfilename('fullpath')));   % ...\Flux\Maxwell
+    APDL = fullfile(fileparts(CAL), 'APDL', 'Calibration_using_FEM_modeling');
     warning('off','MATLAB:rmpath:DirNotFound');
     rmpath(fullfile(APDL,'function'));  rmpath(fullfile(APDL,'common_path'));
     warning('on','MATLAB:rmpath:DirNotFound');

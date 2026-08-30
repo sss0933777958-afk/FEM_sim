@@ -1,4 +1,4 @@
-function raw = extract_maxwell_data(cfg, dataset, variant)
+function raw = extract_maxwell_data(cfg, dataset, variant, opts)
 %EXTRACT_MAXWELL_DATA  純資料提取：讀 N_I 個 Maxwell .fld → 原始 per-coil 場（Maxwell frame）。
 %   raw = EXTRACT_MAXWELL_DATA(cfg, dataset, variant)
 %   **只做「讀 .fld」**：迴圈 coil1..N_I 呼叫 import_maxwell_fld、組 raw。
@@ -19,29 +19,45 @@ function raw = extract_maxwell_data(cfg, dataset, variant)
 %     .B         N×3×N_I  各 coil 原始 B（[T]；欄 = [bx by bz]）
 %     .node_id   N×1      格點流水號（coil1）
 %     .model .variant .dataset  記錄用
+%   [ADDED 2026-08-30] opts（可選）：
+%     .coils  1xM 要讀哪幾顆 coil（預設 1:N_I，行為與先前逐字相同）。
+%             繪圖腳本常只需要單一極，而 voltage 的 .fld 單檔就 ~1.9 GB ——
+%             硬讀六顆等於多吞 9.5 GB / 常駐 2 GB。給子集即可只讀需要的檔。
+%             ⚠ raw.B 的第 3 維是**依 coils 的順序**排，不是 coil 編號；
+%               raw.coils 記錄對應關係，build_actuator_data 據此取號誌與 F。
 %   需 import_maxwell_fld 在 path。
     if nargin < 2 || isempty(dataset), dataset = 'all'; end
     if nargin < 3 || isempty(variant), variant = getdef(cfg,'default_variant',''); end
+    if nargin < 4 || isempty(opts), opts = struct(); end
     model = cfg.model;
     N_I   = cfg.N_I;
     fdir  = fld_dir_for(cfg, variant);
 
-    d1 = import_maxwell_fld(fullfile(fdir, coil_fname(cfg,1,dataset,variant)));
+    % [ADDED 2026-08-30] 只讀指定的 coil 子集（預設全讀 = 舊行為）
+    coils = getdef(opts, 'coils', 1:N_I);
+    coils = coils(:).';
+    assert(~isempty(coils) && all(coils == round(coils)) && all(coils >= 1 & coils <= N_I), ...
+           'extract_maxwell_data:coils', 'opts.coils 必須是 1..%d 的整數索引', N_I);
+
+    nc = numel(coils);
+    d1 = import_maxwell_fld(fullfile(fdir, coil_fname(cfg,coils(1),dataset,variant)));
     N  = numel(d1.x);
-    B  = zeros(N, 3, N_I);
+    B  = zeros(N, 3, nc);
     B(:,:,1) = [d1.bx, d1.by, d1.bz];
     tol = 1e-9;
-    for k = 2:N_I
+    % 同格檢查只在讀 >=2 顆時才有意義（單顆沒有比對對象）
+    for i = 2:nc
+        k  = coils(i);
         dk = import_maxwell_fld(fullfile(fdir, coil_fname(cfg,k,dataset,variant)));
         assert(numel(dk.x)==N, ...
-               'extract_maxwell_data:gridN', 'coil%d 格點數 %d ≠ coil1 %d（不同匯出格）', k, numel(dk.x), N);
+               'extract_maxwell_data:gridN', 'coil%d 格點數 %d ≠ coil%d 的 %d（不同匯出格）', k, numel(dk.x), coils(1), N);
         assert(max(abs(dk.x-d1.x))<tol && max(abs(dk.y-d1.y))<tol && max(abs(dk.z-d1.z))<tol, ...
-               'extract_maxwell_data:gridXYZ', 'coil%d 格點座標與 coil1 不一致（.fld 須同一組匯出格點）', k);
-        B(:,:,k) = [dk.bx, dk.by, dk.bz];
+               'extract_maxwell_data:gridXYZ', 'coil%d 格點座標與 coil%d 不一致（.fld 須同一組匯出格點）', k, coils(1));
+        B(:,:,i) = [dk.bx, dk.by, dk.bz];
     end
 
     raw = struct('x',d1.x, 'y',d1.y, 'z',d1.z, 'B',B, 'node_id',d1.node_id, ...
-                 'model',model, 'variant',variant, 'dataset',dataset);
+                 'model',model, 'variant',variant, 'dataset',dataset, 'coils',coils);
 end
 
 % ---- local：解析 .fld 資料夾（可選 variant 專屬夾 / variant 子夾）----

@@ -44,11 +44,28 @@ function [air_mask, debug_info] = filter_iron_nodes(x_apdl, y_apdl, z_apdl, c, o
     %   sphere，並明確警告。取樣半徑遠小於極尖距離時（R << R_norm）本來就取不到鐵，安全；
     %   要在近極尖區用本函式，必須先為該 model 定義板狀鐵件包絡（見其 config 的 TODO）。
     has_cone = isfield(c,'POLE_R') && isfield(c,'POLE_CONE_LEN') && isfield(c,'pole_axis');
-    if ~has_cone
-        warning('filter_iron_nodes:noConeGeom', ...
-            ['cfg 缺錐體幾何（POLE_R/POLE_CONE_LEN/pole_axis）→ **未做錐體濾鐵**，' ...
-             '僅套 safety sphere = %g um。平板型磁極請確認取樣範圍不含鐵件。'], ...
+    % [ADDED 2026-08-27 使用者要求] **平板型磁極的鐵件包絡**（zhi_peng）。原本缺錐體欄位時
+    %   完全不濾（in_cone = false），對 R > IRON_SAFE_R 的取樣球會把鐵當空氣。
+    %   包絡分兩段（config 的實測值，見 mt_constants「磁極板本體（平板；濾鐵包絡用）」）：
+    %     ① 舌片 r_xy ∈ [R_norm_xy, POLE_WEDGE_R(2)]：厚 POLE_TIP_BAND（貼板的**單側**，
+    %        下極貼板底、上極貼板頂），平面內是**與尖端 40 µm 圓角相切**的楔形（半角
+    %        POLE_WEDGE_HALF）；圓角本身以圓柱補上。
+    %     ② 外段矩形塊 r_xy ∈ POLE_BLOCK_R：寬 POLE_BLOCK_W、厚**整個板厚** POLE_PLATE_T。
+    %   楔形半寬（u 自圓角軸心沿極方位量）：w(u) = R_tip/cos(beta) + u*tan(beta)
+    %     —— 切線到圓心的垂距 = R_tip，故 u=0 處半寬是 R_tip/cos(beta) 而非 R_tip。
+    has_plate = isfield(c,'POLE_TIP_BAND') && isfield(c,'POLE_WEDGE_HALF') && ...
+                isfield(c,'pole_is_lower') && isfield(c,'R_norm_xy') && isfield(c,'R_norm_z');
+    if ~has_cone && ~has_plate
+        warning('filter_iron_nodes:noPoleGeom', ...
+            ['cfg 既無錐體幾何（POLE_R/POLE_CONE_LEN）也無平板幾何（POLE_TIP_BAND/' ...
+             'POLE_WEDGE_HALF）→ **未做濾鐵**，僅套 safety sphere = %g um。'], ...
             opts.safety_r*1e6);
+    end
+    if has_plate
+        bet   = c.POLE_WEDGE_HALF * pi/180;
+        r_ax  = c.R_norm_xy + c.POLE_TIP_R;          % 尖端圓角軸心的徑向位置
+        wR    = c.POLE_WEDGE_R;                      % 舌片徑向範圍 [內, 外]
+        hasBlk = isfield(c,'POLE_BLOCK_R') && isfield(c,'POLE_BLOCK_W') && isfield(c,'POLE_PLATE_T');
     end
 
     for i = 1:6
@@ -79,8 +96,32 @@ function [air_mask, debug_info] = filter_iron_nodes(x_apdl, y_apdl, z_apdl, c, o
 
             % Inside cone: positive projection AND within cone envelope
             in_cone = (s > 0) & (r_perp < r_cone) & (s < c.POLE_CONE_LEN);
+        elseif has_plate
+            % --- 平板包絡（見上方註解）---
+            th  = atan2(c.pole_tip_y(i), c.pole_tip_x(i));
+            u   = (x_wp - r_ax*cos(th))*cos(th) + (y_wp - r_ax*sin(th))*sin(th);   % 沿極方位
+            v   = -(x_wp - r_ax*cos(th))*sin(th) + (y_wp - r_ax*sin(th))*cos(th);  % 橫向
+            rxy = hypot(x_wp, y_wp);
+            % 舌片的單側 z 帶：下極貼板底、上極貼板頂
+            if c.pole_is_lower(i)
+                inz = (z_wp >= -c.R_norm_z) & (z_wp <= -c.R_norm_z + c.POLE_TIP_BAND);
+            else
+                inz = (z_wp <=  c.R_norm_z) & (z_wp >=  c.R_norm_z - c.POLE_TIP_BAND);
+            end
+            w_half  = c.POLE_TIP_R/cos(bet) + max(u,0)*tan(bet);
+            in_wedge = inz & (rxy <= wR(2)) & ...
+                       ( ((u >= 0) & (abs(v) <= w_half)) | ...      % 楔形本體
+                         ((u <  0) & (hypot(u,v) <= c.POLE_TIP_R)) );  % 尖端圓角
+            if hasBlk
+                inz_b = abs(z_wp) <= c.POLE_PLATE_T/2;              % 外段是整個板厚
+                in_blk = inz_b & (rxy > c.POLE_BLOCK_R(1)) & (rxy <= c.POLE_BLOCK_R(2)) & ...
+                         (abs(v) <= c.POLE_BLOCK_W/2) & (u > 0);
+            else
+                in_blk = false(N,1);
+            end
+            in_cone = in_wedge | in_blk;
         else
-            in_cone = false(N, 1);          % 平板型磁極：未定義錐體包絡（見上方警告）
+            in_cone = false(N, 1);          % 既無錐體也無平板幾何（見上方警告）
         end
 
         pole_mask = in_cone | in_safety;

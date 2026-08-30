@@ -46,6 +46,29 @@ function c = mt_constants()
     c.fld_dir_variant.maxwell_gap = 'D:\Maxwell_sim\Zhi_peng\export\R500_gap';
     c.fld_files_variant.maxwell_gap = {'B_p1_split.fld','B_p2_split.fld','B_p3_split.fld', ...
                                        'B_p4_split.fld','B_p5_split.fld','B_p6_split.fld'};
+    % [ADDED 2026-08-28] dataset='voltage' 的 sensor 區 .fld（extract_maxwell_data 用）。
+    %   來源：D:\Maxwell_sim\Zhi_peng\export\R500\B_p<k>_sensor.fld（2026-08-28 匯出，各 ~59 MB）
+    %   header 逐字一致：Min [-7 -7 -1] mm  Max [7 7 1] mm  Grid [0.1]^3 mm
+    %     -> 141 x 141 x 21 = 417,501 格點/檔；**z 用 CAD 框**（z=0 = 極板下表面），
+    %        已用「x=1mm,y=0 沿 z 掃 |B|，鐵層落在 z=+0.1」實測確認，與 split/glob 同框。
+    %   涵蓋：下極 sensor z_CAD=+0.588、上極 z_CAD=-0.01065 都在框內（後者是 glob 框 z>=0
+    %        涵蓋不到的那顆）；徑向 ±7 mm -> SOFF <= 6.59 mm 六顆全含。
+    %   格距 0.1 mm 與長飛的 B_voltage_p*.fld 相同 -> 兩模型的電壓取值解析度一致。
+    c.fld_files_voltage = {'B_p1_sensor.fld','B_p2_sensor.fld','B_p3_sensor.fld', ...
+                           'B_p4_sensor.fld','B_p5_sensor.fld','B_p6_sensor.fld'};
+    % [ADDED 2026-08-29] 'maxwell_v2' = R500_V2 改版（匯在**平行資料夾** export\R500_V2\）。
+    %   WP 細格 B_p<k>_wp.fld：Min [-2 -2 -1.711] mm / Max [2 2 2.289] mm / Grid [0.02]^3
+    %   -> 201^3 格點，與 maxwell_split 同框同步距（可直接並列比較）。
+    %   ⚠ CAD 比對（zhi_peng_R500_V2.STEP vs zhi_peng_R500.STEP，2026-08-29 OCC 實測）：
+    %     **極尖區域完全相同** —— r_tip 0.408/0.4083、舌片 z 0~0.178、上極 0.3993~0.5773，
+    %     故 R_norm / R_act / Pc_base / SPH_OFST / POLE_TIP_* 全部沿用本 config，無須新 geom。
+    %     改的是**外圍**：bbox ±20 mm（原 ±26.5）、薄舌片較短（V2 在 r≈10 mm 就接上全厚段，
+    %     原版到 15 mm）。⇒ **filter_iron_nodes 的舌片/外段包絡對 V2 在大半徑不成立**；
+    %     R <= IRON_SAFE_R(423 um) 的取樣球內完全沒有鐵，故 R<=150 um 的校正不受影響。
+    %     要取 R > 423 um 時必須先為 V2 另寫包絡。
+    c.fld_dir_variant.maxwell_v2   = 'D:\Maxwell_sim\Zhi_peng\export\R500_V2';
+    c.fld_files_variant.maxwell_v2 = {'B_p1_wp.fld','B_p2_wp.fld','B_p3_wp.fld', ...
+                                      'B_p4_wp.fld','B_p5_wp.fld','B_p6_wp.fld'};
     c.fld_variant_subdir = false;
     % [MODIFIED 2026-08-23 使用者拍板] 'scattered' -> 'grid'：Maxwell 的 .fld 是規則格，
     %   直接定位格子做三線性內插，與工作空間（conv_design_ws）用同一套實作。
@@ -118,6 +141,19 @@ function c = mt_constants()
         th = c.pole_angles(i) * pi/180;
         c.pole_axis(:,i) = [cos(th); sin(th); 0];
     end
+
+    % --- ★ Hall sensor 貼附幾何（平板極專屬；使用者定義 2026-08-28）---
+    %   S = R_norm*e1 + SOFF*e2l + b*t_hat + h*s        （b 預設 0）
+    %     e2l = [cos th; sin th; 0]  水平徑向 —— 貼附面 = 極板**外側大平面**（含極尖），
+    %                                 故沿它走 SOFF 時 z 不變（下極恆 -R_norm_z、上極恆 +R_norm_z）
+    %     s   = [0;0;+1]（下極）/ [0;0;-1]（上極）= n+，感測面法線、outward from steel
+    %     h   = POLE_TIP_BAND + SENSOR_AIR = 0.178 + 0.41 = 0.588 mm
+    %           前 0.178 穿過舌片厚度、後 0.41 才是氣隙 -> sensor 落在極板**另一側**
+    %   約束：與舌片斜邊的側向淨空 w(r) - |b| > 0.15 mm，w(r) = 0.131652*r - 0.018616 [mm]
+    %         -> b=0 時 SOFF > 0.873 mm；上界由 sensor .fld 框給（SOFF <= 6.59 mm）
+    c.sensor_mount  = 'plate';                       % pole_sensor_geometry 的分支旗標
+    c.SENSOR_AIR    = 0.41e-3;                       % 離面氣隙 [m]（與 long2016 同值）
+    c.SENSOR_WEDGE_CLR = 0.15e-3;                    % 與斜邊的側向最小淨空 [m]
 
     % --- 導柱（steel post，6 根）---
     c.POST_D        = 3.000e-3;                      % 直徑（實測 3.0000）

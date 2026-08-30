@@ -86,6 +86,51 @@ function [pos, nhat, geo] = pole_sensor_geometry(cfg, opt)
     PSI    = gv('psi',        0);
     if isscalar(PSI), PSI = repmat(PSI, 1, 6); end
 
+    % [ADDED 2026-08-28] **平板極分支**（cfg.sensor_mount='plate'，如 zhi_peng）。
+    %   長飛那套（沿錐面母線走 SOFF、垂直錐面留氣隙）在平板極上不成立：貼附面是
+    %   極板**外側大平面**，而且極尖就落在那個面上。使用者定義（2026-08-28）：
+    %       S = R_norm*e1 + SOFF*e2l + b*t_hat + h*s ,   h = POLE_TIP_BAND + AIR
+    %       e2l = [cos th; sin th; 0]（水平徑向；沿它走 SOFF 時 z 不變）
+    %       s   = [0;0;+1] 下極 / [0;0;-1] 上極   = n+（感測面法線、outward from steel）
+    %   ⚠ h 的前 POLE_TIP_BAND 是**穿過舌片厚度**、後 AIR 才是氣隙 -> sensor 落在極板另一側。
+    %   側向偏置 b 由 opt.b_lat 給（純量或 1x6，預設 0）；與舌片斜邊的淨空會檢查。
+    if isfield(cfg,'sensor_mount') && strcmpi(cfg.sensor_mount,'plate')
+        tb   = cfg.POLE_TIP_BAND;
+        BLAT = gv('b_lat', 0);   if isscalar(BLAT), BLAT = repmat(BLAT,1,6); end
+        tipP = [cfg.pole_tip_x; cfg.pole_tip_y; cfg.pole_tip_z_wp];
+        pos  = zeros(3,6);  nhat = zeros(3,6);
+        e2l  = zeros(3,6);  tvec = zeros(3,6);  ehr = zeros(3,6);
+        soff = zeros(1,6);
+        bw   = cfg.POLE_WEDGE_HALF*pi/180;                    % 舌片楔形半角
+        d0   = tan(bw)*(cfg.R_norm_xy + cfg.POLE_TIP_R) - cfg.POLE_TIP_R/cos(bw);
+        clr_min = 0.15e-3;
+        if isfield(cfg,'SENSOR_WEDGE_CLR'), clr_min = cfg.SENSOR_WEDGE_CLR; end
+        for k = 1:6
+            th = cfg.pole_angles(k)*pi/180;
+            e2l(:,k)  = [cos(th); sin(th); 0];
+            tvec(:,k) = [-sin(th); cos(th); 0];
+            ehr(:,k)  = e2l(:,k);
+            sg = -1;  if cfg.pole_is_lower(k), sg = +1; end   % 下極 +z / 上極 -z
+            soff(k)   = SOFF_U;  if cfg.pole_is_lower(k), soff(k) = SOFF_L; end
+            pos(:,k)  = tipP(:,k) + soff(k)*e2l(:,k) + BLAT(k)*tvec(:,k) + (tb + AIR)*[0;0;sg];
+            nhat(:,k) = [0;0;sg];
+            rk  = cfg.R_norm_xy + soff(k);                    % 站位的徑向距離
+            clr = (tan(bw)*rk - d0) - abs(BLAT(k));           % 到斜邊的側向淨空
+            if clr <= clr_min
+                warning('pole_sensor_geometry:wedgeClearance', ...
+                    'P%d：SOFF=%.3f mm、b=%.3f mm -> 與斜邊淨空 %.3f mm <= 下限 %.3f mm', ...
+                    k, soff(k)*1e3, BLAT(k)*1e3, clr*1e3, clr_min*1e3);
+            end
+        end
+        geo = struct('tip',tipP, 'axis',e2l, 'rad0',[0;0;1]*ones(1,6), 'tanv',tvec, ...
+                     'ehat_r',ehr, 'beta',zeros(1,6), 's_ax',soff, 'R',zeros(1,6), ...
+                     'apex_off',zeros(1,6), 't_tan',zeros(1,6), ...
+                     'cone_len',repmat(cfg.POLE_WEDGE_R(2)-cfg.R_norm_xy,1,6), ...
+                     'r_tip',repmat(cfg.POLE_TIP_R,1,6), ...
+                     'face',{repmat({'plate'},1,6)}, 'src','cad', 'air',AIR, 'band',tb);
+        return
+    end
+
     psi0   = atan2(cfg.R_norm_z, cfg.R_norm_xy);   % magic-angle 仰角 ~35.2644 deg（只進 e1）
     inc_up = cfg.upper_incline;                    % 上極錐軸仰角 ~36.5895 deg
     ell    = cfg.R_norm;

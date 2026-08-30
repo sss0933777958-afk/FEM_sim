@@ -1,4 +1,4 @@
-function [x, y, z, B, tri, info] = conv_design_sensor(N_r, N_theta, N_z, opt)
+function [x, y, z, B, tri, info] = conv_design_sensor(Nx, Ny, opt)
 % conv_design_sensor -- 感測器（圓柱）：決定內插點位置 + 三線性內插取場
 % =========================================================================
 %   [SPLIT 2026-08-23 使用者拍板] 由 conv_design.m 拆出（另一支 = conv_design_ws），
@@ -10,44 +10,39 @@ function [x, y, z, B, tri, info] = conv_design_sensor(N_r, N_theta, N_z, opt)
 %   ⚠ **本函式只做兩件事：①決定內插點位置 ②三線性內插取場。**
 %     組 V（投影到 n̂ 再取體積平均）交給 build_V_matrix —— 它逐 sensor 呼叫本函式
 %     拿「點與場」，自己只做 V(i,kc) = S_hall * mean(b·n̂)。
-%     收斂判斷與迴圈在 main.m：
+%     設計現在是**定值**（使用者 2026-08-28 定案 Nx=Ny=100），main.m 不再跑 sensor 收斂迴圈：
 %
-%       [~,~,~,~,~,si] = conv_design_sensor(1,3,2, struct('ladder',150, ...
-%                            'sensor_r',sr, 'axial_tol',at));       % 先取階梯表
-%       Vref = build_V_matrix(..., [10 100 10], ...);               % 密參考
-%       for q = 1:size(si.ladder,1)
-%           V = build_V_matrix(..., si.ladder(q,:), ...);           % 內部呼叫本函式
-%           if max(abs(V(:)-Vref(:))./abs(Vref(:))) < TOL, break; end   % 判斷在 main
-%       end
+%       V = build_V_matrix(..., [Nx Ny], ...);      % 內部呼叫本函式
 %
 %   ⚠ 這是**引擎**（無對應圖），勿當孤兒刪除。
 %
-%   ── Step 1：設計階梯（決定「幾個點」）────────────────────────
-%     小格子的三個邊（半徑 r 處）：徑向 R^2/(2 r N_r)、方位 2*pi*r/N_theta、軸向 H/N_z
-%     取**中位面積半徑** r = R/sqrt(2)（一半面積在內、一半在外）令三者相等：
-%       徑向 = 方位：R^2/(2 r N_r) = 2*pi*r/N_theta  =>  N_theta = 2*pi*N_r
-%       方位 = 軸向：2*pi*r/N_theta = H/N_z          =>  N_z = sqrt(2)*(H/R)*N_r
-%     配比    w = N_r : N_theta : N_z = 1 : 2*pi : sqrt(2)*(H/R)
-%     總點數  N = 2*pi*sqrt(2)*(H/R) * N_r^3  =>  N_r = round((N_target/prod(w))^(1/3))
-%     走階梯一步：對 t./w 最小的那一軸 +1。種子慣用 [1 3 2]。
+%   ── Step 1：設計 = 手填 (Nx, Ny)（配比與階梯都已廢除）──────────
+%     [REMOVED 2026-08-28 使用者拍板]「配比不用了，廢掉」-> 原本的
+%       w = N_r : N_theta : N_z 以及 .ladder / .step / .N_target 全部移除。
+%     [MODIFIED 2026-08-28 使用者拍板] 三軸圓柱設計再改成**中心面二維設計**，
+%     參數由三個變兩個：只給 (Nx, Ny)。傳 .ladder/.step/.N_target 會直接報錯。
 %
-%   ── ⚠ 兩個退化地板（實測 2026-08-23，內建強制、沿階梯也不會掉回去）─────
-%     N_z >= 2      N_z=1 時場平均誤差卡在 0.6% 的地板，**加再多徑向/方位點都沒用**
-%                   （(4,48,1) 灌到 192 點仍是 0.399%）；一跨到 2 立刻掉 2.8 倍。
-%                   成因：軸向中點法對曲率的殘差。
-%     N_theta >= 3  等間距中點法在週期變數上是**譜精度**：N_theta 個點精確積掉所有
-%                   m 不是 N_theta 倍數的 Fourier 模態，誤差來自 m = N_theta。
-%                   實測（N_r=6, N_z=10 固定）：1 -> 6.36%（連 m=1 線性梯度都積錯）、
-%                   2 -> 1.94%、3 -> 0.44%、6 -> 0.15%、33 -> 0.004%。
-%     ⚠ [BEHAVIOUR CHANGE] 舊 Sensor_grid_sample 的 .N_target 反解只有 N_z 有下限 2，
-%       N_theta 下限是 1；本檔把地板統一成 [1 3 2]（含 .N_target 模式）。
+%   ── ⚠ 退化情形 ─────────────────────────────────────────────
+%     (Nx,Ny) = (1,1) -> 候選只有四個角 (±R,±R)，距離 R*sqrt(2) 全在圓外 -> **0 點**，
+%     本函式會明報錯。最小可用設計是 (2,2) -> 5 點。
+%     另外**奇數等分沒有軸上的點**（Nx=3 的格線是 -R,-R/3,+R/3,+R，沒有 0），
+%     所以點數不是單調的：Nx=Ny= 2->5、3->4、4->13、6->29、10->81、100->7845。
 %
-%   ── Step 2：取樣位置（三維都取格心）──────────────────────────
-%     把 Jacobian 積起來、等分它的反導數，再反解：dV = r dr dtheta dz
-%       u_k = (k-0.5)/N_r      -> r_k     = R*sqrt(u_k)     等分 r^2
-%       v_i = (i-0.5)/N_theta  -> theta_i = 2*pi*v_i        等分 theta
-%       w_j = (j-0.5)/N_z      -> z_j     = H*w_j           等分 z
-%     取格心（那個 -0.5）避開退化點（r=0）且無偏（把該環/該層對半分）。
+%   ── Step 2：取樣位置（中心面笛卡兒格）────────────────────────
+%     [MODIFIED 2026-08-28 使用者拍板] 在感測區域的**中心面**上鋪笛卡兒格：
+%       x_i = -R + 2R*i/Nx     i = 0..Nx      （格線 Nx+1 條）
+%       y_j = -R + 2R*j/Ny     j = 0..Ny
+%       保留 x^2 + y^2 <= R^2；全部落在 z = H/2（span='center' 時 z = 0）
+%     -> 點數 ~ (pi/4)*(Nx+1)*(Ny+1)。定案 Nx=Ny=100 -> 7845 點、點距 3 um。
+%     ✅ 這個擺法修掉了前一版（三軸等分）的兩個加權偏差：中心面 = 軸向中點法
+%        （前版 z=H*j/Nz 是右端點、整層偏頂面）、笛卡兒格 = 面積權重天生均勻
+%        （前版等分半徑 + 未加權平均會偏內圈）。
+%     ⚠ 但單一平面**不是體積平均**：與整個圓柱的真值差一個軸向曲率項
+%        (~H^2/24 * d2f/dz2)。實測（long2016、soff 4.572mm、對 40 萬點均勻亂數）
+%        這個地板是 **0.45%**，且**與面內密度無關**：Nx=Ny=8(49點) 0.442%、
+%        20(317點) 0.455%、100(7845點) 0.4514%、400(125629點) 0.4517%。
+%        面內本身的收斂則很快：離「面內真值(Nx=Ny=400)」在 Nx=Ny=8 就 0.043%、
+%        20 是 0.015%、100 是 0.001%。要壓那 0.45% 得動軸向（多切幾片），不是加密面內。
 %     ⚠ 感測器圓柱是**單邊**的：底面在 sensor_pos、沿 +n 延伸 H，幾何中心在局部
 %       z = H/2。預設 span='base' 即此慣例，與 build_V_matrix 的 a = axial_tol*rand 一致。
 %
@@ -57,20 +52,12 @@ function [x, y, z, B, tri, info] = conv_design_sensor(N_r, N_theta, N_z, opt)
 %       全域框的量 -> 場留在全域框，與撒點 1:1 對應（少一個點都會讓體積平均失真）。
 %
 %   ── 用法 ────────────────────────────────────────────────────
-%     [~,~,~,~,~,i] = conv_design_sensor(1,3,2, struct('ladder',150, ...
-%                          'sensor_r',R,'axial_tol',H))          % 只出階梯表
-%     [x,y,z]       = conv_design_sensor(3,20,3, o)              % 只產點（不取場）
-%     [x,y,z,B]     = conv_design_sensor(3,20,3, o)              % 產點 + 取場
-%
-%   輸入
-%     N_r,N_theta,N_z : 設計三元組。opt.step 有給時改當**種子**用；
-%                       三個都給 [] 且有 opt.N_target 時由配比反解。
+%     [x,y,z]       = conv_design_sensor(100,100, o)             % 只產點（7845 點）
+%     [x,y,z,B]     = conv_design_sensor(100,100, o)             % 產點 + 取場
+%     [x,y,z]       = conv_design_sensor(2,2, o)                 % 最小可用設計 -> 5 點
 %     opt             : 選項 struct
 %       .sensor_r   圓柱半徑 R [m]（預設 0.15e-3）
 %       .axial_tol  圓柱高   H [m]（預設 0.10e-3）
-%       .step     q   把三元組當種子，實際用階梯**第 q 級**的設計
-%       .ladder   M   **只**回 info.ladder（Mx3 階梯表），不產點（x/y/z 空）
-%       .N_target N   由配比反解三元組（三元組給 [] 時用）
 %       .center   3x1 圓柱**底面**中心（全域座標 [m]）；預設 [0;0;0]
 %       .axis     3x1 圓柱軸方向（內部單位化）；預設 [0;0;1]
 %       .span     'base'（預設，局部 z in [0,H]）| 'center'（z in [-H/2,H/2]）
@@ -78,14 +65,15 @@ function [x, y, z, B, tri, info] = conv_design_sensor(N_r, N_theta, N_z, opt)
 %       .raw      直接給已載入的 raw（強烈建議：sensor 場有 13.9M 格點）
 %
 %   輸出
-%     x,y,z   N x 1 座標 [m]（全域座標；ladder 模式下為空）
+%     x,y,z   N x 1 座標 [m]（全域座標），N = 圓內格點數 ~ (pi/4)*(Nx+1)*(Ny+1)
 %     B       N x 3 x N_I 磁場 [mT]（全域框，與 x/y/z 1:1 對應）
 %             ⚠ 只有 nargout >= 4 才會實際內插；只要點的話別要第 4 個輸出。
-%     tri     1x3   本次實際用的設計
-%     info    struct .tri .npts .ladder .ratio .seed .step .R .H .aspect .V .h
-%                    .r_k .theta_i .z_j .center .axis .span .N_target .n_outbox
+%     tri     1x2   本次實際用的設計 [Nx Ny]
+%     info    struct .tri .npts .R .H .aspect .A .h(等效面內點距)
+%                    .x_i .y_j .z0 .center .axis .span .n_outbox
+%             （.ratio/.seed/.step/.ladder/.N_target 與 .r_k/.theta_i/.z_j 都已移除）
 % =========================================================================
-    if nargin < 4 || isempty(opt), opt = struct(); end
+    if nargin < 3 || isempty(opt), opt = struct(); end
     gv = @(f,d) getdef_(opt, f, d);
 
     R    = gv('sensor_r',  0.15e-3);
@@ -93,48 +81,33 @@ function [x, y, z, B, tri, info] = conv_design_sensor(N_r, N_theta, N_z, opt)
     validateattributes(R, {'numeric'}, {'scalar','positive','finite'});
     validateattributes(H, {'numeric'}, {'scalar','positive','finite'});
 
-    W    = [1, 2*pi, sqrt(2)*H/R];             % N_r : N_theta : N_z（配比）
-    FL   = [1, 3, 2];                          % ⚠ 退化地板（見檔頭）
-    STEP = gv('step',     []);
-    LADM = gv('ladder',   []);
-    NTGT = gv('N_target', []);
     cen  = gv('center',   [0;0;0]);
     axv  = gv('axis',     [0;0;1]);
     SPAN = gv('span',     'base');
     assert(any(strcmpi(SPAN,{'base','center'})), ...
            'conv_design_sensor:span', 'opt.span 必為 ''base'' | ''center''');
 
-    seed = [N_r N_theta N_z];
-    if any(cellfun(@isempty, {N_r, N_theta, N_z})), seed = [1 3 2]; end
-    validateattributes(seed, {'numeric'}, {'vector','numel',3,'positive','integer'}, ...
-                       'conv_design_sensor', 'seed / 三元組');
-    seed = max(seed(:).', FL);
-
-    % ---- ladder 模式：只出階梯表、不產點 -----------------------------------
-    if ~isempty(LADM)
-        validateattributes(LADM, {'numeric'}, {'scalar','positive','integer'});
-        x = [];  y = [];  z = [];  B = [];  tri = [];
-        info = mkinfo([], [], R, H, W, seed, [], ladder_(W, seed, FL, LADM), ...
-                      NTGT, cen, axv, SPAN, [], [], [], 0);
-        return
+    % [REMOVED 2026-08-28 使用者拍板]「配比廢掉」-> .ladder / .step / .N_target 全部失效。
+    for f = {'ladder','step','N_target'}
+        if isfield(opt, f{1}) && ~isempty(opt.(f{1}))
+            error('conv_design_sensor:ratioScrapped', ...
+                ['opt.%s 已於 2026-08-28 隨「配比」一起廢除；' newline ...
+                 '設計現在只接受 (Nx, Ny) 兩個整數（中心面笛卡兒格）。'], f{1});
+        end
     end
 
-    % ---- Step 1：決定本次設計 ----------------------------------------------
-    LAD = [];
-    if ~isempty(STEP)
-        validateattributes(STEP, {'numeric'}, {'scalar','positive','integer'});
-        LAD = ladder_(W, seed, FL, STEP);
-        tri = LAD(STEP,:);
-    elseif any(cellfun(@isempty, {N_r, N_theta, N_z})) && ~isempty(NTGT)
-        s   = (NTGT / prod(W))^(1/3);          % 三數同乘 s -> 乘積乘 s^3
-        tri = max(round(W * s), FL);           % 地板統一 [1 3 2]（見檔頭）
-    else
-        tri = seed;
-    end
-    if isempty(NTGT), NTGT = prod(tri); end
+    tri = [Nx Ny];
+    assert(~any(cellfun(@isempty, {Nx, Ny})), 'conv_design_sensor:needNxNy', ...
+           '(Nx, Ny) 必須明確給定。');
+    validateattributes(tri, {'numeric'}, {'vector','numel',2,'positive','integer'}, ...
+                       'conv_design_sensor', '(Nx, Ny)');
+    tri = tri(:).';
 
-    % ---- Step 2：產點（局部格心）→ 擺位（局部 -> 全域）---------------------
-    [x, y, z, r_k, th_i, z_j] = mkpts(R, H, tri, SPAN, cen, axv);
+    % ---- Step 2：產點（中心面笛卡兒格）→ 擺位（局部 -> 全域）--------------
+    [x, y, z, x_i, y_j, z0] = mkpts(R, H, tri, SPAN, cen, axv);
+    assert(~isempty(x), 'conv_design_sensor:emptyDesign', ...
+           ['(Nx,Ny) = (%d,%d) 沒有任何格點落在圓內（Nx=Ny=1 只有四個角、全在圓外）。' ...
+            newline '請至少給 (2,2)（-> 5 點）。'], tri(1), tri(2));
 
     % ---- Step 3+4：定位 + 三線性內插（只在要場時才做）----------------------
     B = [];   nout = 0;
@@ -155,26 +128,22 @@ function [x, y, z, B, tri, info] = conv_design_sensor(N_r, N_theta, N_z, opt)
         B = 1e3 * Bt;                                            % T -> mT
     end
 
-    info = mkinfo(tri, numel(x), R, H, W, seed, STEP, LAD, NTGT, cen, axv, SPAN, ...
-                  r_k, th_i, z_j, nout);
+    info = mkinfo(tri, numel(x), R, H, cen, axv, SPAN, x_i, y_j, z0, nout);
 end
 
 % ============================================================================
-function [x, y, z, r_k, theta_i, z_j] = mkpts(R, H, t, SPAN, cen, axv)
-% Step 2：由三個整數產點（等測度格心）。
-    N_r = t(1);   N_th = t(2);   N_z = t(3);
-    u  = ((1:N_r)  - 0.5) / N_r;     r_k     = R * sqrt(u);     % 等分 r^2
-    v  = ((1:N_th) - 0.5) / N_th;    theta_i = 2*pi * v;        % 等分 theta
-    ww = ((1:N_z)  - 0.5) / N_z;     z_j     = H * ww;          % 等分 z
-    if strcmpi(SPAN, 'center'), z_j = z_j - H/2; end
+function [x, y, z, x_i, y_j, z0] = mkpts(R, H, t, SPAN, cen, axv)
+% Step 2：中心面笛卡兒格。[MODIFIED 2026-08-28 使用者拍板]
+%   x 切 Nx 等分、y 切 Ny 等分（格線各 Nx+1 / Ny+1 條、範圍 [-R,R]），
+%   只留 x^2 + y^2 <= R^2 的節點；全部落在中心面 z = H/2（span='center' 時 z = 0）。
+    Nx = t(1);   Ny = t(2);
+    x_i = linspace(-R, R, Nx+1);
+    y_j = linspace(-R, R, Ny+1);
+    z0  = H/2;   if strcmpi(SPAN, 'center'), z0 = 0; end
 
-    [K, I, J] = ndgrid(1:N_r, 1:N_th, 1:N_z);        % k 最快（同 (theta,z) 的不同
-    rr = r_k(K(:));                                  %   半徑相鄰）；順序不影響結果
-    tt = theta_i(I(:));
-    zl = z_j(J(:));
-    xl = rr(:) .* cos(tt(:));                        % 圓柱局部座標
-    yl = rr(:) .* sin(tt(:));
-    zl = zl(:);
+    [X, Y] = ndgrid(x_i, y_j);
+    keep = hypot(X(:), Y(:)) <= R*(1 + 1e-12);       % 容差：邊界上的點算圓內
+    xl = X(keep);   yl = Y(keep);   zl = z0 * ones(nnz(keep), 1);
 
     %   ⚠ 正交基底與 build_V_matrix 的亂數版 **逐字相同**（含 flat 面 n=[0;0;1]
     %     的退化 fallback）—— 這樣網格點雲與隨機點雲落在同一個局部框，
@@ -188,15 +157,8 @@ function [x, y, z, r_k, theta_i, z_j] = mkpts(R, H, t, SPAN, cen, axv)
 end
 
 % ============================================================================
-function LAD = ladder_(w, seed, fl, M)
-% 設計階梯：每步對 t./w 最小的那一軸 +1（並守住地板 fl）。
-    LAD = zeros(M,3);   t = max(seed, fl);
-    for q = 1:M
-        LAD(q,:) = t;
-        [~,j] = min(t ./ w);   t(j) = t(j) + 1;
-        t = max(t, fl);
-    end
-end
+% [REMOVED 2026-08-28 使用者拍板] local ladder_（每步對 t./w 最小的那軸 +1）隨「配比」
+%   一起廢除。新的階梯規則待定；決定之前 conv_design_sensor 只接受手填三元組。
 
 % ============================================================================
 function [Bq, ok] = trilerp(lat, xq, yq, zq)
@@ -294,8 +256,11 @@ end
 
 % ============================================================================
 function solver_path()
-    APDL = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
-    CAL  = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Maxwell';
+    % [MODIFIED 2026-08-27] Tree moved to matlab\Flux\; both hardcoded paths no longer
+    %   exist, so addpath silently failed and rmpath could not strip the real APDL copy
+    %   -> risk of the APDL model_config/solve_* shadowing the Maxwell ones.
+    CAL  = fileparts(fileparts(mfilename('fullpath')));   % ...\Flux\Maxwell
+    APDL = fullfile(fileparts(CAL), 'APDL', 'Calibration_using_FEM_modeling');
     warning('off','MATLAB:rmpath:DirNotFound');
     rmpath(fullfile(APDL,'function'));  rmpath(fullfile(APDL,'common_path'));
     warning('on','MATLAB:rmpath:DirNotFound');
@@ -303,12 +268,13 @@ function solver_path()
 end
 
 % ============================================================================
-function info = mkinfo(tri, N, R, H, w, seed, step, LAD, Ntgt, cen, axv, SPAN, rk, th, zj, nout)
-    V = pi * R^2 * H;
-    h = [];   if ~isempty(N) && N > 0, h = (V/N)^(1/3); end
-    info = struct('tri',tri, 'npts',N, 'R',R, 'H',H, 'aspect',H/R, 'V',V, 'h',h, ...
-                  'ratio',w, 'seed',seed, 'step',step, 'ladder',LAD, 'N_target',Ntgt, ...
-                  'r_k',rk, 'theta_i',th, 'z_j',zj, 'n_outbox',nout, ...
+function info = mkinfo(tri, N, R, H, cen, axv, SPAN, x_i, y_j, z0, nout)
+% [MODIFIED 2026-08-28] 配比廢除 -> .ratio/.seed/.step/.ladder/.N_target 移除；
+%   取樣改中心面笛卡兒格 -> .r_k/.theta_i/.z_j 換成 .x_i/.y_j/.z0、.A 換算面積。
+    A = pi * R^2;
+    h = [];   if ~isempty(N) && N > 0, h = sqrt(A/N); end     % 等效點距（面內）
+    info = struct('tri',tri, 'npts',N, 'R',R, 'H',H, 'aspect',H/R, 'A',A, 'h',h, ...
+                  'x_i',x_i, 'y_j',y_j, 'z0',z0, 'n_outbox',nout, ...
                   'center',cen(:), 'axis',axv(:)/norm(axv(:)), 'span',lower(SPAN));
 end
 

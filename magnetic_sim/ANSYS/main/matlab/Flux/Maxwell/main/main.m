@@ -3,15 +3,23 @@
 %  select_ball → fitting → [current: solve_current(F)] / [voltage: build_V_matrix→solve_voltage(V)] →
 %  存 .mat(結果+設定) → emit_results 出 PDF。改頂部 per-run 調參即可切模型/變體/base/半徑。
 
-clear; clc;
+% [ADDED 2026-08-28] 批次驅動：呼叫端可先在 base workspace 設 MAIN_OVR（struct），
+%   本檔會在下方 per-run 調參**之後**逐欄覆寫，方便一次跑多組設定。
+%   互動式使用不設 MAIN_OVR 時行為與先前逐字相同。
+%   ⚠ 踩過的坑：`run(main.m)` 是在**呼叫端的 workspace** 執行，所以下面那行 clearvars
+%     會把呼叫端的迴圈變數（i/CS/MP…）一起清掉 -> 第二圈就 'Undefined variable'。
+%     要連跑多組請**不要用迴圈變數**：逐組寫 `MAIN_OVR = struct(...); run('<絕對路徑>');`
+%     （路徑也要寫字面值，別存在變數裡）。
+if exist('MAIN_OVR','var'), MAIN_OVR_ = MAIN_OVR; else, MAIN_OVR_ = struct(); end
+clearvars -except MAIN_OVR_;  clc;
 
 %% ---- per-run 調參（不進 config）---------------------------------------------
-MODEL    = 'zhi_peng';
-GEOM     = 'R500';          % config 幾何變體
-VARIANT  = 'maxwell_split';  % 志鵬現行模型（磁極切開重解版）；default 'maxwell' 是已被取代的舊匯出
+MODEL    = 'long2016_hexapole_halfcut';
+GEOM     = 'tip40um';       % config 幾何變體
+VARIANT  = 'maxwell';       % 志鵬用 maxwell_split（default 'maxwell' 是它已被取代的舊匯出）
 DATASET  = 'all';
-BASE     = 'current';       % 'current' | 'voltage'
-USE_BIAS = false;           % e 開關：false=fix(single)、true=18-param(eighteen)
+BASE     = 'voltage';       % 'current' | 'voltage'
+USE_BIAS = true;           % e 開關：false=fix(single)、true=18-param(eighteen)
 R_select = 150e-6;          % 取點球半徑 [m]
 l0       = 0.5e-3;          % l_hat 初值 [m]
 I_actual = 1;               % 驅動電流 [A]（= FEM 激發）
@@ -29,7 +37,16 @@ K22_SET  = [];
 %   R=150um 既有收斂設計：long2016 single (3,8,22)=528 / eighteen (2,4,10)=80；
 %   zhi_peng R500 maxwell_split single (1,3,8)=24 / eighteen (1,2,5)=10。
 %   輸出檔名自動加 _convN<點數>，不覆蓋全格點版。
-GRID_NRPT = [6 6 6];
+GRID_NRPT = [3 8 22];       % 528 點（重現 voltage_R150_N528_* 那兩份 PDF 的工作空間設計）
+% [ADDED 2026-08-28 使用者指出 l_hat 對不上] 工作空間也可改用**新的取樣法**
+%   （sample_axes_shells：六根致動軸 x Nr 層等距殼 + 中心，N = 6*Nr+1）。
+%   非空時**凌駕 GRID_NRPT**；輸出檔名帶 _axshN<點數>，與 current 那邊的
+%   calib_current_maxwell_axshN31_R150_single.mat 同一套命名，兩者才可並列。
+%   R150 定案：single Nr=5 (31 點, l=870.6 um) / eighteen Nr=4 (25 點, l=867.9 um)。
+%   [MOVED 2026-08-30 使用者拍板] sample_axes_shells.m 已從 temp_code/scripts/ 搬進
+%     function/（temp_code 那份已刪除）-> live pipeline 不再相依 temp_code，
+%     檔頂的 addpath(CAL,'function') 就吃得到，不需另外 addpath。
+WS_AXSH_NR = 4;             % [] = 用 GRID_NRPT；純量 = axes-shell 的層數 Nr
 % ---- 收斂判準（工作空間球）：後 KWIN 步「l_hat 與 g_I」變化率都 < TOL，且 K_I_bar 合物理
 %   ⚠ 判準序列固定用 solve_current 的 [l_hat, g_I]（**兩個 base 都是**），與 2026-08-23
 %     之前的 conv_design 同一把尺 —— 這樣既有記錄的 N_c 值才可比。voltage 的
@@ -44,18 +61,30 @@ CONV_KI_REQ  = true;        % false = K_I_bar 完全不參與判準，只看 l_h
 INTERP_TO = '';             % '' 正常；否則把本 variant 場內插到此參考 geom 的 R≤R_select 點雲（公平比較）
 V_METHOD  = '';             % '' → cfg.v_method（現行 'grid' = 規則格三線性；另有 'scattered' / 'csv-tet'）
 % voltage-only 取樣調參
-SOFF_upper = 4.572e-3;        % 上極 sensor 沿錐面距極尖 [m]（定案值 4.572e-3）
-SOFF_lower = 4.572e-3;        % [ADDED] 下極 sensor 沿錐面距極尖 [m]（原寫死 4.572e-3；兩層要一起移才與示意圖一致）
+SOFF_upper = 5e-3;            % 上極 sensor 沿錐面距極尖 [m]（定案值 4.572e-3）
+SOFF_lower = 5e-3;            % [ADDED] 下極 sensor 沿錐面距極尖 [m]（原寫死 4.572e-3；兩層要一起移才與示意圖一致）
 % [REMOVED 2026-08-23 使用者拍板] n_uniform **廢除** —— 每 sensor 的取樣設計不再手填，
 %   改由「conv_design_sensor 產點 <-> build_V_matrix 組 V」的收斂迴圈自動決定（見下）。
 %   舊定案手填值是等測度網格 (3,20,3)=180 點/sensor（比舊亂數 500 點準 11 倍）；
 %   收斂迴圈實測會停在 (3,13,2)=78 點，下游 g_V 只差 0.009%、NMAE 完全相同。
-SEN_SEED = [1 3 2];         % sensor 階梯種子（地板 N_theta>=3、N_z>=2 由 conv_design_sensor 內建）
-SEN_TOL  = 0.001;           % 判準：V 的 36 個元素**全部**離密參考 < 0.1%
-SEN_KWIN = 10;              % ...且要**連續 SEN_KWIN 級**都過（見下方迴圈註解）
-SEN_REF  = [10 100 10];     % 密參考設計（10000 點/sensor；自身誤差 0.0042%）
+% [MODIFIED 2026-08-28 使用者拍板] sensor 取樣 = **中心面笛卡兒格**：在感測區域的中心面
+%   （局部 z = H/2）鋪格，x 切 Nx 等分、y 切 Ny 等分（格線各 N+1 條、範圍 [-R,R]），
+%   只留圓內節點 -> 點數 ~ (pi/4)(Nx+1)(Ny+1)。**Nx=Ny=100 -> 7845 點/sensor（定案）**。
+%   ⚠ 設計是**定值**，不再跑收斂迴圈 —— 判準與階梯（SEN_W/SEN_SEED/SEN_TOL/SEN_KWIN/
+%     SEN_NRMAX/SEN_REF）隨舊的三軸設計一起退役。實測（對 40 萬點均勻亂數的體積真值）：
+%     面內收斂在 Nx=Ny=20(317點) 就到 0.015%、100 是 0.001%；但「單一中心面 vs 體積平均」
+%     有 0.45% 的固有差（軸向曲率項），加密面內消不掉 —— 要壓它得多切幾片中心面。
+SEN_NXY = [200 200];        % [Nx Ny] **定案 2026-08-28 使用者拍板**（200x200 -> 31730 點/sensor；
+                            %   100x100 -> 7845、20x20 -> 317）
 sensor_r   = 0.15e-3;       % sensor 圓柱半徑 [m]
 axial_tol  = 0.10e-3;       % sensor 圓柱高（沿 n+）[m]
+
+% [ADDED 2026-08-28] 套用批次覆寫（見檔頭 MAIN_OVR）
+ovf_ = fieldnames(MAIN_OVR_);
+for k_ = 1:numel(ovf_)
+    eval([ovf_{k_} ' = MAIN_OVR_.(ovf_{k_});']);
+    fprintf(['[MAIN_OVR] ' ovf_{k_} newline]);
+end
 
 %% ---- paths（自身相對定位）---------------------------------------------------
 here  = fileparts(mfilename('fullpath'));                    % .../Maxwell/main
@@ -98,8 +127,10 @@ for j = 1:cfg.N_I, F(cfg.apdl_to_paper_idx(j), j) = 1; end
 
 %% ---- ① sensor 取樣設計收斂（voltage only）----------------------------------
 %  [ADDED 2026-08-23 使用者拍板] conv_design_sensor **只產點** -> build_V_matrix
-%  內插組 V -> 這裡判「離密參考的偏差」。收斂後 V 就定住，不參與 ② 的迭代。
-V = [];   sen_tri = [];   dev = NaN;
+%  內插組 V -> 這裡判收斂。收斂後 V 就定住，不參與 ② 的迭代。
+%  [MODIFIED 2026-08-28 使用者拍板] sensor 設計改**中心面笛卡兒格且為定值** SEN_NXY，
+%  收斂迴圈與判準（含 36 元素獨立判）一併退役 —— 100x100 已遠超收斂（見上方註解）。
+V = [];   sen_tri = [];
 if strcmp(BASE, 'voltage')
     % Maxwell 的 sensor 場是**另一組匯出**（WP 細格框 ±0.6mm 涵蓋不到 WP 外 ~4.5mm 的
     % sensor）→ 另載 dataset='voltage' 的粗格，只餵 build_V_matrix；上面的電荷擬合
@@ -108,43 +139,12 @@ if strcmp(BASE, 'voltage')
     fprintf('[voltage] sensor 場格點 %d（WP 擬合場格點 %d）\n', numel(raw_v.x), numel(raw.x));
     bV = @(t) build_V_matrix(cfg, VARIANT, raw_v, cfg.S_hall, SOFF_upper, t, ...
                              sensor_r, axial_tol, [], V_METHOD, SOFF_lower);
-    % ⚠ info 是**第 6 個**輸出（三線性併入後多了 B）；少一個 ~ 會拿到 tri 而非 info。
-    [~,~,~,~,~,si] = conv_design_sensor(SEN_SEED(1), SEN_SEED(2), SEN_SEED(3), ...
-        struct('ladder',CONV_NDMAX, 'sensor_r',sensor_r, 'axial_tol',axial_tol));
-    Vref = bV(SEN_REF);
-    fprintf('[sensor] 密參考 (%d,%d,%d) = %d 點/sensor\n', SEN_REF, prod(SEN_REF));
-    % [MODIFIED 2026-08-23 使用者拍板] 判準由「第一次低於門檻就停」改成
-    %   **連續 SEN_KWIN 級都低於門檻**，與 ws 那條的穩健度看齊（原本 ws 要連續 10 步、
-    %   sensor 只要一次，兩者不對等；實測第一次過關是 0.0985% 對門檻 0.100%，
-    %   只差 1.5%，靠單一級決定太脆弱）。
-    %   ⚠ 這裡**維持 'ref' 判準**（離密參考的偏差），只是多要求連續 KWIN 級 ——
-    %     **不可**改成 ws 那種「相對前一步的變化率」：實測 sensor 端那條會連兩次
-    %     假收斂（5 點 / 8 點，實際誤差都是 0.6%），因為階梯在角向緩慢爬升時
-    %     「變化率小」與「離真值近」是兩回事。
-    %   收斂設計取**連續窗的第一級**（與 ws 的 q_hit 同慣例）。
-    sen_hit = false;
-    sen_ok  = false(1, size(si.ladder,1));
-    sen_dev = nan(1, size(si.ladder,1));
-    for q = 1:size(si.ladder,1)
-        V   = bV(si.ladder(q,:));
-        dev = max(abs(V(:) - Vref(:)) ./ abs(Vref(:)));      % 36 個元素全部要過
-        sen_ok(q) = dev < SEN_TOL;   sen_dev(q) = dev;
-        i0 = ftrue(sen_ok(1:q), SEN_KWIN);
-        if ~isnan(i0)
-            sen_tri = si.ladder(i0,:);
-            V = bV(sen_tri);                                 % 回到窗首那級重算 V
-            fprintf(['[sensor] 收斂設計 (%d,%d,%d)、%d 點/sensor' ...
-                     '（掃了 %d 級；第 %d~%d 級連續 %d 次 < %.3f%%，' ...
-                     '窗內偏差 %.4f~%.4f%%）\n'], ...
-                    sen_tri, prod(sen_tri), q, i0, i0+SEN_KWIN-1, SEN_KWIN, ...
-                    SEN_TOL*100, min(sen_dev(i0:i0+SEN_KWIN-1))*100, ...
-                    max(sen_dev(i0:i0+SEN_KWIN-1))*100);
-            sen_hit = true;   break
-        end
-    end
-    assert(sen_hit, ['sensor：%d 級內沒有連續 %d 級 < %.3f%%' ...
-                     '（最後一級 (%d,%d,%d) 偏差 %.4f%%）'], ...
-           CONV_NDMAX, SEN_KWIN, SEN_TOL*100, si.ladder(end,:), sen_dev(end)*100);
+    % [MODIFIED 2026-08-28 使用者拍板] 設計定值，不再有階梯與收斂判準。
+    sen_tri = SEN_NXY(:).';
+    V = bV(sen_tri);
+    sen_pts = numel(conv_design_sensor(sen_tri(1), sen_tri(2), ...
+                    struct('sensor_r',sensor_r, 'axial_tol',axial_tol)));
+    fprintf('[sensor] 中心面笛卡兒格 (Nx,Ny) = (%d,%d) -> %d 點/sensor\n', sen_tri, sen_pts);
 end
 
 %% ---- ②③④ 產點+取場 -> 校正 -> 判收斂（迴圈由 main 驅動）--------------------
@@ -165,7 +165,14 @@ nq  = 1;   if AUTO, nq = size(LADW,1); end
 SER = nan(nq,2);   OKV = false(1,nq);   tri_ws = [];   ws_hit = ~AUTO;
 for q = 1:nq
     % ② 產點 + 三線性取場
-    if AUTO
+    if ~isempty(WS_AXSH_NR)
+        Pq = sample_axes_shells(R_select, WS_AXSH_NR, cfg.R_act, struct('quiet',true));
+        oq = wsopt;   oq.query = Pq;   oq.quiet = true;
+        [P, Bstack] = conv_design_ws([], [], [], R_select, oq);
+        npts   = size(P,1);
+        tri_ws = [];
+        fprintf('[ws] axes-shell Nr=%d -> %d 點（濾鐵後）%s', WS_AXSH_NR, npts, newline);
+    elseif AUTO
         tri_ws = LADW(q,:);
         [P, Bstack, ~, gi] = conv_design_ws(tri_ws(1), tri_ws(2), tri_ws(3), R_select, wsopt);
         npts = gi.npts_kept;
@@ -226,7 +233,7 @@ switch BASE
         rec.SOFF_upper = SOFF_upper;  rec.SOFF_lower = SOFF_lower;   % emit_results 據此加檔名後綴
         % sensor 取樣參數一併記進 .mat（自描述）
         rec.sen_tri = sen_tri;  rec.sensor_r = sensor_r;  rec.axial_tol = axial_tol;
-        rec.SEN_REF = SEN_REF;  rec.SEN_TOL = SEN_TOL;  rec.SEN_KWIN = SEN_KWIN;
+        rec.SEN_NXY = SEN_NXY;      % 中心面笛卡兒格設計（定值）
         [D_bar, gV_hat, G, rm] = solve_voltage(l_hat, e, Pc_base, P, Bstack, V, K22_SET, P_ev, B_ev);
         rec.D_bar = D_bar;  rec.gV_hat = gV_hat;  rec.G = G;  rec.V = V;
     otherwise
@@ -252,7 +259,12 @@ else
 end
 % [ADDED 2026-08-13] 等測度網格取樣 → 檔名加 _convN<點數>，與全格點版並存
 %   [MODIFIED 2026-08-23] tri_ws 空 = 全格點模式（不加 tag）；'auto' 與手動指定都加。
-if ~isempty(tri_ws)
+if ~isempty(WS_AXSH_NR)
+    VAR_OUT        = sprintf('%s_axshN%d', VAR_OUT, npts);
+    rec.VARIANT    = VAR_OUT;
+    rec.WS_AXSH_NR = WS_AXSH_NR;
+    rec.sampler    = 'axes_shells';
+elseif ~isempty(tri_ws)
     VAR_OUT       = sprintf('%s_convN%d', VAR_OUT, npts);
     rec.VARIANT   = VAR_OUT;
     rec.GRID_NRPT = tri_ws;
@@ -306,3 +318,4 @@ function i0 = ftrue(v, K)
         if all(v(i:i+K-1)), i0 = i;  return; end
     end
 end
+

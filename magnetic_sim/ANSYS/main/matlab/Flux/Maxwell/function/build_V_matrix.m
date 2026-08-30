@@ -48,9 +48,11 @@ function [V, exc_sign, sensor_pos, sensor_n, dbg] = build_V_matrix(cfg, variant,
     % ② 每 sensor 圓柱內取 n_uniform 點（ANSYS 框）——兩內插法共用
     % [MODIFIED 2026-08-21 使用者拍板] n_uniform 現在兩用：
     %   **純量** -> 舊的 Monte Carlo 亂數撒點（rng(0) 可重現）；既有結果逐位不變。
-    %   **1x3**  -> [N_r N_theta N_z] 等測度網格（conv_design_sensor），確定性、
-    %              密度精確均勻。下游完全不必改：兩種撒法都是「體積均勻」，
-    %              所以後面那個未加權 mean 依然是合法的體積平均。
+    %   **1x2**  -> [Nx Ny] 中心面笛卡兒格（conv_design_sensor），確定性。
+    %   ⚠ [MODIFIED 2026-08-28 使用者拍板] 網格版已改成**中心面**設計（原本是 1x3 的
+    %     三軸圓柱網格）。它估的是**中心面的面平均**，不是體積平均 —— 與整個圓柱的
+    %     真值差一個軸向曲率項，實測約 0.45%，且與面內密度無關（加密消不掉）。
+    %     面內權重本身是均勻的（笛卡兒格），所以下面那個未加權 mean 在面內合法。
     %   ⚠ 網格版的正交基底與下面亂數版**逐字相同**（conv_design_sensor 內同一段），
     %     兩者落在同一個局部框，可逐點對照。
     GRID = ~isscalar(n_uniform);
@@ -65,7 +67,7 @@ function [V, exc_sign, sensor_pos, sensor_n, dbg] = build_V_matrix(cfg, variant,
             %   都已併入 conv_design_sensor（兩檔已刪除）。分工：conv_design_sensor
             %   做「產點 + 三線性內插取場」，本檔**只組 V**（投影到 n̂ 再取體積平均）
             %   —— 即「build_V_matrix 從 conv_design_sensor 拿資料」。
-            [sx, sy, sz, sB] = conv_design_sensor(n_uniform(1), n_uniform(2), n_uniform(3), ...
+            [sx, sy, sz, sB] = conv_design_sensor(n_uniform(1), n_uniform(2), ...
                 struct('sensor_r', sensor_r, 'axial_tol', axial_tol, ...
                        'center', ci, 'axis', ni, 'span', 'base', 'raw', raw, ...
                        'variant', variant, 'model', cfg.model, 'geom', cfg.geom));
@@ -181,6 +183,9 @@ function [V, dbg] = vmat_grid(sfld, sensor_n, S_hall, N_I, dbg)
         for kc = 1:N_I
             Bp = sfld{i}(:,:,kc);                            % [mT]
             bn = Bp * ni;
+            % 感測器讀值 = 取樣點 b.n 的**相加平均**（使用者 2026-08-28 定案）。
+            %   ⚠ 同日曾短暫改成純 sum，因 V 會變成 ~11 kV（隨 (Nx,Ny) 漂移）而改回。
+            %   平均是尺度不變的：換取樣設計不影響 V / ĝ_V 的量級。
             V(i,kc) = S_hall * mean(bn, 'omitnan');
             bm = vecnorm(Bp, 2, 2);
             dbg.ang{i,kc}  = acosd(min(1, max(-1, bn./bm)));

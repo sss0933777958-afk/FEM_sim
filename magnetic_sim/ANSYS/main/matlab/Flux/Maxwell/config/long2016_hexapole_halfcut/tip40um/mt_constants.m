@@ -18,7 +18,11 @@ function c = mt_constants()
     % Maxwell .fld 路由（extract_maxwell_data 用）；**兩組匯出、用途不同**：
     %   dataset='all'（預設）→ WP 細格，供電荷擬合（R≤150µm 球內 ~1767 格點）
     %   dataset='voltage'    → sensor 粗格，供 build_V_matrix（sensor 在 WP 外 4.5mm，細格框涵蓋不到）
-    c.fld_dir           = 'D:\Maxwell_sim\long2016_hexapole_halfcut\export';
+    % [MODIFIED 2026-08-30] D:\Maxwell_sim\long2016_hexapole_halfcut\export\ 於 2026-08-29 17:07 重整成
+    %   'No gap' / 'Have gap' 兩個子夾（既有 .fld 全部搬進 'No gap'、'Have gap' 目前是空的），
+    %   原本指到上一層的 fld_dir 因此讀不到檔（報「開不了 ...\export\B_p1.fld」）。改指 'No gap'。
+    %   日後 long2016 若要做氣隙變體，照 zhi_peng 的樣式加 c.fld_dir_variant 指到 'Have gap'。
+    c.fld_dir           = 'D:\Maxwell_sim\long2016_hexapole_halfcut\export\No gap';
     c.fld_files         = {'B_p1.fld','B_p2.fld','B_p3.fld','B_p4.fld','B_p5.fld','B_p6.fld'};
     %   ↑ 步距 0.02mm、框 x,y∈±0.6mm z∈[-13.31,-12.11]mm、61³=226,981 格點
     % [ADDED 2026-08-05] variant → WP 細格 .fld 檔名（dataset='all' 用；voltage 一律走 fld_files_voltage）。
