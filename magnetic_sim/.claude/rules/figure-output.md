@@ -43,9 +43,30 @@ plot 腳本的 `figdir` 寫 `fullfile(CAL,'figures',MODEL,BASE,<param>)`；各 `
 
 論文圖（`figures/paper_fig/Section*/`）的產生端一律**兩夾分家**：
 
-- **`figures/paper_fig_plot/plot/`** — 繪圖腳本（`.m`）。含兩支**無對應圖但不可刪的引擎**：
-  `plot_surface_flux.m`（表面通量積分，被 `plot_upper_boundary_flux` 呼叫）、
-  `build_steel_footprint.m`（產 `steel_ids.mat`，被 4 支場圖腳本讀）。
+- **`figures/paper_fig_plot/plot/`** — 繪圖腳本（`.m`）。含四支**無對應圖但不可刪的引擎**
+  （2026-08-30 清孤兒時逐一查證；`plot_full_vs_conv_vs_R` 與 `plot_ell_gain_vs_R` 差點被誤刪）：
+  | 引擎 | 產出 | 誰依賴 |
+  |---|---|---|
+  | `plot_full_vs_conv_vs_R.m` | `data/full_vs_conv_vs_R_*.mat`（逐 R 的收斂設計） | `plot_conv_vs_R` / `plot_ell_gain_2panel` / `plot_err_hist_shell` / `plot_svd_polar`（**硬 assert**） |
+  | `plot_ell_gain_vs_R.m` | `data/ell_gain_sweep_maxwell*.mat`（全格點 R-sweep） | `plot_full_vs_conv_vs_R` |
+  | `axsh_sweep.m` | `data/axsh_R<R>[_<model>].mat`（六軸殼層階梯） | `axsh_ell` / `axsh_gain` / `axsh_kfro` |
+  | `plot_sensor_B_hist.m` | `data/sensor_B_hist_P*_*.mat`（per-pole 撒點與場） | `plot_sensor_cyl_B_3d`（**硬 assert**） |
+  | `build_steel_footprint.m` | `data/steel_ids.mat` | `plot_flux_arrows_3d_merged` / `plot_p2_charge_merged` |
+  ⚠ **判斷孤兒不能只看「有沒有對應圖」** —— 上面五支都沒有自己的圖。刪之前必須
+  `grep -l '<腳本名>' plot/*.m` 確認沒有別的腳本讀它的快取。
+  ⚠ **也不能只靠檔名的 `sprintf` 樣式比對** —— 以 `%s` 開頭的樣式（如 `%s_vs_npts_%s%s.png`）
+  會把別支產的圖誤認成自己的（2026-08-30 踩過：`plot_ell_vs_npts` 因此被誤判為「有圖」，
+  實際它產的是 `ell_vs_npts_maxwell.png`、根本不存在）。**要讀 code 確認 `%s` 的實際取值。**
+  （`plot_surface_flux.m` 與其唯一呼叫者 `plot_upper_boundary_flux.m` 已於 2026-08-30 一併刪除。）
+
+  **[MOVED 2026-08-30]** 產論文圖的 `axsh_ell.m` / `axsh_gain.m` / `axsh_kfro.m`（共 12 張
+  `Section2_E/{ell,gain,kfro}_vs_npts_axsh_*`）與其引擎 `axsh_sweep.m` 原住 `temp_code/scripts/`，
+  已搬進本夾 —— **產論文圖的腳本一律住 `plot/`**。四支的 `MAIN` 同時由寫死絕對路徑改為
+  `fileparts` 相對推導（plot/ → paper_fig_plot/ → figures/ → main/，共 4 層）。
+  搬移後以像素比對驗過 `kfro_vs_npts_axsh_R150.png` 完全相同。
+  ⚠ `temp_code/scripts/` 仍留著 **舊取樣器** `sample_rings` / `sample_equal_h` / `sample_axes4` /
+  `sample_direct`（6 支 plot 腳本still addpath 進去）與診斷腳本 `axsh_vs_R` / `axsh_why` 等，
+  那些不產論文圖、留在原處。
 - **`figures/paper_fig_plot/data/`** — 功能性快取（`.mat`；重算要數分鐘，屬產物不是暫存，**不要清**）。
 
 腳本內路徑一律：

@@ -26,7 +26,7 @@
 7. **單位用括號 `()`**：`x (mm)` / `z (mm)` / `|B| (T)`（**不是** `[]`）；座標一律用 **mm**。
    - **字體分工（使用者拍板 2026-07-27，定案）**：**軸標題 / 刻度標題（axis label、colorbar label）一律用「標準數學字體」= LaTeX `\mathbf`（`Interpreter='latex'`，Computer Modern 粗體）**；如 `$\mathbf{|B|\;(mT)}$` / `$\mathbf{{}^{B}\hat{g}_{I}\;(mT/A)}$`。**刻度「數字」維持 Helvetica 粗體**（`FontWeight='bold'`，**不**套 `TickLabelInterpreter='latex'`）。即：標題數學字體、數字 sans-serif 粗體。⚠ 曾試把標題改 Helvetica（`\mathsf`/tex）**已被否決**——標題一律標準數學字體（且 `ᴮĝ_I` 的 hat/左上標**只有 latex 畫得出來**）。（2026-08-03 曾試把刻度數字改 Computer Modern，使用者否決、換回 Helvetica 粗體。）
    - **字體大小統一 = 36（使用者拍板 2026-07-28，所有 paper 圖通用）**：刻度數字 `set(ax,'FontSize',36,'FontWeight','bold')`；軸標題/colorbar 標題同 36。不要各圖各用 28/30——一律 36。（3D box 圖本就 36，2D 圖也統一到 36。）
-8. **圖例每則的第一個字首字母大寫**（使用者拍板 2026-07-27）：legend 每一條的**開頭單字**要大寫（`Sampling range ≤ 150 µm`、`Mean = 0.250 mT`——不是 `sampling`/`mean`）。純符號/數學開頭（`|B|`、`ĝ_I`…）不受此限。範例：`plot_err_hist.m`。
+8. **圖例每則的第一個字首字母大寫**（使用者拍板 2026-07-27）：legend 每一條的**開頭單字**要大寫（`Sampling range ≤ 150 µm`、`Mean = 0.250 mT`——不是 `sampling`/`mean`）。純符號/數學開頭（`|B|`、`ĝ_I`…）不受此限。範例：`plot_conv_vs_R.m`（`Single parameter` / `Eighteen parameters`）、`plot_gain_iso_hist.m`（`Design B` / `Design C`）。
 
 （補充慣例，沿用既有圖：通常**無標題**、圖上**不標「內插」**字樣——見交叉連結。）
 
@@ -69,7 +69,7 @@ cbar.set_label('|B| (T)', fontweight='bold', fontsize=16)
 | 變體 | 何時用 | 框法 | 立方比 | 範例 |
 |---|---|---|---|---|
 | **A. 手動框邊** | **同尺度立方幾何**：x,y,z 都是空間、同單位、可等比（例：磁荷位置示意） | `box off` + 手動 `draw_box_edges`（省最遠角 3 邊） | `daspect([1 1 1])` | `plot_charge_positions_3d.m` |
-| **B. box on** | **異質軸**：z 是跟 x,y 不同的物理量/單位/尺度（例：surf 高度/山丘圖，x,y=µm、z=gain/iso） | 直接 `box on`（MATLAB 標準 3D 框：外框 + 後方三面邊） | `pbaspect([1 1 1])`（**不能 daspect**，會把小範圍的 z 壓扁） | `plot_svd_gain_iso_3d.m`、`plot_upperP2P5_circuit_3d.m` |
+| **B. box on** | **異質軸**：z 是跟 x,y 不同的物理量/單位/尺度（例：surf 高度/山丘圖，x,y=µm、z=gain/iso） | 直接 `box on`（MATLAB 標準 3D 框：外框 + 後方三面邊） | `pbaspect([1 1 1])`（**不能 daspect**，會把小範圍的 z 壓扁） | `matlab/Flux/APDL/Calibration_using_FEM_modeling/plot/long2016_hexapole_halfcut/current/plot_svd_gain_iso_3d.m` |
 
 **判準一句話**：**能 `daspect([1 1 1])`（三軸同單位同尺度）→ 用 A 手動框邊；不能（z 是別的量）→ 用 B `box on` + `pbaspect`**。
 
@@ -113,7 +113,7 @@ ax=gca; ax.Toolbar.Visible='off';                    % 匯出不帶 axes 工具�
 - **判準 = 只保留「有刻度數字」的邊，沒刻度的框線不要**（使用者原話：「我不要的是底邊沒有數字刻度的框線」）。
 - **頂框(z=max) + 底框(z=min) 手動一律不畫**。有刻度數字的 x/y 底邊（例 x=2/4/6/8、y=−1/0/1）**由 MATLAB 座標軸 ruler 自己畫**（`set(ax,'LineWidth',3)` 讓 ruler 線一樣粗），不需 `draw_box_edges3` 補；沒刻度的底邊（遠端長邊、近端短邊）就此消失＝使用者要的效果。
 - **垂直邊只留遠端**：省掉「最近 2 個角」相連的垂直邊（前方 stub）；z 軸 ruler 由 MATLAB 畫（含 0/−1/−2）。
-- 實作 = 條件式 `draw_box_edges3`（`if el<0`：`istop||isbot → continue`（底/頂框都不手動畫）、垂直省最近 2 角；`else`：標準省最近角 3 邊）。三支 3D 腳本共用同版：`plot_p1_pole_full.m`（el=−20）、`plot_p2_pole_full.m`（el≥0 不受影響）、`plot_hexapole_sensors_3d.m`（下極 el=−25 套用、上極/合併 el>0 不受影響）。
+- 實作 = 條件式 `draw_box_edges3`（`if el<0`：`istop||isbot → continue`（底/頂框都不手動畫）、垂直省最近 2 角；`else`：標準省最近角 3 邊）。實作範例：`plot_hexapole_sensors_3d.m`（下極 el=−25 套用 el<0 分支、上極/合併 el>0 走標準分支，一支涵蓋兩條路徑）。⚠ 原本並列的 `plot_p1_pole_full.m` / `plot_p2_pole_full.m` 已於 2026-08-30 隨孤兒清理刪除。
 
 **3D tick 放置（使用者拍板 2026-07-25；2026-07-26 補字體/框邊，A/B 皆適用）**：
 - **刻度數字字體 = 36 粗體**（3D paper box 圖統一；`set(ax,'FontSize',36,'FontWeight','bold')`）。合併多面板圖同此（見 `project_long2016_paper_figures`）。
@@ -165,7 +165,7 @@ ax=gca; ax.Toolbar.Visible='off';                    % 匯出不帶 axes 工具�
 - 範例：`figures/paper_fig_plot/plot/plot_sphere_lattice_3d.m`（±0.9 框、三軸 `-0.5:0.5:0.5`、font 36、手動框邊省最近角）、
   `plot_sensor_ring_schematic.m`（`LWBOX=4.0`、y 軸不放 tick、z 軸 `[-1 1 3]` 奇數等距）。
 
-範例圖：A＝`…/fix_dir/figures/charge_positions_P1P2_3d.png`（view −30/−20）；
+範例圖：A＝`matlab/Flux/APDL/Calibration_using_FEM_modeling/figures/long2016_hexapole_halfcut/current/common/charge_positions_P1P2_3d.png`（view −30/−20）；
 B＝`…/fix_dir/figures/svd_gain_3d.png`・`svd_iso_3d.png`（surf 山丘，view −40/30）、`…/Hall_sensor_base_fix_dir/figures/circuit_3d_*.png`。
 
 ### 方向箭頭(n+ 等)頭看不清 → 自畫箭頭、頭兩翼繞 n 自轉面向相機（方向不動）（使用者拍板 2026-07-28）
@@ -175,7 +175,7 @@ B＝`…/fix_dir/figures/svd_gain_3d.png`・`svd_iso_3d.png`（surf 山丘，vie
 - **兩翼展開方向 `w = normalize(cross(n, 視線))`**（⊥ n 且 ⊥ 視線）→ 兩翼**面向相機**、任何視角頭都清楚（＝把箭頭頭「繞 n 自轉」到面向相機，方向 n 完全不變）。
 - 翼：`b=-n; d1=cos(a)·b+sin(a)·w; d2=cos(a)·b−sin(a)·w`（`a≈24°`、翼長 `≈0.32·Ln`）。視線 `vd=[sind(az)cosd(el);-cosd(az)cosd(el);sind(el)]`。
 - ⚠ 踩過的坑（別再犯）：(1) 別改箭頭**方向**（曾轉離相機/歪出 y=0 平面 → 物理錯、使用者打槍）；(2) 別轉 **view 視角**（會把整個 pole 重定向 → 不是要的）。正解只有「自畫箭頭 + 兩翼 ⊥視線」。
-- 實作：local `draw_narrow(ax, sc, n, Ln, col, lw)`。範例：`plot_p1_pole_full.m` / `plot_p2_pole_full.m`（都用真實 n+）。
+- 實作：local `draw_narrow(ax, sc, n, Ln, col, lw)`。範例：`plot_p1p2_poles_3d.m`（用真實 n+）。
 
 ### 3D 磁路場箭頭（quiver3，定案 2026-07-28）
 
@@ -185,7 +185,7 @@ B＝`…/fix_dir/figures/svd_gain_3d.png`・`svd_iso_3d.png`（surf 山丘，vie
 - **磁極表面（錐面）改用重心內插加密**（使用者要「整根均勻、後端也要密、但別像規則格那樣假」，2026-07-28）：**真實貼面節點（自然、優先）+ `scatteredInterpolant`（`linear`＝barycentric）在錐面細格（軸×方位）查詢點填補空隙 → 再用 `vsz≈0.22mm` 體素「每格留一、真實優先」**。這樣整根均勻密、graded 網格超密的尖端不成團、後端粗網格區靠內插填滿，且位置以真實節點為主（非純規則格 → 不假）。半切下極只取鋼側（`z<z_tip`）phi 0..π；全錐上極 phi 0..2π。**所有箭頭(內部+表面)一律限制在磁極軸長度 L 內**（`(P−tip)·axk ≤ L`），超過 L（根部寬端外）不畫。使用者明示**此圖表面內插不必標示**。
 - **turbo 依 `|B|(mT)` 分 bin（28 bin）**上色（同 `plot_p2_charge_merged` 右圖）。此類全極示意圖使用者要**不放顏色表**。
 - **箭頭長度依 `|B|` 變化，但最大長度不誇張（🔒 定案）**：用壓縮映射 `len = lmin + (lmax−lmin)·(|B|/|B|max)^0.35`，方向 = 單位 `B`×`len`（`quiver3(...,0,'AutoScale','off')` 隱含用實 len）。**`lmax` 取相對圖幅的適度上限**——**最大箭頭不可長到橫跨大半視野**（例：全極 8mm box 用 `lmin=0.15 / lmax=0.55mm`）。**不要**用單位化固定長度（全部等長、看不出大小），也**不要**線性 raw×大比例（最大箭頭爆掉）。
-- 範例：`figures/paper_fig_plot/plot/plot_p2_pole_full.m`（全極 P2，`lmin/lmax=0.15/0.55`）、`plot_p2_charge_merged.m` 的 `render_3d`（尖端 zoom，`0.014/0.060`）。
+- 範例：`figures/paper_fig_plot/plot/plot_p2_charge_merged.m` 的 `render_3d`（尖端 zoom，`lmin/lmax=0.014/0.060`）。全極示意版（`0.15/0.55`）原在 `plot_p2_pole_full.m`，已於 2026-08-30 刪除。
 
 ### 🔒 Maxwell 資料的磁路箭頭取樣 = jittered grid（使用者拍板 2026-08-04，定案）
 
@@ -243,14 +243,15 @@ ylim(ax,[0 top]);  set(ax,'YTick',(1:n)*s);
 **⚠ 壓上緣時「刻度間距不可跟著變小」** —— 踩過：把 s 從 10 改成 5，刻度只到 25（資料到 39），
 反而更難讀。**s 由資料範圍決定、與上緣壓縮無關。**
 
-範例：`figures/paper_fig_plot/plot/plot_nmin_ratio_stem.m` 的 `axlim_from_zero`。
+範例：`figures/paper_fig_plot/plot/plot_ell_gain_2panel.m` 的 `axlim_from_zero`。
 
 ---
 
 ## 🔒 圖例（legend）標準樣式（使用者拍板 2026-08-10，所有圖通用）
 
-**範本圖**：`figures/paper_fig/Section3_A/sensor_B_hist_P1_flat_vs_cone_maxwell_soff4.572_n500.png`
-**範本碼**：`figures/paper_fig_plot/plot/plot_sensor_B_hist.m`（legend 區塊）。
+**範本圖**：`figures/paper_fig/Section2_E/rms_vs_R_conv_maxwell.png`
+**範本碼**：`figures/paper_fig_plot/plot/plot_conv_vs_R.m`（legend 區塊；含 2026-08-12 的
+「自然寬度 < 框寬 70% 就置中、否則切齊」分支。`plot_sensor_B_hist.m` 為同款實作）。
 **以後所有圖的圖例一律照這張做**，不要各圖各自發明。
 
 ```matlab
@@ -443,7 +444,7 @@ end
          （如 R-sweep 的 2 與 500）兩條規則同時成立、不衝突。
      - **🔒 分層 / 分箱資料的 x 用「名目層中心」**（`(edg(L)+edg(L+1))/2`），**不可**用該層樣本的實際平均位置——後者帶隨機抖動（如 5.5 / 15.5 / 25.4…）、非等距、且無物理意義。層平均值代表整層，故標在層中心；**這也表示曲線本質上不會從層邊界（0）起算**（10 層 × 10 µm ⇒ x = 5,15,…,95，不是 0…100）。
    - 連帶：講「tick 數量」時**不含起始/終點**（「x 軸 4 個內部 tick」= `[2 4 6 8]`，另加起點 0 + 終點 1；縱軸「3 個 tick」= 首末不標的 3 個內縮值）。
-   - 範例：`plot_err_hist.m`（`XTick=[0.2 0.4 0.6 0.8]` + `text` 補起點 0 + 終點 1、y 三內縮）、**`plot_sensor_normal_gradient.m`（曲線圖新標準：`xlim=[5,95]` 首末點貼框、`XTick=[25 50 75]`、5/95 用 `text` 補、名目層中心）**。
+   - 範例：`plot_err_hist_shell.m`（直方圖：內部 `XTick` + `text` 補兩端點、y 內縮）、**`plot_conv_vs_R.m`（曲線圖新標準：首末資料點貼框、內部 `XTick` 奇數等距、兩端點用 `text` 補數字）**。
      ⚠ `plot_ell_gain_vs_R.m`（x 起點 40 + 終點 500 都在 `XTick`）是**舊寫法、尚未改**——要動那張圖時順手改成上面的新標準。
 
 7. **🔒🔒 縱軸：內部刻度標數字、起點與終點都不標（使用者拍板 2026-08-20）**：
