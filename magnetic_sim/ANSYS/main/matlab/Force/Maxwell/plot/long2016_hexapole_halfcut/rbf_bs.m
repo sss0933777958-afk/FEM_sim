@@ -51,7 +51,9 @@ fprintf('rho = %g um, lam = %g | cond(Phi) = %.3e | max|W| = %.3e\n', ...
         RHO, LAM, cond(Phi), max(abs(W),[],'all'));
 fprintf('nodal residual max |Phi W - B| = %.3e mT\n\n', max(abs(Phi*W - B),[],'all'));
 
-T = load(fullfile(MAIN,'temp_code','data','bb_xa_raw.mat'));     % trilinear reference
+% [MODIFIED 2026-09-11] the trilinear reference moved out of temp_code (cleared) into
+% the Force package's own data folder, next to the rbf_*.mat.
+T = load(fullfile(DAT,'bb_xa_raw.mat'));     % trilinear reference
 fprintf('%8s %12s %12s %10s\n','xa[um]','b.b RBF','b.b trilin','diff');
 for tt = [-150 -120 -75 0 75 120 150]
     i = find(abs(t-tt) < 1e-9, 1);   j = find(abs(T.t-tt) < 1e-9, 1);
