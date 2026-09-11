@@ -1,4 +1,4 @@
-function plot_full_vs_conv_vs_R(force)
+function plot_full_vs_conv_vs_R(force, MODEL, GEOM, VARIANT, CRIT, RELAX, KREF, NRX)
 % plot_full_vs_conv_vs_R -- 「全格點校正」vs「收斂點固定設計校正」隨取樣半徑 R 的對照
 % =========================================================================
 %   兩張圖，每張上下兩個子圖（上 l_hat、下 g_I_hat），橫軸都是取樣半徑 R [um]：
@@ -34,6 +34,36 @@ function plot_full_vs_conv_vs_R(force)
 % =========================================================================
     clc;
     if nargin < 1 || isempty(force), force = false; end
+    % [ADDED 2026-08-26 使用者拍板] per-model 參數 + 第二套收斂判準。
+    %   CRIT = 'step'（預設，原行為）：逐步變化率 < TOL 持續 KWIN 步 + K_I 物理，
+    %                                  沿 1:3:3pi 階梯。
+    %   CRIT = 'full'：**對全格點**的相對誤差 < TOLREF + K_I 物理，沿「等間距 + 補空窗」
+    %                  階梯，取「從該級起之後每級都通過」的第一級。
+    %                  這是 2026-08-26 定案、slide4/5 用的同一把尺（R=150 -> 長飛 25 /
+    %                  志鵬 35 點）。舊判準的收斂點數沿 R 劇烈跳動（8 -> 2470 -> 19922），
+    %                  因為逐步變化率對單調漂移沒有鑑別力。
+    if nargin < 2 || isempty(MODEL),   MODEL   = 'long2016_hexapole_halfcut'; end
+    if nargin < 3 || isempty(GEOM),    GEOM    = 'tip40um';                   end
+    if nargin < 4,                     VARIANT = '';                          end
+    if nargin < 5 || isempty(CRIT),    CRIT    = 'step';                      end
+    CRIT = lower(CRIT);
+    assert(any(strcmp(CRIT,{'step','full'})), 'CRIT 必為 ''step'' | ''full''');
+    TOLREF = 0.03;                   % CRIT='full' 的門檻：對全格點 < 3%
+    % [ADDED 2026-08-27] RELAX：完整判準找不到時，是否放寬成「只看 l_hat 達標」。
+    %   false（預設，使用者 2026-08-27 拍板改回）= 直接退回全格點。
+    %     理由：放寬之後那些 R 的 g_I 完全沒有約束，實測會跑到 44.8 mT/A（收斂值 ~9.6），
+    %     比退回全格點的 27.6 還離譜 —— 兩者都只是從「不可辨識的可行帶」裡挑一點，
+    %     但全格點至少是有定義的量。
+    if nargin < 6 || isempty(RELAX), RELAX = false; end
+    % [ADDED 2026-08-27 使用者指定] KREF：CRIT='full' 的收斂窗長度。
+    %   []（預設，原行為）= 「從該級起、**其後每一級**都通過」（要求一路撐到階梯末端）
+    %   10             = 「**連續 10 級**都通過」，取窗首（與 sensor / ws 兩條判準看齊）
+    %   ⚠ 兩者不等價：階梯末端若有一級失手，前者找不到、後者仍可能成立。
+    if nargin < 7, KREF = []; end
+    % [ADDED 2026-08-27 使用者指定] NRX：等間距主幹的 N_r 上限（階梯長度）。
+    %   預設 10（點數到 4195）。給大一點可讓大 R 端「繼續加點」而不是直接退回全格點。
+    %   N_r: 10->4195  11->5583  12->7241  13->9192  14->11458  15->14128  16->17167
+    if nargin < 8 || isempty(NRX), NRX = 10; end
 
     R_um  = 20:20:500;               % 取樣半徑 [um]
                                      % [MODIFIED 2026-08-14] 使用者要求「取樣範圍自小往大、
@@ -51,15 +81,25 @@ function plot_full_vs_conv_vs_R(force)
     %   每個判準都要多 5 步才成立，大 R 端本來就吃緊。
     KWIN  = 10;                      % 三判準共用：後 10 步
     NDMAX = 150;                     % 每個 R 最多走幾個設計（早停）
-    MODEL = 'long2016_hexapole_halfcut';   GEOM = 'tip40um';
 
     here   = fileparts(fileparts(mfilename('fullpath')));
     figdir = fullfile(fileparts(here), 'paper_fig', 'Section2_E');
     if ~exist(figdir,'dir'); mkdir(figdir); end
-    cachef = fullfile(here, 'data', 'full_vs_conv_vs_R_maxwell.mat');
+    msuf = '';   if ~strcmp(MODEL,'long2016_hexapole_halfcut')
+        msuf = ['_' regexprep(MODEL,'_.*$','')];
+    end
+    csuf = '';   if strcmp(CRIT,'full'), csuf = '_fullref'; end
+    cachef = fullfile(here, 'data', sprintf('full_vs_conv_vs_R_maxwell%s%s.mat', csuf, msuf));
 
     %% ---- 計算（快取）------------------------------------------------------
-    if exist(cachef,'file') && ~force
+    if strcmp(CRIT,'full')
+        if exist(cachef,'file') && ~force
+            S = load(cachef);   fprintf('由快取載入 %s\n', cachef);
+        else
+            S = sweep_fullref(MODEL, GEOM, VARIANT, R_um, l0, TOLREF, RELAX, KREF, NRX);
+            save(cachef, '-struct', 'S');   fprintf('已存 %s\n', cachef);
+        end
+    elseif exist(cachef,'file') && ~force
         S = load(cachef);
         if isequal(S.R_um(:).', R_um(:).')
             fprintf('由快取載入 %s\n', cachef);
@@ -103,11 +143,160 @@ function plot_full_vs_conv_vs_R(force)
 end
 
 % ============================================================================
+function S = sweep_fullref(MODEL, GEOM, VARIANT, R_um, l0, TOLREF, RELAX, KREF, NRX)
+% [ADDED 2026-08-26] CRIT='full'：每個 R 各自沿「等間距 + 補空窗」階梯找收斂點。
+%   通過 = |dl_hat| < TOLREF 且 |dg_I| < TOLREF（**都對該 R 的全格點**）
+%          且 K_I_bar 合物理（對角全正 + 對角占優 + 非對角全負），single 與 eighteen 各自判。
+%   收斂點 = **從該級起、之後每一級都通過**的第一級（單一級偶然命中不算）。
+%   階梯的點數與 R 無關（只看 N_r 與三元組），所以各 R 走的是同一串設計。
+    if nargin < 7 || isempty(RELAX), RELAX = false; end
+    if nargin < 8, KREF = []; end
+    if nargin < 9 || isempty(NRX), NRX = 10; end
+    MW = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Flux\Maxwell';
+    addpath(fullfile(MW,'function'), fullfile(MW,'utils'));
+    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\temp_code\scripts');  % sample_equal_h / sample_rings
+
+    cfg = model_config(MODEL, GEOM);
+    if isempty(VARIANT), VARIANT = cfg.default_variant; end
+    F = zeros(6, cfg.N_I);
+    for j = 1:cfg.N_I, F(cfg.apdl_to_paper_idx(j), j) = 1; end
+    o = struct('model',MODEL, 'geom',GEOM, 'variant',VARIANT, 'frame','actuator', 'quiet',true);
+
+    % 場只載一次；每個 R 只是換 select_ball 的半徑
+    evalc(['raw = extract_maxwell_data(cfg, ''all'', VARIANT); ' ...
+           'ad  = build_actuator_data(raw, cfg);']);
+
+    % 階梯：等間距 N_r=1..10 主幹 + 7 點（六致動軸 + 中心）+ A=B=C 補空窗（剔除 72）
+    Rref = 150e-6;   NRMAX = NRX;  Leh = zeros(1,NRMAX);
+    for i = 1:NRMAX, Leh(i) = size(sample_equal_h(Rref,i,struct('quiet',true)),1); end
+    % [MODIFIED 2026-08-27] 階梯與 plot_conv_npts 的 'ehgap' 完全一致：
+    %   第一級 = 中心 + (+x_a,+y_a,+z_a) 共 4 點（取代等間距 N_r=1，後者 measure x 恆為 0）
+    %   第二級 = 三軸 +/- 再加中心，共 7 點
+    %   之後 = A=B=C 補空窗（剔除 72）+ 等間距 N_r=2..10
+    KIND = {};  SPEC = {};
+    for i = 1:NRMAX
+        if i == 1
+            KIND{end+1} = 'ax';  SPEC{end+1} = 3;                   %#ok<AGROW>
+            KIND{end+1} = 'rg';  SPEC{end+1} = 6;                   %#ok<AGROW>
+        else
+            KIND{end+1} = 'eh';  SPEC{end+1} = i;                   %#ok<AGROW>
+        end
+        if i < NRMAX
+            for C = 2:12
+                n = C^2*i^3;
+                if n <= Leh(i) || n >= Leh(i+1) || n == 72, continue; end
+                KIND{end+1} = 'gf';  SPEC{end+1} = [i C];           %#ok<AGROW>
+            end
+        end
+    end
+    nd = numel(KIND);   nR = numel(R_um);
+    % [MODIFIED 2026-08-27 使用者拍板] 4 點的 'ax' 級**不得作為收斂點**（仍留在階梯上、
+    %   仍逐級擬合，只是不可被選中）。它是近奇異設計（rank 6 但 sigma_min/sigma_max ~ 2e-3），
+    %   解落在弱約束方向 -> l_hat 凍在 ~614 um、完全不隨 R 變，而全格點真值隨 R 緩慢下漂，
+    %   兩者相對誤差單調張開。志鵬 eighteen 在 R=260 剛好同時滿足「K_I 合物理」與「離全格點
+    %   2.86% < 3%」而被選中（R<=240 K_I 不合物理被擋、R>=280 誤差 3.19% > 3% 被擋，窗口
+    %   剛好一個 20 um 步長），左右鄰居都選 7 點 -> 曲線出現一個單點尖峰。
+    selok = ~strcmp(KIND(:), 'ax');
+    [S.ell_c1,S.gI_c1,S.ell_c2,S.gI_c2,S.n_c1,S.n_c2] = deal(nan(1,nR));
+    [S.ell_f1,S.gI_f1,S.ell_f2,S.gI_f2,S.npts_f]      = deal(nan(1,nR));
+    S.tri_c1 = zeros(nR,3);  S.tri_c2 = zeros(nR,3);
+    S.fb_c1 = false(1,nR);   S.fb_c2 = false(1,nR);
+    S.rx_c1 = false(1,nR);   S.rx_c2 = false(1,nR);   % 只靠 l_hat 判定的 R
+
+    for a = 1:nR
+        R = R_um(a)*1e-6;
+        [Pe, Be, npe] = cfg.select_ball(ad, R);
+        S.npts_f(a) = npe;
+        if npe < 12, fprintf('  R=%3d um：全格點只有 %d 點，跳過\n', R_um(a), npe); continue; end
+        ref = nan(2,2);                                   % [l_full g_full] x [single eighteen]
+        for b = 0:1
+            [ee,ll] = fitting(Pe,Be,cfg.Pc_base,l0,logical(b));
+            [~,gg]  = solve_current(ll,ee,cfg.Pc_base,Pe,Be,F,[]);
+            ref(b+1,:) = [ll*1e6, gg];
+        end
+        S.ell_f1(a)=ref(1,1); S.gI_f1(a)=ref(1,2);
+        S.ell_f2(a)=ref(2,1); S.gI_f2(a)=ref(2,2);
+
+        val = nan(nd,2,2);   pass = false(nd,2);   npts = nan(1,nd);
+        pell = false(nd,2);          % [ADDED 2026-08-27] 只看 l_hat 的寬鬆判準
+        for q = 1:nd
+            switch KIND{q}
+                case 'eh',  Pq = sample_equal_h(R, SPEC{q}, struct('quiet',true));
+                case 'rg',  Pq = sample_rings(  R, SPEC{q}, struct('quiet',true));
+                case 'ax',  Pq = sample_axes4(R, cfg.R_act, ...
+                                     struct('quiet',true,'naxes',SPEC{q},'plus',true));
+            % [REMOVED 2026-09-02] case 'gf'（等測度球格）已隨等測度取樣法一併廢除。
+            end
+            if isempty(Pq), continue; end
+            try,  evalc('[P,Bs] = conv_design_ws(Pq, R, o);');  catch, continue;  end
+            npts(q) = size(P,1);
+            if npts(q) < 4, continue; end
+            for b = 0:1
+                try
+                    [ee,ll] = fitting(P,Bs,cfg.Pc_base,l0,logical(b));
+                    [K,gg]  = solve_current(ll,ee,cfg.Pc_base,P,Bs,F,[]);
+                catch, continue; end
+                val(q,b+1,:) = [ll*1e6, gg];
+                dl = abs(ll*1e6-ref(b+1,1))/abs(ref(b+1,1));
+                dg = abs(gg    -ref(b+1,2))/abs(ref(b+1,2));
+                [~,am] = max(abs(K),[],2);   od = K(~eye(6));
+                kok = all(diag(K)>0) && isequal(am(:).',1:6) && all(od<0);
+                pass(q,b+1) = dl < TOLREF && dg < TOLREF && kok;
+                pell(q,b+1) = dl < TOLREF;      % 寬鬆：只要求 l_hat 達標
+            end
+        end
+        % 收斂點 = 「從該級起、之後每級都通過」的第一級。
+        % [MODIFIED 2026-08-27 使用者拍板] 三段式：
+        %   ① 完整判準（l_hat + g_I 都 < TOLREF、K_I 合物理）
+        %   ② 找不到 -> **只看 l_hat 是否達標**（rx_c* 記 true）。理由：小 R 內 g_I
+        %      根本不可辨識（實測 R=40 時 g_I 8.67 與 27.61 的 NMAE 只差 0.001pp），
+        %      再要求它收斂沒有意義；l_hat 在小 R 反而很穩。
+        %   ③ 仍找不到 -> 退回全格點（fb_c* 記 true）。
+        % [MODIFIED 2026-08-27 使用者指定] KREF 空 = 原本的「其後全部通過」；
+        %   給 10 = 「連續 KREF 級都通過」，回窗首。
+        if isempty(KREF)
+            sust = @(v) find(arrayfun(@(q) selok(q) && v(q) && all(v(q:nd)), 1:nd), 1);
+        else
+            sust = @(v) find(arrayfun(@(q) selok(q) && q+KREF-1 <= nd && all(v(q:q+KREF-1)), 1:nd), 1);
+        end
+        for b = 1:2
+            i0 = sust(pass(:,b));   rx = false;
+            if isempty(i0) && RELAX
+                i0 = sust(pell(:,b));   rx = ~isempty(i0);
+            end
+            if b == 1
+                if isempty(i0)
+                    S.ell_c1(a)=ref(1,1); S.gI_c1(a)=ref(1,2); S.n_c1(a)=npe; S.fb_c1(a)=true;
+                else
+                    S.ell_c1(a)=val(i0,1,1); S.gI_c1(a)=val(i0,1,2); S.n_c1(a)=npts(i0);
+                    S.rx_c1(a)=rx;
+                end
+            else
+                if isempty(i0)
+                    S.ell_c2(a)=ref(2,1); S.gI_c2(a)=ref(2,2); S.n_c2(a)=npe; S.fb_c2(a)=true;
+                else
+                    S.ell_c2(a)=val(i0,2,1); S.gI_c2(a)=val(i0,2,2); S.n_c2(a)=npts(i0);
+                    S.rx_c2(a)=rx;
+                end
+            end
+        end
+        fprintf(['  R=%3d um | full %6d : 1p l=%6.1f g=%8.3f | 18p l=%6.1f g=%8.3f\n' ...
+                 '           conv 1p N=%5d l=%6.1f g=%8.3f | 18p N=%5d l=%6.1f g=%8.3f\n'], ...
+                R_um(a), npe, S.ell_f1(a), S.gI_f1(a), S.ell_f2(a), S.gI_f2(a), ...
+                S.n_c1(a), S.ell_c1(a), S.gI_c1(a), S.n_c2(a), S.ell_c2(a), S.gI_c2(a));
+    end
+    S.R_um = R_um(:).';   S.TOLREF = TOLREF;   S.CRIT = 'full';
+    S.KIND = KIND;        S.SPEC = SPEC;
+    S.N1 = [min(S.n_c1) max(S.n_c1)];   S.N2 = [min(S.n_c2) max(S.n_c2)];
+    S.TRI = zeros(nd,1);  S.TOL = TOLREF;  S.KWIN = KREF;  S.NRX = NRX;   % [MODIFIED] 記錄判準設定
+end
+
+% ============================================================================
 function S = sweep(here, MODEL, GEOM, R_um, l0, TOL, KWIN, NDMAX, old)
 % 全格點曲線讀既有快取；減量曲線逐 R 重算（設計固定、只有球半徑變）。
 %   old（選填）：舊快取。其 R 已算過者直接沿用，只跑新增的 R（判準相同才可沿用）。
     if nargin < 9, old = []; end
-    CAL = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Maxwell';
+    CAL = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Flux\Maxwell';
     addpath(fullfile(CAL,'function'), fullfile(CAL,'common_path'), fullfile(CAL,'utils'));
     addpath(fullfile(CAL,'utils','long2016_hexapole_halfcut'));
 
@@ -133,11 +322,14 @@ function S = sweep(here, MODEL, GEOM, R_um, l0, TOL, KWIN, NDMAX, old)
     end
 
     % --- 減量：**每個 R 各自沿階梯搜尋收斂點**（雙判準交集）---
-    w = [1, 3, 3*pi];   tt = [1 2 3];   TRI = zeros(NDMAX,3);
-    for q = 1:NDMAX, TRI(q,:) = tt;  [~, jj] = min(tt ./ w);  tt(jj) = tt(jj) + 1;  end
+    % [MODIFIED 2026-09-02 使用者拍板] 等測度階梯（配比 1 : 3 : 3*pi）廢除 ->
+    %   改用六軸殼層的 Nr 階梯：每一級就是 Nr = 1,2,3,...（點數 6*Nr+1）。
+    %   一個設計現在是**一個整數**，不再是三元組。
+    [~, ~, wi_] = conv_design_ws([], R_um(1)*1e-6, struct('ladder',NDMAX));
+    TRI = wi_.ladder;                                   % NDMAX x 1 的 Nr
     nR = numel(R_um);
     [S.ell_c1, S.gI_c1, S.ell_c2, S.gI_c2, S.n_c1, S.n_c2] = deal(nan(1,nR));
-    S.tri_c1 = zeros(nR,3);   S.tri_c2 = zeros(nR,3);
+    S.tri_c1 = zeros(nR,1);   S.tri_c2 = zeros(nR,1);   % Nr（純量），非三元組
     S.fb_c1  = false(1,nR);   S.fb_c2  = false(1,nR);   % [ADDED] true = 只用 l_hat 收斂點的 fallback
     % [ADDED 2026-08-14] 舊快取可沿用的條件：判準（TOL/KWIN）一致
     reuse = ~isempty(old) && isfield(old,'R_um') && ...
@@ -169,18 +361,18 @@ function S = sweep(here, MODEL, GEOM, R_um, l0, TOL, KWIN, NDMAX, old)
             continue;
         end
         if ~got1
-            [S.ell_c1(a), S.gI_c1(a), S.n_c1(a), S.tri_c1(a,:), S.fb_c1(a)] = ...
+            [S.ell_c1(a), S.gI_c1(a), S.n_c1(a), S.tri_c1(a), S.fb_c1(a)] = ...
                 conv_fit(R, TRI, cfg, l0, false, F, TOL, KWIN);
         end
         if ~got2
-            [S.ell_c2(a), S.gI_c2(a), S.n_c2(a), S.tri_c2(a,:), S.fb_c2(a)] = ...
+            [S.ell_c2(a), S.gI_c2(a), S.n_c2(a), S.tri_c2(a), S.fb_c2(a)] = ...
                 conv_fit(R, TRI, cfg, l0, true,  F, TOL, KWIN);
         end
         fprintf('  R=%3d um | full %6d : 1p l=%6.1f g=%6.3f | 18p l=%6.1f g=%6.3f\n', ...
                 R_um(a), S.npts_f(a), S.ell_f1(a), S.gI_f1(a), S.ell_f2(a), S.gI_f2(a));
-        fprintf('           conv 1p N=%5d (%d,%d,%2d) l=%6.1f g=%6.3f | 18p N=%5d (%d,%d,%2d) l=%6.1f g=%6.3f\n', ...
-                S.n_c1(a), S.tri_c1(a,1),S.tri_c1(a,2),S.tri_c1(a,3), S.ell_c1(a), S.gI_c1(a), ...
-                S.n_c2(a), S.tri_c2(a,1),S.tri_c2(a,2),S.tri_c2(a,3), S.ell_c2(a), S.gI_c2(a));
+        fprintf('           conv 1p N=%5d (Nr=%2d) l=%6.1f g=%6.3f | 18p N=%5d (Nr=%2d) l=%6.1f g=%6.3f\n', ...
+                S.n_c1(a), S.tri_c1(a), S.ell_c1(a), S.gI_c1(a), ...
+                S.n_c2(a), S.tri_c2(a), S.ell_c2(a), S.gI_c2(a));
     end
     S.R_um = R_um;   S.TRI = TRI;   S.TOL = TOL;   S.KWIN = KWIN;
     S.N1 = [min(S.n_c1) max(S.n_c1)];   S.N2 = [min(S.n_c2) max(S.n_c2)];
@@ -220,8 +412,7 @@ function [ell_um, gI, n, tri, isfb] = conv_fit(R, TRI, cfg, l0, USE_BIAS, F, TOL
     for q = 1:nD
         try
             % [MODIFIED 2026-08-23] conv_design_ws 已併入 conv_design_ws。
-            [P, Bs] = conv_design_ws(TRI(q,1), TRI(q,2), TRI(q,3), R, ...
-                                     struct('frame','actuator'));
+            [P, Bs] = conv_design_ws(TRI(q), R, struct('frame','actuator'));
             np(q) = size(P,1);
             [e, l] = fitting(P, Bs, cfg.Pc_base, l0, USE_BIAS);
             [K, gIv(q)] = solve_current(l, e, cfg.Pc_base, P, Bs, F);
@@ -252,7 +443,7 @@ function [ell_um, gI, n, tri, isfb] = conv_fit(R, TRI, cfg, l0, USE_BIAS, F, TOL
                 R*1e6, USE_BIAS, np(ie));
         i0 = ie;   isfb = true;
     end
-    ell_um = ell(i0);   gI = gIv(i0);   n = np(i0);   tri = TRI(i0,:);
+    ell_um = ell(i0);   gI = gIv(i0);   n = np(i0);   tri = TRI(i0);
 end
 
 % ============================================================================

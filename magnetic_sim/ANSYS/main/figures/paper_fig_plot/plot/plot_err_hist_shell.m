@@ -1,4 +1,4 @@
-function plot_err_hist_shell(USE_BIAS, Rum, Rsplit, SPLIT)
+function plot_err_hist_shell(USE_BIAS, Rum, Rsplit, SPLIT, MODEL, GEOM, VARIANT, ZSUF, NFORCE, BINWUT, YTOP, XT, LADDER, AXT, PW)
 % plot_err_hist_shell -- 「用 N_c 減量校正的模型」對範圍內全部真實格點的殘差直方圖，
 %                        依格點半徑分內外兩層疊圖
 % =========================================================================
@@ -36,6 +36,43 @@ function plot_err_hist_shell(USE_BIAS, Rum, Rsplit, SPLIT)
     if nargin < 2 || isempty(Rum),      Rum      = 300;   end   % 校正 + 評估半徑 [um]
     if nargin < 3 || isempty(Rsplit),   Rsplit   = 150;   end   % 內外分層半徑 [um]
     if nargin < 4 || isempty(SPLIT),    SPLIT    = true;  end
+    % [ADDED 2026-08-31] AXT: optional target axes. Given, the histogram is drawn
+    %   into the caller's figure and nothing is exported here -- this is how
+    %   plot_ell_gain_err_merged reuses it without duplicating the fit/evaluate.
+    if nargin < 14, AXT = []; end
+    % [ADDED 2026-08-27] model/geom/variant + *_fullref cache suffix + point-count override.
+    %   Defaults reproduce the long2016 behaviour. zhi_peng MUST be given VARIANT explicitly:
+    %   its cfg.default_variant is still the superseded 'maxwell'.
+    if nargin < 5 || isempty(MODEL),  MODEL  = 'long2016_hexapole_halfcut'; end
+    if nargin < 6 || isempty(GEOM),   GEOM   = 'tip40um';                   end
+    if nargin < 7 || isempty(VARIANT),VARIANT= '';                          end
+    if nargin < 8 || isempty(ZSUF),   ZSUF   = '';                          end
+    if nargin < 9,                    NFORCE = [];                          end
+    % [ADDED 2026-08-27] shared bin width [uT]. 2.8 suits long2016; zhi_peng residuals are
+    %   ~7x larger, so 2.8 would slice its range into 250-1800 bins and the bars turn to
+    %   grass -> use 17 there. Figures drawn with different bin widths are NOT height-comparable.
+    if nargin < 10 || isempty(BINWUT), BINWUT = 2.8;                         end
+    % [ADDED 2026-08-27] YTOP: force the y-axis upper limit [%]. ylim_from_zero leaves the
+    %   top unlabelled at (N+1)*s, which can waste a lot of headroom (R300: data max 1.40
+    %   but top 2.0 -> only 70% filled). Ticks stay (1:4)*YTOP/5, i.e. 4 internal ticks
+    %   equally spaced from 0 and from the top, and the top itself stays unlabelled --
+    %   same convention as ylim_from_zero, only the limit is chosen by hand.
+    if nargin < 11, YTOP = []; end
+    % [ADDED 2026-08-27 使用者指定] XT：手動指定水平軸內部刻度（框 xr 仍由 xlim_auto 決定，
+    %   端點另以 text 標數字）。給空 = 沿用自動值。
+    %   起因：zhi_peng eighteen R150 的自動值只給 3 根（xlim_auto 的「右端留白過大 -> 收緊」
+    %   分支 n=3、s=0.2、框 0.7），使用者要 4 根。等距且全為一位小數的 4 根需要把框拉到 0.9
+    %   （右邊空一截），故使用者拍板改用 [0.1 0.2 0.4 0.6] —— 框不動、數字仍全是一位小數，
+    %   代價是刻度不等距（0.1/0.2/0.2）。此為該圖的手動例外，不改 xlim_auto 的通則。
+    if nargin < 12, XT = []; end
+    % [ADDED 2026-08-28] LADDER: which sampling ladder the calibration design comes from.
+    %   ''    -> the mixed ladder cached by plot_full_vs_conv_vs_R (equal-h / rings / axes4)
+    %   'as'  -> sample_axes_shells: the six actuator-axis directions on Nr equally spaced
+    %            shells plus the centre, N_c = 6*Nr+1.  The *_fullref sweep knows nothing
+    %            about this design, so N_c MUST be supplied through NFORCE.  Its convergence
+    %            points come from the axsh criterion (10 consecutive rungs inside +/-0.2% of
+    %            the ladder's OWN asymptote, l_hat and g_I intersected).
+    if nargin < 13 || isempty(LADDER), LADDER = ''; end
     % [ADDED 2026-08-14] SPLIT 三種模式：
     %   true    → 'overlay'：兩層**各自正規化**疊圖（比較分布形狀；樣本數差 7 倍）
     %   false   → 'single' ：不分層、單一顏色
@@ -49,46 +86,56 @@ function plot_err_hist_shell(USE_BIAS, Rum, Rsplit, SPLIT)
     figdir = fullfile(fileparts(here), 'paper_fig', 'Section2_E');
     if ~exist(figdir,'dir'); mkdir(figdir); end
 
-    CAL = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Maxwell';
+    % [MODIFIED 2026-08-27] tree moved under matlab\Flux\; locate relative to this file.
+    MAIN = fileparts(fileparts(here));                 % ...\ANSYS\main
+    CAL  = fullfile(MAIN, 'matlab', 'Flux', 'Maxwell');
     addpath(fullfile(CAL,'function'), fullfile(CAL,'common_path'), fullfile(CAL,'utils'));
-    addpath(fullfile(CAL,'utils','long2016_hexapole_halfcut'));
+    addpath(fullfile(MAIN,'temp_code','scripts'));
 
     %% ---- ① 取該 R 的收斂設計 → 減量校正 -----------------------------------
-    cfg = model_config('long2016_hexapole_halfcut','tip40um');
-    MODEL_ = 'long2016_hexapole_halfcut';   VARIANT_ = cfg.default_variant;
+    cfg = model_config(MODEL, GEOM);
+    MODEL_ = MODEL;
+    if isempty(VARIANT), VARIANT = cfg.default_variant; end
+    VARIANT_ = VARIANT;
 
-    % ---- 讀 main.m 產的收斂設計校正結果（不再自己重跑階梯 + 校正）--------
-    %   [MODIFIED 2026-08-23 使用者拍板] 校正與收斂判準已搬回 main.m
-    %   （conv_design_ws / conv_design_sensor 只負責決定內插點位置與取場），
-    %   繪圖端改成**接收 main 產完的結果** -> 圖與結果 PDF 保證出自同一次校正。
-    %   ⚠ 該組合必須先跑過 main.m（GRID_NRPT='auto'）；找不到就報錯，不猜。
-    %   ⚠ 同一組合可能有多顆 convN 檔（舊實驗留下的，例如 long2016 R150
-    %     eighteen 就有 convN6/convN80/convN88）-> 只認 conv_auto==true 那顆。
-    md_ = fullfile(CAL, 'data', MODEL_, '.mat');
-    tg_ = 'single';   if USE_BIAS, tg_ = 'eighteen'; end
-    dd_ = dir(fullfile(md_, sprintf('calib_current_%s_convN*_R%03d_%s.mat', ...
-                                    VARIANT_, round(Rum), tg_)));
-    if numel(dd_) > 1
-        ok_ = false(1, numel(dd_));
-        for k_ = 1:numel(dd_)
-            f_ = fullfile(md_, dd_(k_).name);   w_ = whos('-file', f_);
-            if ismember('conv_auto', {w_.name})
-                r_ = load(f_, 'conv_auto');   ok_(k_) = logical(r_.conv_auto);
-            end
-        end
-        dd_ = dd_(ok_);
+    % [MODIFIED 2026-08-27] Rebuild the converged design from the NEW ladder and fit it here.
+    %   main.m still uses the old equal-measure sampler, so its calib_*.mat no longer matches
+    %   the criterion behind plot_full_vs_conv_vs_R (equal-h ladder, 3% vs full grid, 10 rungs).
+    %   Radii where that sweep fell back to the full grid are skipped when picking nearest R,
+    %   because there the calibration set would equal the evaluation set.
+    o_ = struct('model',MODEL_, 'geom',GEOM, 'variant',VARIANT_, ...
+                'frame','actuator', 'quiet',true);
+    if strcmpi(LADDER,'as')
+        assert(~isempty(NFORCE), 'LADDER=''as'' needs NFORCE (= 6*Nr+1)');
+        Nc  = NFORCE;   Rsw_ = Rum;
+        Nr_ = (Nc - 1)/6;
+        assert(Nr_ == round(Nr_) && Nr_ >= 1, 'N_c=%d is not of the form 6*Nr+1', Nc);
+        Pq_ = conv_design_ws(Nr_, Rum*1e-6, struct('points_only',true,'R_act',cfg.R_act,'quiet',true));
+        o2_ = o_;   o2_.query = Pq_;
+        evalc('[Pd_, Bd_] = conv_design_ws([], Rum*1e-6, o2_);');
+    else
+        df_ = fullfile(here, 'data', ['full_vs_conv_vs_R_maxwell_fullref' ZSUF '.mat']);
+        assert(exist(df_,'file')==2, 'missing %s -- run plot_full_vs_conv_vs_R first', df_);
+        D_  = load(df_);
+        NCv = D_.n_c1;   FBv = D_.fb_c1;
+        if USE_BIAS, NCv = D_.n_c2;   FBv = D_.fb_c2; end
+        Rv_ = D_.R_um(:).';   ok_ = isfinite(NCv(:).') & ~logical(FBv(:).');
+        if ~any(ok_), ok_ = isfinite(NCv(:).'); end
+        cd_ = find(ok_);   [~, jj_] = min(abs(Rv_(cd_) - Rum));   ix_ = cd_(jj_);
+        Nc  = NCv(ix_);   Rsw_ = Rv_(ix_);
+        if ~isempty(NFORCE), Nc = NFORCE; end
+        [Pd_, Bd_] = design_by_npts(D_.KIND, D_.SPEC, Nc, Rum*1e-6, o_, cfg);
     end
-    assert(numel(dd_) == 1, ['找到 %d 顆收斂校正 .mat（需恰好 1 顆）。請先跑 ' ...
-           'main.m：MODEL=''%s''、R_select=%ge-6、USE_BIAS=%d、GRID_NRPT=''auto''。'], ...
-           numel(dd_), MODEL_, Rum, USE_BIAS);
-    cal = load(fullfile(md_, dd_(1).name));
-    e = cal.e;   l_hat = cal.l_hat;   G = cal.G;
-    tri = cal.GRID_NRPT;   Nc = cal.npts;   gI = cal.gI_hat;
-    fprintf('校正：R<=%d um、N_c=%d (%d,%d,%d)  l_hat=%.1f um  g_I=%.4f mT/A\n', ...
-            Rum, Nc, tri(1), tri(2), tri(3), l_hat*1e6, gI);
+    assert(~isempty(Pd_), 'no ladder rung with N=%d at R=%g um', Nc, Rum);
+    F_ = zeros(6, cfg.N_I);
+    for j_ = 1:cfg.N_I, F_(cfg.apdl_to_paper_idx(j_), j_) = 1; end
+    [e, l_hat] = fitting(Pd_, Bd_, cfg.Pc_base, 0.5e-3, USE_BIAS);
+    [~, gI, G] = solve_current(l_hat, e, cfg.Pc_base, Pd_, Bd_, F_);
+    fprintf(['calib: R<=%d um  N_c=%d (swept R=%d)  l_hat=%.1f um  g_I=%.4f mT/A' newline], ...
+            Rum, Nc, Rsw_, l_hat*1e6, gI);
 
     %% ---- ② 評估集：R 以內全部真實格點 -------------------------------------
-    raw = extract_maxwell_data(cfg, 'all', cfg.default_variant);
+    raw = extract_maxwell_data(cfg, 'all', VARIANT_);
     ad  = build_actuator_data(raw, cfg);
     [P0, B0, n0] = cfg.select_ball(ad, Rum*1e-6);
 
@@ -147,7 +194,7 @@ function plot_err_hist_shell(USE_BIAS, Rum, Rsplit, SPLIT)
     % [MODIFIED 2026-08-20 使用者拍板] bin 寬對齊 `plot_err_hist_overlay.m` 的 2.8 uT：
     %   這張 R150 圖跟 overlay 的**紅色**是同一組資料（eighteen、R<=150、mean 0.0277 mT），
     %   解析度與顏色都要一致，否則同一組資料在兩張圖長不一樣。
-    BINW = 2.8e-3;                                    % 共用 bin 寬 [mT]（= 2.8 uT，同 overlay）
+    BINW = BINWUT*1e-3;                               % 共用 bin 寬 [mT]
 
     eAll = [e1; e2];                                  % 全部殘差（分層與否都由它定 edges / x 上界）
     maxE = max(eAll);
@@ -163,6 +210,30 @@ function plot_err_hist_shell(USE_BIAS, Rum, Rsplit, SPLIT)
     %   ① stairs 畫一條連續的**頂部輪廓**（這才是直方圖的形狀）、
     %   ② 每 stepV 根才畫一條**全高垂直黑線**。垂直線疑度降下來，但輪廓還在。
     [xr, xt, fout, p995] = xlim_auto(eAll);           % 先算 x 視窗（才知道長條可見寬度）
+    if ~isempty(XT), xt = XT(:).';  end              % [ADDED 2026-08-27] 手動刻度覆寫
+    % [MODIFIED 2026-09-02 使用者指定] ①**不用 uT**，水平軸一律 mT。
+    %   ②水平軸改**三根**內部刻度、與兩端等距 -> [0,T] 平分 4 段、s = T/4。
+    %   s 優先取 0.1 的倍數（規則 9：小數只到一位）；若那樣會讓資料只佔不到 60% 的
+    %   視野（R150：s=0.1 -> T=0.4、資料只到 0.139，填充 35%），才退到 0.05 的倍數，
+    %   並在 console 標明該圖的刻度帶兩位小數、不符規則 9。
+    XSC = 1;   XUNIT = 'mT';
+    if isempty(XT)
+        need = p995;              % 99.5 百分位（沿用原本的視窗判準，避免長尾撐爆）
+        got  = [];
+        for mult = [0.1 0.05]
+            k = ceil(1.02*need/(4*mult) - 1e-9);
+            T = 4*k*mult;   fill = need/T;
+            % 0.1 倍數（合規則 9）優先，但**只有填充率 >= 60% 才直接採用**；
+            % 兩者都不到就取填充率較高者（不可停在第一個 —— 那是 2026-09-02 的 bug，
+            % R150 因此拿到 T=0.4、填充僅 24%）。
+            if isempty(got) || fill > got(3), got = [k*mult T fill mult]; end
+            if abs(mult-0.1) < 1e-9 && fill >= 0.60, break; end
+        end
+        sX = got(1);   xr = [0 got(2)];   xt = (1:3)*sX;
+        fprintf(['  x：三根刻度 %s，框 [0 %g] mT，填充 %.0f%%%s' char(10)], ...
+                mat2str(round(xt,3)), xr(2), 100*got(3), ...
+                repmat('（⚠ 兩位小數，不符規則 9）', 1, double(abs(got(4)-0.05) < 1e-9)));
+    end
     AXW_PT = 0.80 * 1100 * 72/96;                     % 座標軸寬約值 [pt]
     nvis   = max(1, ceil(diff(xr)/BINW));             % 視野內長條數
     barw   = AXW_PT / nvis;                           % 每根寬度 [pt]
@@ -175,15 +246,36 @@ function plot_err_hist_shell(USE_BIAS, Rum, Rsplit, SPLIT)
     fprintf(['  視野內 %d 根、每根 %.2f pt -> 每 %d 根一條垂直黑線（間距 %.1f pt）' char(10)], ...
             nvis, barw, stepV, barw*stepV);
 
-    FS   = 28;
-    fig  = figure('Color','w','Position',[100 100 1100 830]);
-    ax   = axes(fig);   hold(ax,'on');
+    % [ADDED 2026-09-01 使用者要求] PW = 這張圖在論文裡的**最終擺放寬度 [in]**
+    %   （[] = 維持原本的大畫布行為，輸出逐位不變）。給了 PW 就走「以最終尺寸重畫」：
+    %   畫布 = 4*PW 的**正方形**，字級/線寬 = 目標點數 x4 -> 縮到 PW 時剛好是目標值
+    %   （軸標題與刻度 8 pt、圖例 7 pt、框線 1.0 pt）。
+    %   IEEE Trans 單欄 3.5 in、兩張並排各 1.72 in -> plot_err_hist_shell(...,[],1.72)。
+    if nargin < 15 || isempty(PW), PW = []; end
+    PAPER = ~isempty(PW);
+    % [MODIFIED 2026-09-02 套繪圖規則 1/2/3/6] 刻度 60、圖例 45、軸標題 36、框線 5.0；
+    %   畫布改 14.5 in 正方形（與 ell/gain/err_hist_overlay 同尺寸）。PAPER 分支不動。
+    FS   = 60;   FSLEG = 45;   CANV = 14.5;
+    if PAPER, FS = 32;  FSLEG = 28; end               % 刻度數字 -> 8 pt @ PW
+    if isempty(AXT)
+        if PAPER
+            fig = figure('Color','w','Units','inches','Position',[0.5 0.5 4*PW 4*PW]);
+        else
+            fig = figure('Color','w','Units','inches','Position',[0.5 0.5 CANV CANV]);
+        end
+        ax  = axes(fig);
+        % [ADDED 2026-09-01] 拿掉軸標題後，邊界只需容納刻度數字 -> 繪圖框放大。
+        if PAPER, set(ax, 'Position', [0.145 0.105 0.815 0.855]); end
+    else
+        ax  = AXT;   fig = ancestor(ax,'figure');
+    end
+    hold(ax,'on');
 
     if strcmp(MODE,'overlay')
         p1 = histcounts(e1, edg) / numel(e1) * 100;   % 各組自我正規化（樣本數差 7 倍）
         p2 = histcounts(e2, edg) / numel(e2) * 100;
-        h1 = bar(ax, ctr, p1, 1, 'FaceColor',cIN,  'FaceAlpha',ALPH, 'EdgeColor','none');
-        h2 = bar(ax, ctr, p2, 1, 'FaceColor',cOUT, 'FaceAlpha',ALPH, 'EdgeColor','none');
+        h1 = bar(ax, ctr*XSC, p1, 1, 'FaceColor',cIN,  'FaceAlpha',ALPH, 'EdgeColor','none');
+        h2 = bar(ax, ctr*XSC, p2, 1, 'FaceColor',cOUT, 'FaceAlpha',ALPH, 'EdgeColor','none');
         % [MODIFIED 2026-08-17 使用者拍板] 不再畫 mean 虛線（見檔頭說明）
         if DRAW_OUTLINE, hist_outline(ax, edg, p1, stepV);  hist_outline(ax, edg, p2, stepV); end
         pAll = [p1 p2];
@@ -192,7 +284,7 @@ function plot_err_hist_shell(USE_BIAS, Rum, Rsplit, SPLIT)
         %   只是每根長條依格點半徑分成內層（藍）／外層（紅）兩段。
         p1 = histcounts(e1, edg) / numel(eAll) * 100;
         p2 = histcounts(e2, edg) / numel(eAll) * 100;
-        hb = bar(ax, ctr, [p1(:) p2(:)], 1, 'stacked', 'EdgeColor','none');
+        hb = bar(ax, ctr*XSC, [p1(:) p2(:)], 1, 'stacked', 'EdgeColor','none');
         hb(1).FaceColor = cIN;    hb(1).FaceAlpha = ALPH;
         hb(2).FaceColor = cOUT;   hb(2).FaceAlpha = ALPH;
         h1 = hb(1);   h2 = hb(2);
@@ -206,7 +298,7 @@ function plot_err_hist_shell(USE_BIAS, Rum, Rsplit, SPLIT)
                 muA, 100*numel(e1)/numel(eAll), 100*numel(e2)/numel(eAll));
     else
         pA = histcounts(eAll, edg) / numel(eAll) * 100;
-        hA = bar(ax, ctr, pA, 1, 'FaceColor',cIN, 'FaceAlpha',ALPH, 'EdgeColor','none');
+        hA = bar(ax, ctr*XSC, pA, 1, 'FaceColor',cIN, 'FaceAlpha',ALPH, 'EdgeColor','none');
         muA = mean(eAll);                             % [MODIFIED 2026-08-17] 不再畫 mean 虛線
         pAll = pA;
         if DRAW_OUTLINE, hist_outline(ax, edg, pA, stepV); end
@@ -214,8 +306,9 @@ function plot_err_hist_shell(USE_BIAS, Rum, Rsplit, SPLIT)
     end
 
     box(ax,'on');  grid(ax,'off');
-    set(ax,'FontSize',FS,'FontWeight','bold','LineWidth',2.5,'TickLength',[.015 .015],'TickDir','out');
-    xlim(ax, xr);   set(ax,'XTick', xt);      % xr/xt 已在上面算好
+    LWBOX = 5.0;   if PAPER, LWBOX = 4.0; end          % [規則3] -> 1.0 pt @ PW
+    set(ax,'FontSize',FS,'FontWeight','bold','LineWidth',LWBOX,'TickLength',[.015 .015],'TickDir','out');
+    xlim(ax, xr*XSC);   set(ax,'XTick', xt*XSC);      % xr/xt 已在上面算好（XSC 見規則 9）
     if fout > 0
         fprintf('  x 視窗 [0, %g] mT（99.5 百分位 %.4f mT 取整而來）；超出視野的長尾佔 %.2f%%、最大 %.3f mT\n', ...
                 xr(2), p995, fout, maxE);
@@ -226,19 +319,44 @@ function plot_err_hist_shell(USE_BIAS, Rum, Rsplit, SPLIT)
     %   ylim_from_zero：自 0 起、上線只留 8% 裕度、nice 等距步長、刻度取奇數個。
     % [MODIFIED 2026-08-20] 內部刻度 3 -> **4**：[0,T] 平分 N+1 段的規則下，N 越大
     %   T 越貼近資料峰值 -> 上方留白變少（R300 由 75% 提到 80%）。
-    [yr, yt] = ylim_from_zero(max(pAll), 4);
+    if exist('p1','var') && exist('p2','var') && ~isempty(p2) && any(p2)
+        fprintf(['PEAK inner(r<=%d) %.4f %%   outer %.4f %%   stacked %.4f %%' newline], ...
+                Rsplit, max(p1), max(p2), max(pAll));
+    else
+        fprintf(['PEAK inner(r<=%d) %.4f %%   (single layer)' newline], Rsplit, max(pAll));
+    end
+    if isempty(YTOP)
+        [yr, yt] = ylim_from_zero(max(pAll), 3);   % [MODIFIED 2026-09-02 使用者指定] 四根 -> 三根
+    else
+        % ylim_from_zero's rule: every tick label must be an integer or ONE decimal (0.N).
+        % YTOP/5 is generally two decimals (1.6/5 = 0.32), so snap the step to 0.1 and let
+        % the real top be 5*s -- YTOP is treated as a target, not an exact limit.
+        s_ = max(0.1, round(YTOP/5, 1));
+        while 5*s_ < max(pAll), s_ = s_ + 0.1; end
+        yr = [0 5*s_];   yt = (1:4)*s_;
+        fprintf(['y-axis: target %g -> top %g, ticks %s (fill %.0f%%)' newline], ...
+                YTOP, yr(2), mat2str(yt), 100*max(pAll)/yr(2));
+    end
     % [MODIFIED 2026-08-20 使用者拍板] 終點「只標數字、**不畫 tick mark**」
     %   （與水平軸端點同一慣例）—— YTick 只放內部值，頂端那個用 text 補在軸外。
     % 內部刻度標數字（MATLAB 預設）；終點與起點都不標、也沒 tick。
     ylim(ax, yr);   set(ax,'YTick', yt);   ytop = yr(2);
 
     % x 起訖：只標數字、不畫 tick mark
-    for xv = xr
+    for xv = xr*XSC
         text(ax, xv, -0.022*ytop, sprintf('%g', xv), 'HorizontalAlignment','center', ...
              'VerticalAlignment','top', 'FontSize',FS, 'FontWeight','bold', 'Clipping','off');
     end
-    xlabel(ax, '$\mathbf{Residual\;(mT)}$',    'Interpreter','latex', 'FontSize',36);
-    ylabel(ax, '$\mathbf{Percentage\;(\%)}$',  'Interpreter','latex', 'FontSize',36);
+    % [MODIFIED 2026-09-01 使用者指定] PAPER(_col) 模式**不畫軸標題**，只留刻度數字
+    %   與圖例。在 PW=1.72 in 下，'Residual (mT) / Percentage (%)' 這串本身就有 1.71 in
+    %   長 —— 等於整張圖的寬度，硬放只會被裁掉兩端並把 x 刻度擠成 45 度；縱向的
+    %   縱向的 'Percentage (%)' 同理。
+    if ~PAPER
+        FSLAB = 36;
+        xlabel(ax, ['$\mathbf{Residual\;(' XUNIT ')}$'], ...
+               'Interpreter','latex', 'FontSize',FSLAB);
+        ylabel(ax, '$\mathbf{Percentage\;(\%)}$',  'Interpreter','latex', 'FontSize',FSLAB);
+    end
 
     % 圖例（使用者拍板 2026-08-19）：放**座標框內右上角**、每列一個系列，
     %   mean 併進該列（不畫 mean 虛線）。原本掛在框外上方並壓低座標軸的做法已移除。
@@ -258,15 +376,29 @@ function plot_err_hist_shell(USE_BIAS, Rum, Rsplit, SPLIT)
         lg = legend(ax, hA, {['R \leq ' num2str(Rum) ' {\mu}m']}, ...
                     'Interpreter','tex', 'Location','northeast', 'NumColumns',1);
     end
-    lg.FontSize = 24;  lg.FontWeight = 'bold';
-    lg.Box = 'on';     lg.EdgeColor = 'k';   lg.LineWidth = 2.5;   lg.Color = 'w';
+    lg.FontSize = FSLEG;                                  % [規則2] -> 7 pt @ PW
+    lg.FontWeight = 'bold';
+    lg.Box = 'on';     lg.EdgeColor = 'k';   lg.LineWidth = LWBOX;   lg.Color = 'w';   % [規則7]
     ax.Toolbar.Visible = 'off';   hold(ax,'off');
+
+    if ~isempty(AXT), return; end                 % 畫進呼叫端的座標軸：不自己出檔
 
     mstr = 'single';  if USE_BIAS, mstr = 'eighteen'; end
     % shell = 各自正規化的疊圖；conv = 單一分布（不分層 或 依半徑分色堆疊）
     tag  = 'conv';    if strcmp(MODE,'overlay'), tag = 'shell'; end
-    out  = fullfile(figdir, sprintf('err_hist_%s_maxwell_%s_R%d.png', tag, mstr, Rum));
-    exportgraphics(fig, out, 'Resolution', 200);
+    psuf = '';   if PAPER, psuf = '_col'; end          % col = 以單欄最終尺寸重畫
+    out  = fullfile(figdir, sprintf('err_hist_%s_maxwell_%s_R%d%s%s.png', tag, mstr, Rum, ZSUF, psuf));
+    if PAPER
+        % print 而非 exportgraphics：後者會裁掉畫布周圍空白，正方形畫布匯出後就不是
+        %   正方形了（plot_ell_gain_2panel 已踩過，實測 0.96/1.11）。兩張要等寬並排，
+        %   長寬比必須一致 -> 保留整張畫布。
+        set(fig,'PaperUnits','inches','PaperPosition',[0 0 4*PW 4*PW],'PaperSize',[4*PW 4*PW]);
+        print(fig, out, '-dpng', '-r300');             % 4*PW in x 300 dpi = 1200*PW px
+    else
+        % [MODIFIED 2026-09-02 規則 6] exportgraphics 會裁白邊 -> 正方形匯出後不等邊。
+        set(fig, 'PaperUnits','inches', 'PaperPosition',[0 0 CANV CANV], 'PaperSize',[CANV CANV]);
+        print(fig, out, '-dpng', '-r200');         % 14.5 in x 200 dpi = 2900 px 見方
+    end
     fprintf('wrote %s\n', out);
 end
 
@@ -291,14 +423,16 @@ function [lim, tk] = ylim_from_zero(maxv, N)
     smin = 1.08*maxv/(N+1);
     k0   = max(1, ceil(smin/0.1 - 1e-9));            % 以 0.1 為單位的最小步數
     k1   = max(k0, ceil(1.15*smin/0.1));
-    best = k0;   bs = -1;
-    for k = k0:k1
-        if     mod(k,10) == 0, sc = 3;               % 整數
-        elseif mod(k,5)  == 0, sc = 2;               % 0.5 的倍數
-        elseif mod(k,2)  == 0, sc = 1;               % 0.2 的倍數
-        else,                  sc = 0;
+    % [MODIFIED 2026-09-02 使用者：上方留白太多] 原本「整數 > 0.5 倍數 > 0.2 倍數」的
+    %   漂亮度優先，會讓 R300（峰值 1.398%）挑到 s=0.5、框頂 2.0、**填充僅 70%**，
+    %   而 s=0.4 -> 刻度 0.4/0.8/1.2、框頂 1.6、填充 87%。改成**填充率優先**：
+    %   取窗口內最小的 k；只有當更漂亮的 k（5 或 10 的倍數）**損失不到 5% 填充**時才讓步。
+    %   （s 本來就是 0.1 的倍數，刻度必為整數或一位小數，不會出現兩位小數。）
+    best = k0;
+    for k = (k0+1):k1
+        if (mod(k,5) == 0 || mod(k,10) == 0) && (k0/k) >= 0.95
+            best = k;   break;
         end
-        if sc > bs, bs = sc;  best = k; end          % 同分取最小 k（填充率高）
     end
     s   = best*0.1;
     tk  = round((1:N)*s*10)/10;
@@ -382,5 +516,25 @@ function S = build_S(l_hat, Pc, P)
         d  = pbar - Pc(:,k).';
         r3 = sum(d.^2, 2).^1.5;
         S(:,k) = reshape((d ./ r3).', 3*Np, 1);
+    end
+end
+
+
+% ============================================================================
+function [P, Bs] = design_by_npts(KIND, SPEC, nc, R, o, cfg)
+% Recover a design from the mixed ladder (ax / rg / gf / eh) by its POINT COUNT.
+    P = [];  Bs = [];
+    for q = 1:numel(KIND)
+        switch KIND{q}
+            case 'eh',  Pq = sample_equal_h(R, SPEC{q}, struct('quiet',true));
+            case 'rg',  Pq = sample_rings(  R, SPEC{q}, struct('quiet',true));
+            case 'ax',  Pq = sample_axes4(R, cfg.R_act, ...
+                                 struct('quiet',true,'naxes',SPEC{q},'plus',true));
+            % [REMOVED 2026-09-02] case 'gf'（等測度球格）已隨等測度取樣法一併廢除。
+            otherwise,  continue;
+        end
+        if isempty(Pq) || size(Pq,1) ~= nc, continue; end
+        try,  evalc('[Pk,Bk] = conv_design_ws(Pq, R, o);');  catch, continue;  end
+        if size(Pk,1) == nc,  P = Pk;  Bs = Bk;  return;  end
     end
 end

@@ -16,7 +16,7 @@ function plot_hexapole_sensors_3d(layer)
     if ~exist(figdir,'dir'); mkdir(figdir); end
     % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live config，
     %   否則 cnst 沒有 pole_cone_slope，pole_sensor_geometry 會靜默回退成名目 beta。
-    CAL = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    CAL = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Flux\APDL\Calibration_using_FEM_modeling';
     addpath(fullfile(CAL,'function'), fullfile(CAL,'utils'), fullfile(CAL,'common_path'));
     c = model_config('long2016_hexapole_halfcut','tip40um');
 

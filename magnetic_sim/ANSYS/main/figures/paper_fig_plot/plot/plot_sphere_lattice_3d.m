@@ -14,9 +14,9 @@ function plot_sphere_lattice_3d()
     figdir = fullfile(fileparts(here), 'paper_fig', 'Section2_E');
     if ~exist(figdir,'dir'); mkdir(figdir); end
     % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live 樹。
-    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Flux\APDL\Calibration_using_FEM_modeling';
     addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
-    CAL = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    CAL = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Flux\APDL\Calibration_using_FEM_modeling';
 
     % ---- 載 fix(無 bias)fit → ell;轉 actuator frame;單位 mm ----
     S = load(fullfile(CAL,'data','long2016_hexapole_halfcut','.mat','fit_fixl_R150um_gap_200um.mat'),'ell');

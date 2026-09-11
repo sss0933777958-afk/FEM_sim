@@ -20,11 +20,11 @@ function plot_p1p2_poles_3d(SOURCE, FLD, XLin, ZLin, YHW, EXC)
     figdir = fullfile(fileparts(here), 'paper_fig', 'Section3_A');
     if ~exist(figdir,'dir'); mkdir(figdir); end
     % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live 樹。
-    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Flux\APDL\Calibration_using_FEM_modeling';
     % [MODIFIED 2026-08-14] ⚠ Maxwell\function 必須**先**加：addpath 預設 prepend，後加的會蓋前面。
     %   原本順序讓 Maxwell 的 model_config 蓋掉 APDL 版 → 拿到 identity 的 coil→pole map，
     %   P2 被解成 coil2（實際應為 coil5），載到錯的激發資料。
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Maxwell\function');   % import_maxwell_fld
+    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Flux\Maxwell\function');   % import_maxwell_fld
     addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
     c = model_config('long2016_hexapole_halfcut','tip40um');
 
@@ -131,7 +131,14 @@ function [Xs,Zs,Uq,Wq,Bm_mT,CLIM,SL] = field_slice(c, XL, ZL, R_SPH, SOURCE, FLD
         case 'maxwell'
             d = import_maxwell_fld(FLD);
             fprintf('P%d = Maxwell .fld: %d pts, |B|max=%.4f T\n', EXC, numel(d.x), max(d.bsum));
-            s = 1;                                           % Maxwell 場方向（待驗；若與 APDL 反向改 -1）
+            % [VERIFIED 2026-08-30] s=1 是對的，原註解的「待驗」到此結案。
+            %   Maxwell 匯出場已是 all-source（Maxwell config 的 s_source 全 +1）-> 不翻號。
+            % ⚠⚠ **這裡絕對不可寫成 c.s_source(EXC)**（試過、被像素比對擋下）：本檔上方的
+            %   addpath 讓 CALROOT 蓋在前面，`c = model_config(...)` 解析到的是 **APDL 版** config，
+            %   它的 s_source = [-1 +1 -1 +1 +1 -1]（APDL raw 下極是 sink 的翻號慣例）。
+            %   把那個號誌套到 Maxwell 的 .fld 上會讓 P1 的磁路箭頭整根反向。
+            %   兩個分支各自的號誌來源不同，是這支腳本同時吃兩種資料源的必然結果，不要「統一」。
+            s = 1;
     end
     zoff = -c.SPH_OFST*1e3;
     x=d.x*1e3; y=d.y*1e3; z=d.z*1e3+zoff;                 % mm, WP frame

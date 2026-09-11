@@ -1,4 +1,4 @@
-function plot_svd_polar(USE_BIAS, R_um, SRC, MODEL, GEOM, VARIANT)
+function plot_svd_polar(USE_BIAS, R_um, SRC, MODEL, GEOM, VARIANT, NFORCE, CLIMC, CLIMK)
 % plot_svd_polar -- 控制指標 C（gain）與 κ（iso）在三個 actuator 參考切面上的極座標熱圖
 % =========================================================================
 %   **Maxwell 版**（資料源 = matlab/Maxwell 的 long2016 校正結果）。
@@ -43,12 +43,18 @@ function plot_svd_polar(USE_BIAS, R_um, SRC, MODEL, GEOM, VARIANT)
     assert(~(strcmpi(SRC,'apdl') && ~strcmp(MODEL,'long2016_hexapole_halfcut')), ...
            'SRC=''apdl'' 的對照組只有 long2016 有');
     msfx = ''; if ~strcmp(MODEL,'long2016_hexapole_halfcut'), msfx = ['_' MODEL]; end
+    % [ADDED 2026-08-27] NFORCE: point count override (the *_fullref sweep runs R=20:20:500,
+    %   so R=150 is off-grid and the neighbours can disagree). CLIMC/CLIMK: force the colour
+    %   limits so several models can be rendered on ONE shared scale.
+    if nargin < 7, NFORCE = []; end
+    if nargin < 8, CLIMC  = []; end
+    if nargin < 9, CLIMK  = []; end
 
     here   = fileparts(fileparts(mfilename('fullpath')));       % → paper_fig_plot/
     figdir = fullfile(fileparts(here), 'paper_fig', 'Section4_C');
     if ~exist(figdir,'dir'); mkdir(figdir); end
 
-    CAL = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Maxwell';
+    CAL = fullfile(fileparts(fileparts(here)), 'matlab', 'Flux', 'Maxwell');   % [MODIFIED 2026-08-27] tree moved under matlab\Flux\
     addpath(fullfile(CAL,'function'), fullfile(CAL,'utils'), fullfile(CAL,'common_path'));
     cfg = model_config(MODEL, GEOM);
     % [ADDED 2026-08-21] variant 參數化。'' → cfg.default_variant（既有呼叫端行為不變）。
@@ -68,7 +74,7 @@ function plot_svd_polar(USE_BIAS, R_um, SRC, MODEL, GEOM, VARIANT)
         % [ADDED 2026-08-15] 對照組：改餵 **APDL** 的校正結果（就是參考圖 gain_polar_*.png
         %   用的那顆 fit_fixl_R150um_gap_200um.mat）。用來證明「同一支腳本、同一個 R，
         %   換資料源會長成什麼樣」——把「畫錯」與「資料/半徑差異」分離。
-        CALA = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+        CALA = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Flux\APDL\Calibration_using_FEM_modeling';
         A = load(fullfile(CALA,'data','long2016_hexapole_halfcut','.mat','fit_fixl_R150um_gap_200um.mat'));
         ell_m = A.ell*1e-6;   Hhat = A.gB * A.Khat;   Pc = cfg.Pc_base;   % fit_fixl = single、無偏移
         fprintf('資料 APDL fit_fixl (參考圖用的同一顆)\n  l_hat=%.1f um  gB=%.4f mT/A\n', ell_m*1e6, A.gB);
@@ -89,40 +95,65 @@ function plot_svd_polar(USE_BIAS, R_um, SRC, MODEL, GEOM, VARIANT)
         is_l2016 = strcmp(MODEL,'long2016_hexapole_halfcut');
         sg = struct('model',MODEL, 'geom',GEOM, 'variant',VARIANT, ...
                     'ki_gate', is_l2016, 'ki_req', is_l2016);
-        % ---- 讀 main.m 產的收斂設計校正結果（不再自己重跑階梯 + 校正）--------
-        %   [MODIFIED 2026-08-23 使用者拍板] 校正與收斂判準已搬回 main.m
-        %   （conv_design_ws / conv_design_sensor 只負責決定內插點位置與取場），
-        %   繪圖端改成**接收 main 產完的結果** -> 圖與結果 PDF 保證出自同一次校正。
-        %   ⚠ 該組合必須先跑過 main.m（GRID_NRPT='auto'）；找不到就報錯，不猜。
-        %   ⚠ 同一組合可能有多顆 convN 檔（舊實驗留下的，例如 long2016 R150
-        %     eighteen 就有 convN6/convN80/convN88）-> 只認 conv_auto==true 那顆。
-        md_ = fullfile(CAL, 'data', MODEL, '.mat');
-        tg_ = 'single';   if USE_BIAS, tg_ = 'eighteen'; end
-        dd_ = dir(fullfile(md_, sprintf('calib_current_%s_convN*_R%03d_%s.mat', ...
-                                        VARIANT, round(R_FIT), tg_)));
-        if numel(dd_) > 1
-            ok_ = false(1, numel(dd_));
-            for k_ = 1:numel(dd_)
-                f_ = fullfile(md_, dd_(k_).name);   w_ = whos('-file', f_);
-                if ismember('conv_auto', {w_.name})
-                    r_ = load(f_, 'conv_auto');   ok_(k_) = logical(r_.conv_auto);
-                end
-            end
-            dd_ = dd_(ok_);
+        % [MODIFIED 2026-08-27] Rebuild the converged design from the NEW ladder and fit here.
+        %   main.m still uses the old equal-measure sampler, so its calib_*.mat no longer
+        %   matches the criterion behind plot_full_vs_conv_vs_R (equal-h ladder, 3% vs full
+        %   grid, sustained 10 rungs). Radii where that sweep fell back to the full grid are
+        %   skipped, since there the calibration set would equal the evaluation set.
+        zsuf_ = '';   if strcmp(MODEL,'zhi_peng'), zsuf_ = '_zhi'; end
+        % [MODIFIED 2026-08-28] Sampler switched to sample_axes_shells (the six actuator-axis
+        %   directions on Nr equally spaced shells + the centre, N = 6*Nr+1) with the two-stage
+        %   criterion (steady: 20 rungs with step change < 0.01%; converged: 10 rungs inside
+        %   +/-0.2% of that steady value).  The retired '_fullref' cache (mixed ehgap ladder,
+        %   KIND/SPEC + fb_c*) is no longer read.
+        %   Cache preference: the one swept AT R_FIT itself ('..._axsh[_zhi]_R<R_FIT>.mat',
+        %   produced by axsh_vs_R(...,R_FIT,...,'_R<R_FIT>')) wins, because the R-sweep grid is
+        %   40:20:500 and R_FIT = 150 is off it -- borrowing N_c from R=140/160 is arbitrary.
+        % [MODIFIED 2026-08-29] 快取優先序再加一層 **variant 專屬**（同 compute_one）：
+        %   ..._axsh<zsuf>_R<R>_<vtag>.mat  >  ..._axsh<zsuf>_R<R>.mat  >  ..._axsh<zsuf>.mat
+        %   否則 zhi_peng 的 split / v2 / gap 會共用同一顆 N_c，靜默用到別的變體的收斂點。
+        vtag_ = regexprep(VARIANT,'^maxwell_?','');
+        dfv_ = fullfile(here, 'data', ...
+               sprintf('full_vs_conv_vs_R_maxwell_axsh%s_R%d_%s.mat', zsuf_, R_FIT, vtag_));
+        dfx_ = fullfile(here, 'data', ...
+               sprintf('full_vs_conv_vs_R_maxwell_axsh%s_R%d.mat', zsuf_, R_FIT));
+        df_  = fullfile(here, 'data', ['full_vs_conv_vs_R_maxwell_axsh' zsuf_ '.mat']);
+        if     exist(dfv_,'file')==2, df_ = dfv_;
+        elseif exist(dfx_,'file')==2, df_ = dfx_;   end
+        assert(exist(df_,'file')==2, 'missing %s', df_);
+        D_  = load(df_);
+        NCv = D_.n_c1;   if USE_BIAS, NCv = D_.n_c2; end
+        % The axsh cache has no fb_c*; a full-grid fallback shows up as n_c == npts_f
+        % (same test as plot_conv_vs_R).  Those radii are skipped: there the calibration
+        % set would equal the evaluation set.
+        FBv = NCv(:).' == D_.npts_f(:).';
+        Rv_ = D_.R_um(:).';   ok_ = isfinite(NCv(:).') & ~FBv;
+        if ~any(ok_), ok_ = isfinite(NCv(:).'); end
+        cd_ = find(ok_);   [~, jj_] = min(abs(Rv_(cd_) - R_FIT));   ix_ = cd_(jj_);
+        Nc  = NCv(ix_);
+        if ~isempty(NFORCE), Nc = NFORCE; end
+
+        addpath(fullfile(fileparts(fileparts(here)), 'temp_code', 'scripts'));
+        o_ = struct('model',MODEL, 'geom',GEOM, 'variant',VARIANT, ...
+                    'frame','actuator', 'quiet',true);
+        % Invert N -> Nr.  The stored n_c is the count AFTER iron filtering, so it is not
+        % always exactly 6*Nr+1; try the smallest Nr whose nominal count reaches Nc and
+        % check the kept count (same recovery as plot_conv_vs_R).
+        Pd_ = [];   Bd_ = [];
+        for Nr_ = ceil((Nc-1)/6) + (0:2)
+            Pq_ = conv_design_ws(Nr_, R_FIT*1e-6, struct('points_only',true,'R_act',cfg.R_act,'quiet',true));
+            evalc('[Pk_, Bk_] = conv_design_ws([], R_FIT*1e-6, setfield(o_,''query'',Pq_));');
+            if size(Pk_,1) == Nc,  Pd_ = Pk_;  Bd_ = Bk_;  break;  end
         end
-        assert(numel(dd_) == 1, ['找到 %d 顆收斂校正 .mat（需恰好 1 顆）。請先跑 ' ...
-               'main.m：MODEL=''%s''、R_select=%ge-6、USE_BIAS=%d、GRID_NRPT=''auto''。'], ...
-               numel(dd_), MODEL, R_FIT, USE_BIAS);
-        cal = load(fullfile(md_, dd_(1).name));
-        S = struct('l_hat',cal.l_hat, 'e',cal.e, 'gI_hat',cal.gI_hat, ...
-                   'KI_bar',cal.KI_bar, 'npts',cal.npts, 'NMAE',cal.NMAE);
-        tri = cal.GRID_NRPT;   Nc = cal.npts;
-        fprintf('  N_c = %d 點，設計 (%d,%d,%d)\n', Nc, tri);
-        ell_m = S.l_hat;                       % [m]
-        Hhat  = S.gI_hat * S.KI_bar;           % ᴮĤ_I [mT/A]
-        Pc    = make_Pc(S.e, cfg.Pc_base);     % 3×6 電荷格（actuator frame、無因次）
-        fprintf('資料 Maxwell %s / %s / %s（N_c 降取樣校正 @R=%d um）\n  l_hat=%.1f um  g_I=%.4f mT/A  N_c=%d  NMAE=%.2f%%\n', ...
-                MODEL, VARIANT, tag, R_FIT, ell_m*1e6, S.gI_hat, S.npts, S.NMAE);
+        assert(~isempty(Pd_), 'no axes-shells Nr gives N=%d at R=%g um', Nc, R_FIT);
+        [e_, l_]      = fitting(Pd_, Bd_, cfg.Pc_base, 0.5e-3, USE_BIAS);
+        [K_, gI_, ~]  = solve_current(l_, e_, cfg.Pc_base, Pd_, Bd_, F);
+        ell_m = l_;                          % [m]
+        Hhat  = gI_ * K_;                    % ᴮĤ_I [mT/A]
+        Pc    = make_Pc(e_, cfg.Pc_base);    % 3x6 charge lattice (actuator frame)
+        fprintf(['data Maxwell %s / %s / %s  (axes-shells N_c=%d @R=%d um, swept R=%d)' newline ...
+                 '  l_hat=%.1f um  g_I=%.4f mT/A' newline], ...
+                MODEL, VARIANT, tag, Nc, R_FIT, Rv_(ix_), ell_m*1e6, gI_);
     end
 
     % ---- 極座標網格（連續評估，非 FEM 節點）----
@@ -156,6 +187,10 @@ function plot_svd_polar(USE_BIAS, R_um, SRC, MODEL, GEOM, VARIANT)
     clC = [min(cellfun(@(x)min(x(:)),Cv)), max(cellfun(@(x)max(x(:)),Cv))];
     clK = [min(cellfun(@(x)min(x(:)),Kv)), max(cellfun(@(x)max(x(:)),Kv))];
     fprintf('  共用色階：C^(1/3) %.3f ~ %.3f mT/A｜kappa %.3f ~ %.3f\n', clC, clK);
+    % [ADDED 2026-08-27] forced limits let several models share one colour scale.
+    if ~isempty(CLIMC), clC = CLIMC; end
+    if ~isempty(CLIMK), clK = CLIMK; end
+    fprintf(['  clim used: C %.3f~%.3f  kappa %.3f~%.3f' newline], clC, clK);
 
 
     % [FIXED 2026-08-15] 檔名必須帶 msfx，否則不同 model 會互相覆蓋。
@@ -388,4 +423,24 @@ function Pc = make_Pc(e17, Pc_base)
     E(1,6) = e17(16);      E(2,6) = e17(17);
     E(3,6) = e17(1) - e17(4) + e17(8) - e17(11) + e17(15);
     Pc = Pc_base + E;
+end
+
+
+% ============================================================================
+function [P, Bs] = design_by_npts(KIND, SPEC, nc, R, o, cfg)
+% Recover a design from the mixed ladder (ax / rg / gf / eh) by its POINT COUNT.
+    P = [];  Bs = [];
+    for q = 1:numel(KIND)
+        switch KIND{q}
+            case 'eh',  Pq = sample_equal_h(R, SPEC{q}, struct('quiet',true));
+            case 'rg',  Pq = sample_rings(  R, SPEC{q}, struct('quiet',true));
+            case 'ax',  Pq = sample_axes4(R, cfg.R_act, ...
+                                 struct('quiet',true,'naxes',SPEC{q},'plus',true));
+            % [REMOVED 2026-09-02] case 'gf'（等測度球格）已隨等測度取樣法一併廢除。
+            otherwise,  continue;
+        end
+        if isempty(Pq) || size(Pq,1) ~= nc, continue; end
+        try,  evalc('[Pk,Bk] = conv_design_ws(Pq, R, o);');  catch, continue;  end
+        if size(Pk,1) == nc,  P = Pk;  Bs = Bk;  return;  end
+    end
 end

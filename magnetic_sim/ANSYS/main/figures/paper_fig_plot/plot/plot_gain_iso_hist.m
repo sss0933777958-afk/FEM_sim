@@ -1,4 +1,4 @@
-function plot_gain_iso_hist(USE_BIAS, R_FIT, R_EVAL, force, BINW, CMP)
+function plot_gain_iso_hist(USE_BIAS, R_FIT, R_EVAL, force, BINW, CMP, NTK, ZBASE)
 % plot_gain_iso_hist -- 兩個六極設計的控制指標分布疊圖（Long Fei vs Zhi-Peng）
 % =========================================================================
 %   [MODIFIED 2026-08-21 使用者要求] **校正半徑與評估半徑分離**：
@@ -71,7 +71,10 @@ function plot_gain_iso_hist(USE_BIAS, R_FIT, R_EVAL, force, BINW, CMP)
     here   = fileparts(fileparts(mfilename('fullpath')));       % → paper_fig_plot/
     figdir = fullfile(fileparts(here), 'paper_fig', 'Section4_C');
     if ~exist(figdir,'dir'); mkdir(figdir); end
-    CAL = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Maxwell';
+    % [MODIFIED 2026-08-28] Tree moved under matlab/Flux/; the old hardcoded path is gone,
+    %   so addpath silently failed and an APDL copy of model_config/solve_* could shadow it.
+    MAINR = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main';
+    CAL   = fullfile(MAINR,'matlab','Flux','Maxwell');
     addpath(fullfile(CAL,'function'), fullfile(CAL,'utils'), fullfile(CAL,'common_path'));
     % [MODIFIED 2026-08-21] 移除 addpath(utils/long2016_hexapole_halfcut)：utils/ 已扁平化，
     %   conv_design_ws 在 function/（上一行已涵蓋），舊路徑不存在。
@@ -85,6 +88,17 @@ function plot_gain_iso_hist(USE_BIAS, R_FIT, R_EVAL, force, BINW, CMP)
     %   [MODIFIED 2026-08-21 使用者拍板] 圖例名改成 **Design A / Design B**（原 Long Fei /
     %   Zhi-Peng）；console 仍印 model 名，追溯不受影響。
     if nargin < 6 || isempty(CMP), CMP = 'design'; end
+    % [ADDED 2026-09-02 使用者指定] NTK = [gain 圖根數, iso 圖根數]，兩軸同值。
+    %   原本 axis_odd / ylim_odd 都寫死 3。使用者對不同圖指定不同根數
+    %   （gap 的 gain = 4、iso = 3），故參數化。預設 [3 3] -> 既有圖重跑輸出不變。
+    if nargin < 7 || isempty(NTK), NTK = [3 3]; end
+    if isscalar(NTK), NTK = [NTK NTK]; end
+    % [ADDED 2026-09-02 使用者指定] ZBASE = 另外出一版**水平軸從 0 起**的 Design A：
+    %     gain  0~15 mT/A（只有 A 的 C^(1/3)~14.6 放得進；B 39.5 / Bgap 24.0 會被裁光）
+    %     iso   0~1  （kappa 的物理滿量程）
+    %   目的是「以絕對尺度看分布在全量程中的位置」，與現行的放大版並存，
+    %   故檔名加後綴 **_z0**（zero-based），不覆蓋原檔。僅對 CMP='solo' 生效、只出 Design A。
+    if nargin < 8 || isempty(ZBASE), ZBASE = false; end
     switch lower(CMP)
         case 'design'
             MD = { 'long2016_hexapole_halfcut', 'tip40um', '',              'Design A',  [0.05 0.10 0.95];
@@ -105,9 +119,46 @@ function plot_gain_iso_hist(USE_BIAS, R_FIT, R_EVAL, force, BINW, CMP)
                    'zhi_peng',                  'R500',    'maxwell_gap', 'Design B (Have gap)',  [0.85 0.10 0.10] };
             gstem = sprintf('gain_cbrt_hist_abgap_%s_R%d', tag, R_EVAL);
             kstem = sprintf('iso_hist_abgap_%s_R%d',       tag, R_EVAL);
+        case 'v2'
+            % [ADDED 2026-08-29] 志鵬自身的改版比較：Design B = R500（maxwell_split）vs Design C = R500_V2（maxwell_v2）。
+            %   兩者極尖幾何相同（CAD 實測），差別在外圍（bbox 26.5->20 mm、薄舌片 15->10 mm）。
+            %   配色沿用 'gap' 的慣例：值高者深藍、值低者紅 -> Design C 的 kappa 高 -> Design C 藍。
+            MD = { 'zhi_peng', 'R500', 'maxwell_split', 'Design B', [0.85 0.10 0.10];
+                   'zhi_peng', 'R500', 'maxwell_v2',    'Design C', [0.05 0.10 0.95] };
+            gstem = sprintf('gain_cbrt_hist_v2_%s_R%d', tag, R_EVAL);
+            kstem = sprintf('iso_hist_v2_%s_R%d',       tag, R_EVAL);
+        case 'solo'
+            % [ADDED 2026-08-31 使用者要求] **每個模型各自出圖**（不疊圖）：
+            %   3 個模型 x {C^(1/3), kappa} = 6 張。顏色依**物理量**固定，不再依模型分色：
+            %     capacity C^(1/3) -> 深藍 [0.05 0.10 0.95]（figure-style「直方圖用深藍」）
+            %     isotropy  kappa  -> 紅   [0.85 0.10 0.10]
+            %   單一系列不受「共用 bin 寬」硬條件約束（沒有比較對象）-> 每張各自用
+            %   Freedman-Diaconis 選 bin 寬（見 fd_bin）；nb=180 對 ~1.8k 點是過度解析。
+            MD = { 'long2016_hexapole_halfcut', 'tip40um', '',              'Design A',            [0.05 0.10 0.95];
+                   'zhi_peng',                  'R500',    'maxwell_split', 'Design B',            [0.05 0.10 0.95];
+                   'zhi_peng',                  'R500',    'maxwell_gap',   'Design B (Have gap)', [0.05 0.10 0.95] };
+            % [MODIFIED 2026-09-01 使用者要求] C^(1/3) 三張的 bin 改細：FD 給的
+            %   0.025/0.2/0.1（24/14/17 根）太粗，尤其 Design B 只有 14 根。改成
+            %   **指定目標根數、各自反解 nice 寬度**（三張值域差 0.59/2.68/1.69，
+            %   不能共用同一個寬度）。30 根 -> 每根仍有 ~50-66 點，形狀不會抖。
+            %   kappa 三張維持 fd_bin 自動（使用者未要求更動）。
+            NBAR_G = 30;
+            % [ADDED 2026-09-02 使用者要求] 釘死每張的 bin 寬（[] = 走 fd_bin 自動）。
+            %   Design A 釘 0.02 是為了與 sigma_hist_R150_maxwell **共用同一把尺**
+            %   （兩張同為 mT/A、同在 R=150 評估，長條高度才能互比）。
+            %   0.02 恰好也是 fd_bin(nbar=30) 當前算出的值 -> 本張外觀不變；
+            %   釘死是為了防 fd_bin 隨資料更新而漂掉。
+            %   ⚠ 要改 BW_SOLO_G{1} 必須同步改 plot_sigma_hist.m 的 BINW 預設。
+            BW_SOLO_G = {0.02, [], []};
+            % [ADDED 2026-09-02 使用者指定] kappa 三張也釘 **0.02**（原本 fd_bin 自動給 0.01）。
+            %   三個設計是要互相比較的 -> bin 寬不同就不能比高度（面積 = 100%% x bin 寬），
+            %   故三張一起改，不只改 Design A。kappa 無因次 -> 0.02 也是無因次。
+            BW_SOLO_K = {0.02, 0.02, 0.02};            STAG  = {'A','B','Bgap'};
+            gstem = '';   kstem = '';
         otherwise
-            error('plot_gain_iso_hist:CMP', 'CMP 必為 design | gap | ab_gap（給了 %s）', CMP);
+            error('plot_gain_iso_hist:CMP', 'CMP 必為 design | gap | ab_gap | v2 | solo（給了 %s）', CMP);
     end
+    SOLO = strcmpi(CMP,'solo');
 
     nM = size(MD,1);   D = cell(1,nM);
     for a = 1:nM
@@ -138,9 +189,88 @@ function plot_gain_iso_hist(USE_BIAS, R_FIT, R_EVAL, force, BINW, CMP)
                 mean(S.kap), std(S.kap)/mean(S.kap)*100, min(S.kap), max(S.kap));
     end
     fprintf('%s\n', repmat('-',1,78));
-    fprintf('mean 比值（%s / %s）：C^(1/3) %.3f 倍｜kappa %.3f 倍\n', MD{2,4}, MD{1,4}, ...
-            mean(D{2}.Ccbrt)/mean(D{1}.Ccbrt), mean(D{2}.kap)/mean(D{1}.kap));
+    if nM == 2                                   % [MODIFIED 2026-08-31] 比值只在成對模式有意義
+        fprintf('mean 比值（%s / %s）：C^(1/3) %.3f 倍｜kappa %.3f 倍\n', MD{2,4}, MD{1,4}, ...
+                mean(D{2}.Ccbrt)/mean(D{1}.Ccbrt), mean(D{2}.kap)/mean(D{1}.kap));
+    end
     fprintf('%s\n', repmat('=',1,78));
+
+    % ---- solo：每個模型各自一張 C^(1/3)（藍）+ 一張 kappa（紅）----
+    if SOLO
+        COL_C = [0.05 0.10 0.95];                % capacity 深藍
+        COL_K = [0.85 0.10 0.10];                % iso 紅
+        % [ADDED 2026-08-31] 明給 x 範圍與刻度。xlim_pick 對這六組資料湊不出
+        %   「乾淨端點 + 整數/0.N 刻度」—— kappa 三張更是直接掉進保底分支
+        %   （端點 0.359966 / 0.584401、刻度 0.4098 這種四位小數，違反 figure-style）。
+        %   下列六組都滿足：端點乾淨、刻度整數或 0.N、等距、**兩端留白 = 刻度間距**。
+        %   kappa 為湊「0.N 刻度」各取 2 根（偶數）—— 規則明訂為了乾淨數字
+        %   犧牲奇數是可接受的（優先序：乾淨數 > 奇數 > 等距 > 留白）。
+        %   ⚠ 針對 **R_EVAL=150** 的資料範圍挑的；換評估半徑請重挑，否則走自動。
+        % [MODIFIED 2026-09-02 使用者回報「kappa 圖偏一邊」] 實量發現實作已足夠：
+        %   axis_odd 自己就能挑出這三組 gain 視野（與舊的寫死值逐位相同），
+        %   且在 kappa 上能選到更平衡的落點 -> 改全部走自動，不再寫死。
+        [XRG{1:3}] = deal([]);   [XTG{1:3}] = deal([]);
+        % [MODIFIED 2026-09-02 使用者逐張指定端點] kappa 三張的水平軸全部寫死：
+        %     A    起 0.7、訖 1.0（kappa = sigma3/sigma1 不可能 > 1）
+        %     B    起 0.4、訖 0.7
+        %     Bgap 起 0.3、訖 0.6
+        %   三張 span 都是 **0.3** -> 水平尺度一致、形狀寬度可直接互比。
+        %   ⚠ span 0.3 搭「一位小數刻度」只能給 **兩根**（間距 0.1、兩端留白也是 0.1）；
+        %     要三根就得 s = 0.3/4 = 0.075 -> 0.775/0.85/0.925 三位小數，違反規則 9。
+        %     使用者明確指定了端點 -> 以端點為優先，接受偶數根（同 axsh_gain 的既有例外）。
+        %   其餘（gain 三張）仍走 axis_odd 自動。⚠ 刻度必須是 0.1 的倍數（規則 9）-> 間距至少 0.1
+        %   -> 視野至少 0.4 寬，而 kappa 資料寬只有 ~0.21 -> **資料只能塔滿約一半視野**，
+        %   這是規則 5+9 的硬限制，不是選錯落點；axis_odd 能做的是把它**擺中**。
+        XRK = {[0.7 1.0], [0.4 0.7], [0.3 0.6]};
+        XTK = {[0.8 0.9],  [0.5 0.6],  [0.4 0.5]};
+        if R_EVAL ~= 150 || nM ~= 3                  % 非定案情境 -> 全部回到自動
+            [XRG{:}] = deal([]);  [XTG{:}] = deal([]);
+            [XRK{:}] = deal([]);  [XTK{:}] = deal([]);
+        end
+        % [ADDED 2026-09-02] ZBASE：另一版「從 0 起」的 Design A。兩軸五根。
+        %   gain [0,15]：n=5 -> s = 15/6 = 2.5 -> 2.5/5/7.5/10/12.5，
+        %     兩端留白 2.5 = 刻度間距、一位小數 -> 規則 5+9 全合。
+        %   iso  [0,1] ：奇數五根且兩端留白 = 間距需 s = 1/6 = 0.1667（四位小數、違規則 9），
+        %     故取 0.1/0.3/0.5/0.7/0.9（五根、等距 0.2、兩端留白 0.1 彼此相等但是間距的一半）。
+        %     這是 [0,1] + 五根 + 一位小數三條下的唯一可行解，已向使用者說明。
+        %   [MODIFIED 2026-09-02 使用者要求] **縱軸的根數與間距要跟非-z0 版相同** ->
+        %     不再寫死 5，改用 NTK（預設 [3 3]）。水平軸因為明給 xt，不受 NTK 影響，
+        %     仍是五根。同一筆資料 + 同一 NTK -> ylim_odd 給出與非-z0 版逐位相同的縱軸。
+        if ZBASE && ~isempty(BINW)
+            % [ADDED 2026-09-02 使用者要求] ZBASE + 明給 BINW = **只重出 gain 這張**、
+            %   用指定的 bin 寬，水平軸維持 [0,15]。檔名再加 _bw<值>（小數點寫 p），
+            %   不覆蓋前一版的 _z0（bin 0.02），兩版可直接對照。
+            bwg_ = BINW(1);
+            tagb_ = ['_bw' strrep(num2str(bwg_), '.', 'p')];
+            render_overlay({D{1}.Ccbrt}, MD(1,4), {COL_C}, ...
+                '$\mathbf{\mathcal{C}^{1/3}\;(mT/A)}$', ...
+                fullfile(figdir, sprintf('gain_cbrt_hist_%s_%s_R%d_z0%s.png', STAG{1}, tag, R_EVAL, tagb_)), ...
+                [0 15], bwg_, [2.5 5 7.5 10 12.5], NTK(1));
+            return
+        end
+        if ZBASE
+            render_overlay({D{1}.Ccbrt}, MD(1,4), {COL_C}, ...
+                '$\mathbf{\mathcal{C}^{1/3}\;(mT/A)}$', ...
+                fullfile(figdir, sprintf('gain_cbrt_hist_%s_%s_R%d_z0.png', STAG{1}, tag, R_EVAL)), ...
+                [0 15], pick_bw(BW_SOLO_G{1}, D{1}.Ccbrt, NBAR_G), [2.5 5 7.5 10 12.5], NTK(1));
+            render_overlay({D{1}.kap}, MD(1,4), {COL_K}, ...
+                '$\mathbf{\kappa}$', ...
+                fullfile(figdir, sprintf('iso_hist_%s_%s_R%d_z0.png', STAG{1}, tag, R_EVAL)), ...
+                [0 1], pick_bw(BW_SOLO_K{1}, D{1}.kap), [0.1 0.3 0.5 0.7 0.9], NTK(2));
+            return
+        end
+        for a = 1:nM
+            render_overlay({D{a}.Ccbrt}, MD(a,4), {COL_C}, ...
+                '$\mathbf{\mathcal{C}^{1/3}\;(mT/A)}$', ...
+                fullfile(figdir, sprintf('gain_cbrt_hist_%s_%s_R%d.png', STAG{a}, tag, R_EVAL)), ...
+                XRG{a}, pick_bw(BW_SOLO_G{a}, D{a}.Ccbrt, NBAR_G), XTG{a}, NTK(1));
+            render_overlay({D{a}.kap}, MD(a,4), {COL_K}, ...
+                '$\mathbf{\kappa}$', ...
+                fullfile(figdir, sprintf('iso_hist_%s_%s_R%d.png', STAG{a}, tag, R_EVAL)), ...
+                XRK{a}, pick_bw(BW_SOLO_K{a}, D{a}.kap), XTK{a}, NTK(2));
+        end
+        return
+    end
 
     % ---- 兩張疊圖 ----
     % [ADDED 2026-08-21 使用者拍板] 水平軸範圍可明給（[] = 由 xlim_pick 自動選）。
@@ -160,15 +290,30 @@ function plot_gain_iso_hist(USE_BIAS, R_FIT, R_EVAL, force, BINW, CMP)
     %   數字擠成一團。⚠ 兩者都是**針對這組資料**挑的；換 R_EVAL 或換資料請拿掉走自動。
     XT_GAIN = [];
     if strcmpi(CMP,'gap') && R_EVAL == 150, XR_GAIN = [20 45];  XT_GAIN = [25 30 35 40]; end
-    XR_ISO  = [];                       % κ 的自動結果 [0,1] 已是最緊、不必 override
+    XR_ISO  = [];   XT_ISO = [];        % κ 的自動結果 [0,1] 已是最緊、不必 override
+    % [ADDED 2026-08-29] 'v2' 的 κ 只落在 0.417~0.641，自動選會把端點訂在資料邊界
+    %   (0.395007 / 0.663597) 且刻度變成四位小數 -> 違反 figure-style「端點必須是乾淨的數、
+    %   刻度整數或 0.N」。明給 [0.3,0.7] + 0.4/0.5/0.6：3 根（奇數）、等距 0.1、
+    %   兩端留白 0.1 = 刻度間距，端點 0.3/0.7 皆為 nice 值。
+    if strcmpi(CMP,'v2'), XR_ISO = [0.3 0.7];  XT_ISO = [0.4 0.5 0.6];  end
+    % [ADDED 2026-09-02 使用者指定「bin 寬盡量抓整數」] 'v2' 兩張的 bin 寬釘成整齊值：
+    %     kappa    0.011 -> **0.02**（與其他所有 kappa 圖同寬，合併值域 0.224 -> 12 根）
+    %     C^(1/3)  0.05  -> **0.1** （與 Design B 自己的 sigma / C 圖同寬）
+    %   同時明給 C^(1/3) 的視野：B（37.96~40.64）與 C（29.44~31.50）相距很遠，
+    %   自動選只能取 s=5 -> [25,45]（資料只填 56%%）；[28,44] + 32/36/40 同樣是
+    %   三根等距、兩端留白 = 刻度間距（都是 4）、刻度皆整數，但填充率 70%%。
+    if strcmpi(CMP,'v2') && R_EVAL == 150
+        if isempty(BINW), BW_G = 0.1;   BW_K = 0.01;   end   % [2026-09-02] kappa 使用者改指定 0.01
+        XR_GAIN = [28 44];   XT_GAIN = [32 36 40];
+    end
     % [MODIFIED 2026-08-21] 檔名帶評估半徑 _R<eval>，讓不同 R_EVAL 的圖並存
     %   （原本沒帶，R150 版會直接蓋掉 R500 版）。
     render_overlay({D{1}.Ccbrt, D{2}.Ccbrt}, MD(:,4), MD(:,5), ...
         '$\mathbf{\mathcal{C}^{1/3}\;(mT/A)}$', ...
-        fullfile(figdir, [gstem '.png']), XR_GAIN, BW_G, XT_GAIN);
+        fullfile(figdir, [gstem '.png']), XR_GAIN, BW_G, XT_GAIN, NTK(1));
     render_overlay({D{1}.kap,   D{2}.kap},   MD(:,4), MD(:,5), ...
         '$\mathbf{\kappa}$', ...
-        fullfile(figdir, [kstem '.png']), XR_ISO, BW_K);
+        fullfile(figdir, [kstem '.png']), XR_ISO, BW_K, XT_ISO, NTK(2));
 end
 
 % ============================================================================
@@ -194,35 +339,45 @@ function S = compute_one(model, geom, variant, R_FIT, R_EVAL, USE_BIAS, here, CA
     is_l2016 = strcmp(model,'long2016_hexapole_halfcut');
     sg = struct('model',model, 'geom',geom, 'variant',variant, ...
                 'ki_gate',is_l2016, 'ki_req',is_l2016);
-    % ---- 讀 main.m 產的收斂設計校正結果（不再自己重跑階梯 + 校正）--------
-    %   [MODIFIED 2026-08-23 使用者拍板] 校正與收斂判準已搬回 main.m
-    %   （conv_design_ws / conv_design_sensor 只負責決定內插點位置與取場），
-    %   繪圖端改成**接收 main 產完的結果** -> 圖與結果 PDF 保證出自同一次校正。
-    %   ⚠ 該組合必須先跑過 main.m（GRID_NRPT='auto'）；找不到就報錯，不猜。
-    %   ⚠ 同一組合可能有多顆 convN 檔（舊實驗留下的，例如 long2016 R150
-    %     eighteen 就有 convN6/convN80/convN88）-> 只認 conv_auto==true 那顆。
-    md_ = fullfile(CAL, 'data', model, '.mat');
-    tg_ = 'single';   if USE_BIAS, tg_ = 'eighteen'; end
-    dd_ = dir(fullfile(md_, sprintf('calib_current_%s_convN*_R%03d_%s.mat', ...
-                                    variant, round(R_FIT), tg_)));
-    if numel(dd_) > 1
-        ok_ = false(1, numel(dd_));
-        for k_ = 1:numel(dd_)
-            f_ = fullfile(md_, dd_(k_).name);   w_ = whos('-file', f_);
-            if ismember('conv_auto', {w_.name})
-                r_ = load(f_, 'conv_auto');   ok_(k_) = logical(r_.conv_auto);
-            end
-        end
-        dd_ = dd_(ok_);
+    % ---- 讀收斂設計並就地校正（axes-shells 取樣器）------------------------
+    %   [MODIFIED 2026-08-28] main.m 的 calib_*_convN*.mat 出自**舊的等測度取樣器**，
+    %   與現行判準不一致（sample_axes_shells：六根致動軸 x Nr 層等距球殼 + 中心、
+    %   N=6*Nr+1；穩態 = 連續 20 級步進 < 0.01%，收斂 = 連續 10 級落在穩態值 +/-0.2%）。
+    %   改成讀 axsh 掃描的 N_c、在此重建設計就地擬合 —— 與 plot_svd_polar /
+    %   plot_sigma_hist 同一把尺。快取優先序（variant 專屬 > R_FIT 專屬 > R-sweep）：
+    %     ..._axsh<zsuf>_R<R>_<vtag>.mat  >  ..._axsh<zsuf>_R<R>.mat  >  ..._axsh<zsuf>.mat
+    %   ⚠ split 與 gap 的 g_I 差約 34%，收斂點不保證相同 -> 不可共用一顆快取。
+    zsuf_ = '';   if strcmp(model,'zhi_peng'), zsuf_ = '_zhi'; end
+    vtag_ = regexprep(variant,'^maxwell_?','');
+    dfv_ = fullfile(here,'data',sprintf('full_vs_conv_vs_R_maxwell_axsh%s_R%d_%s.mat',zsuf_,R_FIT,vtag_));
+    dfx_ = fullfile(here,'data',sprintf('full_vs_conv_vs_R_maxwell_axsh%s_R%d.mat',zsuf_,R_FIT));
+    df_  = fullfile(here,'data',['full_vs_conv_vs_R_maxwell_axsh' zsuf_ '.mat']);
+    if     exist(dfv_,'file')==2, df_ = dfv_;
+    elseif exist(dfx_,'file')==2, df_ = dfx_;   end
+    assert(exist(df_,'file')==2, 'missing %s', df_);
+    D_  = load(df_);
+    NCv = D_.n_c1;   if USE_BIAS, NCv = D_.n_c2; end
+    FBv = NCv(:).' == D_.npts_f(:).';        % 退回全格點的 R（校正集 = 評估集）要跳過
+    Rv_ = D_.R_um(:).';   ok_ = isfinite(NCv(:).') & ~FBv;
+    if ~any(ok_), ok_ = isfinite(NCv(:).'); end
+    cd_ = find(ok_);   [~,jj_] = min(abs(Rv_(cd_) - R_FIT));   ix_ = cd_(jj_);
+    Nc  = NCv(ix_);
+    o_  = struct('model',model,'geom',geom,'variant',variant,'frame','actuator','quiet',true);
+    Pd_ = [];   Bd_ = [];
+    for Nr_ = ceil((Nc-1)/6) + (0:2)         % 濾鐵可能吃掉幾點 -> N 不一定剛好是 6*Nr+1
+        Pq_ = conv_design_ws(Nr_, R_FIT*1e-6, struct('points_only',true,'R_act',cfg.R_act,'quiet',true));
+        evalc('[Pk_,Bk_] = conv_design_ws([], R_FIT*1e-6, setfield(o_,''query'',Pq_));');
+        if size(Pk_,1) == Nc,  Pd_ = Pk_;  Bd_ = Bk_;  break;  end
     end
-    assert(numel(dd_) == 1, ['找到 %d 顆收斂校正 .mat（需恰好 1 顆）。請先跑 ' ...
-           'main.m：MODEL=''%s''、R_select=%ge-6、USE_BIAS=%d、GRID_NRPT=''auto''。'], ...
-           numel(dd_), model, R_FIT, USE_BIAS);
-    cal = load(fullfile(md_, dd_(1).name));
-    e = cal.e;   l_hat = cal.l_hat;   KI = cal.KI_bar;   gI = cal.gI_hat;
-    tri = cal.GRID_NRPT;   Nc = cal.npts;   rm = struct('NMAE', cal.NMAE);
-    fprintf('  N_c = %d 點 (%d,%d,%d) @R<=%d um；評估集 = %d 個真實格點 @R<=%d um\n', ...
-            Nc, tri, R_FIT, np, R_EVAL);
+    assert(~isempty(Pd_), 'no axes-shells Nr gives N=%d at R=%g um', Nc, R_FIT);
+    [Pf_,Bf_]       = cfg.select_ball(ad, R_FIT*1e-6);   % out-of-sample NMAE 的評估集
+    [e, l_hat]      = fitting(Pd_, Bd_, cfg.Pc_base, 0.5e-3, USE_BIAS);
+    [KI, gI, ~, rm] = solve_current(l_hat, e, cfg.Pc_base, Pd_, Bd_, F, [], Pf_, Bf_);
+    tri = [0 0 0];                           % 階梯是單一索引，不再是 (Nr,Nphi,Ntheta) 三元組
+    fprintf(['  校正設計：axes-shells N_c=%d (Nr=%g) @R<=%d um（判準取自 R=%d）；' ...
+             '評估集 = %d 個真實格點 @R<=%d um' newline], ...
+            Nc, (Nc-1)/6, R_FIT, Rv_(ix_), np, R_EVAL);
+
 
     Pc   = make_Pc(e, cfg.Pc_base);
     Hhat = gI * KI;                          % ᴮĤ_I [mT/A]
@@ -241,8 +396,10 @@ function S = compute_one(model, geom, variant, R_FIT, R_EVAL, USE_BIAS, here, CA
 end
 
 % ============================================================================
-function render_overlay(vals, names, cols, xlab, out, xrset, BINW, xtset)
-% 兩組資料的疊圖直方圖（各自正規化成百分比 → 比較的是分布形狀）
+function render_overlay(vals, names, cols, xlab, out, xrset, BINW, xtset, NTK)
+% N 組資料的疊圖直方圖（各自正規化成百分比 → 比較的是分布形狀）
+% [MODIFIED 2026-08-31] 由寫死 2 組泛化成 numel(vals) 組；N=2 的輸出逐位不變。
+%   N=1（solo）時「共用 bin 寬」的硬條件自動失效（沒有比較對象）。
 % [MODIFIED 2026-08-21 使用者拍板，比照 err_hist 家族]：
 %   ① 長條**不描黑邊**（EdgeColor 'none'）——細長條逐根描邊會糊成一團黑
 %   ② **不畫 mean 虛線**；③ 圖例**只列系列名**（mean / CV 改印 console）
@@ -255,8 +412,15 @@ function render_overlay(vals, names, cols, xlab, out, xrset, BINW, xtset)
     % [ADDED 2026-08-24] xtset = 明給刻度（[] = 由 xticks_in 自動選）。需要它是因為
     %   xticks_in 只收奇數根，湊不出「整數 + 偶數根」這種合法組合（見呼叫端註解）。
     if nargin < 8, xtset = []; end
-    FS = 28;   ALPH = 0.60;   nb = 180;
-    allv = [vals{1}(:); vals{2}(:)];
+    % [MODIFIED 2026-09-02 使用者指定] 套上 figure-style 的九條規則：規則1 刻度 60、
+    %   規則2 圖例 45、規則3 框線加粗、規則6 畫布等邊、規則7 圖例框與座標框同粗。
+    %   原本 FS=28 同時餵刻度與軸標題、圖例寫死 24 → 拆成 FS / FSLAB / FSLEG。
+    %   軸標題 FSLAB 規則未指定值 → 沿用本腳本原值 36。
+    if nargin < 9 || isempty(NTK), NTK = 3; end
+    FS = 60;   FSLAB = 36;   FSLEG = 45;   LWBOX = 5.0;   CANV = 14.5;
+    ALPH = 0.60;   nb = 180;
+    nS   = numel(vals);
+    allv = cell2mat(cellfun(@(v) v(:), vals(:), 'UniformOutput', false));
     if isempty(BINW)
         edg = linspace(min(allv), max(allv), nb+1);
     else
@@ -269,17 +433,17 @@ function render_overlay(vals, names, cols, xlab, out, xrset, BINW, xtset)
     ctr  = (edg(1:end-1) + edg(2:end))/2;
     fprintf('  bin：共用 %d 個、寬 %.4g（兩組同寬；由兩組合併後的 %.4g ~ %.4g 均分）\n', ...
             nb, edg(2)-edg(1), min(allv), max(allv));
-    for q = 1:2                                   % [ADDED] 各組實際佔幾根 / 峰值多高
+    for q = 1:nS                                  % [ADDED] 各組實際佔幾根 / 峰值多高
         wv = vals{q}(:);   hc = histcounts(wv, edg);
         fprintf(['    %-10s 全寬 %.4g -> %.1f 根（非空 %d），峰值 %.1f%%' char(10)], ...
                 names{q}, max(wv)-min(wv), (max(wv)-min(wv))/(edg(2)-edg(1)), ...
                 sum(hc>0), max(hc)/numel(wv)*100);
     end
 
-    fig = figure('Color','w','Position',[100 100 1180 860]);
+    fig = figure('Color','w','Units','inches','Position',[0.5 0.5 CANV CANV]);
     ax  = axes(fig);   hold(ax,'on');
-    h = gobjects(1,2);   pk = [];
-    for a = 1:2
+    h = gobjects(1,nS);   pk = [];
+    for a = 1:nS
         p = histcounts(vals{a}, edg) / numel(vals{a}) * 100;
         h(a) = bar(ax, ctr, p, 1, 'FaceColor',cols{a}, 'FaceAlpha',ALPH, 'EdgeColor','none');
         pk = [pk p]; %#ok<AGROW>
@@ -287,21 +451,24 @@ function render_overlay(vals, names, cols, xlab, out, xrset, BINW, xtset)
 
     box(ax,'on');  grid(ax,'off');
     % [MODIFIED 2026-08-21 使用者拍板] tick 朝外（TickDir 'out'，同 plot_sigma_hist）
-    set(ax,'FontSize',FS,'FontWeight','bold','LineWidth',2.5, ...
+    set(ax,'FontSize',FS,'FontWeight','bold','LineWidth',LWBOX, ...
            'TickLength',[.015 .015],'TickDir','out');
     if isempty(xrset)
-        [xr, xt] = xlim_pick(min(allv), max(allv));
+        % [MODIFIED 2026-09-02] 自動選軸改用 axis_odd（規則 5+9：三根等距、兩端留白
+        %   = 刻度間距、刻度最多一位小數），且在同分的候選裡挑**左右留白最平衡**者。
+        %   舊的 xlim_pick 只看根數 3~7、不管平衡 -> kappa 圖會明顯偏一邊。
+        [xr, xt] = axis_odd(min(allv), max(allv), NTK);
     else
         xr = xrset;                                  % 使用者指定範圍
         if isempty(xtset), xt = xticks_in(xr); else, xt = xtset; end
-        for a = 1:2                                  % 落在視野外的樣本比例（誠實回報）
+        for a = 1:nS                                 % 落在視野外的樣本比例（誠實回報）
             f = 100*mean(vals{a}(:) < xr(1) | vals{a}(:) > xr(2));
             if f > 0, fprintf('  ⚠ %s 有 %.2f%% 的點落在視野 [%g, %g] 之外\n', ...
                               names{a}, f, xr(1), xr(2)); end
         end
     end
     xlim(ax, xr);   set(ax,'XTick',xt);
-    [yr, yt] = ylim_from_zero(max(pk), 4);
+    [yr, yt] = ylim_odd(max(pk), NTK);       % [MODIFIED 2026-09-02] 規則 4+5：等距、兩端間距相等
     ylim(ax, yr);   set(ax,'YTick', yt);   ytop = yr(2);
 
     % x 起訖：只標數字、不畫 tick mark（figure-style）
@@ -309,18 +476,117 @@ function render_overlay(vals, names, cols, xlab, out, xrset, BINW, xtset)
         text(ax, xv, -0.022*ytop, sprintf('%g', xv), 'HorizontalAlignment','center', ...
              'VerticalAlignment','top', 'FontSize',FS, 'FontWeight','bold', 'Clipping','off');
     end
-    xlabel(ax, xlab, 'Interpreter','latex', 'FontSize',36);
-    ylabel(ax, '$\mathbf{Percentage\;(\%)}$', 'Interpreter','latex', 'FontSize',36);
+    xlabel(ax, xlab, 'Interpreter','latex', 'FontSize',FSLAB);
+    ylabel(ax, '$\mathbf{Percentage\;(\%)}$', 'Interpreter','latex', 'FontSize',FSLAB);
 
     % 圖例：框內右上角、一行一系列、只列系列名
+    % [MODIFIED 2026-09-02 使用者指示] **單一系列（solo）不畫圖例** —— 只有一組資料時
+    %   「Design A」那顆圖例是冗餘的，標在圖說即可。多系列（疊圖比較）仍須保留，
+    %   否則分不出哪組是哪個設計。
+    if nS > 1
     lg = legend(ax, h, names, 'Interpreter','tex', 'Location','northeast', 'NumColumns',1);
-    lg.FontSize = 24;  lg.FontWeight = 'bold';
-    lg.Box = 'on';  lg.EdgeColor = 'k';  lg.LineWidth = 2.5;  lg.Color = 'w';
+    lg.FontSize = FSLEG;  lg.FontWeight = 'bold';
+    lg.Box = 'on';  lg.EdgeColor = 'k';  lg.LineWidth = LWBOX;  lg.Color = 'w';
+    % [規則2] ItemTokenSize 預設 30 pt 不隨 FontSize 放大，45 pt 字級下色塊會貼到框線。
+    %   與 axsh_gain / axsh_kfro 用同一組值，保持跨圖一致。
+    lg.ItemTokenSize = [55 25];
+    end
     ax.Toolbar.Visible = 'off';   hold(ax,'off');
 
-    exportgraphics(fig, out, 'Resolution', 200);
+    % [MODIFIED 2026-09-02] 規則 6：exportgraphics 會裁掉畫布白邊，正方形畫布匯出後
+    %   就不等邊 → 改用 print + 明確的 PaperPosition。
+    set(fig, 'PaperUnits','inches', 'PaperPosition',[0 0 CANV CANV], 'PaperSize',[CANV CANV]);
+    print(fig, out, '-dpng', '-r200');                % 14.5 in x 200 dpi = 2900 px 見方
     fprintf('wrote %s\n', out);
     close(fig);
+end
+
+% ============================================================================
+function [xr, xt] = axis_odd(lo, hi, NTK)
+% [ADDED 2026-09-02] 水平軸：規則 5（等距 tick、與起點/終點的間距也相等）+ 規則 9
+%   （刻度最多一位小數）+ 使用者指定的「三根」。與 plot_sigma_hist.m 內同名函式相同。
+%   形式：xr = [x0, x0+4*s]、刻度 = x0 + (1:3)*s。
+%   排序鍵：① 視野最小 ② 刻度是整數優先 ③ 根數接近 3 ④ **左右留白對稱**。
+%   第④ 鍵就是 2026-09-02 修「kappa 圖偏一邊」的那一項。
+    best = [inf inf inf inf];   xr = [floor(lo) ceil(hi)];   xt = [];
+    for k = -3:4
+        for c = [1 1.5 2 2.5 5]
+            s = c*10^k;
+            if abs(s*10 - round(s*10)) > 1e-9 && s < 1, continue; end   % s 也要一位小數
+            for n = NTK               % [MODIFIED 2026-09-02] 根數由呼叫端給（預設 3）
+                span = (n+1)*s;
+                if span < (hi-lo) - 1e-9, continue; end
+                for m = (floor(hi/s) - n) + (-3:1)
+                    x0 = m*s;   x1 = x0 + span;
+                    if x0 > lo + 1e-9 || x1 < hi - 1e-9, continue; end
+                    t = x0 + (1:n)*s;
+                    if any(abs(t*10 - round(t*10)) > 1e-9), continue; end
+                    sc = [span, double(any(abs(t-round(t)) > 1e-9)), abs(n-NTK), ...
+                          abs((lo-x0) - (x1-hi))];
+                    if lexlt(sc, best), best = sc;   xr = [x0 x1];   xt = t; end
+                end
+            end
+        end
+    end
+end
+
+% ============================================================================
+function [lim, tk] = ylim_odd(maxv, NTK)
+% [ADDED 2026-09-02] 縱軸：規則 4（起點與終點都不標）+ 規則 5（等距、且與兩端間距也
+%   相等）+ 使用者指定的「三根 tick」。上緣 = 4*s、刻度 = (1:3)*s，0 與上緣不進 tk。
+%
+% [MODIFIED 2026-09-02 使用者回報「上面留白太多」]
+%   舊版的步長只能取 [1 1.5 2 2.5 3 4 5 ...] 這組 nice 值。三根下上緣被鎖成 4*s，
+%   步長一跳上緣就跳 → sigma 圖峰值 4.2%% 需 s>=1.05，舊清單只能給 1.5 → 上緣 6、
+%   填充率僅 70%%，上方空一大塊。
+%   現在允許**兩位有效數字**的步長（1.1 / 1.7 / 2.3 …），取滿足上緣的最小者；
+%   但若 nice 步長只多浪費 <= 20%%，就還是用 nice 的（讓 2/4/6、2.5/5/7.5 這種
+%   好讀的刻度不會被 1.7/3.4/5.1 取代）。
+%   實測：sigma 5.5%% → 1.5/3/4.5 上緣 6 改成 1.1/2.2/3.3 上緣 4.4（填充 70%%→95%%）；
+%          gain A 6.3%% 仍是 2/4/6（tight=1.7、nice=2，2/1.7=1.18 <= 1.20）。
+%   縱軸不受規則 9（一位小數）約束 —— 那條只綁水平軸。
+    n = NTK;                                      % [MODIFIED 2026-09-02] 由呼叫端給
+    smin = 1.02*maxv/(n+1);                       % 上緣至少 1.02*maxv（長條不貼框）
+    k     = floor(log10(max(smin, realmin)));
+    tight = ceil(smin/10^(k-1) - 1e-9) * 10^(k-1);  % 兩位有效數字的最小合格步長
+    nice  = inf;
+    for kk = k-1:k+1
+        for c = [1 1.5 2 2.5 3 4 5 6 8]
+            s = c*10^kk;
+            if s >= smin - 1e-12 && s < nice, nice = s; end
+        end
+    end
+    s = tight;
+    if nice <= 1.20*tight, s = nice; end          % nice 只貴 <=20%% 就用 nice
+    tk  = (1:n)*s;
+    lim = [0, (n+1)*s];
+end
+
+% ============================================================================
+function w = pick_bw(wfix, v, nbar)
+% 釘死的 bin 寬優先（跨圖共用同一把尺用）；[] 才退回 fd_bin 自動選。
+    if ~isempty(wfix), w = wfix;  else, w = fd_bin(v, nbar);  end
+end
+
+% ============================================================================
+function w = fd_bin(v, nbar)
+% Freedman-Diaconis bin 寬（h = 2*IQR*n^(-1/3)），四捨五入到 nice 值 [1 2 2.5 5]x10^k。
+%   只給**單一系列**的圖用 —— 多系列必須共用 bin 寬（figure-style 硬條件）。
+%   分位數自己算，不依賴 Statistics Toolbox 的 iqr/prctile。
+%   [ADDED 2026-09-01] 給了 nbar 就改成**目標根數**模式：h = range/nbar，一樣四捨五入
+%   到 nice 值。用於各圖值域差很大、但希望根數相近的場合（FD 是統計最適、不保證根數）。
+    if nargin < 2, nbar = []; end
+    v = v(:);   n = numel(v);   sv = sort(v);
+    if ~isempty(nbar)
+        h = (max(v) - min(v)) / nbar;
+        k = floor(log10(h));   c = [1 2 2.5 5 10];
+        [~,j] = min(abs(c*10^k - h));   w = c(j)*10^k;   return
+    end
+    q  = interp1(linspace(0,1,n).', sv, [0.25; 0.75]);
+    h  = 2*(q(2)-q(1))*n^(-1/3);
+    if ~isfinite(h) || h <= 0, w = (max(v)-min(v))/20;   return;   end
+    k  = floor(log10(h));   c = [1 2 2.5 5 10];
+    [~,j] = min(abs(c*10^k - h));   w = c(j)*10^k;
 end
 
 % ============================================================================

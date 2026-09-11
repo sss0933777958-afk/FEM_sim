@@ -1,4 +1,4 @@
-function plot_sensor_mounting_p2(SOFF, WITHFIELD, CMODE)
+function plot_sensor_mounting_p2(SOFF, WITHFIELD, CMODE, MODEL)
 %   [ADDED] SOFF = 藍線長度（tip→foot 沿錐面直線距, mm）；省略 = 4.572（定案值）。
 %   非預設值時輸出檔名自動加 _soff<值>mm 後綴，不覆蓋原圖。
 %   [ADDED 2026-08-05] WITHFIELD=true：在**同一視野範圍**疊上 **P1 激發**（graded coil1、1A）
@@ -18,7 +18,7 @@ function plot_sensor_mounting_p2(SOFF, WITHFIELD, CMODE)
     if ~exist(figdir,'dir'); mkdir(figdir); end
     % [MODIFIED 2026-08-08] 不再 addpath backup（規則 no-backup-data）；改用 live config +
     %   utils/pole_sensor_geometry（sensor 幾何唯一來源）。幾何改用 CAD STEP 實測的真實錐體。
-    CAL = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    CAL = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Flux\APDL\Calibration_using_FEM_modeling';
     addpath(fullfile(CAL,'function'), fullfile(CAL,'utils'));
     cnst = model_config('long2016_hexapole_halfcut', 'tip40um');
 
@@ -31,10 +31,38 @@ function plot_sensor_mounting_p2(SOFF, WITHFIELD, CMODE)
     if nargin < 3 || isempty(CMODE), CMODE = 'max'; end   % [MODIFIED] 使用者偏好線性全範圍
     YSLAB = 4.0;   CELL = 0.07;                             % [ADDED] apdl 取樣：y 半寬 / 抽稀格邊 [mm]
     AIR = 0.41;                                             % 離面 [mm]
+    %% [ADDED 2026-08-28] MODEL：'long2016_hexapole_halfcut'（預設，行為逐字不變）| 'zhi_peng'
+    %   志鵬是**平板極**，貼附幾何與長飛本質不同（見下方 ISZHI 分支）。
+    ISZHI = nargin >= 4 && ~isempty(MODEL) && strcmp(MODEL,'zhi_peng');
+    if ISZHI
+        MXC = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Flux\Maxwell';
+        addpath(fullfile(MXC,'function'), fullfile(MXC,'utils'), fullfile(MXC,'common_path'));
+        cnst = model_config('zhi_peng','R500');
+        assert(~WITHFIELD, 'zhi_peng 版目前不支援 WITHFIELD');
+    end
     rot = @(v,a)[cos(a)*v(1)-sin(a)*v(2); sin(a)*v(1)+cos(a)*v(2)];
 
     % [MODIFIED 2026-08-08] sensor 位置/法線一律由 pole_sensor_geometry 供給（不再自己算）。
     %   P2 的子午面 = y=0 → 3D 向量取 (x,z) 即得本圖的 2D 座標。
+    if ISZHI
+        % ---- 志鵬平板極的貼附幾何（工作空間框、mm；ρ = x，因 P1/P2 方位角 0/180°）----
+        %   S = R_norm*e1 + SOFF*e2l + h*s        （b = 0）
+        %     e2l = 水平徑向（貼附面 = 極板外側大平面，含極尖 → 藍線在面上滑動、z 不變）
+        %     s   = ±z（下極 +z / 上極 -z）、h = 舌片厚 0.178 + 氣隙 0.41 = 0.588 mm
+        %   ⚠ 橘線的前 0.178 mm 是**穿過舌片厚度**、後 0.41 mm 才是氣隙。
+        rt = -1 * cnst.R_norm_xy*1e3;                     % 極尖 ρ（P1 +、P2 -）
+        zt = cnst.pole_tip_z_wp(IP)*1e3;                    % 極尖 z（下極 -、上極 +）
+        tb = cnst.POLE_TIP_BAND*1e3;                        % 舌片厚 0.178
+        T  = [rt; zt];
+        nh = [0; --1*sign(zt)*abs(sign(zt))];             % 佔位（下面覆寫）
+        nh = [0; 1];  if ~cnst.pole_is_lower(IP), nh = [0; -1]; end   % 下極 +z / 上極 -z
+        foot   = T + -1*[SOFF; 0];                        % 沿外側大平面走 SOFF
+        sensor = foot + (tb + AIR)*nh;                      % 底面中心
+        zb = zt;   zc = zt + tb;  if ~cnst.pole_is_lower(IP), zc = zt - tb; end
+        ro = rt + -1*20;                                  % 舌片往外拉出視窗（patch 由 xlim 裁切）
+        poly = [rt ro ro rt; zb zb zc zc];
+        beta = 0;  rf = cnst.POLE_TIP_R*1e3;  axc = [-1;0];   % 供共用程式碼引用
+    else
     [spos, snor, geo] = pole_sensor_geometry(cnst, struct('soff_upper', SOFF*1e-3));
     to2 = @(v) v([1 3])*1e3;                                % 3D[m] → 2D(x,z)[mm]
     beta = geo.beta(IP);                                    % 上極**真實**半錐角 11.0138°（CAD）
@@ -54,6 +82,7 @@ function plot_sensor_mounting_p2(SOFF, WITHFIELD, CMODE)
     tha = linspace(angf-hw,angf+hw,60);  arc = C + rf*[cos(tha); sin(tha)];
     Cu  = arc(:,1) + Lsl*fdA;  Cd = arc(:,end) + Lsl*fdB;
     poly = [Cu, arc, Cd];
+    end
 
     %% ---- 視野範圍（先算，供場取樣與軸範圍共用；與原圖逐字相同的算法）----
     % [MODIFIED 2026-08-05] 原本在檔尾才算 xlim/ylim；WITHFIELD 需要先知道視窗才能取樣。
@@ -89,7 +118,7 @@ function plot_sensor_mounting_p2(SOFF, WITHFIELD, CMODE)
             end
         end
         if ~exist('Xs','var')
-            CAL = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+            CAL = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Flux\APDL\Calibration_using_FEM_modeling';
             addpath(fullfile(CAL,'function'));  addpath(fullfile(CAL,'common_path'));
             zoff = -cnst.SPH_OFST*1e3;                       % raw z → WP frame
             d   = import_ansys_data(ansys_path('long2016_hexapole_halfcut','data','graded','coil1'), 'all', 'coil1');
@@ -141,8 +170,12 @@ function plot_sensor_mounting_p2(SOFF, WITHFIELD, CMODE)
     % [MODIFIED 2026-08-15 使用者拍板] 三段構法（原本是「藍線沿錐面斜拉 + 橘線 0.41」兩段，
     %   藍線畫錯了）：① 藍線沿**軸線**走 s_ax ② 棕線**垂直軸線**走 R 到錐面 ③ 橘線垂直錐面
     %   走 0.41 到感測器底面中心。s_ax、R 都直接取自 pole_sensor_geometry，與位置計算同源。
-    rh2 = (nh + sin(beta)*axc)/cos(beta);             % 2D 徑向單位向量（朝貼附面側）
-    P0  = T + geo.apex_off(IP)*tan(beta)*1e3*rh2;     % 紅點：母線起點（軸向 0、半徑 R(0)）
+    if ISZHI
+        P0 = T;
+    else
+        rh2 = (nh + sin(beta)*axc)/cos(beta);
+        P0  = T + geo.apex_off(IP)*tan(beta)*1e3*rh2;
+    end
     plot([P0(1) foot(1)],[P0(2) foot(2)],'-','Color',[.15 .35 .75],'LineWidth',3);   % 藍：沿錐面 SOFF
     plot([foot(1) sensor(1)],[foot(2) sensor(2)],'-','Color',[.75 .35 .1],'LineWidth',3); % 棕：氣隙 0.41
 
@@ -164,7 +197,9 @@ function plot_sensor_mounting_p2(SOFF, WITHFIELD, CMODE)
     % ---- 軸：等比、box、每軸 3 根等距 tick、tick 朝外、字體 36、無軸標題 ----
     xlim(XL);  ylim(ZL);                                    % [MODIFIED] 用上方先算好的視窗（與場取樣一致）
     daspect([1 1 1]);  box on;  grid off;
-    set(ax,'XTick',ticks3(xlim),'YTick',ticks3(ylim));
+    % [MODIFIED 2026-08-28] ticks3 可回傳「為了容納整數刻度而微放大的框」→ 要寫回 lim
+    [xtk, XLn] = ticks3(xlim);   [ytk, ZLn] = ticks3(ylim);
+    xlim(XLn);  ylim(ZLn);  set(ax,'XTick',xtk,'YTick',ytk);
     set(ax,'FontSize',36,'FontWeight','bold','LineWidth',3.5,'TickLength',[.02 .02],'TickDir','out');
     ax.Toolbar.Visible = 'off';
 
@@ -181,16 +216,29 @@ function plot_sensor_mounting_p2(SOFF, WITHFIELD, CMODE)
 
     sfx = ''; if abs(SOFF-4.572) > 1e-9, sfx = sprintf('_soff%gmm', SOFF); end   % [ADDED] 非預設值另存
     if WITHFIELD, sfx = [sfx '_fieldP1_' lower(CMODE)]; end                                    % [ADDED] P1 激發磁路版另存
-    out = fullfile(figdir, sprintf('sensor_mounting_tip40_P2%s.png', sfx));
+    BASEN = 'sensor_mounting_tip40_P2';
+    if ISZHI, BASEN = 'sensor_mounting_zhi_P2'; end   % [ADDED 2026-08-28] 志鵬另存，不覆蓋長飛
+    out = fullfile(figdir, sprintf('%s%s.png', BASEN, sfx));
     exportgraphics(gcf,out,'Resolution',200);
     fprintf('saved %s\n',out);
 end
 
 % ---- 每軸 3 根等距、nice-step tick（含在範圍內）----
-function tk = ticks3(lm)
+function [tk, lm] = ticks3(lm)
     s0 = (lm(2)-lm(1))/3;
-    p  = 10^floor(log10(s0));  c = [1 2 3 4 5 10]*p;
-    [~,i] = min(abs(c-s0));  s = c(i);
-    ctr = round((lm(1)+lm(2))/2/s)*s;
-    tk  = ctr + [-1 0 1]*s;
+    p  = 10^floor(log10(s0));
+    % [MODIFIED 2026-08-28] 兩段式：**先保住「刻度用整數/nice 值」，不夠就把框放大一點點**，
+    %   而不是把步長一路縮小。原作法在 nice 值只差臨門一腳時（志鵬 z 框 1.9993 vs 刻度 2，
+    %   差 0.7 um）會退到 0.5 步長 -> 三根刻度擠在一起、且帶小數點，違反 figure-style
+    %   「刻度數字一律用整數」。既有圖若在原步長就已三根入框，need == lm、tk 不變 -> 輸出逐字相同。
+    MG = 0.12;                                   % 允許把框放大的比例上限
+    cs = sort([[1 2 3 4 5 10]*p, [1 2 3 4 5]*p/10, [1 2 3 4 5]*p/100], 'descend');
+    [~,i] = min(abs(cs-s0));
+    rg = lm(2) - lm(1);
+    for k = i:numel(cs)
+        s = cs(k);  ctr = round((lm(1)+lm(2))/2/s)*s;  tk = ctr + [-1 0 1]*s;
+        need = [min(lm(1), tk(1)-0.03*rg), max(lm(2), tk(3)+0.03*rg)];
+        if (need(2)-need(1)) <= (1+MG)*rg,  lm = need;  return;  end
+    end
+    s = cs(end);  ctr = round((lm(1)+lm(2))/2/s)*s;  tk = ctr + [-1 0 1]*s;
 end

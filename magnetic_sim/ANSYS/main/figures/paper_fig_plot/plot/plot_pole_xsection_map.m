@@ -55,7 +55,7 @@ function plot_pole_xsection_map(S_MM, CELL, MODE, force)
     figdir = fullfile(fileparts(here), 'paper_fig', 'Section3_A');
     if ~exist(figdir,'dir'); mkdir(figdir); end
 
-    MW = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Maxwell';
+    MW = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Flux\Maxwell';
     addpath(fullfile(MW,'function'));
     cnst = model_config('long2016_hexapole_halfcut','tip40um');
 

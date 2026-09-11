@@ -1,4 +1,4 @@
-function plot_sigma_hist(USE_BIAS, R_FIT, R_EVAL, NSAMP, force, MODEL, GEOM, VARIANT, XR, BINW)
+function plot_sigma_hist(USE_BIAS, R_FIT, R_EVAL, NSAMP, force, MODEL, GEOM, VARIANT, XR, BINW, NTK)
 % plot_sigma_hist -- 三個奇異值 σ₁ σ₂ σ₃ 在整個工作空間的分布疊圖（Long Fei 半切六極）
 % =========================================================================
 %   使用者拍板 2026-08-18：
@@ -61,10 +61,55 @@ function plot_sigma_hist(USE_BIAS, R_FIT, R_EVAL, NSAMP, force, MODEL, GEOM, VAR
     %   傳同一個值，兩張圖就能直接比高度。
     %   ⚠ 代價：值域寬的那張 bin 數暴增（志鵬 33.08/0.022 = 1501 根），每根樣本數
     %     掉到個位數 -> 統計雜訊大、形狀變毛。
-    if nargin < 10, BINW = []; end
+    % [MODIFIED 2026-09-02 使用者要求] long2016 的 R_EVAL=150 預設改為 **明給 0.02**，
+    %   讓本圖與 gain_cbrt_hist_A_single_R150 **共用同一把尺**。兩張都是 mT/A、
+    %   都在 R=150 評估，bin 寬不同時長條高度不可互比（面積 = 100%% x bin 寬）：
+    %     舊值 nb=180 -> 3.99113/180 = 0.022173；gain 圖 fd_bin(nbar=30) -> 0.020000（差 10.9%%）。
+    %   改成 0.02 後本圖 180 -> 200 根（每根約 27 點），gain 圖不變。
+    %   ⚠ 要改這個值必須同步改 plot_gain_iso_hist.m 的 BW_SOLO_G{1}，否則兩張又跨掉。
+    %   其他 model / 其他 R_EVAL 維持 []（志鵬值域 33 mT/A，套 0.02 會變 1650 根）。
+    % [MODIFIED 2026-09-02 使用者指定] **同一個模型的圖要用相同 bin 寬**。
+    %   本圖（sigma_kk）與該模型的 gain_cbrt_hist（C^(1/3)）都是 mT/A，故逐模型釘成
+    %   與 plot_gain_iso_hist 的 BW_SOLO_G / fd_bin 結果相同的值：
+    %     long2016      -> 0.02   (gain A    fd_bin(nbar=30) 也是 0.02)
+    %     zhi_peng split-> 0.1    (gain B    fd_bin 給 0.1)
+    %     zhi_peng gap  -> 0.05   (gain Bgap fd_bin 給 0.05)
+    %   ⚠ sigma 的值域比 C^(1/3) 寬很多（gap：23.6 vs 1.69）-> 根數會暴增
+    %     （180 -> 333 / 472）、每根點數降到 16 / 11，長條會更毛。這是對齊 bin 寬的代價。
+    %   ⚠ kappa 圖不在此列：它是**無因次**的 sigma3/sigma1，mT/A 的 bin 寬套不上去
+    %     （0.1 套到值域 0.21 只剩 2 根）；kappa 三張另行共用 0.02。
+    if nargin < 10
+        vt = regexprep(VARIANT, '^maxwell_?', '');
+        BINW = [];
+        if R_EVAL == 150
+            switch MODEL
+                case 'long2016_hexapole_halfcut', BINW = 0.02;
+                case 'zhi_peng'
+                    switch vt
+                        case 'split', BINW = 0.1;
+                        case 'gap',   BINW = 0.05;
+                    end
+            end
+        end
+    end
+
+    % [ADDED 2026-09-02 使用者指定] NTK = 兩軸各要幾根內部刻度（水平與縱軸同值）。
+    %   原本 axis_odd / ylim_odd 都寫死 3。使用者對不同圖指定不同根數
+    %   （zhi_peng split = 3、zhi_peng gap = 5），故參數化。預設 3 → 已定案的
+    %   long2016 版重跑輸出不變。
+    if nargin < 11 || isempty(NTK), NTK = 3; end
 
     tag  = 'single';   if USE_BIAS, tag = 'eighteen'; end
     msfx = '';  if ~strcmp(MODEL,'long2016_hexapole_halfcut'), msfx = ['_' MODEL]; end
+    % [ADDED 2026-08-28] variant 後綴：同一 model 有多版場（zhi_peng 的 maxwell_split /
+    %   maxwell_gap）時，只帶 model 名會互相覆蓋。照 short-names 剝掉整棵樹都一樣的
+    %   'maxwell' -> '_split' / '_gap'（與 plot_svd_polar 同慣例）。
+    CAL0 = fullfile('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main','matlab','Flux','Maxwell');
+    addpath(fullfile(CAL0,'function'), fullfile(CAL0,'utils'), fullfile(CAL0,'common_path'));
+    cfg0 = model_config(MODEL, GEOM);
+    if ~isempty(VARIANT) && ~strcmpi(VARIANT, cfg0.default_variant)
+        msfx = [msfx '_' regexprep(VARIANT,'^maxwell_?','')];
+    end
 
     here   = fileparts(fileparts(mfilename('fullpath')));       % → paper_fig_plot/
     figdir = fullfile(fileparts(here), 'paper_fig', 'Section4_C');
@@ -91,12 +136,16 @@ function plot_sigma_hist(USE_BIAS, R_FIT, R_EVAL, NSAMP, force, MODEL, GEOM, VAR
             mean(S.sig(:,1))/mean(S.sig(:,3)), ...
             100*mean(S.sig(:,2) > min(S.sig(:,1))));
 
-    render(S, figdir, tag, msfx, XR, BINW);
+    render(S, figdir, tag, msfx, XR, BINW, NTK);
 end
 
 % ============================================================================
 function S = compute(MODEL, GEOM, VARIANT, R_FIT, R_EVAL, USE_BIAS, here, NSAMP)
-    CAL = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Maxwell';
+    % [MODIFIED 2026-08-28] Tree moved under matlab/Flux/; the old hardcoded path is gone,
+    %   so addpath silently failed and an APDL copy of model_config/solve_* could shadow
+    %   the Maxwell ones.
+    MAIN = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main';
+    CAL  = fullfile(MAIN,'matlab','Flux','Maxwell');
     addpath(fullfile(CAL,'function'), fullfile(CAL,'utils'), fullfile(CAL,'common_path'));
 
     cfg = model_config(MODEL, GEOM);
@@ -111,33 +160,45 @@ function S = compute(MODEL, GEOM, VARIANT, R_FIT, R_EVAL, USE_BIAS, here, NSAMP)
     %   ki_gate / ki_req 只對 long2016 開：六極不等強的設計（zhi_peng）K̄_I 的物理結構
     %   條件不適用 → 收斂點只由 ℓ̂ 與 ĝ_I 決定（使用者拍板 2026-08-15）。
     is_l2016 = strcmp(MODEL,'long2016_hexapole_halfcut');
-    % ---- 讀 main.m 產的收斂設計校正結果（不再自己重跑階梯 + 校正）--------
-    %   [MODIFIED 2026-08-23 使用者拍板] 校正與收斂判準已搬回 main.m
-    %   （conv_design_ws / conv_design_sensor 只負責決定內插點位置與取場），
-    %   繪圖端改成**接收 main 產完的結果** -> 圖與結果 PDF 保證出自同一次校正。
-    %   ⚠ 該組合必須先跑過 main.m（GRID_NRPT='auto'）；找不到就報錯，不猜。
-    %   ⚠ 同一組合可能有多顆 convN 檔（舊實驗留下的，例如 long2016 R150
-    %     eighteen 就有 convN6/convN80/convN88）-> 只認 conv_auto==true 那顆。
-    md_ = fullfile(CAL, 'data', MODEL, '.mat');
-    tg_ = 'single';   if USE_BIAS, tg_ = 'eighteen'; end
-    dd_ = dir(fullfile(md_, sprintf('calib_current_%s_convN*_R%03d_%s.mat', ...
-                                    VARIANT, round(R_FIT), tg_)));
-    if numel(dd_) > 1
-        ok_ = false(1, numel(dd_));
-        for k_ = 1:numel(dd_)
-            f_ = fullfile(md_, dd_(k_).name);   w_ = whos('-file', f_);
-            if ismember('conv_auto', {w_.name})
-                r_ = load(f_, 'conv_auto');   ok_(k_) = logical(r_.conv_auto);
-            end
-        end
-        dd_ = dd_(ok_);
+    % ---- 讀收斂設計並就地校正（axes-shells 取樣器）------------------------
+    %   [MODIFIED 2026-08-28] main.m 的 calib_*_convN*.mat 出自**舊的等測度取樣器**，與
+    %   現行判準不一致（sample_axes_shells：六根致動軸 x Nr 層等距球殼 + 中心、N=6*Nr+1；
+    %   穩態 = 連續 20 級步進 < 0.01%，收斂 = 連續 10 級落在穩態值 +/-0.2%）。
+    %   改成讀 axsh 掃描的 N_c、在此重建設計就地擬合 —— 與 plot_svd_polar 同一把尺。
+    %   快取優先序：在 R_FIT 本身跑的 '..._axsh[_zhi]_R<R_FIT>.mat' 勝過 R-sweep
+    %   （sweep 格是 40:20:500，R_FIT=150 不在格上，向鄰居借 N_c 是任意的）。
+    zsuf_ = '';   if strcmp(MODEL,'zhi_peng'), zsuf_ = '_zhi'; end
+    %   [ADDED 2026-08-28] 再往前一層：**variant 專屬**的 R_FIT 快取（split / gap 的
+    %   ĝ_I 差 ~34%，收斂點不保證相同，不可共用一顆）。優先序：
+    %     ..._axsh<zsuf>_R<R>_<vtag>.mat  >  ..._axsh<zsuf>_R<R>.mat  >  R-sweep
+    vtag_ = regexprep(VARIANT,'^maxwell_?','');
+    dfv_ = fullfile(here,'data',sprintf('full_vs_conv_vs_R_maxwell_axsh%s_R%d_%s.mat',zsuf_,R_FIT,vtag_));
+    dfx_ = fullfile(here,'data',sprintf('full_vs_conv_vs_R_maxwell_axsh%s_R%d.mat',zsuf_,R_FIT));
+    df_  = fullfile(here,'data',['full_vs_conv_vs_R_maxwell_axsh' zsuf_ '.mat']);
+    if     exist(dfv_,'file')==2, df_ = dfv_;
+    elseif exist(dfx_,'file')==2, df_ = dfx_;   end
+    assert(exist(df_,'file')==2, 'missing %s', df_);
+    D_  = load(df_);
+    NCv = D_.n_c1;   if USE_BIAS, NCv = D_.n_c2; end
+    FBv = NCv(:).' == D_.npts_f(:).';        % 退回全格點的 R（校正集 = 評估集）要跳過
+    Rv_ = D_.R_um(:).';   ok_ = isfinite(NCv(:).') & ~FBv;
+    if ~any(ok_), ok_ = isfinite(NCv(:).'); end
+    cd_ = find(ok_);   [~,jj_] = min(abs(Rv_(cd_) - R_FIT));   ix_ = cd_(jj_);
+    Nc  = NCv(ix_);
+    o_  = struct('model',MODEL,'geom',GEOM,'variant',VARIANT,'frame','actuator','quiet',true);
+    Pd_ = [];   Bd_ = [];
+    for Nr_ = ceil((Nc-1)/6) + (0:2)         % 濾鐵可能吃掉幾點 -> N 不一定剛好是 6*Nr+1
+        Pq_ = conv_design_ws(Nr_, R_FIT*1e-6, struct('points_only',true,'R_act',cfg.R_act,'quiet',true));
+        evalc('[Pk_,Bk_] = conv_design_ws([], R_FIT*1e-6, setfield(o_,''query'',Pq_));');
+        if size(Pk_,1) == Nc,  Pd_ = Pk_;  Bd_ = Bk_;  break;  end
     end
-    assert(numel(dd_) == 1, ['找到 %d 顆收斂校正 .mat（需恰好 1 顆）。請先跑 ' ...
-           'main.m：MODEL=''%s''、R_select=%ge-6、USE_BIAS=%d、GRID_NRPT=''auto''。'], ...
-           numel(dd_), MODEL, R_FIT, USE_BIAS);
-    cal = load(fullfile(md_, dd_(1).name));
-    e = cal.e;   l_hat = cal.l_hat;   KI = cal.KI_bar;   gI = cal.gI_hat;
-    tri = cal.GRID_NRPT;   Nc = cal.npts;   rm = struct('NMAE', cal.NMAE);
+    assert(~isempty(Pd_), 'no axes-shells Nr gives N=%d at R=%g um', Nc, R_FIT);
+    [Pf_,Bf_]       = cfg.select_ball(ad, R_FIT*1e-6);   % out-of-sample NMAE 的評估集
+    [e, l_hat]      = fitting(Pd_, Bd_, cfg.Pc_base, 0.5e-3, USE_BIAS);
+    [KI, gI, ~, rm] = solve_current(l_hat, e, cfg.Pc_base, Pd_, Bd_, F, [], Pf_, Bf_);
+    tri = [0 0 0];                           % 階梯是單一索引，不再是 (Nr,Nphi,Ntheta) 三元組
+    fprintf(['  校正設計：axes-shells N_c=%d (Nr=%g) @R=%d um，判準取自 R=%d' newline], ...
+            Nc, (Nc-1)/6, R_FIT, Rv_(ix_));
 
     % ---- ② 評估：取樣 → 逐點一次 SVD（批次 pagesvd）----
     if isempty(NSAMP)
@@ -175,13 +236,18 @@ function S = compute(MODEL, GEOM, VARIANT, R_FIT, R_EVAL, USE_BIAS, here, NSAMP)
 end
 
 % ============================================================================
-function render(S, figdir, tag, msfx, XR, BINW)
+function render(S, figdir, tag, msfx, XR, BINW, NTK)
 % 三組 σ 疊圖（各自正規化）。配色用 house 三色：深藍 / 紅 / 紫。
     % 直方圖（離散長條，照 figure-style「分布圖一律用離散長條、不要連續曲線 / KDE」）。
     %   [2026-08-18] 曾短暫改成連續曲線（plot 連 bin 中心），使用者拍板**改回長條**。
     %   [2026-08-21] 預設評估點改回**真實 .fld 格點**（65 353 點）→ 每 bin 幾百個樣本，
     %   長條帶可見的統計雜訊；要平滑包絡就傳 NSAMP（如 2e6）改用亂數加密取樣。
-    FS = 28;   ALPH = 0.60;   nb = 180;
+    % [MODIFIED 2026-09-02 使用者指定] 套上 figure-style 的九條規則：
+    %   規則1 刻度數字 60（原本 FS=28 同時餵刻度與軸標題 → 拆成 FS / FSLAB）；
+    %   規則3 框線加粗 LWBOX=5.0；規則6 畫布等邊（英吋正方形 + print）。
+    %   軸標題 FSLAB 規則未指定值 → 沿用本腳本原值 36。
+    %   規則2 圖例 45、規則7 圖例框與座標框同粗。
+    FS = 60;   FSLAB = 36;   FSLEG = 45;   LWBOX = 5.0;   CANV = 14.5;   ALPH = 0.60;   nb = 180;
     COL = { [0.05 0.10 0.95], [0.85 0.10 0.10], [0.482 0.322 0.671] };
     v   = {S.sig(:,1), S.sig(:,2), S.sig(:,3)};
 
@@ -202,7 +268,7 @@ function render(S, figdir, tag, msfx, XR, BINW)
     end
     ctr  = (edg(1:end-1) + edg(2:end))/2;
 
-    fig = figure('Color','w','Position',[100 100 1180 860]);
+    fig = figure('Color','w','Units','inches','Position',[0.5 0.5 CANV CANV]);
     ax  = axes(fig);   hold(ax,'on');
     h = gobjects(1,3);   pk = [];
     for k = 1:3
@@ -216,14 +282,18 @@ function render(S, figdir, tag, msfx, XR, BINW)
     end
 
     box(ax,'on');  grid(ax,'off');
-    set(ax,'FontSize',FS,'FontWeight','bold','LineWidth',2.5, ...
+    set(ax,'FontSize',FS,'FontWeight','bold','LineWidth',LWBOX, ...
            'TickLength',[.015 .015],'TickDir','out');
     % [MODIFIED 2026-08-18 使用者拍板] 橫軸兩端**貼齊有資料的範圍**（不再從 0 起、
     %   也不補到 60）：外推到整數 → [floor(min), ceil(max)]；內部刻度取整數等距奇數個。
     % [MODIFIED 2026-08-21 使用者拍板] 明給 XR 時用它（終點是乾淨的數、不被 σ₁ 的長尾
     %   拉到 282 / 59 那種值）；XR 空著才退回舊的「貼齊極值」。
+    % [MODIFIED 2026-09-02] 規則 5（奇數個等距 tick、與兩端間距也相等）+ 規則 9
+    %   （刻度最多一位小數）。舊的 [floor,ceil] = [13,18] 只能配 14/15/16/17（**偶數** 4 根），
+    %   跨 5 個單位要奇數根且兩端間距相等只剩 s=0.5（9 根，60 pt 下必撞在一起）。
+    %   axis_odd 改取 [12,18] + 13/14/15/16/17（5 根、整數、兩端間距 = 1）。
     if isempty(XR)
-        xr = [floor(min(allv)), ceil(max(allv))];
+        [xr, xt0] = axis_odd(min(allv), max(allv), NTK);
     else
         xr = XR;
         for k = 1:3                                   % 落在視野外的比例（誠實回報）
@@ -232,44 +302,107 @@ function render(S, figdir, tag, msfx, XR, BINW)
         end
     end
     xlim(ax, xr);
-    xt = xticks_in(xr);                               % 等距、奇數個、乾淨的數
+    if exist('xt0','var'), xt = xt0; else, xt = xticks_in(xr); end   % 等距、奇數個、乾淨的數
     if isempty(xt)                                    % 保底：舊做法
         sx = nice_step((xr(2)-xr(1))/6);
         xt = (ceil((xr(1)+sx/2)/sx) : floor((xr(2)-sx/2)/sx)) * sx;
         if mod(numel(xt),2) == 0 && numel(xt) > 1, xt = xt(1:end-1); end
     end
     set(ax,'XTick',xt);
-    [yr, yt] = ylim_from_zero(max(pk));
+    [yr, yt] = ylim_odd(max(pk), NTK);            % [MODIFIED 2026-09-02] 規則 4+5
     ylim(ax, yr);   set(ax,'YTick',yt);   ytop = yr(2);
 
     for xv = xr                                        % x 端點只標數字、不畫 tick
         text(ax, xv, -0.022*ytop, sprintf('%g', xv), 'HorizontalAlignment','center', ...
              'VerticalAlignment','top', 'FontSize',FS, 'FontWeight','bold', 'Clipping','off');
     end
-    xlabel(ax, '$\mathbf{\sigma_{kk}\;(mT/A)}$',  'Interpreter','latex', 'FontSize',36);
-    ylabel(ax, '$\mathbf{Percentage\;(\%)}$',    'Interpreter','latex', 'FontSize',36);
+    xlabel(ax, '$\mathbf{\sigma_{kk}\;(mT/A)}$',  'Interpreter','latex', 'FontSize',FSLAB);
+    ylabel(ax, '$\mathbf{Percentage\;(\%)}$',    'Interpreter','latex', 'FontSize',FSLAB);
 
-    % ---- 圖例：座標框**內右上角**、縱向三列（使用者拍板 2026-08-18）----------
-    %   （先前的「框外 + 切齊框寬 + 手動均勻排版」已作廢：右上角本來就是空的，
-    %     放進去省版面、也不必再調欄位分布。）
-    %   [MODIFIED 2026-08-21 使用者拍板] **圖例不再印 mean**，只列 sigma_kk 三個系列；
-    %     三個平均值改由主函式印在 console（min / mean / max / CV 那幾行）。
+    % ---- 圖例：座標框**內右上角**、縱向三列（使用者拍板 2026-08-18）----
+    %   [RESTORED 2026-09-02] 上一輪誤將本圖的圖例拿掉（拿錯張），使用者更正後還原。
+    %   三個系列的圖例是必要的（圖上無法區分 sigma11/22/33）；單一系列的
+    %   gain/iso solo 圖才是圖例冗餘、已於同日拿掉。
     lb = cell(1,3);
     for k = 1:3
         % ⚠ 不要用 sprintf 帶 '\sigma'：sprintf 會把 \s 當跳脫序列吃掉 -> 標籤變空白
         lb{k} = ['\sigma_{' num2str(k) num2str(k) '}'];
     end
     lg = legend(ax, h, lb, 'Interpreter','tex', 'Location','northeast', 'NumColumns',1);
-    lg.FontSize = 24;   lg.FontWeight = 'bold';
-    lg.Box = 'on';      lg.EdgeColor = 'k';   lg.LineWidth = 2.5;
+    lg.FontSize = FSLEG;   lg.FontWeight = 'bold';                  % [規則2]
+    lg.Box = 'on';      lg.EdgeColor = 'k';   lg.LineWidth = LWBOX; % [規則7] 圖例框與座標框同粗
     lg.Color = 'w';
+    lg.ItemTokenSize = [55 25];   % 45 pt 字級下預設 30 pt 的色塊會貼到框線
     ax.Toolbar.Visible = 'off';   hold(ax,'off');
 
     sfx = '';  if strcmp(tag,'eighteen'), sfx = '_eighteen'; end
     out = fullfile(figdir, sprintf('sigma_hist_R%d_maxwell%s%s.png', S.R_eval, msfx, sfx));
-    exportgraphics(fig, out, 'Resolution', 200);
+    % [MODIFIED 2026-09-02] 規則 6：exportgraphics 會裁掉畫布四周白邊，正方形畫布
+    %   匯出後就不是正方形 → 改用 print + 明確的 PaperPosition。
+    set(fig, 'PaperUnits','inches', 'PaperPosition',[0 0 CANV CANV], 'PaperSize',[CANV CANV]);
+    print(fig, out, '-dpng', '-r200');                % 14.5 in x 200 dpi = 2900 px 見方
     fprintf('wrote %s\n', out);
     close(fig);
+end
+
+% ============================================================================
+function [xr, xt] = axis_odd(lo, hi, NTK)
+% [ADDED 2026-09-02] 水平軸：規則 5（奇數個等距 tick、且與起點/終點的間距也相等）
+%   + 規則 9（刻度數字最多一位小數）。
+%   形式：xr = [x0, x0+(n+1)*s]、刻度 = x0 + (1:n)*s → 兩端留白 ≡ 刻度間距。
+%   排序鍵：① 視野最小（浪費最少）② 刻度是整數優先 ③ 根數接近 3 ④ 左右留白對稱。
+    best = [inf inf inf inf];   xr = [floor(lo) ceil(hi)];   xt = [];
+    for k = -2:3
+        for c = [1 1.5 2 2.5 5]   % [MODIFIED 2026-09-02] 固定三根後需要 1.5 這級步長才湊得出合理視野
+            s = c*10^k;
+            if abs(s*10 - round(s*10)) > 1e-9, continue; end       % s 本身也要一位小數
+            for n = NTK               % [MODIFIED 2026-09-02 使用者指定] 根數由呼叫端給（預設 3）
+                span = (n+1)*s;
+                if span < (hi-lo) - 1e-9, continue; end
+                for m = (floor(hi/s) - n) + (-3:1)
+                    x0 = m*s;   x1 = x0 + span;
+                    if x0 > lo + 1e-9 || x1 < hi - 1e-9, continue; end
+                    t = x0 + (1:n)*s;
+                    if any(abs(t*10 - round(t*10)) > 1e-9), continue; end
+                    sc = [span, double(any(abs(t-round(t)) > 1e-9)), abs(n-NTK), ...
+                          abs((lo-x0) - (x1-hi))];
+                    if lexlt(sc, best), best = sc;   xr = [x0 x1];   xt = t; end
+                end
+            end
+        end
+    end
+end
+
+% ============================================================================
+function [lim, tk] = ylim_odd(maxv, NTK)
+% [ADDED 2026-09-02] 縱軸：規則 4（起點與終點都不標）+ 規則 5（等距、且與兩端間距也
+%   相等）+ 使用者指定的「三根 tick」。上緣 = 4*s、刻度 = (1:3)*s，0 與上緣不進 tk。
+%
+% [MODIFIED 2026-09-02 使用者回報「上面留白太多」]
+%   舊版的步長只能取 [1 1.5 2 2.5 3 4 5 ...] 這組 nice 值。三根下上緣被鎖成 4*s，
+%   步長一跳上緣就跳 → sigma 圖峰值 4.2%% 需 s>=1.05，舊清單只能給 1.5 → 上緣 6、
+%   填充率僅 70%%，上方空一大塊。
+%   現在允許**兩位有效數字**的步長（1.1 / 1.7 / 2.3 …），取滿足上緣的最小者；
+%   但若 nice 步長只多浪費 <= 20%%，就還是用 nice 的（讓 2/4/6、2.5/5/7.5 這種
+%   好讀的刻度不會被 1.7/3.4/5.1 取代）。
+%   實測：sigma 5.5%% → 1.5/3/4.5 上緣 6 改成 1.1/2.2/3.3 上緣 4.4（填充 70%%→95%%）；
+%          gain A 6.3%% 仍是 2/4/6（tight=1.7、nice=2，2/1.7=1.18 <= 1.20）。
+%   縱軸不受規則 9（一位小數）約束 —— 那條只綁水平軸。
+    n = NTK;                                      % [MODIFIED 2026-09-02] 由呼叫端給
+    smin = 1.02*maxv/(n+1);                       % 上緣至少 1.02*maxv（長條不貼框）
+    k     = floor(log10(max(smin, realmin)));
+    tight = ceil(smin/10^(k-1) - 1e-9) * 10^(k-1);  % 兩位有效數字的最小合格步長
+    nice  = inf;
+    for kk = k-1:k+1
+        for c = [1 1.5 2 2.5 3 4 5 6 8]
+            s = c*10^kk;
+            if s >= smin - 1e-12 && s < nice, nice = s; end
+        end
+    end
+    s = tight;
+    if nice <= 1.20*tight, s = nice; end          % nice 只貴 <=20%% 就用 nice
+    tk  = (1:n)*s;
+    lim = [0, (n+1)*s];
 end
 
 % ============================================================================

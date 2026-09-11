@@ -1,4 +1,4 @@
-function plot_conv_vs_R(force)
+function plot_conv_vs_R(force, MODEL, GEOM, VARIANT, SUF, WHICH)
 % plot_conv_vs_R -- 「用收斂點的點數校正，拿真實 FEM 格點驗證」隨取樣半徑 R 的變化
 % =========================================================================
 %   對每一個取樣半徑 R 做三件事：
@@ -31,19 +31,28 @@ function plot_conv_vs_R(force)
     if nargin < 1 || isempty(force), force = false; end
 
     l0    = 0.5e-3;                  % l_hat 初值 [m]
-    MODEL = 'long2016_hexapole_halfcut';   GEOM = 'tip40um';
+    % [MODIFIED 2026-08-27] 參數化 model/geom/variant + 快取後綴，改讀 *_fullref 快取
+    %   （新取樣器 sample_equal_h + 新判準「對全格點 3% 連續 10 級」）。
+    if nargin < 2 || isempty(MODEL),   MODEL   = 'long2016_hexapole_halfcut'; end
+    if nargin < 3,                     GEOM    = 'tip40um';                   end
+    if nargin < 4,                     VARIANT = '';                          end
+    if nargin < 5 || isempty(SUF),     SUF     = '_fullref';                  end
+    % [ADDED 2026-08-27] WHICH：要產哪幾張圖（預設兩張都產，維持原行為）。
+    %   {'rms'} 只產 sqrt(J/N)、{'nmae'} 只產 NMAE。
+    if nargin < 6 || isempty(WHICH), WHICH = {'rms','nmae'}; end
+    if ischar(WHICH), WHICH = {WHICH}; end
     % R 掃描範圍與逐 R 的收斂設計都來自 full_vs_conv_vs_R_maxwell.mat（見檔頭）
 
     here   = fileparts(fileparts(mfilename('fullpath')));
     figdir = fullfile(fileparts(here), 'paper_fig', 'Section2_E');
     if ~exist(figdir,'dir'); mkdir(figdir); end
-    cachef = fullfile(here, 'data', 'conv_vs_R_maxwell.mat');
+    cachef = fullfile(here, 'data', ['conv_vs_R_maxwell' SUF '.mat']);
 
     %% ---- 計算（快取）------------------------------------------------------
     if exist(cachef,'file') && ~force
         S = load(cachef);   fprintf('由快取載入 %s\n', cachef);
     else
-        S = sweep_R(MODEL, GEOM, l0, here);
+        S = sweep_R(MODEL, GEOM, VARIANT, SUF, l0, here);
         save(cachef, '-struct', 'S');   fprintf('已存 %s\n', cachef);
     end
 
@@ -70,35 +79,72 @@ function plot_conv_vs_R(force)
     %   sqrt(min J / (3·N_c·6))。min J 來自 fitting 的 variable projection 閉式解。
     %   分母用**純量項數**（3 分量 × N_c 點 × 6 激發），這樣單位才是 mT、才是每個殘差
     %   分量的 RMS。外推到全格點的那組仍算在 S.rms1/S.rms2（存快取，未出圖）。
-    mk('rms',  S.rmsc1, S.rmsc2, '$\mathbf{\sqrt{J/N}\;(mT)}$',                  figdir, S.R_um, 0);
-    mk('nmae', S.nmae1, S.nmae2, '$\mathbf{NMAE\;(\%)}$',                        figdir, S.R_um, 0);
+    % [MODIFIED 2026-08-27 使用者拍板] rms 圖改畫**全格點外推**殘差（S.rms1/rms2）：
+    %   用該 R 收斂點的校正參數去預測 R 內全部真實 .fld 格點，J = 殘差平方和。
+    %   in-sample 的 sqrt(minJ/(3·N_c·6))（S.rmsc1/rmsc2）仍算、仍存快取，但不出圖
+    %   —— 它會因為 eighteen 自由度多而天生偏低，不能用來比「預測能力」。
+    if any(strcmp(WHICH,'rms'))
+        mk('rms',  S.rms1,  S.rms2,  '$\mathbf{\sqrt{J/N}\;(mT)}$',              figdir, S.R_um, 0, SUF);
+    end
+    if any(strcmp(WHICH,'nmae'))
+        mk('nmae', S.nmae1, S.nmae2, '$\mathbf{NMAE\;(\%)}$',                    figdir, S.R_um, 0, SUF);
+    end
 end
 
 % ============================================================================
-function S = sweep_R(MODEL, GEOM, l0, here)
+function S = sweep_R(MODEL, GEOM, VARIANT, SUF, l0, here)
 % 逐 R：取 full_vs_conv 已定的收斂設計 → 用該設計的減量點校正 → 在真實格點上評估。
-    CAL = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Maxwell';
+    % [MODIFIED 2026-08-27] Tree moved to matlab\Flux\; the hardcoded matlab\Maxwell no
+    %   longer exists. Locate relative to this file and add temp_code\scripts, which holds
+    %   the new samplers (sample_equal_h / sample_rings / sample_axes4).
+    MAIN = fileparts(fileparts(here));                 % ...\ANSYS\main
+    CAL  = fullfile(MAIN, 'matlab', 'Flux', 'Maxwell');
     addpath(fullfile(CAL,'function'), fullfile(CAL,'common_path'), fullfile(CAL,'utils'));
-    addpath(fullfile(CAL,'utils','long2016_hexapole_halfcut'));
+    addpath(fullfile(MAIN,'temp_code','scripts'));
 
     cfg = model_config(MODEL, GEOM);
+    if isempty(VARIANT), VARIANT = cfg.default_variant; end
     F   = zeros(6, cfg.N_I);
     for j = 1:cfg.N_I, F(cfg.apdl_to_paper_idx(j), j) = 1; end
 
     % 評估集來源：全部 .fld 格點（一次載入，之後按 R 取子集）
-    raw = extract_maxwell_data(cfg, 'all', cfg.default_variant);
+    raw = extract_maxwell_data(cfg, 'all', VARIANT);
     ad  = build_actuator_data(raw, cfg);
 
     % 逐 R 的收斂設計：直接讀 plot_full_vs_conv_vs_R 的快取（判準與 N_c 由那支決定）
-    df = fullfile(here, 'data', 'full_vs_conv_vs_R_maxwell.mat');
+    df = fullfile(here, 'data', ['full_vs_conv_vs_R_maxwell' SUF '.mat']);
     assert(exist(df,'file')==2, '找不到 %s —— 先跑 plot_full_vs_conv_vs_R(true)', df);
     D    = load(df);
     R_um = D.R_um(:).';   nR = numel(R_um);
-    TRI  = {D.tri_c1, D.tri_c2};
+    % [MODIFIED 2026-08-27] tri_c* in the new cache are all zero: the equal-h ladder is a
+    %   single index, not an (N_r,N_phi,N_theta) triple. A design is now identified by its
+    %   POINT COUNT n_c*, rebuilt from the KIND/SPEC ladder. fb_c* = fell back to full grid.
+    % [ADDED 2026-08-28] Two cache formats now exist:
+    %   '_fullref' : the retired mixed ehgap ladder -> carries KIND/SPEC + fb_c*, design
+    %                rebuilt from them by point count (design_by_npts).
+    %   '_axsh'    : sample_axes_shells (six actuator axes on Nr equally spaced shells +
+    %                centre, N = 6*Nr+1) -> the point count alone identifies the design,
+    %                so N -> Nr is inverted directly. That sweep has no full-grid fallback.
+    AXSH = ~isfield(D,'KIND');
+    KIND = [];   SPEC = [];
+    if ~AXSH, KIND = D.KIND;  SPEC = D.SPEC; end
+    NC   = {D.n_c1(:).',  D.n_c2(:).'};
+    if isfield(D,'fb_c1')
+        FB = {logical(D.fb_c1(:).'), logical(D.fb_c2(:).')};
+    else
+        % [ADDED 2026-08-28] The axsh cache has no fb_c*; it marks a full-grid fallback
+        %   by src=="full grid" (zhi_peng R=500: the axis points fall inside iron, so the
+        %   ladder never converges).  Detect it from n_c == npts_f, which holds either way
+        %   -- inverting 64769 into an axes-shells Nr would be nonsense.
+        FB = {NC{1} == D.npts_f(:).', NC{2} == D.npts_f(:).'};
+    end
+    o    = struct('model',MODEL, 'geom',GEOM, 'variant',VARIANT, ...
+                  'frame','actuator', 'quiet',true);
 
     [S.Nc1,S.Nc2,S.ell1,S.ell2,S.gI1,S.gI2,S.rms1,S.rms2,S.nmae1,S.nmae2,S.Neval, ...
      S.rmsc1,S.rmsc2] = deal(nan(1,nR));                % rmsc = sqrt(min J / (3·N_c·6))
     S.tri1 = zeros(nR,3);   S.tri2 = zeros(nR,3);
+    S.fb1  = FB{1};         S.fb2  = FB{2};    % fell back to full grid -> in-sample
 
     for a = 1:nR
         R = R_um(a)*1e-6;
@@ -106,12 +152,37 @@ function S = sweep_R(MODEL, GEOM, l0, here)
         S.Neval(a) = n0;
 
         for m = 1:2
-            tri = TRI{m}(a,:);
-            if any(tri == 0), continue; end             % 該 R 在 full_vs_conv 未達判準
-            % [MODIFIED 2026-08-23] sphere_grid_sample 已併入 conv_design_ws。
-            [P, Bs] = conv_design_ws(tri(1), tri(2), tri(3), R, ...
-                                     struct('frame','actuator'));
-            np = size(P,1);
+            nc = NC{m}(a);
+            if ~isfinite(nc), continue; end             % full_vs_conv 跳過了這個 R
+            if FB{m}(a)
+                P = P0;  Bs = B0;                       % 退回全格點：校正集 = 評估集
+            elseif AXSH
+                % [MODIFIED 2026-08-28] n_c in the cache is the count AFTER iron filtering,
+                %   so it is not always 6*Nr+1: at R=500 the outermost shell sits exactly on
+                %   the pole tips (R_norm = 500 um) and the points along the pole axes are
+                %   dropped (811 -> 808, 3889 -> 3886).  Recover Nr by trying the smallest Nr
+                %   whose nominal count reaches nc and checking the kept count.
+                P = [];  Bs = [];
+                for Nr_ = ceil((nc-1)/6) + (0:2)
+                    Pq_ = conv_design_ws(Nr_, R, struct('points_only',true,'R_act',cfg.R_act,'quiet',true));
+                    evalc('[Pk_, Bk_] = conv_design_ws([], R, setfield(o,''query'',Pq_));');
+                    if size(Pk_,1) == nc,  P = Pk_;  Bs = Bk_;  break;  end
+                end
+                if isempty(P)
+                    fprintf(['  R=%3d um m=%d: no axes-shells Nr gives N=%d after iron' ...
+                             ' filtering, skipped' newline], R_um(a), m, nc);
+                    continue;
+                end
+            else
+                [P, Bs] = design_by_npts(KIND, SPEC, nc, R, o, cfg);
+                if isempty(P)
+                    fprintf(['  R=%3d um m=%d: no ladder step with N=%d,' ...
+                             ' skipped\n'], R_um(a), m, nc);
+                    continue;
+                end
+            end
+            tri = [0 0 0];
+            np  = size(P,1);
             r = fit_pack(P, Bs, cfg.Pc_base, l0, m==2, F);
             [rms, nmae] = eval_on_grid(P0, B0, r, cfg.Pc_base);
             rmsc = sqrt(r.J / numel(Bs));               % numel(Bs) = 3·N_c·6（純量項數）
@@ -190,26 +261,41 @@ function S = build_S(l_hat, Pc, P)
 end
 
 % ============================================================================
-function mk(tag, v1, v2, ylab, figdir, R_um, v0)
+function mk(tag, v1, v2, ylab, figdir, R_um, v0, SUF)
 % 一張圖：橫軸 R [um]（線性），single 藍 / eighteen 紅。
 %   v0（選填）：**R=0 的起始值**（使用者指定曲線自 0 起）。給了就在最前面補一個
 %     (0, v0) 錨點，橫軸自 0 起；ell 用擬合初值 500、其餘量用 0。
     if nargin < 7, v0 = []; end
+    if nargin < 8 || isempty(SUF), SUF = ''; end
     if ~isempty(v0)
         R_um = [0, R_um(:).'];   v1 = [v0, v1(:).'];   v2 = [v0, v2(:).'];
     end
-    FS = 36;   LW = 3.0;   MS = 10;
+    % [MODIFIED 2026-09-02 使用者拍板的新繪圖規則，見 .claude/rules/figure-style.md]
+    %   規則1 刻度數字 = 60（原本 FS 同時餵刻度與軸標題，這裡拆成 FS / FSLAB）；
+    %   規則2 圖例 = 45 且圖例線段樣本與資料線一併加粗；規則3 框線加粗；規則6 畫布等邊。
+    %   軸標題 FSLAB 使用者未指定 -> 沿用本腳本原值 36，不自行編造。
+    %   LW / MS 依刻度 36->60（x1.67）同量級放大，與 axsh_gain / axsh_kfro 取同一組值。
+    FS = 60;   FSLAB = 36;   FSLEG = 45;   LW = 5.0;   MS = 12;   LWBOX = 5.0;
     c1 = [0.05 0.10 0.95];   c2 = [0.85 0.10 0.10];
-    fig = figure('Color','w','Position',[100 100 1120 820]);
+    % 畫布等邊且以英吋給（不用像素：超過螢幕時 MATLAB 會靜默縮小視窗、比例跑掉）。
+    CANV = 14.5;                                   % 畫布邊長 [in]，與兩支 axsh 同值
+    fig = figure('Color','w','Units','inches','Position',[0.5 0.5 CANV CANV]);
     ax  = axes(fig);   hold(ax,'on');
 
-    h1 = plot(ax, R_um, v1, '-o', 'Color',c1, 'LineWidth',LW, 'MarkerSize',MS, ...
+    % [MODIFIED 2026-08-27] R=20 is NaN (its full grid holds only 2 points) and that NaN
+    %   broke the line between the R=0 anchor and R=40. Drop non-finite entries per
+    %   series so the curve is continuous; the surviving points keep their x positions.
+    R_um = R_um(:).';   v1 = v1(:).';   v2 = v2(:).';
+    k1 = isfinite(v1);   k2 = isfinite(v2);
+    h1 = plot(ax, R_um(k1), v1(k1), '-o', 'Color',c1, 'LineWidth',LW, 'MarkerSize',MS, ...
               'MarkerFaceColor',c1, 'Clipping','off');
-    h2 = plot(ax, R_um, v2, '-s', 'Color',c2, 'LineWidth',LW, 'MarkerSize',MS, ...
+    h2 = plot(ax, R_um(k2), v2(k2), '-s', 'Color',c2, 'LineWidth',LW, 'MarkerSize',MS, ...
               'MarkerFaceColor','w', 'Clipping','off');
 
     box(ax,'on');  grid(ax,'off');
-    set(ax,'FontSize',FS,'FontWeight','bold','LineWidth',2.5,'TickLength',[.02 .02]);
+    % [MODIFIED 2026-09-02 使用者指定] TickDir='out'：刻度線朝外。
+    set(ax,'FontSize',FS,'FontWeight','bold','LineWidth',LWBOX, ...
+           'TickLength',[.02 .02],'TickDir','out');
     ax.Toolbar.Visible = 'off';
 
     XL = [min(R_um) max(R_um)];   xlim(ax, XL);
@@ -218,20 +304,29 @@ function mk(tag, v1, v2, ylab, figdir, R_um, v0)
     else
         set(ax,'XTick',100:100:400);                     % 自 0 起：整數刻度，端點 0/500 以 text 標
     end
-    [YL, YT] = axlim_auto(min([v1 v2]), max([v1 v2]), [3 5]);
+    % [MODIFIED 2026-09-02 規則 4] 縱軸**起點與終點都不標**。原本用 axlim_auto，當 lo=0 時
+    %   它會產生從 0 起算的刻度組 -> 0 被標出來（實測兩張圖的 y 都標了 0）。改用與
+    %   axsh_kfro 相同的 ylim_from_zero：把 [0,T] 平分 n+1 段、刻度 = (1:n)*s，首末不進 YTick。
+    [YL, YT] = ylim_from_zero(max([v1 v2]));
     ylim(ax, YL);   set(ax,'YTick',YT);
+    fprintf('  縱軸 ylim=[%g %g]  YTick=%s  (%d 根，填充 %.0f%%)\n', ...
+            YL(1), YL(2), mat2str(YT), numel(YT), 100*max([v1 v2])/YL(2));
 
     yoff = YL(1) - 0.022*diff(YL);
     for xv = XL
         text(ax, xv, yoff, sprintf('%g', xv), 'HorizontalAlignment','center', ...
              'VerticalAlignment','top', 'FontSize',FS, 'FontWeight','bold', 'Clipping','off');
     end
-    xlabel(ax, '$\mathbf{R\;(micro\;meter)}$', 'Interpreter','latex', 'FontSize',FS);
-    ylabel(ax, ylab, 'Interpreter','latex', 'FontSize',FS);
+    xlabel(ax, '$\mathbf{R\;(micro\;meter)}$', 'Interpreter','latex', 'FontSize',FSLAB);
+    ylabel(ax, ylab, 'Interpreter','latex', 'FontSize',FSLAB);
 
     lg = legend(ax, [h1 h2], {'Single parameter', 'Eighteen parameters'}, ...
                 'Interpreter','tex', 'Location','northoutside', 'NumColumns',2);
-    lg.FontSize = 24;  lg.FontWeight = 'bold';  lg.Box = 'on';  lg.EdgeColor = 'k';  lg.LineWidth = 2.5;
+    lg.FontSize = FSLEG;  lg.FontWeight = 'bold';
+    lg.Box = 'on';  lg.EdgeColor = 'k';  lg.LineWidth = LWBOX;
+    % [FIXED 2026-09-02] ItemTokenSize（圖例 icon 區寬）預設固定 30 pt、不隨 FontSize 放大，
+    %   字級 45 pt 下 marker 會貼到圖例框線上。與 axsh_gain / axsh_kfro 取同值。
+    lg.ItemTokenSize = [55 25];
     hold(ax,'off');
 
     drawnow;
@@ -242,46 +337,69 @@ function mk(tag, v1, v2, ylab, figdir, R_um, v0)
     if lgw < 0.70*axp(3)
         set(lg, 'Position', [axp(1) + (axp(3)-lgw)/2, newTop + GAPN, lgw, lgh]);
     else
-        set(lg, 'Position', [axp(1), newTop + GAPN, axp(3), lgh]);
+        % [FIXED 2026-09-02] 給圖例自然寬度並夾住右緣。原本把寬度設成 axp(3)，但 MATLAB
+        %   不會把 legend 縮到比內容窄，只會對稱置中 -> 圖例比座標框寬時兩側一起溢出畫布。
+        lgx = max(0.015, min(axp(1), 1 - 0.015 - lgw));
+        set(lg, 'Position', [lgx, newTop + GAPN, lgw, lgh]);
     end
 
-    out = fullfile(figdir, sprintf('%s_vs_R_conv_maxwell.png', tag));
-    exportgraphics(fig, out, 'Resolution', 200);
+    % [MODIFIED 2026-08-28] '_axsh' is stripped like '_fullref': the sampler is which
+    %   ladder produced N_c, not a different figure -- the new run overwrites the old one.
+    out = fullfile(figdir, sprintf('%s_vs_R_conv_maxwell%s.png', ...
+                                   tag, strrep(strrep(SUF,'_fullref',''),'_axsh','')));
+    % [MODIFIED 2026-09-02 規則 6] print 取代 exportgraphics：後者會裁掉畫布四周白邊，
+    %   正方形畫布匯出後就不是正方形（實測長寬比 0.96 / 1.11）。
+    set(fig, 'PaperUnits','inches', 'PaperPosition',[0 0 CANV CANV], 'PaperSize',[CANV CANV]);
+    print(fig, out, '-dpng', '-r200');             % 14.5 in x 200 dpi = 2900 px 見方
     fprintf('wrote %s\n', out);
 end
 
 % ============================================================================
-function [lim, tk] = axlim_auto(lo, hi, nlist)
-% 奇數個等距 tick、兩端留白 = tick 間距（house style：各腳本自帶一份）。
-    cand = [1 2 2.5 3 4 5 10];
-    mid  = (lo+hi)/2;   rng_ = max(hi-lo, realmin);
-    best = {};   bestSpan = inf;
-    for n = nlist
-        k0 = floor(log10(rng_/(n+1)));
-        for k = k0:(k0+4)
-            hit = false;
-            for c = cand
-                s   = c*10^k;
-                ctr = round(mid/s)*s;
-                T = { ctr + (-(n-1)/2 : (n-1)/2)*s };
-                if lo >= 0 && lo < s, T = [{(0:n-1)*s}, T]; end %#ok<AGROW>
-                for it = 1:numel(T)
-                    t   = T{it};
-                    L_  = [t(1)-s, t(end)+s];
-                    clr = 0.15*s;
-                    if lo >= L_(1)+clr && hi <= L_(2)-clr
-                        if (n+1)*s < bestSpan, bestSpan = (n+1)*s;  best = {L_, t}; end
-                        hit = true;  break;
-                    end
-                end
-                if hit, break; end
-            end
-            if hit, break; end
+function [yl, tk] = ylim_from_zero(maxv)
+% [REPLACED 2026-09-02] 取代原本的 axlim_auto —— 那支在 lo=0 時會產生「從 0 起算」的
+%   刻度組，於是縱軸起點 0 被標出來，違反規則 4（縱軸起點與終點都不標）。
+%   本函式與 axsh_kfro.m 的同名 local 完全相同（兩處刻意保持一致）：
+%   自 0 起，把 [0, T] 平分 n+1 段，刻度 = (1:n)*s，起點與終點都不進 tk。
+%   [MODIFIED 2026-09-02 使用者指定] n 由 3 改 **4**（與 axsh_gain 的 gain 那組一致）。
+%   ⚠ 4 是偶數、與規則 5「奇數個 tick」相衝突 —— 這是使用者對本組圖的明確指示，
+%     跟水平軸的整數刻度例外並列，日後規則正式定案時要一起寫進去。
+%   s 取 0.1 的倍數，在 [smin, 1.15*smin] 窗口內挑最漂亮者
+%   （整數 > 0.5 的倍數 > 0.2 的倍數 > 其餘，同分取最小），確保刻度是整數或一位小數。
+    n = 4;
+    smin = 1.08*maxv/(n+1);
+    k0 = max(1, ceil(smin/0.1 - 1e-9));
+    k1 = max(k0, ceil(1.15*smin/0.1));
+    best = k0;   bs = -1;
+    for k = k0:k1
+        if     mod(k,10) == 0, sc = 3;      % 整數
+        elseif mod(k, 5) == 0, sc = 2;      % 0.5 的倍數
+        elseif mod(k, 2) == 0, sc = 1;      % 0.2 的倍數
+        else,                  sc = 0;
         end
+        if sc > bs, bs = sc;   best = k; end
     end
-    if isempty(best)
-        n = nlist(1);  s = rng_/(n+1);
-        t = mid + (-(n-1)/2 : (n-1)/2)*s;   best = {[t(1)-s, t(end)+s], t};
+    pick = best*0.1;
+    tk = round((1:n)*pick*10)/10;   yl = [0, (n+1)*pick];
+end
+
+% ============================================================================
+function [P, Bs] = design_by_npts(KIND, SPEC, nc, R, o, cfg)
+% [ADDED 2026-08-27] Recover a converged design from the mixed ladder by POINT COUNT.
+%   The new criterion sweeps a ladder mixing four samplers (ax / rg / gf / eh); a design
+%   is no longer an (N_r,N_phi,N_theta) triple, and the cache keeps only the count, so we
+%   rebuild each rung and take the first whose point count matches.
+    P = [];  Bs = [];
+    for q = 1:numel(KIND)
+        switch KIND{q}
+            case 'eh',  Pq = sample_equal_h(R, SPEC{q}, struct('quiet',true));
+            case 'rg',  Pq = sample_rings(  R, SPEC{q}, struct('quiet',true));
+            case 'ax',  Pq = sample_axes4(R, cfg.R_act, ...
+                                 struct('quiet',true,'naxes',SPEC{q},'plus',true));
+            % [REMOVED 2026-09-02] case 'gf'（等測度球格）已隨等測度取樣法一併廢除。
+            otherwise,  continue;
+        end
+        if isempty(Pq) || size(Pq,1) ~= nc, continue; end
+        try,  evalc('[Pk,Bk] = conv_design_ws(Pq, R, o);');  catch, continue;  end
+        if size(Pk,1) == nc,  P = Pk;  Bs = Bk;  return;  end
     end
-    lim = best{1};   tk = best{2};
 end

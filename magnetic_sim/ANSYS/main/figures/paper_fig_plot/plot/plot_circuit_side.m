@@ -1,4 +1,4 @@
-function plot_circuit_side(USE_BIAS, WITH_DIST, CHARGE_SRC, DUAL, PAIR)
+function plot_circuit_side(USE_BIAS, WITH_DIST, CHARGE_SRC, DUAL, PAIR, MODEL, VARIANT)
 % plot_circuit_side -- long2016 半切六極「對極側視合併圖」(ρ-z 平面)+ 電荷位置
 %   [MODIFIED 2026-08-05] 一般化到三組對極：PAIR=1→P1|P2、2→P3|P4、3→P5|P6（預設 1，行為同舊版）。
 %   ⚠ 只有 P1/P2 落在 y=0 平面；P3/P4 與 P5/P6 的側視面是「含該對極軸的垂直面」，
@@ -26,6 +26,19 @@ function plot_circuit_side(USE_BIAS, WITH_DIST, CHARGE_SRC, DUAL, PAIR)
     if nargin < 3, CHARGE_SRC = 'apdl'; end
     if nargin < 4, DUAL = false; end
     if nargin < 5, PAIR = 1; end
+    % [ADDED 2026-08-28] MODEL/VARIANT：把本圖一般化到 zhi_peng 平板六極。
+    %   MODEL='long2016_hexapole_halfcut'（預設）→ 行為與先前**逐字相同**。
+    %   MODEL='zhi_peng' → 場改讀 Maxwell .fld（y=0 切面 + jittered-grid，見 load_panel_mx）、
+    %     磁極輪廓改平板矩形、磁荷改讀 zhi_peng 的 axes-shells@R150 校正。
+    if nargin < 6 || isempty(MODEL),   MODEL   = 'long2016_hexapole_halfcut'; end
+    if nargin < 7 || isempty(VARIANT), VARIANT = ''; end
+    ISZHI = strcmp(MODEL,'zhi_peng');
+    if ISZHI
+        if isempty(VARIANT), VARIANT = 'maxwell_split'; end
+        CHARGE_SRC = 'maxwell';                 % 志鵬只有 Maxwell 校正
+        assert(PAIR == 1, ['zhi_peng 目前只支援 PAIR=1（P1-P2）：只有這對的子午面 y=0 ' ...
+                           '剛好是 .fld 的格點平面，其餘兩對要 3-D 內插才切得出來。']);
+    end
     % [ADDED] DUAL=true：一張圖同時畫「有 e(bias,粉)」+「沒 e(fix,深藍)」電荷 + x_a 虛線軸、視野含 WP 中心、無文字標籤。
     % [ADDED] CHARGE_SRC 只換「電荷位置(粉紅點)」的來源校正 .mat:'apdl' | 'maxwell'。
     %   ⚠ **場(箭頭/輪廓/colorbar)一律用 APDL 的 graded .dat,不隨 CHARGE_SRC 改**——
@@ -34,12 +47,18 @@ function plot_circuit_side(USE_BIAS, WITH_DIST, CHARGE_SRC, DUAL, PAIR)
     here   = fileparts(fileparts(mfilename('fullpath')));
     figdir = fullfile(fileparts(here), 'paper_fig', 'Section2_E');
     if ~exist(figdir,'dir'); mkdir(figdir); end
-    CAL = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';   % 場來源固定 APDL
+    CAL = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Flux\APDL\Calibration_using_FEM_modeling';   % 場來源固定 APDL
     addpath(fullfile(CAL,'function'));  addpath(fullfile(CAL,'common_path'));
     % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live 樹。
-    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Flux\APDL\Calibration_using_FEM_modeling';
     addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
     c = model_config('long2016_hexapole_halfcut','tip40um');
+    if ISZHI
+        MXCAL = fullfile(fileparts(fileparts(here)),'matlab','Flux','Maxwell');
+        addpath(fullfile(MXCAL,'function'), fullfile(MXCAL,'utils'), fullfile(MXCAL,'common_path'));
+        addpath(fullfile(fileparts(fileparts(here)),'temp_code','scripts'));   % axsh_vs_R（sample_axes_shells 已移入 Maxwell/function）
+        c = model_config('zhi_peng','R500');
+    end
     FS = 30;
     bstr = ''; if USE_BIAS, bstr = '_bias'; end
     cstr = ''; if strcmpi(CHARGE_SRC,'maxwell'), cstr = '_maxwell'; end   % [ADDED] 電荷來源後綴
@@ -55,12 +74,27 @@ function plot_circuit_side(USE_BIAS, WITH_DIST, CHARGE_SRC, DUAL, PAIR)
 
     % [MODIFIED 2026-08-03] 視野模式三選一：base / dist(含 WP 中心) / dual(DUAL 專用，見 win())
     MODE = 'base';  if WITH_DIST, MODE = 'dist'; end;  if DUAL, MODE = 'dual'; end
+    % [ADDED 2026-08-28 使用者指定] 志鵬的雙電荷圖改用 'dual_zhi' 視窗：**兩個 panel 共用
+    %   同一個 z 軸、且以原點置中** → 上極 P2(左) 的板落在原點上方、下極 P1(右) 落在下方，
+    %   一眼看得出誰上誰下。長飛的 'dual' 視窗維持逐字不變。
+    if ISZHI && DUAL, MODE = 'dual_zhi'; end
+    if ISZHI
+        S1 = load_panel_mx(pl, 1, phi, c, MODE, VARIANT, here);        % 右 panel = 下極(ρ>0)
+        S2 = load_panel_mx(pu, 2, phi, c, MODE, VARIANT, here);        % 左 panel = 上極(ρ<0)
+        [S1.qcx,S1.qcz,S1.qcr_um] = deal(0,0,0);   [S2.qcx,S2.qcz,S2.qcr_um] = deal(0,0,0);
+    else
     S1 = load_panel(pl, 1, phi, USE_BIAS, c, CAL, MODE, CHARGE_SRC);   % 右 panel = 下極(ρ>0)
     S2 = load_panel(pu, 2, phi, USE_BIAS, c, CAL, MODE, CHARGE_SRC);   % 左 panel = 上極(ρ<0)
+    end
     if DUAL
         if ~WITH_DIST                                % 舊的雙電荷圖：同時算 有e(bias)+沒e(fix)
+            if ISZHI
+                qb1=charge_zhi(pl,true ,c,VARIANT,here); qf1=charge_zhi(pl,false,c,VARIANT,here);
+                qb2=charge_zhi(pu,true ,c,VARIANT,here); qf2=charge_zhi(pu,false,c,VARIANT,here);
+            else
             qb1=charge_xz(pl,true ,c,CAL,CHARGE_SRC); qf1=charge_xz(pl,false,c,CAL,CHARGE_SRC);
             qb2=charge_xz(pu,true ,c,CAL,CHARGE_SRC); qf2=charge_xz(pu,false,c,CAL,CHARGE_SRC);
+            end
             S1.qbx=rho_of(qb1,phi)*1e3; S1.qbz=qb1(3)*1e3; S1.qfx=rho_of(qf1,phi)*1e3; S1.qfz=qf1(3)*1e3;
             S2.qbx=rho_of(qb2,phi)*1e3; S2.qbz=qb2(3)*1e3; S2.qfx=rho_of(qf2,phi)*1e3; S2.qfz=qf2(3)*1e3;
         end
@@ -70,6 +104,10 @@ function plot_circuit_side(USE_BIAS, WITH_DIST, CHARGE_SRC, DUAL, PAIR)
         % 視野/刻度已由 win(role,'dual') 給定（兩 panel 等框寬 + 對稱留白，見該函式）。
     end
     CMAX = max(S1.CLIM, S2.CLIM);                       % 對內共用色階(同 flux 合併圖;弱場 panel 顯冷色)
+    % [ADDED 2026-08-28] 顏色軸依 figure-style「起點與終點都要有數值、等距、整數或 0.N」：
+    %   把上界往外擴到乾淨邊界再均分。⚠ 必須在 render 之前定案 —— quiver 是逐 bin 上色
+    %   （edges = linspace(0,CMAX,nb+1)），CMAX 與 colorbar 不同步就會色階錯位。
+    [CLIM2, CTK] = cbar_clean([0 CMAX], 6);   CMAX = CLIM2(2);
     if DUAL && WITH_DIST
         % [ADDED 2026-08-05] 三組對極圖是「同類比較圖」→ 六個 panel 共用同一 clim
         %   （figure-style.md：禁各圖各自 auto-scale，否則跨圖比較被誤導）。
@@ -91,6 +129,7 @@ function plot_circuit_side(USE_BIAS, WITH_DIST, CHARGE_SRC, DUAL, PAIR)
     ax1 = axes(fig,'Units','pixels');  render_panel_into(ax1, SL, CMAX, FS, WITH_DIST, DUAL);  ax1.Position=[x1 y0 w1 H];
     ax2 = axes(fig,'Units','pixels');  render_panel_into(ax2, SR, CMAX, FS, WITH_DIST, DUAL);  ax2.Position=[x2 y0 w2 H];
     cb  = colorbar(ax2,'Units','pixels');  cb.Position=[x2+w2+cbgap y0 cbw H];  ax2.Position=[x2 y0 w2 H];  style_cbar(cb, FS);
+    cb.Limits = CLIM2;   cb.Ticks = CTK;              % [ADDED 2026-08-28] 首尾都有數字、等距
     % [MODIFIED 2026-08-05] 舊的雙電荷圖仍不標；WITH_DIST 的對極圖要標 ‖b‖ (mT)（使用者要求）
     if DUAL && ~WITH_DIST, cb.Label.String = ''; end   % [2026-08-03] 舊 DUAL 圖只留色階+數字
 
@@ -100,6 +139,9 @@ function plot_circuit_side(USE_BIAS, WITH_DIST, CHARGE_SRC, DUAL, PAIR)
     csrc = lower(CHARGE_SRC);
     if DUAL && WITH_DIST      % [ADDED 2026-08-05] 只畫有 e 的電荷 + 總距離；檔名帶極對
         outp = fullfile(figdir, sprintf('circuit_side_dist_%s_charge-%s_%s.png', pstr, csrc, mstr));
+    elseif DUAL && ISZHI
+        vs = regexprep(VARIANT,'^maxwell_?','');   if ~isempty(vs), vs = ['_' vs]; end
+        outp = fullfile(figdir, sprintf('circuit_side_dualcharge_zhi%s.png', vs));
     elseif DUAL
         outp = fullfile(figdir, sprintf('circuit_side_dualcharge_charge-%s.png', csrc));
     elseif WITH_DIST
@@ -125,6 +167,10 @@ function [XL,ZL,XT,ZT] = win(role, MODE)
     switch role
         case 1
             switch MODE
+                case 'dual_zhi'                          % [ADDED 2026-08-28] 志鵬：z 軸與左 panel 共用、原點置中
+                    % 下極板 z ∈ [-0.289,-0.111]、single 磁荷 z = -0.430 → [-0.5,0.5] 全含。
+                    % 框 1.0 x 1.0（axis equal → 正方形，與左 panel 等寬等高）。
+                    XL=[-0.1 0.9]; ZL=[-0.5 0.5]; XT=[0 0.4 0.8];         ZT=[-0.4 0 0.4];
                 case 'dual'                              % P1 右邊內縮(1.2→0.9)：留白 0.1/0.1
                     % [MODIFIED 2026-08-03] z 刻度改含 0：-0.5/-0.25/0（3 個奇數、步長 0.25、上下留白 0.1/0.1）
                     XL=[-0.1 0.9]; ZL=[-0.6 0.1]; XT=[0 0.4 0.8];        ZT=[-0.5 -0.25 0];
@@ -135,8 +181,15 @@ function [XL,ZL,XT,ZT] = win(role, MODE)
             end
         case 2
             switch MODE
+                case 'dual_zhi'                          % [ADDED 2026-08-28] 志鵬：與右 panel 完全同一個 z 軸
+                    % 上極板 z ∈ [+0.111,+0.289] 落在原點**上方**、single 磁荷 z = +0.430。
+                    % ρ 視窗是右 panel 的鏡像 → 兩格等寬，版面左右對稱。
+                    XL=[-0.9 0.1]; ZL=[-0.5 0.5]; XT=[-0.8 -0.4 0];       ZT=[-0.4 0 0.4];
                 case 'dual'
-                    ZL=[-0.1 1];  XT=[-0.8 -0.4 0];  ZT=[0 0.5 1];
+                    % [MODIFIED 2026-08-28 使用者指定] z 刻度 [0 0.5 1] 的 `1` 正好壓在上框邊
+                    %   （ZL(2)=1）→ 依規則「N 根 tick 不含端點」只算 2 根、是偶數。
+                    %   改 [0 0.4 0.8]：3 根內部刻度（奇數）、保留 0、步長 0.4 與兩個 panel 的 ρ 軸一致。
+                    ZL=[-0.1 1];  XT=[-0.8 -0.4 0];  ZT=[0 0.4 0.8];
                     [X1,Z1] = win(1,'dual');             % 框寬對齊 P1：Δx = (Δx₁/Δz₁)·Δz
                     dx = diff(X1)/diff(Z1)*diff(ZL);
                     m  = (dx - (XT(end)-XT(1)))/2;       % 兩端留白對稱(≈0.386，接近 tick 步長 0.4)
@@ -239,7 +292,7 @@ function [qc, qcr_um] = charge_xz(pidx, USE_BIAS, c, CAL, CHARGE_SRC)
 %   CHARGE_SRC='apdl'|'maxwell' 只換讀哪一份 R150 校正 .mat——**場永遠是 APDL,不受此影響**。
 %   兩分支幾何(tip40um)完全相同 → d̂ / R_act / Pc_base 共用;e 的欄一律 paper 序 P1..P6。
     if strcmpi(CHARGE_SRC,'maxwell')
-        CDIR  = fullfile('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Maxwell', ...
+        CDIR  = fullfile('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Flux\Maxwell', ...
                          'data','long2016_hexapole_halfcut','.mat');
         cfile = @(tag) fullfile(CDIR, sprintf('calib_current_maxwell_R150_%s.mat', tag));
     else
@@ -426,4 +479,148 @@ end
 function r = rho_of(v, phi)
 % [ADDED 2026-08-05] 3-D 向量/座標 → 側視面內座標 ρ = x·cosφ + y·sinφ。
     r = v(1)*cos(phi) + v(2)*sin(phi);
+end
+
+% ============================================================================
+function S = load_panel_mx(pidx, role, phi, c, MODE, VARIANT, here)
+% [ADDED 2026-08-28] zhi_peng 平板六極的 panel 載入（Maxwell .fld 版）。
+%   與 long2016 的 load_panel 對應，但三處本質不同：
+%     ① 場源：Maxwell 規則格 .fld（不是 APDL graded 的真實節點）。
+%        y=0 恰好是 .fld 的格點平面（格從 -2 起、步距 0.02）→ 切面上的值是**匯出原值**。
+%     ② 取樣：**jittered grid + 2-D 內插**（figure-style 2026-08-04 拍板）。直接畫 0.02 mm
+%        格點會排成方格陣列「像人工的圖片」；純均勻隨機又會 Poisson clumping 出現團塊與空洞。
+%        故：視窗切格 → 每格恰一點 → 格內抖動 → 逐點內插。⚠ 這是內插（規則說此類圖不必在圖上標）。
+%     ③ 輪廓：平板 → 子午面截面是**矩形**。尖端 40 um 倒圓是垂直圓柱，y=0 平面切過它的軸，
+%        切出來是一條直的垂直邊（rho = R_norm_xy），不是圓弧鼻子。
+    [XL,ZL,XT,ZT] = win(role, MODE);
+    vs = regexprep(VARIANT,'^maxwell_?','');   if isempty(vs), vs = 'base'; end
+    cachef = fullfile(here,'data', sprintf('circuit_side_zhi_p%d_%s_%s.mat', pidx, MODE, vs));
+    if exist(cachef,'file')
+        L = load(cachef,'S');   S = L.S;
+        if isequal(S.XL,XL) && isequal(S.ZL,ZL)
+            S.XT = XT;   S.ZT = ZT;
+            fprintf('P%d loaded cache %s\n', pidx, cachef);   return;
+        end
+    end
+
+    % ---- 讀該極的 .fld（只需要一個檔）----
+    fdir = c.fld_dir;
+    if isfield(c,'fld_dir_variant') && isfield(c.fld_dir_variant,VARIANT) ...
+            && ~isempty(c.fld_dir_variant.(VARIANT))
+        fdir = c.fld_dir_variant.(VARIANT);
+    end
+    fn = c.fld_files_variant.(VARIANT){pidx};
+    d  = import_maxwell_fld(fullfile(fdir,fn));
+
+    % ---- y=0 切面 → 面內座標 (rho, z_wp)，單位 mm ----
+    onpl = abs(-d.x*sin(phi) + d.y*cos(phi)) < 1e-9;          % 落在側視面上的格點
+    rho  = (d.x*cos(phi) + d.y*sin(phi))*1e3;
+    zw   = (d.z - c.SPH_OFST)*1e3;
+    sg   = c.s_source(pidx);                                   % Maxwell 匯出已 all-source → +1
+    Br   =  sg*(d.bx*cos(phi) + d.by*sin(phi))*1e3;            % mT
+    Bzc  =  sg*d.bz*1e3;
+    Bmg  =  vecnorm([d.bx d.by d.bz],2,2)*1e3;
+
+    mrg  = 0.25;                                               % 源範圍比視窗多留一圈 [mm]
+    src  = onpl & rho>XL(1)-mrg & rho<XL(2)+mrg & zw>ZL(1)-mrg & zw<ZL(2)+mrg;
+    assert(nnz(src) > 100, 'y=0 切面在視窗內只有 %d 點', nnz(src));
+    Fr = scatteredInterpolant(rho(src), zw(src), Br(src),  'linear','none');
+    Fz = Fr;   Fz.Values = Bzc(src);
+    Fm = Fr;   Fm.Values = Bmg(src);
+
+    % ---- jittered grid（每格恰一點、格內抖動）----
+    %   NARR 取到「取樣間距 ~ 匯出格距 0.02 mm」為止：再密就是純內插的假細節。
+    NARR = 2000;
+    cs   = sqrt(diff(XL)*diff(ZL)/NARR);
+    nxg  = max(1,round(diff(XL)/cs));   nzg = max(1,round(diff(ZL)/cs));
+    hx   = diff(XL)/nxg;                hz  = diff(ZL)/nzg;
+    [gx,gz] = meshgrid(0:nxg-1, 0:nzg-1);
+    rng(0);   JIT = 0.9;
+    Xs = XL(1) + (gx(:)+0.5 + JIT*(rand(numel(gx),1)-0.5))*hx;
+    Zs = ZL(1) + (gz(:)+0.5 + JIT*(rand(numel(gz),1)-0.5))*hz;
+    Bx = Fr(Xs,Zs);   Bz = Fz(Xs,Zs);   Bm = Fm(Xs,Zs);
+    ok = isfinite(Bx) & isfinite(Bz) & isfinite(Bm) & Bm > 1e-4;
+    Xs=Xs(ok); Zs=Zs(ok); Bx=Bx(ok); Bz=Bz(ok); Bm=Bm(ok);
+    fprintf('P%d %s: y=0 源點 %d → jittered %dx%d 格、留 %d 個箭頭（格邊 %.4f mm）\n', ...
+            pidx, fn, nnz(src), nxg, nzg, numel(Xs), hx);
+
+    % ---- 箭頭長度（與 long2016 版同式：|B|^0.25 縮放）----
+    arrow_max = 0.020;   bmax = max(Bm);
+    bxz = hypot(Bx,Bz);  bxz(bxz==0) = 1e-12;
+    scl = arrow_max.*(Bm./bmax).^0.25./bxz;
+
+    % ---- 平板磁極的子午面輪廓（矩形）----
+    rt = (c.pole_tip_x(pidx)*cos(phi) + c.pole_tip_y(pidx)*sin(phi))*1e3;   % 極尖 rho [mm]（帶號）
+    zt = c.pole_tip_z_wp(pidx)*1e3;                                          % 極尖 z   [mm]
+    tb = c.POLE_TIP_BAND*1e3;                                                % 舌片厚 0.178 mm
+    if c.pole_is_lower(pidx), z1 = zt;  z2 = zt + tb;   else, z1 = zt - tb;  z2 = zt;  end
+    rout = rt + sign(rt)*3.5;                                                % 往外拉出視窗
+    pox = [rt rout rout rt];   poz = [z1 z1 z2 z2];
+
+    S.XL=XL; S.ZL=ZL; S.XT=XT; S.ZT=ZT;
+    S.Xs=Xs; S.Zs=Zs; S.Uq=Bx.*scl; S.Wq=Bz.*scl; S.Bm_mT=Bm;
+    S.pox=pox; S.poz=poz;   S.CLIM = ceil(max(S.Bm_mT)/50)*50;
+    save(cachef,'S');   fprintf('P%d saved cache %s\n', pidx, cachef);
+end
+
+% ============================================================================
+function [qc, qcr_um] = charge_zhi(pidx, USE_BIAS, c, VARIANT, here)
+% [ADDED 2026-08-28] zhi_peng 的磁荷位置（measure/WP frame, m）。
+%   校正 = **axes-shells @ R=150 um**（與 plot_svd_polar 同一套）：讀該半徑單獨掃出的收斂點
+%   N_c → sample_axes_shells 重建設計 → conv_design_ws 取場 → fitting。
+%   (l_hat, e) 存成小 .mat，之後純改樣式不必重跑擬合。
+    R_FIT = 150;
+    vs = regexprep(VARIANT,'^maxwell_?','');   if isempty(vs), vs = 'base'; end
+    cf = fullfile(here,'data', sprintf('circuit_side_zhi_charges_%s.mat', vs));
+    if exist(cf,'file')
+        Q = load(cf);
+    else
+        df = fullfile(here,'data', sprintf('full_vs_conv_vs_R_maxwell_axsh_zhi_R%d.mat', R_FIT));
+        assert(exist(df,'file')==2, ['缺 %s —— 先跑 ' ...
+               'axsh_vs_R(true,''zhi_peng'',''R500'',''%s'',%d,[],[],[],''_R%d'')'], df, VARIANT, R_FIT, R_FIT);
+        D = load(df);
+        assert(strcmp(D.VARIANT,VARIANT), '快取的 variant=%s 與要畫的 %s 不符', D.VARIANT, VARIANT);
+        o = struct('model','zhi_peng','geom','R500','variant',VARIANT, ...
+                   'frame','actuator','quiet',true);
+        Q = struct();
+        for m = 1:2
+            Nc = D.n_c1;   if m==2, Nc = D.n_c2;   end
+            P = [];  Bs = [];
+            for Nr = ceil((Nc-1)/6) + (0:2)                    % 濾鐵後點數不一定是 6*Nr+1
+                Pq = conv_design_ws(Nr, R_FIT*1e-6, struct('points_only',true,'R_act',c.R_act,'quiet',true));
+                evalc('[Pk,Bk] = conv_design_ws([], R_FIT*1e-6, setfield(o,''query'',Pq));');
+                if size(Pk,1)==Nc, P=Pk; Bs=Bk; break; end
+            end
+            assert(~isempty(P), 'axes-shells 找不到 N=%d 的階級', Nc);
+            [ee,ll] = fitting(P, Bs, c.Pc_base, 0.5e-3, m==2);
+            Q.(sprintf('l%d',m)) = ll;   Q.(sprintf('e%d',m)) = ee;   Q.(sprintf('N%d',m)) = Nc;
+        end
+        Q.VARIANT = VARIANT;   Q.R_FIT = R_FIT;
+        save(cf,'-struct','Q');   fprintf('saved %s\n', cf);
+    end
+    m  = 1;  if USE_BIAS, m = 2;  end
+    ll = Q.(sprintf('l%d',m));   ee = Q.(sprintf('e%d',m));
+    Pc = make_Pc(ee, c.Pc_base);
+    qc = ll * (c.R_act.' * Pc(:,pidx));
+    qcr_um = norm(qc)*1e6;
+    fprintf('  [zhi charge %s] N_c=%d  WP=(%.3f, %.3f) mm  l_hat=%.1f um  |r|=%.1f um\n', ...
+            ternary(USE_BIAS,'eighteen','single'), Q.(sprintf('N%d',m)), ...
+            qc(1)*1e3, qc(3)*1e3, ll*1e6, qcr_um);
+end
+
+% ============================================================================
+function [cl2, tk] = cbar_clean(cl, ntgt)
+% [ADDED 2026-08-28] 顏色軸乾淨邊界 + 等距刻度（figure-style「colorbar 首尾都要有數值」）。
+%   把 [lo hi] 往外擴到 nice 步長的整數倍，區間數取最接近 ntgt 者。
+    if nargin < 2 || isempty(ntgt), ntgt = 4; end
+    cand = [0.1 0.2 0.5 1 2 5 10 20 50 100 200 500 1000 2000];
+    bs = [];   bd = inf;
+    for s = cand
+        lo = floor(cl(1)/s + 1e-9)*s;   hi = ceil(cl(2)/s - 1e-9)*s;
+        n  = round((hi-lo)/s);
+        if n >= 3 && n <= 8 && abs(n-ntgt) < bd,  bd = abs(n-ntgt);  bs = [lo hi s];  end
+    end
+    if isempty(bs), bs = [cl(1) cl(2) (cl(2)-cl(1))/ntgt]; end
+    tk  = round((bs(1):bs(3):bs(2))/0.1)*0.1;      % 抹掉浮點尾巴
+    cl2 = [tk(1) tk(end)];                          % 用 tk 反推 clim，首尾才不會差一個 ulp 被丟掉
 end

@@ -228,8 +228,8 @@ end
 % ============================================================================
 function cfg = mw_cfg()
 % Maxwell 分支 config（rmpath APDL 分支防同名函式遮蔽）。
-    MW   = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Maxwell';
-    APDL = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    MW   = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Flux\Maxwell';
+    APDL = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Flux\APDL\Calibration_using_FEM_modeling';
     warning('off','MATLAB:rmpath:DirNotFound');
     rmpath(fullfile(APDL,'function'));  rmpath(fullfile(APDL,'common_path'));
     warning('on','MATLAB:rmpath:DirNotFound');
