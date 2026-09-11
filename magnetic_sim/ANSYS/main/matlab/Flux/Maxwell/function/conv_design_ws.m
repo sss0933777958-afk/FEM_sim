@@ -1,82 +1,84 @@
-function [P, Bstack, tri, info] = conv_design_ws(N_r, N_phi, N_theta, R, opt)
-% conv_design_ws -- 工作空間（球）：決定內插點位置 + 三線性內插取場
+function [P, Bstack, info] = conv_design_ws(Nr, R, opt)
+% conv_design_ws -- 工作空間（球）：決定取樣點位置 + 三線性內插取場
 % =========================================================================
 %   [SPLIT  2026-08-23 使用者拍板] 由 conv_design.m 拆出（另一支 = conv_design_sensor）。
-%     拆的理由：兩個項目的第 2、3 軸意義不同（球 = 極角/方位、圓柱 = 方位/軸向），
-%     用同一組參數名必然誤導。**兩支各自自足，不共用外部引擎檔。**
-%   [MERGE  2026-08-23 使用者拍板] **sphere_grid_sample.m 整支併進來**（該檔已刪除）：
-%     設計階梯 + 產點 + 濾鐵 + 規則格三線性內插 + frame 轉換，全部在本檔。
+%   [MERGE  2026-08-23 使用者拍板] sphere_grid_sample.m 整支併進來（該檔已刪除）。
+%   [REPLACE 2026-09-02 使用者拍板] **等測度球格（配比 1 : 3 : 3*pi）整套廢除**，
+%     產點方法換成**六軸殼層**（原 sample_axes_shells.m，該檔整支併進來並刪除）。
+%     使用者指示：「所有產點的功能請都在這個函式中」「介面改成通用一點的模式」。
+%     取場引擎（濾鐵 + 規則格三線性內插 + frame 轉換）**逐字不動**。
 %
-%   ⚠ **本函式只做兩件事：①決定內插點位置 ②三線性內插取場。**
+%   ⚠ **本函式只做兩件事：①決定取樣點位置 ②三線性內插取場。**
 %     校正（fitting / solve_*）與收斂判斷**一律在 main.m**，迴圈也由 main.m 驅動：
 %
-%       [~,~,~,wi] = conv_design_ws(1,2,3, R, struct('ladder',150));   % 先取階梯表
-%       for q = 1:size(wi.ladder,1)
-%           t = wi.ladder(q,:);
-%           [P,Bs] = conv_design_ws(t(1),t(2),t(3), R, o);   % 產點 + 取場
-%           ... main 自己 fitting + solve_* ...              % 校正
-%           ... main 自己累積序列、判收斂，過了就 break ...   % 判斷
+%       [~,~,wi] = conv_design_ws([], R, struct('ladder',30));   % 先取階梯表
+%       for q = 1:numel(wi.ladder)
+%           [P,Bs] = conv_design_ws(wi.ladder(q), R, o);         % 產點 + 取場
+%           ... main 自己 fitting + solve_* ...                  % 校正
+%           ... main 自己累積序列、判收斂，過了就 break ...        % 判斷
 %       end
 %
-%   ⚠ 這是**引擎**（無對應圖），被 main.m 與 5 支繪圖腳本呼叫，勿當孤兒刪除。
+%   ⚠ 這是**引擎**（無對應圖），被 main.m 與多支繪圖腳本呼叫，勿當孤兒刪除。
 %
 %   ── 六步流程 ────────────────────────────────────────────────
-%     1. 決定三個整數     階梯 / 明給 / 由 N_target(或 c) 反解配比
-%     2. 建查詢點         三個等分公式 -> 座標，z 再 + SPH_OFST 成**全域座標**
-%     3. 濾鐵             filter_iron_nodes(x,y,z,cfg)，吃全域座標、零轉換
-%     4. 定位             fx=(x-x0)/h -> i=floor(fx), tx=fx-i；取 8 個角點
-%     5. 三線性內插       7 次 lerp（4 沿 x -> 2 沿 y -> 1 沿 z）-> B [T] -> x1e3 -> mT
-%     6. 最後轉換         平移 z - SPH_OFST，再旋轉 R_act -> actuator frame
+%     1. 決定設計       Nr（殼層數）／直接給點／由 N_target 反解
+%     2. 建查詢點       六軸 x Nr 層 + 中心 -> 轉 measure frame -> z + SPH_OFST
+%     3. 濾鐵           filter_iron_nodes(x,y,z,cfg)，吃全域座標、零轉換
+%     4. 定位           fx=(x-x0)/h -> i=floor(fx), tx=fx-i；取 8 個角點
+%     5. 三線性內插     7 次 lerp（4 沿 x -> 2 沿 y -> 1 沿 z）-> B [T] -> x1e3 -> mT
+%     6. 最後轉換       平移 z - SPH_OFST，再旋轉 cfg.R_act -> actuator frame
 %
-%   ── Step 1：設計階梯（決定「幾個點」）────────────────────────
-%     小格子的三個邊（半徑 r、緯度 phi 處）：
-%       徑向  Delta_r = R^3/(3 r^2 N_r)              （等體積殼 -> 正比 1/r^2）
-%       南北  r*Delta_phi = 2r/(N_phi*sin(phi))      （等分 cos phi -> 帶 1/sin）
-%       東西  r*sin(phi)*Delta_theta = 2*pi*r*sin(phi)/N_theta
-%     「南北 = 東西」取赤道 sin(phi)=1  =>  N_theta = pi*N_phi
-%     「徑向 = 南北」取體積中位半徑 (r/R)^3 = 1/2  =>  N_phi = 3*N_r
-%     配比 w = N_r : N_phi : N_theta = 1 : 3 : 3*pi ~ 1 : 3 : 9.42
-%     由 N_target 反解：N = 9*pi*N_r^3 => N_r = round((N_target/(9*pi))^(1/3))
-%     走階梯一步：對 t./w 最小的那一軸 +1。種子慣用 [1 2 3]。
-%     ⚠ 兩個基準（赤道、體積中位半徑）都是取捨：sin(phi) 與 1/r^2 讓格子不可能處處
-%       方正。極區方位過密、內殼徑向細長是先天限制 —— 但**密度仍完全均勻**。
-%     ⚠ N 正比於 N_r^3，階梯很粗（1824 -> 3525 -> 6156），實際 c 會偏離設定值。
-%     ⚠ 球版**無退化地板**（不像圓柱版有 N_theta>=3 / N_z>=2 的硬下限）。
+%   ── Step 1+2：六軸殼層（決定「點擺在哪」）────────────────────
+%     六個致動軸方向（ACTUATOR frame，順序同 Pc_base 的 P1..P6）：
+%         (+1,0,0) (-1,0,0)   <- u 軸，P1 / P2
+%         (0,+1,0) (0,-1,0)   <- v 軸，P3 / P4
+%         (0,0,+1) (0,0,-1)   <- w 軸，P5 / P6
+%     殼層半徑   r_k = (R/Nr)*k ,  k = 1 ... Nr      （最外層正好落在 r = R）
+%     點數       N = 6*Nr + 1                        （+1 是中心點）
+%         Nr = 1 ->  7     Nr = 3 -> 19     Nr = 10 ->  61
+%         Nr = 2 -> 13     Nr = 4 -> 25     Nr = 166 -> 997
 %
-%   ── Step 2：取樣位置（三維都取格心）──────────────────────────
-%     把 Jacobian 積起來、等分它的反導數，再反解：dV = r^2*sin(phi) dr dphi dtheta
-%       u_k = (k-0.5)/N_r      -> r_k     = R * u_k^(1/3)          等分 r^3
-%       w_j = (j-0.5)/N_phi    -> phi_j   = acos(1 - 2*w_j)        等分 cos(phi)
-%       v_i = (i-0.5)/N_theta  -> theta_i = 2*pi*v_i               等分 theta
-%     取格心（那個 -0.5）避開退化點（r=0、phi=0/pi）且無偏（把該層/該帶對半分）。
-%     ⚠ 中點必須取在**測度**上再反解，不可取半徑或角度的算術中點
-%       （最內層：u 中點 = 0.550R 對半分；r 算術中點 0.347R 只含該層 12.5% 體積）。
+%   ── 為什麼是這個佈局 ────────────────────────────────────────
+%     **每顆極在每一層都有自己的點，且 +/- 兩側對等。** 這是 4 點設計做不到的：
+%     只取兩根軸的 +/- 成對在數學上必然奇異（rank 5，未取樣那根軸的電荷對相對
+%     取樣平面鏡像對稱）；只取三根軸的 + 側雖然滿秩，卻永遠不取樣 P2/P4/P6 ->
+%     它們的電荷強度不可辨識、K_I_bar 失去物理結構。
 %
-%   ── 均勻性 ──────────────────────────────────────────────────
-%     OK 體積密度：每殼等體積 x 每殼點數相同(N_phi*N_theta) -> 常數
-%     OK 球面密度：每帶等面積 x 每帶點數相同(N_theta)       -> 常數
-%     NG 點距各向同性：(a) 極區方位擠壓 正比 sin(phi_j)
-%                      (b) 各殼共用同一組方向 -> 點串在 N_phi*N_theta 根輻條上
-%     ⚠ 不同 R 之間「點數相同 != 密度相同」：密度 = N/((4/3)pi R^3)。
+%     徑向鋪點也讓 l_hat 的槓桿最大：沿極軸移動正是「到該電荷的距離」變化最快的
+%     方向，而場的衰減是唯一攜帶長度尺度的東西，等於正面取樣它。（相對地，在中心
+%     點 S 完全與 l_hat 無關。）
+%
+%   ── 已知弱點 ────────────────────────────────────────────────
+%     所有點落在三條直線上，沒有離軸的角向覆蓋。電荷強度與 l_hat 會很乾淨，但 e
+%     裡**垂直於各極軸**的分量槓桿很小（把電荷側向移動對它自己軸上的場是二階
+%     效應）。預期 single 表現好，eighteen 有些分量會偏軟。
 %
 %   ── 用法 ────────────────────────────────────────────────────
-%     [~,~,~,i] = conv_design_ws(1,2,3, R, struct('ladder',150))   % 只出階梯表
-%     [P,Bs]    = conv_design_ws(3,8,22, 150e-6)                   % 明給三元組
-%     [P,Bs]    = conv_design_ws(1,2,3, R, struct('step',21))      % 階梯第 21 級
-%     [P,Bs]    = conv_design_ws([],[],[], R, struct('c',2))       % 由過取樣倍率反解
-%     [P,Bs]    = conv_design_ws([],[],[], [], struct('query',Q))  % 任意點取場
+%     [~,~,i]  = conv_design_ws([], R, struct('ladder',30))    % 只出階梯表
+%     [P,Bs]   = conv_design_ws(3, 150e-6)                     % Nr=3 -> 19 點
+%     [P,Bs]   = conv_design_ws(Pq, 150e-6, o)                 % 直接給點（任意點取場）
+%     [P,Bs]   = conv_design_ws([], R, struct('N_target',61))  % 由目標點數反解 Nr
 %
 %   輸入
-%     N_r,N_phi,N_theta : 設計三元組。opt.step 有給時改當**種子**用；
-%                         三個都給 [] 且有 opt.N_target/opt.c 時由配比反解。
-%     R                 : 取樣球半徑 [m]（query / ladder 模式外皆必給）
-%     opt               : 選項 struct（皆可省略）
-%       .ladder   M   **只**回 info.ladder（Mx3 階梯表），不產點（P/Bstack 空）
-%       .step     q   把三元組當種子，實際用階梯**第 q 級**的設計
-%       .N_target N   目標點數（三元組給 [] 時由配比反解；此時 c 被忽略）
-%       .c            過取樣倍率（預設 2）：N_target = c x 該球內空氣中的原始格點數
-%       .N_nodes      直接給該 R 的原始格點數（跳過讀 .fld 數點，仍用 c 算 target）
-%       .query    Np x 3 **measure frame** 座標，直接指定查詢點（跳過 Step 1-2）
+%     Nr     : **通用設計引數**，三種形式擇一
+%                純量正整數  Nr（殼層數）-> 六軸殼層，N = 6*Nr + 1
+%                Np x 3 矩陣 直接給查詢點（**measure frame** [m]），跳過 Step 1-2
+%                []          由 opt 決定（opt.ladder 只出表；opt.N_target 反解 Nr）
+%     R      : 取樣球半徑 [m]（直接給點時可省）
+%     opt    : 選項 struct（皆可省略）
+%       .ladder   M   **只**回 info.ladder（Mx1 的 Nr 階梯 = (1:M)'），不產點
+%       .N_target N   目標點數 -> Nr = max(1, round((N-1)/6))
+%       .center   T/F 是否含中心點（預設 true）
+%       .points_only T/F **只產點、不取場**（預設 false）。跳過 Step 3-6，Bstack 回空。
+%                 P 回 **measure frame**、info.P_act 回 actuator frame，與已退役的
+%                 sample_axes_shells 契約完全相同（那支的 16 個呼叫端靠這個模式遷移）。
+%                 ⚠ 同時給 opt.R_act 時**連 model_config 都不載入**（不需要 .fld）——
+%                   Force 那條線只要殼層幾何、不要場，讀 2 GB .fld 是純浪費。
+%       .R_act    3x3 **產點用**的致動軸基底（預設 cfg.R_act）
+%                 ⚠ 只影響「軸往哪擺」，**不影響 Step 6 的輸出 frame**（那一律用
+%                   cfg.R_act）。axsh_vs_R.m 的旋轉不變性測試就是餵一個轉過的
+%                   R_act 給這裡、模型端維持 cfg.R_act，兩者必須分開。
+%       .query    Np x 3  **相容別名**，等同把點放進 Nr（舊呼叫端用）
 %       .frame    'actuator'（預設）| 'measure'   輸出座標與 B 的 frame
 %       .drop_iron true/false  是否剔除落在鐵件內的點（預設 true）
 %       .model .geom .variant  資料路由（預設 long2016_hexapole_halfcut/tip40um）
@@ -87,47 +89,53 @@ function [P, Bstack, tri, info] = conv_design_ws(N_r, N_phi, N_theta, R, opt)
 %     P       Np x 3   取樣點座標 [m]（frame 依 opt.frame；'actuator' 時球心為原點）
 %     Bstack  3Np x 6  磁場 [mT]，逐點 [bx;by;bz] 堆疊、第 2 維 = 6 個激發（paper 序）
 %                      （已是 fitting / solve_* 要的形狀，main 拿了直接用）
-%     tri     1x3      本次實際用的設計（query 模式為 []）
-%     info    struct   .tri .npts_design .npts_kept .ladder .ratio .seed .step .R
-%                      .N_r .N_phi .N_theta .r_k .phi_j .theta_i .h .N_target
-%                      .N_nodes .c_set .c_actual .n_iron .n_outbox .keep .frame .B
+%     info    struct   .Nr .radii .center .npts_design .npts_kept .ladder .R
+%                      .n_iron .n_outbox .keep .N .frame .variant .B
 %                      （.B = Np x 3 x N_I 的原始形狀，需要時可直接取用）
 %
 %   ⚠ 回傳點數可能少於設計點數：落在鐵件內、或落在 .fld 格盒外的點會被剔除
 %     （用 info.keep 對回原本的產點順序）。R > 401 um 時磁極會伸進取樣球。
 %   ⚠ 磁場是**內插**值（匯出格距 20 um），非 FEM 節點原值。內插不增加資訊。
 % =========================================================================
-    if nargin < 4, R   = []; end
-    if nargin < 5 || isempty(opt), opt = struct(); end
+    if nargin < 1, Nr = []; end
+    if nargin < 2, R      = []; end
+    if nargin < 3 || isempty(opt), opt = struct(); end
     gv = @(f,d) getdef_(opt, f, d);
 
-    W    = [1, 3, 3*pi];                       % N_r : N_phi : N_theta（配比）
-    FL   = [1 1 1];                            % 球版無退化地板
-    STEP = gv('step',     []);
-    LADM = gv('ladder',   []);
-    QRY  = gv('query',    []);
-    NTGT = gv('N_target', []);
-    CVAL = gv('c',        2);
-    NNOD = gv('N_nodes',  []);
+    LADM  = gv('ladder',   []);
+    PONLY = logical(gv('points_only', false));
+    NTGT  = gv('N_target', []);
+    CENTER    = logical(gv('center', true));
     FRAME     = lower(gv('frame', 'actuator'));
     DROP_IRON = gv('drop_iron', true);
     QUIET     = logical(gv('quiet', true));
     assert(any(strcmp(FRAME,{'actuator','measure'})), 'opt.frame 必為 actuator | measure');
 
-    seed = [N_r N_phi N_theta];
-    if any(cellfun(@isempty, {N_r, N_phi, N_theta})), seed = [1 2 3]; end
-    validateattributes(seed, {'numeric'}, {'vector','numel',3,'positive','integer'}, ...
-                       'conv_design_ws', 'seed / 三元組');
-    seed = max(seed(:).', FL);
+    % ---- 拆解通用的 Nr 引數（純量 = 殼層數；矩陣 = 直接給點）----------------
+    QRY = gv('query', []);                     % 相容別名（舊呼叫端）
+    if ~isempty(Nr) && ~isscalar(Nr)
+        assert(size(Nr,2) == 3, 'conv_design_ws:Nr', ...
+               'Nr 必為純量殼層數，或 Np x 3 的查詢點（measure frame）');
+        QRY = Nr;   Nr = [];
+    elseif ~isempty(Nr)
+        validateattributes(Nr, {'numeric'}, {'scalar','positive','integer'}, ...
+                           'conv_design_ws', 'Nr');
+    end
 
     % ---- ladder 模式：只出階梯表、不產點 -----------------------------------
+    %   六軸殼層的階梯就是 Nr = 1,2,3,...（每個 Nr 都是一級，點數 6*Nr+1）。
     if ~isempty(LADM)
         validateattributes(LADM, {'numeric'}, {'scalar','positive','integer'});
-        P = [];   Bstack = [];   tri = [];
-        info = struct('tri',[], 'npts_design',[], 'npts_kept',[], ...
-                      'ladder',ladder_(W, seed, FL, LADM), 'ratio',W, 'seed',seed, ...
-                      'step',[], 'R',R, 'frame',FRAME);
+        P = [];   Bstack = [];
+        info = struct('Nr',[], 'radii',[], 'center',CENTER, 'npts_design',[], ...
+                      'npts_kept',[], 'ladder',(1:LADM).', 'R',R, 'frame',FRAME);
         return
+    end
+
+    % ---- points_only + 明給 R_act：完全不需要模型，直接產點後回傳 ----------
+    if PONLY && ~isempty(gv('R_act', []))
+        [P, info] = axes_shells_(Nr, R, gv('R_act',[]), CENTER, NTGT);
+        Bstack = [];   info.frame = 'measure';   return
     end
 
     solver_path();
@@ -137,58 +145,25 @@ function [P, Bstack, tri, info] = conv_design_ws(N_r, N_phi, N_theta, R, opt)
     cfg     = model_config(MODEL, GEOM);
     VARIANT = gv('variant', cfg.default_variant);
     RAWIN   = gv('raw', []);
+    RACT    = gv('R_act', cfg.R_act);           % **產點用**的基底（見檔頭警語）
 
-    info = struct('tri',[], 'npts_design',[], 'npts_kept',[], 'ladder',[], 'ratio',W, ...
-                  'seed',seed, 'step',STEP, 'R',R, 'frame',FRAME, 'variant',VARIANT, ...
-                  'N_r',[], 'N_phi',[], 'N_theta',[], 'r_k',[], 'phi_j',[], 'theta_i',[], ...
-                  'h',[], 'N_target',[], 'N_nodes',[], 'c_set',CVAL, 'c_actual',[], ...
+    info = struct('Nr',[], 'radii',[], 'center',CENTER, 'npts_design',[], ...
+                  'npts_kept',[], 'ladder',[], 'R',R, 'frame',FRAME, 'variant',VARIANT, ...
                   'n_iron',0, 'n_outbox',0, 'keep',[], 'N',[], 'B',[]);
 
-    %% ==== Step 1+2：決定三個整數 -> 建查詢點（直接建在全域座標）==========
-    LAD = [];   tri = [];
+    %% ==== Step 1+2：決定 Nr -> 建六軸殼層查詢點（直接建在全域座標）========
     if isempty(QRY)
-        assert(~isempty(R) && isscalar(R) && R > 0, ...
-               'conv_design_ws:noR', 'conv_design_ws 必須給取樣球半徑 R [m]');
-
-        if ~isempty(STEP)                                  % 階梯第 q 級
-            validateattributes(STEP, {'numeric'}, {'scalar','positive','integer'});
-            LAD = ladder_(W, seed, FL, STEP);
-            tri = LAD(STEP,:);
-        elseif ~any(cellfun(@isempty, {N_r, N_phi, N_theta}))
-            tri = seed;                                    % 明給三元組
-        else                                               % 由 N_target / c 反解配比
-            if isempty(NTGT)
-                if isempty(NNOD), NNOD = count_fld_nodes(cfg, VARIANT, R); end
-                NTGT = CVAL * NNOD;
-            end
-            assert(NTGT >= 27, 'N_target 太小（%g），至少 27 才配得出 (1,3,9)', NTGT);
-            s   = (NTGT / prod(W))^(1/3);
-            tri = max([round(s), round(W(2)*round(s)), round(W(3)*round(s))], FL);
+        [Pm, gi_] = axes_shells_(Nr, R, RACT, CENTER, NTGT);
+        if PONLY                                      % 只產點：跳過 Step 3-6
+            P = Pm;   Bstack = [];   info = gi_;   info.frame = 'measure';   return
         end
-        if isempty(NTGT), NTGT = prod(tri); end
-
-        % --- 三個 1D 座標（都取格心）+ 張成點雲 ---
-        nr = tri(1);   np_ = tri(2);   nt = tri(3);
-        u = ((1:nr)  - 0.5) / nr;     r_k     = R * u.^(1/3);     % 等分 r^3
-        w = ((1:np_) - 0.5) / np_;    phi_j   = acos(1 - 2*w);    % 等分 cos(phi)
-        v = ((1:nt)  - 0.5) / nt;     theta_i = 2*pi * v;         % 等分 theta
-
-        [K, J, I] = ndgrid(1:nr, 1:np_, 1:nt);           % k 最慢、i 最快 -> 同殼相鄰
-        rr = r_k(K(:));   pp = phi_j(J(:));   tt = theta_i(I(:));
-        x = rr(:) .* sin(pp(:)) .* cos(tt(:));           % **全域座標**
-        y = rr(:) .* sin(pp(:)) .* sin(tt(:));
-        z = rr(:) .* cos(pp(:)) + cfg.SPH_OFST;          % 球心放 z = SPH_OFST
-
-        Vol = (4/3)*pi*R^3;
-        info.tri = tri;   info.npts_design = prod(tri);   info.ladder = LAD;
-        info.N_r = nr;    info.N_phi = np_;   info.N_theta = nt;
-        info.r_k = r_k;   info.phi_j = phi_j;  info.theta_i = theta_i;
-        info.N_target = NTGT;   info.N_nodes = NNOD;   info.h = (Vol/numel(x))^(1/3);
-        if ~isempty(NNOD), info.c_actual = numel(x) / NNOD; end
+        x = Pm(:,1);   y = Pm(:,2);   z = Pm(:,3) + cfg.SPH_OFST;   % **全域座標**
+        info.Nr = gi_.Nr;   info.radii = gi_.radii;   info.npts_design = gi_.npts_design;
     else
-        % 驗證/通用介面：直接給 measure frame 的查詢點
-        assert(size(QRY,2) == 3, 'opt.query 必須是 Np x 3（measure frame [m]）');
+        % 通用介面：直接給 measure frame 的查詢點
+        assert(size(QRY,2) == 3, 'Nr / opt.query 必須是 Np x 3（measure frame [m]）');
         x = QRY(:,1);   y = QRY(:,2);   z = QRY(:,3) + cfg.SPH_OFST;
+        info.npts_design = size(QRY,1);
     end
     info.N = numel(x);
 
@@ -207,6 +182,7 @@ function [P, Bstack, tri, info] = conv_design_ws(N_r, N_phi, N_theta, R, opt)
     B = 1e3 * Bt;                                                % T -> mT
 
     %% ==== Step 6：平移 z - SPH_OFST，再旋轉 R_act ========================
+    %   ⚠ 這裡一律用 **cfg.R_act**（模型的 frame），不是 opt.R_act（產點用的基底）。
     x = x(keep);   y = y(keep);   z = z(keep) - cfg.SPH_OFST;    % (1) 平移
     if strcmp(FRAME,'actuator')                                  % (2) 旋轉
         Pr = (cfg.R_act * [x, y, z].').';
@@ -225,34 +201,66 @@ function [P, Bstack, tri, info] = conv_design_ws(N_r, N_phi, N_theta, R, opt)
 end
 
 % ============================================================================
-function LAD = ladder_(w, seed, fl, M)
-% 設計階梯：每步對 t./w 最小的那一軸 +1（並守住地板 fl）。
-    LAD = zeros(M,3);   t = max(seed, fl);
-    for q = 1:M
-        LAD(q,:) = t;
-        [~,j] = min(t ./ w);   t(j) = t(j) + 1;
-        t = max(t, fl);
+function [Pm, info] = axes_shells_(Nr, R, RACT, CENTER, NTGT)
+% 六軸殼層產點 —— 實作**逐行對應** Algorithm 1「Generate Interpolation Points」。
+%   Input  : N_a (= 本函式的 Nr，每根軸每個方向的等分數), R
+%   Output : p_a  (N_tot x 3)，N_tot = 1 + 6*N_a
+%
+%   演算法原文（行號與下面的程式一一對應）：
+%      1: d     <- R / N_a                       // division spacing
+%      2: N_tot <- 1 + 6*N_a                     // total number of points
+%      3: p_a   <- zeros(N_tot, 3)
+%      4: E     <- eye(3)                        // unit vectors of three axes
+%      5: cnt   <- 1;  p_a(cnt,:) <- [0,0,0]     // center point
+%      6: for j = 1 to 3 do
+%      7:     for s in {+1,-1} do                // +/- direction
+%      8:         for i = 1 to N_a do
+%      9:             cnt <- cnt + 1
+%     10:             p_a(cnt,:) <- s*i*d*E(j,:) // i-th point on axis j
+%     11:         end for
+%     12:     end for
+%     13: end for
+%     14: return p_a
+%
+%   ⚠ **列的順序**是「軸 j -> 正負 s -> 等分 i」（+x 全部、-x 全部、+y…），
+%     不是舊版的「逐層 -> 六個方向」。點集完全相同、擬合與順序無關，故數值不變
+%     （已實測 main.m 的 l_hat / g_I 逐位相同）。
+%
+%   本函式回 p_a 轉到 **measure frame** 的 Pm；info.P_act 保留 actuator frame 的 p_a。
+%   （原 sample_axes_shells.m，2026-09-02 整支併入本檔、該檔已刪除。）
+    assert(~isempty(R) && isscalar(R) && R > 0, ...
+           'conv_design_ws:noR', 'conv_design_ws 必須給取樣球半徑 R');
+    if isempty(Nr)
+        assert(~isempty(NTGT), 'conv_design_ws:noDesign', ...
+               'Nr 為空時必須給 opt.N_target（或 opt.ladder）');
+        Nr = max(1, round((NTGT - double(CENTER)) / 6));
     end
-end
 
-% ============================================================================
-function N_nodes = count_fld_nodes(cfg, variant, R)
-% 數該球內**空氣中**的 .fld 原始格點（座標 persistent 快取）。
-    persistent XYZ KEY
-    % key 加上 fld_dir：不同 model 的 variant 都叫 'maxwell'，只用 variant 當 key
-    % 會讓第二個 model 拿到第一個的格點（跨模型污染）。
-    ckey = [cfg.fld_dir '|' variant];
-    if isempty(KEY) || ~strcmp(KEY, ckey)
-        raw = extract_maxwell_data(cfg, 'all', variant);
-        XYZ = [raw.x, raw.y, raw.z];              % 全域座標 [m]
-        KEY = ckey;
-    end
-    r2  = XYZ(:,1).^2 + XYZ(:,2).^2 + (XYZ(:,3) - cfg.SPH_OFST).^2;
-    in  = r2 <= R^2;
-    air = filter_iron_nodes(XYZ(in,1), XYZ(in,2), XYZ(in,3), cfg);
-    N_nodes = nnz(air);
-    fprintf('  [nodes] R<=%.0f um 內原始格點 %d（球內 %d、扣鐵件 %d）\n', ...
-            R*1e6, N_nodes, nnz(in), nnz(in)-N_nodes);
+    Na   = Nr;                                      % 演算法的 N_a
+    d    = R / Na;                                  % 1: division spacing
+    Ntot = 1 + 6*Na;                                % 2: total number of points
+    pa   = zeros(Ntot, 3);                          % 3
+    E    = eye(3);                                  % 4: unit vectors of three axes
+    cnt  = 1;   pa(cnt,:) = [0, 0, 0];              % 5: center point
+    for j = 1:3                                     % 6
+        for s = [+1, -1]                            % 7: +/- direction
+            for i = 1:Na                            % 8
+                cnt = cnt + 1;                      % 9
+                pa(cnt,:) = s * i * d * E(j,:);     % 10: i-th point on axis j
+            end                                     % 11
+        end                                         % 12
+    end                                             % 13
+
+    % 選項（演算法沒有這一條）：CENTER=false 時把第 5 行的中心點拿掉。
+    if ~CENTER, pa(1,:) = []; end
+
+    % actuator -> measure：R_act 的**列**是 measure 座標下的致動軸單位向量，
+    %   故 P_meas = R_act' * P_act；以列向量寫就是 pa * R_act。
+    Pm = pa * RACT;                                 % 14: return p_a（轉到 measure frame）
+    info = struct('Nr',Na, 'R',R, 'h',d, 'radii',(1:Na)*d, 'center',CENTER, ...
+                  'npts_design',size(pa,1), 'npts',size(pa,1), 'P_act',pa, ...
+                  'npts_kept',size(pa,1), 'ladder',[], 'n_iron',0, 'n_outbox',0, ...
+                  'keep',true(size(pa,1),1), 'N',size(pa,1), 'B',[], 'frame','measure');
 end
 
 % ============================================================================
@@ -369,14 +377,10 @@ end
 
 % ============================================================================
 function report(info)
-    if ~isempty(info.N_r)
-        fprintf('  [grid] R=%.0f um：目標 %g 點 -> (N_r,N_phi,N_theta)=(%d,%d,%d)、產 %d 點\n', ...
-                info.R*1e6, info.N_target, info.N_r, info.N_phi, info.N_theta, info.N);
-        if ~isempty(info.c_actual)
-            fprintf('         c 設定 %.2f -> 實際 %.3f（偏差 %+.2f%%）；h = %.2f um（原始格距 20 um）\n', ...
-                    info.c_set, info.c_actual, (info.N/info.N_target-1)*100, info.h*1e6);
-        end
-        fprintf('         r_k [um] = %s\n', num2str(info.r_k*1e6, '%.1f '));
+    if ~isempty(info.Nr)
+        fprintf('  [axsh] R=%.0f um：Nr=%d -> 六軸 x %d 層%s，產 %d 點；r = %.1f ... %.1f um\n', ...
+                info.R*1e6, info.Nr, info.Nr, ternary_(info.center,' + 中心',''), ...
+                info.N, info.radii(1)*1e6, info.radii(end)*1e6);
     end
     fprintf('  [sample] %d 點 -> 保留 %d（鐵件 %d、盒外 %d）；frame=%s\n', ...
             info.N, info.npts_kept, info.n_iron, info.n_outbox, info.frame);
@@ -385,4 +389,9 @@ end
 % ============================================================================
 function v = getdef_(s, f, d)
     if isstruct(s) && isfield(s, f) && ~isempty(s.(f)), v = s.(f); else, v = d; end
+end
+
+% ============================================================================
+function v = ternary_(c, a, b)
+    if c, v = a; else, v = b; end
 end

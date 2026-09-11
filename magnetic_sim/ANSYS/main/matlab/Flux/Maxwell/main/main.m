@@ -19,6 +19,12 @@ GEOM     = 'tip40um';       % config 幾何變體
 VARIANT  = 'maxwell';       % 志鵬用 maxwell_split（default 'maxwell' 是它已被取代的舊匯出）
 DATASET  = 'all';
 BASE     = 'voltage';       % 'current' | 'voltage'
+% [ADDED 2026-09-04 使用者拍板] 電壓模型版本（只在 BASE='voltage' 生效；current 不看）：
+%   'full'  現行：G(:,j) 自由（36 線性未知）→ H_V = G·V⁺ 滿矩陣 → D̄ / ĝ_V
+%   'diag'  舊 Hall-sensor 模型（fix-ℓ）：b_ij = S_i·diag(V(:,j))·d，d 為 6×1 共用、閉式解、無疊代；
+%           H_V = diag(d)。吃的 (ℓ̂, e) 與 full 同一組（fitting 只看 WP 場）——
+%           即舊流程「帶 current 校正好的 ℓ̂、ê 算 d」。輸出檔名加 _diag，不覆蓋 full 版。
+V_MODEL  = 'full';          % 'full' | 'diag'
 USE_BIAS = true;           % e 開關：false=fix(single)、true=18-param(eighteen)
 R_select = 150e-6;          % 取點球半徑 [m]
 l0       = 0.5e-3;          % l_hat 初值 [m]
@@ -37,7 +43,8 @@ K22_SET  = [];
 %   R=150um 既有收斂設計：long2016 single (3,8,22)=528 / eighteen (2,4,10)=80；
 %   zhi_peng R500 maxwell_split single (1,3,8)=24 / eighteen (1,2,5)=10。
 %   輸出檔名自動加 _convN<點數>，不覆蓋全格點版。
-GRID_NRPT = [3 8 22];       % 528 點（重現 voltage_R150_N528_* 那兩份 PDF 的工作空間設計）
+% [REMOVED 2026-09-02 使用者拍板] GRID_NRPT（等測度球格三元組）整個廢除 ——
+%   等測度取樣法已從 conv_design_ws 移除，工作空間一律走六軸殼層。
 % [ADDED 2026-08-28 使用者指出 l_hat 對不上] 工作空間也可改用**新的取樣法**
 %   （sample_axes_shells：六根致動軸 x Nr 層等距殼 + 中心，N = 6*Nr+1）。
 %   非空時**凌駕 GRID_NRPT**；輸出檔名帶 _axshN<點數>，與 current 那邊的
@@ -46,15 +53,33 @@ GRID_NRPT = [3 8 22];       % 528 點（重現 voltage_R150_N528_* 那兩份 PDF
 %   [MOVED 2026-08-30 使用者拍板] sample_axes_shells.m 已從 temp_code/scripts/ 搬進
 %     function/（temp_code 那份已刪除）-> live pipeline 不再相依 temp_code，
 %     檔頂的 addpath(CAL,'function') 就吃得到，不需另外 addpath。
-WS_AXSH_NR = 4;             % [] = 用 GRID_NRPT；純量 = axes-shell 的層數 Nr
-% ---- 收斂判準（工作空間球）：後 KWIN 步「l_hat 與 g_I」變化率都 < TOL，且 K_I_bar 合物理
-%   ⚠ 判準序列固定用 solve_current 的 [l_hat, g_I]（**兩個 base 都是**），與 2026-08-23
-%     之前的 conv_design 同一把尺 —— 這樣既有記錄的 N_c 值才可比。voltage 的
-%     solve_voltage 在收斂之後才跑一次。
-CONV_SEED    = [1 2 3];     % 階梯種子
-CONV_TOL     = 0.005;       % 變化率門檻（0.5%）
-CONV_KWIN    = 10;          % 連續穩定步數
-CONV_NDMAX   = 150;         % 最多掃幾級
+% [MODIFIED 2026-09-02] 等測度廢除後，本旋鈕成為**唯一**的工作空間設計旋鈕，三態：
+%     'auto'   Nr 階梯 + 收斂判準（原 GRID_NRPT='auto' 的角色）
+%     []       全格點基準（不減量，評估點 = 取樣點）
+%     純量 Nr  固定設計，不迴圈（N = 6*Nr+1，濾鐵後可能更少）
+WS_AXSH_NR = 4;             % 'auto' | [] | Nr
+% ---- 收斂判準（工作空間球）：兩段式，l_hat 與 g_I 各判一次、取兩者較晚者
+%   ⚠ 判準序列固定用 solve_current 的 [l_hat, g_I]（**兩個 base 都是**）——
+%     voltage 的 solve_voltage 在收斂之後才跑一次。
+% [MODIFIED 2026-09-04 使用者指示] 判準由舊的**單段步進變化率**（fstab_all：連續 KWIN
+%   級變化率都 < CONV_TOL）換成 **兩段式**（judge）—— 後者才是定案 N_c 的出處
+%   （長飛 R150：single 25 / eighteen 13）。舊的單段尺對「單調漂移」是瞎的：六軸殼層
+%   在低階梯本來就逐級變化很小，0.5% 門檻連續 10 級輕鬆通過 -> 停在 N=7，但那時離
+%   穩態值其實還差一截。兩段式的第二段量的是**離穩態值的絕對距離**，才逼得住。
+%     ① 穩態值 v_s：連續 CONV_KS 級步進變化率 < CONV_TOL_S%，取窗首的值（滑動視窗）
+%     ② 收斂點   ：連續 CONV_KC 級落在 v_s*(1 +/- CONV_TOL_C%) 內，
+%                  **至多 CONV_KOUT 級可在帶外**，取窗首
+%   ⚠ CONV_KOUT=1 是 2026-08-29 使用者拍板：原本要求「KC 級全在帶內」，單一顆邊緣擾動
+%     就打斷視窗、把 N_c 推高（志鵬 V2 的 eighteen 在 N=19 只偏離 0.28% 就讓 N_c 由
+%     7 跳到 25，造成「eighteen 比 single 需要更多點」的反常）。KOUT=1 讓八個案例全部
+%     回到 eighteen <= single。曾評估過「取中位數」：八個案例全塌到 N=7，無鑑別力，已否決。
+% [REMOVED 2026-09-02] CONV_SEED：六軸殼層的階梯就是 Nr = 1,2,3,...，不需要種子。
+CONV_TOL_S   = 0.01;        % ① 穩態值：步進變化率門檻 [%]
+CONV_KS      = 20;          % ① 連續級數
+CONV_TOL_C   = 0.2;         % ② 收斂帶：離穩態值的相對距離 [%]
+CONV_KC      = 10;          % ② 連續級數
+CONV_KOUT    = 1;           % ② 視窗內允許落在帶外的級數上限（0 = 全部要在帶內）
+CONV_NDMAX   = 800;         % 安全後停（**非**設計上限）；判準至少要 CONV_KS+CONV_KC 級才成立
 CONV_KI_GATE = false;       % false = 放寬「K_I_bar 非對角全負」（六極不等強，如 zhi_peng）
 CONV_KI_REQ  = true;        % false = K_I_bar 完全不參與判準，只看 l_hat + g_I
 % 通用化旗標（'' → 由 cfg 提供預設；特例幾何自動吃自己的設定，不用手動改）
@@ -151,38 +176,30 @@ end
 %  [ADDED 2026-08-23 使用者拍板] conv_design_ws **只做「決定內插點位置 + 三線性取場」**；
 %  校正（fitting / solve_*）與判斷都在這裡。
 wsopt = struct('model',MODEL, 'geom',GEOM, 'variant',VARIANT, 'frame','actuator');
-AUTO  = ischar(GRID_NRPT) || isstring(GRID_NRPT);
+AUTO  = ischar(WS_AXSH_NR) || isstring(WS_AXSH_NR);
 if AUTO
-    assert(strcmpi(GRID_NRPT,'auto'), 'GRID_NRPT 必為 ''auto'' | [] | [N_r N_phi N_theta]');
-    [~,~,~,wi] = conv_design_ws(CONV_SEED(1), CONV_SEED(2), CONV_SEED(3), R_select, ...
-                                struct('ladder',CONV_NDMAX));
-    LADW = wi.ladder;
+    assert(strcmpi(WS_AXSH_NR,'auto'), 'WS_AXSH_NR 必為 ''auto'' | [] | Nr');
+    [~,~,wi] = conv_design_ws([], R_select, struct('ladder',CONV_NDMAX));
+    LADW = wi.ladder;                                       % Nr 階梯（Mx1）
 else
     LADW = [];                                              % 不迴圈，只跑一次
 end
 
-nq  = 1;   if AUTO, nq = size(LADW,1); end
-SER = nan(nq,2);   OKV = false(1,nq);   tri_ws = [];   ws_hit = ~AUTO;
+nq  = 1;   if AUTO, nq = numel(LADW); end
+SER = nan(nq,2);   OKV = false(1,nq);   Nr_ws = [];   ws_hit = ~AUTO;
 for q = 1:nq
-    % ② 產點 + 三線性取場
-    if ~isempty(WS_AXSH_NR)
-        Pq = sample_axes_shells(R_select, WS_AXSH_NR, cfg.R_act, struct('quiet',true));
-        oq = wsopt;   oq.query = Pq;   oq.quiet = true;
-        [P, Bstack] = conv_design_ws([], [], [], R_select, oq);
-        npts   = size(P,1);
-        tri_ws = [];
-        fprintf('[ws] axes-shell Nr=%d -> %d 點（濾鐵後）%s', WS_AXSH_NR, npts, newline);
-    elseif AUTO
-        tri_ws = LADW(q,:);
-        [P, Bstack, ~, gi] = conv_design_ws(tri_ws(1), tri_ws(2), tri_ws(3), R_select, wsopt);
+    % ② 產點 + 三線性取場（產點已全部在 conv_design_ws 內）
+    if AUTO
+        Nr_ws = LADW(q);
+        [P, Bstack, gi] = conv_design_ws(Nr_ws, R_select, wsopt);
         npts = gi.npts_kept;
-    elseif isempty(GRID_NRPT)
+    elseif isempty(WS_AXSH_NR)
         [P, Bstack, npts] = cfg.select_ball(ad, R_select);  % 全格點基準
     else
-        tri_ws = GRID_NRPT(:).';
-        [P, Bstack, ~, gi] = conv_design_ws(tri_ws(1), tri_ws(2), tri_ws(3), R_select, wsopt);
+        Nr_ws = WS_AXSH_NR;
+        [P, Bstack, gi] = conv_design_ws(Nr_ws, R_select, wsopt);
         npts = gi.npts_kept;
-        fprintf('[grid] 手動指定設計 (%d,%d,%d) → %d 點\n', tri_ws, npts);
+        fprintf('[ws] axes-shell Nr=%d -> %d 點（濾鐵後）%s', Nr_ws, npts, newline);
     end
 
     % ③ 校正（在 main）
@@ -190,18 +207,23 @@ for q = 1:nq
     [KI_bar, gI_hat, G, rm] = solve_current(l_hat, e, Pc_base, P, Bstack, F, K22_SET, P_ev, B_ev);
     if ~AUTO, break; end
 
-    % ④ 判收斂：l_hat 與 g_I 都穩 ∧ K_I_bar 合物理
+    % ④ 判收斂：l_hat 與 g_I 各自過兩段式判準（取較晚者）∧ K_I_bar 合物理
     SER(q,:) = [l_hat*1e6, gI_hat];
     od = KI_bar(~eye(6));   [~,am] = max(abs(KI_bar),[],2);
     OKV(q) = all(diag(KI_bar) > 0) && isequal(am(:).',1:6) && (~CONV_KI_GATE || all(od < 0));
-    is = fstab_all(SER(1:q,:), CONV_TOL, CONV_KWIN);
-    ik = 1;   if CONV_KI_REQ, ik = ftrue(OKV(1:q), CONV_KWIN); end
+    iE = judge(SER(1:q,1), CONV_TOL_S, CONV_KS, CONV_TOL_C, CONV_KC, CONV_KOUT);   % l_hat
+    iG = judge(SER(1:q,2), CONV_TOL_S, CONV_KS, CONV_TOL_C, CONV_KC, CONV_KOUT);   % g_I
+    % ⚠ 必須**兩個量都收斂**才算數，不可直接 max —— MATLAB 的 max() 會忽略 NaN
+    %   （max(1,NaN) = 1），只有 l_hat 收斂時會被誤判成整體收斂。實測長飛 R150 single：
+    %   q=30 時 iE=1 但 iG 仍為 NaN -> 誤停在 Nr=1（N=7）；iG 要到 q=43 才給 4（N=25）。
+    %   axsh_vs_R.m 是用 all(isfinite([...])) 明確擋掉這件事。
+    is = NaN;   if all(isfinite([iE iG])), is = max(iE, iG); end   % 兩量取較晚者
+    ik = 1;   if CONV_KI_REQ, ik = ftrue(OKV(1:q), CONV_KC); end
     if ~isnan(is) && ~isnan(ik)
-        tri_ws = LADW(max([is ik]), :);                     % 收斂點是**判準起點**那一級
-        fprintf('[ws] 收斂設計 (%d,%d,%d)、%d 點（掃了 %d 級）\n', ...
-                tri_ws, prod(tri_ws), q);
-        [P, Bstack, ~, gi] = conv_design_ws(tri_ws(1), tri_ws(2), tri_ws(3), R_select, wsopt);
+        Nr_ws = LADW(max([is ik]));                        % 收斂點是**判準起點**那一級
+        [P, Bstack, gi] = conv_design_ws(Nr_ws, R_select, wsopt);
         npts = gi.npts_kept;
+        fprintf('[ws] 收斂設計 Nr=%d、%d 點（掃了 %d 級）\n', Nr_ws, npts, q);
         [e, l_hat, J] = fitting(P, Bstack, Pc_base, l0, USE_BIAS);
         [KI_bar, gI_hat, G, rm] = solve_current(l_hat, e, Pc_base, P, Bstack, F, K22_SET, P_ev, B_ev);
         ws_hit = true;   break
@@ -213,7 +235,7 @@ end
 %   這兩條非 auto 的路從來沒被跑通過。改成只在真的沒收斂時才去索引 LADW。
 if ~ws_hit
     error('main:wsNotConverged', ...
-          'workspace：%d 級內未達判準（最後一級 (%d,%d,%d)）', CONV_NDMAX, LADW(end,:));
+          'workspace：%d 級內未達判準（最後一級 Nr=%d）', CONV_NDMAX, LADW(end));
 end
 
 %% ---- 共用結果紀錄（rec = 結果 + 設定，自描述）------------------------------
@@ -234,8 +256,13 @@ switch BASE
         % sensor 取樣參數一併記進 .mat（自描述）
         rec.sen_tri = sen_tri;  rec.sensor_r = sensor_r;  rec.axial_tol = axial_tol;
         rec.SEN_NXY = SEN_NXY;      % 中心面笛卡兒格設計（定值）
-        [D_bar, gV_hat, G, rm] = solve_voltage(l_hat, e, Pc_base, P, Bstack, V, K22_SET, P_ev, B_ev);
+        [D_bar, gV_hat, G, rm] = solve_voltage(l_hat, e, Pc_base, P, Bstack, V, K22_SET, P_ev, B_ev, V_MODEL);
         rec.D_bar = D_bar;  rec.gV_hat = gV_hat;  rec.G = G;  rec.V = V;
+        rec.V_MODEL = V_MODEL;                          % [ADDED 2026-09-04] 'full' | 'diag'
+        if strcmp(V_MODEL,'diag')
+            rec.d = rm.d;                               % 舊模型 6×1 每極常數（= diag(H_V)）
+            fprintf('[voltage:diag] d = [%s] mT/mV\n', sprintf('%.6g ', rm.d));
+        end
     otherwise
         error('BASE 必為 ''current'' | ''voltage''');
 end
@@ -259,16 +286,17 @@ else
 end
 % [ADDED 2026-08-13] 等測度網格取樣 → 檔名加 _convN<點數>，與全格點版並存
 %   [MODIFIED 2026-08-23] tri_ws 空 = 全格點模式（不加 tag）；'auto' 與手動指定都加。
-if ~isempty(WS_AXSH_NR)
+if ~isempty(Nr_ws)
     VAR_OUT        = sprintf('%s_axshN%d', VAR_OUT, npts);
     rec.VARIANT    = VAR_OUT;
-    rec.WS_AXSH_NR = WS_AXSH_NR;
+    rec.WS_AXSH_NR = Nr_ws;
     rec.sampler    = 'axes_shells';
-elseif ~isempty(tri_ws)
-    VAR_OUT       = sprintf('%s_convN%d', VAR_OUT, npts);
-    rec.VARIANT   = VAR_OUT;
-    rec.GRID_NRPT = tri_ws;
-    rec.conv_auto = AUTO;
+    rec.conv_auto  = AUTO;
+end
+% [ADDED 2026-09-04] 舊電壓模型（diag）→ 檔名加 _diag，與 full 版並存（資料載入仍用原 VARIANT）
+if strcmp(BASE,'voltage') && strcmp(V_MODEL,'diag')
+    VAR_OUT     = [VAR_OUT '_diag'];
+    rec.VARIANT = VAR_OUT;
 end
 
 %% ---- 存 .mat（自描述）------------------------------------------------------
@@ -301,13 +329,25 @@ function v = getdef(s, f, d)   % cfg 有欄位 f 且非空就用，否則預設 
     if isfield(s, f) && ~isempty(s.(f)), v = s.(f); else, v = d; end
 end
 
-function i0 = fstab_all(SER, tol, K)
-% 第一個 i，使其後連續 K 步「每一個序列」相對前一步的變化率都 < tol。
-    i0 = NaN;   if size(SER,1) < K+1, return; end
-    rel = abs(diff(SER,1,1)) ./ abs(SER(1:end-1,:));       % (n-1) x nser
-    mx  = max(rel, [], 2);                                  % 每步取最嚴的那個序列
-    for i = 1:numel(mx)-K+1
-        if all(mx(i:i+K-1) < tol), i0 = i;  return; end
+function i0 = judge(v, tolS, KS, tolC, KC, kout)
+% 兩段式收斂判準（與 temp_code/scripts/axsh_vs_R.m 的 judge 同一把尺；差別只在這裡回
+% **階梯索引**、那裡回點數 N —— 本檔的階梯是 Nr = 1,2,3,...，索引即 Nr）。
+%   ① 穩態值 vs：連續 KS 級步進變化率 < tolS%，取窗首的值（滑動視窗）
+%   ② 收斂點   ：連續 KC 級中**至多 kout 級**落在 vs*(1 +/- tolC%) 外，取窗首索引
+%   ⚠ tolS / tolC 皆為**百分比**（0.01 = 0.01%，不是 1%）。
+    if nargin < 6 || isempty(kout), kout = 0; end
+    i0 = NaN;   v = v(:);
+    if nnz(isfinite(v)) < KS + 1, return; end
+    ch = abs(diff(v)) ./ abs(v(1:end-1)) * 100;             % 逐級步進變化率 [%]
+    vs = NaN;
+    for i = 1:(numel(ch)-KS+1)
+        w = ch(i:i+KS-1);
+        if all(isfinite(w)) && all(w < tolS), vs = v(i+1);  break; end
+    end
+    if ~isfinite(vs), return; end
+    inb = abs(v - vs)/abs(vs)*100 <= tolC;                  % 是否落在穩態值 +/- tolC% 帶內
+    for i = 1:(numel(v)-KC+1)
+        if nnz(~inb(i:i+KC-1)) <= kout, i0 = i;  return; end
     end
 end
 
