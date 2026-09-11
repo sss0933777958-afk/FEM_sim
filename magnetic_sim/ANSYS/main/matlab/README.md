@@ -65,7 +65,6 @@ R_select=150e-6;          % 定案取樣半徑
 - **coil→paper map 是 per-model 不可互抄**（`pole-coil-numbering.md`）；驗證看 K̄_I 對角占優且全正。
 - 擬合電流必須 = FEM 激發電流 1 A（`fit-current-matches-sim.md`）。
 - 結構凍結：新增 / 改名 / 移動 / 刪除檔或夾**一律先問**（`calibration-shared-structure.md`）。
-- 畫圖先問風格選項、輸出實檔覆蓋迭代（`figure-style.md` / `figure-output.md`）。
 - 單位：ℓ̂ µm、場 mT、ĝ_I mT/A、ĝ_V mT/mV、V mV（`unit-reference.md`）。
 
 ## 相關
