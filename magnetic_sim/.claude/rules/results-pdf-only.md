@@ -8,7 +8,7 @@
 **2026-07-15 依模型分子夾**：`results/` 底下再分 **`single_param/`**（USE_BIAS=false、fix）與
 **`eighteen_param/`**（USE_BIAS=true、18-param bias）——`emit_*.m` 依 `USE_BIAS`/`fit_{fixl,bias}` 自動落對子夾。
 `results/` root 只留子夾 + README（no-mixed-files）；每子夾只放 `.pdf`。（`figures/` 另分
-`single_param`/`eighteen_param`/`shared`，見 `figure-output.md`。）
+`single_param`/`eighteen_param`/`shared`。）
 
 ## 🔒 檔名（Maxwell 分支，2026-08-17 使用者拍板縮短）
 

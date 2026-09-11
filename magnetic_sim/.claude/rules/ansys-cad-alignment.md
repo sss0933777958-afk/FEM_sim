@@ -154,8 +154,10 @@ per [[step-geom-extraction]]:
 - 斜率差 **4.43%**；從 Maxwell 場獨立量到 4.44%（對到小數第 2 位）。
 - **`mt_constants.m` 的 `POLE_R=3e-3 / POLE_CONE_LEN=15e-3`（11.310°）對兩層都不對**
   —— 用單一組參數套六根極會有 ±2~3% 的斜率誤差。
-- **`plot_surface_flux.m` 的 `geo_pole`（RT .04 / SLP .2028 / S_CONE 14.827）只對下極**，
+- **單一組錐體參數（RT .04 / SLP .2028 / S_CONE 14.827）只對下極**，
   Maxwell 分支若沿用同一組會系統性偏 0.05 mm。
+  （此數值原記於 `plot_surface_flux.m` 的 `geo_pole`；該腳本已於 2026-08-30 刪除，
+  數值保留在此處備查。）
 - ⚠ **錐頂要用「虛擬錐頂」**：錐面與 40 µm 尖端球相切，物理極尖是球的前緣 →
   `e = r_f/sinβ − r_f ≈ 0.16 mm`、`tanβ = R_base/(t_base + e)`、`R(s) = e·tanβ + s·tanβ`。
   用極尖點當錐頂會高估 **0.123°**。截距是 **+0.033**，**不是 0、也不是 r_f/cosβ=0.041**。

@@ -4,7 +4,7 @@
 
 > 🗂 **本檔 = 容器級 + `backup/` 樹適用。活躍工作區 `main/` 的權威完整規則在 `magnetic_sim/ANSYS/main/CLAUDE.md`**
 > （在 `main/` 或其子夾工作時自動載入、為準）。在 `backup/hexapole-long2016`、`backup/hung` 工作時 `main/CLAUDE.md`
-> **不會**載入 → 本檔的跨設計約束（Hexapole Constraints / Rules / Figure Production / Prohibitions / Notation / Commands）
+> **不會**載入 → 本檔的跨設計約束（Hexapole Constraints / Rules / Prohibitions / Notation / Commands）
 > **就是 backup/ 的規則來源，故保留**。⚠ 這些跨設計約束**與 `main/CLAUDE.md` 鏡像**，改一處要同步另一處。
 > 開新 session 做 FEM：主力活在 `main/` → **開在 `main/`**（吃到 main/CLAUDE.md + 本檔 + rules）；只碰 backup/ 才靠本檔。
 
@@ -101,15 +101,6 @@ These constraints apply to ALL hexapole designs in this repo. They are non-negot
 - Use dissertation notation (B, Phi, q, K_I, rho, R_a, g_I, etc.) in all discussion and code comments
 - Always refer to poles by paper name (P1-P6); mention APDL index only when editing APDL code
 
-## Figure Production
-- **Never generate figures without discussion first.** Before producing any figure:
-  1. **Content**: Discuss what to show — which data, axes, normalization, range
-  2. **Style**: Discuss visual details — font, title, legend, colors, line thickness
-  3. **Preview**: Use MATLAB MCP to render a draft, review together, iterate
-  4. **Finalize**: Only save to `figures/` after user confirmation
-- Apply consistent figure style across the project
-- **資料來源預設用真實模擬節點**：場圖一律直接畫 FEM 節點原值（節點實際位置 + 節點 Bx/By/Bz），**不要用 scatteredInterpolant / 規則格點內插，除非使用者明確要求內插**。因使用者要求而內插時，**必須在回覆/圖說明白標示「此圖為內插」**，絕不可把內插當 raw 呈現。可讀性需減量時，對節點做抽樣（每格挑最近 y=0 平面的節點）——那仍是節點原值、非內插。見 memory `plot-real-nodes`。
-
 ## Prohibitions
 - NEVER commit ANSYS output files (*.rst, *.db, *.full, etc.)
 - NEVER change geometry parameters without explicit user approval
@@ -121,7 +112,6 @@ These constraints apply to ALL hexapole designs in this repo. They are non-negot
 - NEVER 改 ANSYS 幾何尺寸或 mt_constants 前未先量對應 CAD（SolidWorks STEP/IGES）並比對；發現不一致**不可自己選一個值**，必須通報使用者由其拍板（per `magnetic_sim/.claude/rules/ansys-cad-alignment.md`）
 - NEVER change alpha (54.74 deg) or the R_norm_xy / R_norm_z formulas
 - NEVER produce a pole configuration that violates pair-axis orthogonality
-- NEVER 用 scatteredInterpolant / 格點內插畫場圖，**除非使用者明確要求內插**；也 NEVER 把內插圖當成 raw／節點原值呈現（預設一律真實模擬節點，per Figure Production）
 
 ## Notation Standard
 All symbols and terms follow Fei Long's 2016 dissertation. See the full glossary:

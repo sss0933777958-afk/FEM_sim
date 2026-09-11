@@ -21,13 +21,13 @@
 - `unit-reference.md` — 單位統一慣例（ℓ̂ µm／b mT／ĝ_I mT/A／V mV／R_a A/Wb／力 pN），source of truth = reference/Unit Reference Sheet PDF。
 - `short-names.md` — **檔名一律要短**（2026-08-24 使用者拍板，升格為全 repo 通則）：路徑講過的事檔名不再講一次、
   變體後綴 3–6 字元、只留會撞名的欄位、資料夾名同此；判準＝超過 ~25 字元就檢查重複。既有檔不強制回溯改名。
+- `figure-style.md` — **繪圖規則（2026-09-01 使用者拍板的全新規則，取代舊有全部繪圖規則；舊版 `figure-style.md`/`figure-output.md` 已刪除，最後一版在 commit `575e07e`）**：刻度數字 60／圖例 45（且圖例線段樣本與資料線一併加粗）／框線加粗／水平軸首末標數字而縱軸首末不標／兩軸奇數個等距 tick 且與端點等距／圖片實體尺寸等邊。含兩個實測的坑：**畫布字級 ≠ 印出字級**（「圖例框與座標框切齊」會讓圖例放大被畫布放大抵銷，實測 FSLEG 37→50 印出僅 10.3→10.6 pt）、**`exportgraphics` 裁白邊故正方形畫布匯出後不等邊**（要等邊須改 `print`＋明確 `PaperPosition`）；另附 IEEE 官方版式（單欄 3.5 in／跨欄 7.16 in／圖內字 8–10 pt／不建議小於欄寬）與出圖流程（輸出實檔原地覆蓋迭代、每輪必先 Read 自驗）。
+- `plot-scripts-pure.md` — **繪圖腳本只畫圖（2026-09-11 使用者拍板）**：主流程校正產資料、`utils/` 做後處理 compute、`plot/` 只准 load `.mat` → 取值 → 畫圖 → 存 `.png`；不准解系統 / 擬合 / 讀 `.fld`·`.dat` / 跑收斂迴圈 / 產生新 `.mat`。判準＝拿掉所有繪圖行後若還在算東西，那段就該搬去 `utils/<model>/`。理由：圖要能重畫而不重算（重算會靜默改掉圖的內容）、數字只能有一個出處。⚠ 已知不合規＝`Force/Maxwell/plot/long2016_hexapole_halfcut/` 五支在腳本內解 Φ 權重，待重構。
 - `no-backup-data.md` — **禁止使用 `backup/` 的資料與程式**（禁 `addpath(backup)`、禁讀其 `.m/.mat/.dat`）；模型設定一律走 live `model_config(...)`。起因＝`paper_fig_plot/` 有 12 支吃 `backup/.../mt_constants.m`，看不到 CAD 實測的真實錐體幾何。
 
 **（2026-07-06 由 `magnetic_sim/ANSYS/main/rules/` 移入本層，改為全域自動載入）**：
 - `matlab-output-layout.md` — MATLAB `.mat` 放產生它的程式旁 `data/`（`matlab/<model>/<activity>/data/`；`MATLAB_data/` 已移除）。
 - `results-pdf-only.md` — Calibration 的 `results/<model>/{single,eighteen}/` 只放 `.pdf`（`.mat/.tex/.aux` 不留）。
-- `figure-style.md` — 圖表風格 preset；**畫圖前必先問使用者要哪個風格選項**（①粗體框圖：大字粗體/box/無 grid/tick 減半/單位 `()`；3D 框體 A 立方 daspect / B 異質軸 pbaspect 兩變體依幾何選）；10^0/無單位不標；直方圖 nb=180；**同類比較圖共用 colorbar/clim（禁各自 auto-scale）**；**圖例一律照 `plot_sensor_B_hist.m` 範本**（northoutside + 寬度切齊框 + 黑粗框 + FS24 + 兩欄「系列｜統計值」）。
-- `figure-output.md` — 圖一律**輸出實檔**到 `figures/`；要改**原地改腳本→重跑→覆蓋同檔**迭代到定案（不丟 temp）。
 
 **位置**：本資料夾 2026-07-06 由 `FEM_sim/.claude/rules/` 移到 `magnetic_sim/.claude/rules/`（使用者拍板，改放磁學模擬層）。
 **相關**：git-root Claude 設定見 `../../../.claude/README.md`；觸發片語總表與 repo 總覽見 `../../../CLAUDE.md`。

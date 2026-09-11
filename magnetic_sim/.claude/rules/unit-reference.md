@@ -5,7 +5,7 @@
 **source of truth**：`magnetic_sim/ANSYS/main/reference/Unit Reference Sheet/pdf/Unit_Reference_Sheet.pdf`
 （原稿 `.../reference/Unit Reference Sheet/scripts/Unit_Reference_Sheet.tex`）
 
-相關規則：`figure-style.md`（圖 + 結果 PDF 的數值標註：10^0 / 無單位不標）、`fit-current-matches-sim.md`。
+相關規則：`fit-current-matches-sim.md`。
 
 ---
 
@@ -30,7 +30,7 @@
    - 例：極尖端位置寫 **500 µm**（不是 0.5 mm）、ℓ̂ 報 **µm**、WP 場報 **mT**。
    - **位置 / 偏移座標也是長度 → µm**：電荷位置、bias 橫向偏移 `e_y/e_z`（＝物理偏移 ℓ̂·e，非無因次）、sensor/取樣點座標等，一律用 **µm**（例：單極 bias PDF `ℓ̂ / e_y / e_z` 三欄都 µm）。
 2. **幾何物理大小不變**：APDL geom deck 仍以 mm-magnitude 建（500 µm = 0.5 mm），只是**對外表述 / 分析單位**統一成上表。
-3. 數值標註沿用 `figure-style.md`：10⁰ 因子不標、無因次不加單位標記。
+3. 數值標註：10⁰ 因子不標、無因次不加單位標記。
 
 ## 觸發片語
 - 「單位」/「用 µm / mT」/「照 Unit Reference Sheet」

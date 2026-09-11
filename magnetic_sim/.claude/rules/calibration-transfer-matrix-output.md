@@ -35,7 +35,7 @@
    - current_base emit 的 `K_bar` 已含 `coil_sign=[1 -1 1 -1 -1 1]` 顯示翻號 → `ᴮĤ_I = ghat_I_B .* ? ` 寫成 `ghat_I_B * K_bar`（用翻號後的 K_bar）。
    - voltage_base 的 `D_bar` 已是 all-source（Bstack flip-sink、不再翻號）→ `ᴮĤ_V = ghat_V_B * D_bar`。
 2. **位置**：印在對應的 K̄_I / D̄ 矩陣**正下方**（同一顆矩陣的兩種形式擺一起）。
-3. **標籤 / 單位**（照 `unit-reference.md` + `figure-style.md`）：
+3. **標籤 / 單位**（照 `unit-reference.md`）：
    - `{}^{B}\hat{H}_{I}~[\mathrm{mT/A}]`、`{}^{B}\hat{H}_{V}~[\mathrm{mT/mV}]`（**hat，不是 bar**）。
    - 數值 auto-factor 照既有 `emit_tex` T.mat（|指數|≥2 才抽 ×10^n）——ᴮĤ_V ~10⁻³ 會抽 ×10⁻³、ᴮĤ_I ~10⁰ 不抽。
 4. **不動 .mat / solve 函式**：H_I/H_V 早已算出（voltage 存為 `Dmat`、current 由 emit 現算 `ĝ·K̄`），只在 emit 端多印一顆矩陣，不改上游。
@@ -62,10 +62,10 @@
 ## 實作要點
 1. **只印一張**：`e/\hat{\ell}`，用 **`T.mat`**（標準 `bmatrix`、無任何欄/列標籤）。
    **不印** `e~[\mu\mathrm{m}]`；**不用** `T.e`（帶 `P1..P6` 欄標 + `e_x/e_y/e_z` 列標的表格）。
-   照 `figure-style.md` 數值標註慣例 #4「矩陣用標準 bmatrix、不用欄位標籤表格」——它是要直接搬進算式 / 程式的矩陣。
+   矩陣用標準 bmatrix、不用欄位標籤表格——它是要直接搬進算式 / 程式的矩陣。
    - ⚠ `emit_tex.m` 的 `emit_mat` 已是**任意尺寸**（`[nr,nc]=size(Ms)`，原寫死 6×6）才能吃 3×6 的 E36；
      既有 6×6 呼叫輸出**逐字不變**。**APDL 與 Maxwell 兩個分支都要改**（各有一份 `emit_tex.m`）。
-2. **標籤**：`e/\hat{\ell}`。**不標單位**（無因次；照 `figure-style.md`「無單位不標」）。
+2. **標籤**：`e/\hat{\ell}`。**不標單位**（無因次）。
 3. **不加 auto-factor**：fmode 留空 `''`，維持 `%9.4f` 原值（`e/ℓ̂` 量級 ~10⁻¹~10⁻³，抽因子反而難讀）。
 4. **不動 .mat / solve**：`rec.e` 存的本來就是無因次 e —— 這次改動只是**停止**在 emit 端乘 `ℓ̂·1e6` 那張。
 5. 實作位置：**兩個分支各一份**——`matlab/APDL/Calibration_using_FEM_modeling/function/emit_results.m` 與

@@ -20,7 +20,7 @@
 ### 1. 不擅自更動檔案架構
 未經使用者明確指示，不得**移動 / 改名 / 刪除 / 新建資料夾 / 重組目錄 / 搬移檔案** → 一律**先問**。
 - **例外**：改既有檔的**內文**（程式 / 文件內容）不受此限。
-- 繪圖「新增功能組資料夾」也算架構變動 → 依繪圖規則，**開新組前先問**。
+- 新增功能組資料夾也算架構變動 → **開新組前先問**。
 
 ### 2. 改動同步 README
 改了東西就把**受影響的** README 一起更新：改某夾內容 → 更新該夾 `README.md`；新增/改名/移動夾（須先問）→ 更新上層索引 README + 本檔「資料夾架構地圖」。範圍 = 受影響那幾份。
@@ -41,13 +41,6 @@
 - 未經批准不改幾何參數 / 元素型別（SOLID96、SOURC36）/ 材料。
 - 用 dissertation notation；對外一律 **P1–P6**，APDL coil index 只在改 APDL code / raw 脈絡時提。
 
-## 🎨 繪圖（強制，畫任何圖前先讀）
-- **先問功能組 + 風格選項**（風格 preset 見 `figure-style.md`），不自己猜、不憑記憶。
-- **一任務一腳本、原地改**：同一支改到定案；**定案前不另開**；使用者沒說「新增」就不開第二支（一組可多支，但各對一張已定案的圖）。
-- **一律輸出實檔到該組 `figures/` → 覆蓋同檔迭代**到定案（不丟 temp preview 等定案才落地），見 `figure-output.md`。
-- 不屬於任何現有功能組 → 要新增功能組資料夾（`matlab/<model>/<新組>/code/plot/` + `figures/`）→ **先問**。
-- **場圖畫真實 FEM 節點原值，不用 scatteredInterpolant / 格點內插**（除非使用者明確要求 → 且圖說標「內插」）。減量用「每格挑最近 y=0 平面節點」（仍是節點原值）。見 memory `plot-real-nodes`。
-
 ## Prohibitions
 - NEVER commit ANSYS 輸出（`*.rst / *.db / *.full` …）。
 - NEVER 未經批准改幾何參數 / 元素型別 / 材料屬性。
@@ -55,13 +48,12 @@
 - NEVER 移除 BC 區塊（`[ADDED]` block）。
 - NEVER 清 db / sim（rm intermediates / result dir）前沒讀 `ansys-db-cleanup.md` 全文；NEVER 刪 `db/geom/` 前沒掃「>100MB 的 .db」（錯置的網格孤本）；NEVER 寫 `rm -f <jobname>*`（會連主 `.rmg`+`.db` 一起刪）。
 - NEVER 改 ANSYS 幾何 / `mt_constants` 前沒量對應 CAD；不一致**不自己選值**，通報使用者拍板（`ansys-cad-alignment.md`）。
-- NEVER 用內插畫場圖 / 把內插當 raw 呈現（除非明示）。
 
 ## Notation Standard
 全依 Fei Long 2016 dissertation。canonical glossary：`backup/hexapole-long2016/docs/notation-glossary.md`。
 - 對外一律 **P1–P6**；APDL coil index 只在 APDL code / raw 脈絡。
 - **coil→paper map 是 per-model（非全域）**：long2016 `[1,3,6,5,2,4]` / NTU `[1,3,6,5,2,4]` / hung `identity`；新 model 用 identity。**別互抄**（`pole-coil-numbering.md`；舊全域宣稱是錯的、曾靜默污染 hung K̄_I）。
-- **禁用 "WP" 這個字眼**（使用者拍板 2026-08-06）：圖、軸標、圖例、註解、對話一律不用（含「WP 框 / WP 區」）。那一點就叫**原點**（六極尖共球球心 = 繪圖座標原點），圖上以黑點標示、不加文字。既有檔不強制回溯清理，動到哪個檔就順手改；全 repo 清理要先問。詳見 `figure-style.md`「座標原點與『WP』字眼」。
+- **禁用 "WP" 這個字眼**（使用者拍板 2026-08-06）：圖、軸標、圖例、註解、對話一律不用（含「WP 框 / WP 區」）。那一點就叫**原點**（六極尖共球球心 = 繪圖座標原點），圖上以黑點標示、不加文字。既有檔不強制回溯清理，動到哪個檔就順手改；全 repo 清理要先問。
 - ρ 兩義：physical（500µm）vs fitted（900µm）—— 講清哪個。
 - 單位：ANSYS 出 Tesla；WP 場圖用 mT；dissertation Fig 2.4 用 Gauss。（完整單位表見 `unit-reference.md`。）
 
@@ -132,13 +124,13 @@ cd magnetic_sim/ANSYS/backup/hexapole-long2016
 | 清 `db/` / 清 sim / 清 results / 磁碟滿 | `ansys-db-cleanup.md`（`geom/` 整層刪、`mesh/`+`sim/` 留主檔；刪 `geom/` 前必掃錯置網格 db） |
 | 寫/搬 `.mat` | `matlab-output-layout.md`（放程式旁 `data/`） |
 | 動 `results/` | `results-pdf-only.md`（只放 PDF） |
-| 畫任何圖 | `figure-style.md`（先問風格）+ `figure-output.md`（輸出實檔覆蓋迭代） |
 | 改 ANSYS 幾何 / mt_constants / 對齊 CAD | `ansys-cad-alignment.md`（CAD=source of truth） |
 | 匯入 CAD/STEP 進 ANSYS | `cad-import-ansys.md`（STEP→x_t→ac4para→/INPUT） |
 | 交付幾何給使用者檢查 | `deliver-step-for-check.md`（一律出 STEP） |
 | charge fit / 改 I_actual | `fit-current-matches-sim.md`（I = FEM 激發 1A） |
 | Calibration_using_FEM_modeling 結構 | `calibration-shared-structure.md`（結構凍結、改先問）、`calibration-transfer-matrix-output.md`、`actuator-frame.md`、`charge-model-source-convention.md`、`pole-coil-numbering.md`、`unit-reference.md` |
 | 出 STEP / 解析 STEP / 建 APDL 幾何 / 檢查模型 / 跑 COMSOL 等 SOP | `reference/workflows/`（入口 `workflows/README.md`；部分為 kuo 時代遺留） |
+| **寫 / 改任何 `plot/**` 腳本** | `plot-scripts-pure.md`（繪圖腳本只准 load `.mat` → 畫圖；算的事情歸 `main/` 與 `utils/`） |
 | **新建任何檔案 / 取檔名 / 命名 variant** | `short-names.md`（檔名一律要短：路徑講過的別再講、後綴 3–6 字元） |
 | 產物落點 / 資料夾架構 | 本檔「資料夾架構地圖」+ 各夾 `README.md` |
 
