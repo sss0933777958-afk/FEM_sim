@@ -23,7 +23,12 @@ function c = mt_constants()
     %   原本指到上一層的 fld_dir 因此讀不到檔（報「開不了 ...\export\B_p1.fld」）。改指 'No gap'。
     %   日後 long2016 若要做氣隙變體，照 zhi_peng 的樣式加 c.fld_dir_variant 指到 'Have gap'。
     c.fld_dir           = 'D:\Maxwell_sim\long2016_hexapole_halfcut\export\No gap';
-    c.fld_files         = {'B_p1.fld','B_p2.fld','B_p3.fld','B_p4.fld','B_p5.fld','B_p6.fld'};
+    % [MODIFIED 2026-09-14] 'No gap' was split on 2026-09-07 10:07 into baseline\ grad\ voltage\
+    %   subfolders (the _test / _0.06 / _0.01 exports stayed at the top level). The baseline
+    %   and voltage names below therefore carry their subfolder; fullfile(fld_dir, name) resolves
+    %   them unchanged. Without this the Flux main.m failed with "開不了 ...\No gap\B_p1.fld".
+    c.fld_files         = {'baseline\B_p1.fld','baseline\B_p2.fld','baseline\B_p3.fld', ...
+                           'baseline\B_p4.fld','baseline\B_p5.fld','baseline\B_p6.fld'};
     %   ↑ 步距 0.02mm、框 x,y∈±0.6mm z∈[-13.31,-12.11]mm、61³=226,981 格點
     % [ADDED 2026-08-05] variant → WP 細格 .fld 檔名（dataset='all' 用；voltage 一律走 fld_files_voltage）。
     %   兩組**匯出格點完全相同**（header 逐字一致），差別只在 Maxwell 側 Sphere1mm 的網格尺寸：
@@ -41,8 +46,16 @@ function c = mt_constants()
     c.fld_files_variant.maxwell_test = ...
         {'B_p1_test.fld','B_p2_test.fld','B_p3_test.fld', ...
          'B_p4_test.fld','B_p5_test.fld','B_p6_test.fld'};
-    c.fld_files_voltage = {'B_voltage_p1.fld','B_voltage_p2.fld','B_voltage_p3.fld', ...
-                           'B_voltage_p4.fld','B_voltage_p5.fld','B_voltage_p6.fld'};
+    % [ADDED 2026-09-21] maxwell_mesh0p02 = Sphere1mm 0.02 mm，2026-09-21 12:17~12:24
+    %   重匯的六顆，放在 b_0.02\ 子夾。匯出框與步距與 maxwell 逐字相同
+    %   （±0.6mm / z[-13.31,-12.11] / 0.02mm → 61^3 = 226,981），六檔皆 226,983 行、
+    %   無靜默零場，故可與 maxwell / maxwell_mesh0p06 逐點相減。
+    %   ⚠ 檔名沒有 B_ 前綴（p1..p6.fld），所以必須逐一列出。
+    c.fld_files_variant.maxwell_mesh0p02 = ...
+        {'b_0.02\p1.fld','b_0.02\p2.fld','b_0.02\p3.fld', ...
+         'b_0.02\p4.fld','b_0.02\p5.fld','b_0.02\p6.fld'};
+    c.fld_files_voltage = {'voltage\B_voltage_p1.fld','voltage\B_voltage_p2.fld','voltage\B_voltage_p3.fld', ...
+                           'voltage\B_voltage_p4.fld','voltage\B_voltage_p5.fld','voltage\B_voltage_p6.fld'};   % [MODIFIED 2026-09-14] subfolder, see above
     %   ↑ 步距 0.1mm、框 x∈±15.23 y∈±14 z∈[-16.1,0]mm、**305×281×162 = 13,884,210** 格點（含兩層 sensor）
     %   ⚠ x 只有 305 個（不是 306）：跨距 30.46mm 不是 0.1 的整數倍（30.46/0.1 = 304.6）→ AEDT 生到
     %     x = +15.17 就停，**+x 端被截掉 0.06mm、格點左右不對稱**（y/z 整除故對稱）。P1 是 +x 下極、

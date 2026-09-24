@@ -16,16 +16,16 @@ clearvars -except MAIN_OVR_;  clc;
 %% ---- per-run 調參（不進 config）---------------------------------------------
 MODEL    = 'long2016_hexapole_halfcut';
 GEOM     = 'tip40um';       % config 幾何變體
-VARIANT  = 'maxwell';       % 志鵬用 maxwell_split（default 'maxwell' 是它已被取代的舊匯出）
+VARIANT  = 'maxwell';        % [2026-09-22] baseline 匯出（baseline）
 DATASET  = 'all';
-BASE     = 'voltage';       % 'current' | 'voltage'
+BASE     = 'current';       % 'current' | 'voltage'
 % [ADDED 2026-09-04 使用者拍板] 電壓模型版本（只在 BASE='voltage' 生效；current 不看）：
 %   'full'  現行：G(:,j) 自由（36 線性未知）→ H_V = G·V⁺ 滿矩陣 → D̄ / ĝ_V
 %   'diag'  舊 Hall-sensor 模型（fix-ℓ）：b_ij = S_i·diag(V(:,j))·d，d 為 6×1 共用、閉式解、無疊代；
 %           H_V = diag(d)。吃的 (ℓ̂, e) 與 full 同一組（fitting 只看 WP 場）——
 %           即舊流程「帶 current 校正好的 ℓ̂、ê 算 d」。輸出檔名加 _diag，不覆蓋 full 版。
 V_MODEL  = 'full';          % 'full' | 'diag'
-USE_BIAS = true;           % e 開關：false=fix(single)、true=18-param(eighteen)
+USE_BIAS = true;            % e 開關：false=fix(single)、true=18-param(eighteen)
 R_select = 150e-6;          % 取點球半徑 [m]
 l0       = 0.5e-3;          % l_hat 初值 [m]
 I_actual = 1;               % 驅動電流 [A]（= FEM 激發）
@@ -57,7 +57,7 @@ K22_SET  = [];
 %     'auto'   Nr 階梯 + 收斂判準（原 GRID_NRPT='auto' 的角色）
 %     []       全格點基準（不減量，評估點 = 取樣點）
 %     純量 Nr  固定設計，不迴圈（N = 6*Nr+1，濾鐵後可能更少）
-WS_AXSH_NR = 4;             % 'auto' | [] | Nr
+WS_AXSH_NR = 'auto';        % 'auto' | [] 全格點基準 | Nr
 % ---- 收斂判準（工作空間球）：兩段式，l_hat 與 g_I 各判一次、取兩者較晚者
 %   ⚠ 判準序列固定用 solve_current 的 [l_hat, g_I]（**兩個 base 都是**）——
 %     voltage 的 solve_voltage 在收斂之後才跑一次。
