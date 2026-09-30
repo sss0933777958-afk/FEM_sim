@@ -65,21 +65,27 @@ function [l_hat, e_hat, H_hat, J, out] = fitting_force(f_m, P, Pc_base, l0, H0, 
     % L cache, shared by every residual evaluation in this call
     Lc = [];   gec = [];
 
+    % [ADDED 2026-09-29] Unit scale of H inside the optimiser. The unknown is
+    % still H itself; it is only handed to lsqnonlin as H/hs so that it sits at
+    % ~1 beside l and e. hs is the size of the initial guess, so with H0 = I
+    % (current base) hs = 1 and nothing changes. In the voltage base H0 ~ 1/V ~
+    % 1e-3 and, unscaled, the same fit took 14 min instead of 70 s.
+    hs = max(abs(H0(:)));
     t0 = tic;
     if USE_BIAS
-        x0 = [l0/1e3; zeros(17,1); H0(:)];
+        x0 = [l0/1e3; zeros(17,1); H0(:)/hs];
         lb = -inf(size(x0));   lb(1) = 1e-3;          % l >= 1 um
         xf = lsqnonlin(@resid, x0, lb, [], opts);
         e_hat = xf(2:18);
     else
-        x0 = [l0/1e3; H0(:)];
+        x0 = [l0/1e3; H0(:)/hs];
         lb = -inf(size(x0));   lb(1) = 1e-3;          % l >= 1 um
         xf = lsqnonlin(@(x) resid([x(1); zeros(17,1); x(2:37)]), x0, lb, [], opts);
         xf = [xf(1); zeros(17,1); xf(2:37)];
         e_hat = zeros(17,1);
     end
     l_hat = xf(1)*1e3;
-    H_hat = reshape(xf(19:54), 6, 6);
+    H_hat = reshape(xf(19:54), 6, 6) * hs;
     r     = resid(xf);
     J     = sum(r.^2);
 
@@ -103,7 +109,7 @@ function [l_hat, e_hat, H_hat, J, out] = fitting_force(f_m, P, Pc_base, l0, H0, 
             Lc  = build_L(P, x(1)*1e3, x(2:18), Pc_base);
             gec = ge;
         end
-        f_model = base_model(Lc, reshape(x(19:54), 6, 6), u);
+        f_model = base_model(Lc, reshape(x(19:54), 6, 6) * hs, u);
         rr = f_m(:) - f_model(:);
     end
 end

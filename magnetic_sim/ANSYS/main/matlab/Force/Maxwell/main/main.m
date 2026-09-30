@@ -70,10 +70,27 @@ LDEG     = 9;           % baseline: 9   |   b_0.02: 7
 % H_hat, which a one-at-a-time set leaves undetermined.
 EXC      = 'pairs21';   % 'pairs21' | 'singles6'
 
+% ---- FSRC = 'sph' and BASE = 'voltage' only ---------------------------------
+% [ADDED 2026-09-28 user decision] The excitation of the voltage base is the
+% sensor read-out V [mV], built here from the voltage export by build_V_matrix.
+% Sensor placement follows reference/Sensor location/Sensor_location.pdf and the
+% whole voltage path stays in MAXWELL GLOBAL coordinates (actuator-frame.md,
+% voltage-path exception): no translation anywhere between geometry and field.
+SOFF     = 3e-3;        % L, distance from the tip along the cone [m], both layers
+SEN_NXY  = [200 200];   % mid-plane Cartesian design -> 31730 points per sensor
+SEN_R    = 0.15e-3;     % sensing cylinder radius [m]
+SEN_H    = 0.10e-3;     % sensing cylinder height [m]
+
 mgB      = 0.0451;      % particle magnetisation constant [A.um^2/mT], from m = mgB*b
 UF       = 1e3;         % force unit factor: A.um.mT = 1e-9 N = 1e3 pN, so UF puts f in pN
 
 R_select = 150;         % sampling sphere radius [um]
+% [ADDED 2026-09-29 user decision] The sample points never go past R_SAMP_MAX.
+% With R_select beyond it the harmonic model and the full-node evaluation still
+% use every node inside R_select; only the CALIBRATION points stop at
+% R_SAMP_MAX. The pole tips sit at 500 um, and points next to them carry forces
+% a thousand times the one at the origin, which would own the least squares.
+R_SAMP_MAX = 480;       % [um]
 NR_AXSH  = [];          % axes-shell layers; [] = inherit from the source calib
 USE_BIAS = [];          % [] = inherit from the source calib
 
@@ -85,6 +102,7 @@ USE_BIAS = [];          % [] = inherit from the source calib
 H0_SCALE = 1;
 l0       = 500;         % l_design [um];  e0 = 0 is built into fitting_force
 
+SAVE_OUT = true;        % false = console only: no .mat, no PDF (user's call, 2026-09-29)
 TOL_PCT  = 0.1;         % self-consistency pass threshold [%]  (FSRC='selfcheck')
 
 % ---- convergence criterion, FSRC = 'sph' only -------------------------------
@@ -246,14 +264,53 @@ switch lower(EXC)
     otherwise, error('main:exc', 'EXC is ''pairs21'' or ''singles6''');
 end
 if isempty(USE_BIAS), USE_BIAS = true; end
+Icol = u;                                   % the currents behind each column [A]
+SOFF_rec = NaN;   Vmat = [];   spos = [];   snrm = [];
+if strcmp(BASE, 'voltage')
+    % The measurement f is unchanged -- the same coil currents produce the same
+    % force -- only the description of the excitation changes from I to V.
+    % Sensor voltages superpose like the field, so a pair column is V_j + V_k.
+    % V depends on the sensor design only, not on the fit, and the voltage export
+    % is 6 files x 2 GB of text. It is therefore built once per design and kept
+    % as a small self-describing .mat; a later run with the same design reads it.
+    vkey = struct('model',MODEL, 'geom',GEOM, 'SOFF',SOFF, 'SEN_NXY',SEN_NXY, ...
+                  'SEN_R',SEN_R, 'SEN_H',SEN_H, 'S_hall',cfg.S_hall, ...
+                  'fld',{cfg.fld_files_voltage}, 'sensor_doc',cfg.sensor_doc);
+    vfile = fullfile(FMX_, 'data', MODEL, '.mat', sprintf('V_soff%smm_N%d.mat', ...
+                     strrep(sprintf('%g',SOFF*1e3),'.','p'), SEN_NXY(1)));
+    if isfile(vfile) && isequaln(getfield(load(vfile,'key'),'key'), vkey) %#ok<GFLD>
+        Vc = load(vfile);   Vmat = Vc.V;   spos = Vc.sensor_pos;   snrm = Vc.sensor_n;
+        fprintf('[V] read %s%s', vfile, newline);
+    else
+        raw_v = extract_maxwell_data(cfg, 'voltage', VARIANT);
+        [Vmat, ~, spos, snrm] = build_V_matrix(cfg, VARIANT, raw_v, cfg.S_hall, SOFF, ...
+                                   SEN_NXY, SEN_R, SEN_H, [], 'grid', SOFF);
+        clear raw_v
+        Vc = struct('V',Vmat, 'sensor_pos',spos, 'sensor_n',snrm, 'key',vkey, ...
+                    'frame','maxwell', 'unit','mV per 1 A');
+        save(vfile, '-struct', 'Vc');
+        fprintf('[V] saved %s%s', vfile, newline);
+    end
+    assert(rcond(Vmat) > 1e-6, 'main:Vsingular', 'V is close to singular (rcond %.2e)', rcond(Vmat));
+    u = Vmat * Icol;                        % [mV]
+    SOFF_rec = SOFF;
+    % Initial guess. The current base starts from F H_I = I (user decision,
+    % 2026-08-30). F H_V carries 1/mV, so the same guess expressed in its units
+    % is I divided by the size of V; with I itself the first model force would
+    % be ~mean(V)^2 (about 2e6) times too large.
+    H0 = H0_SCALE * eye(6) / mean(abs(diag(Vmat)));
+    fprintf('[V] L = %.3f mm, (Nx,Ny) = (%d,%d), diag(V) = %s mV%s', SOFF*1e3, ...
+            SEN_NXY, mat2str(diag(Vmat).', 5), newline);
+end
 fprintf('[exc] u = %s  (%s)%s', mat2str(size(u)), EXC, newline);
 
 % `cal` is stubbed so the record written in (7) keeps one shape across both
 % modes. There is no truth in this mode: every *_m field is NaN.
-cal = struct('Pc_base',ad.Pc_base, 'R_act',ad.R_act, 'u_m',u, ...
+cal = struct('Pc_base',ad.Pc_base, 'R_act',ad.R_act, 'u_m',u, 'cfg',cfg, ...
+             'R_samp_max',R_SAMP_MAX, ...
              'l_m',NaN, 'e_m',nan(17,1), 'gB_m',NaN, 'Mbar_m',nan(6,6), ...
              'src',sprintf('%s | %s', VARIANT, cfg.fld_dir), ...
-             'meta',struct('VARIANT',VARIANT, 'SOFF',NaN, 'USE_BIAS',USE_BIAS, ...
+             'meta',struct('VARIANT',VARIANT, 'SOFF',SOFF_rec, 'USE_BIAS',USE_BIAS, ...
                            'sampler','axes_shells', 'npts',NaN));
 c_m = NaN;
 
@@ -268,7 +325,7 @@ SER = nan(numel(LADW), 2);   nc_hit = numel(LADW) == 1;   t_all = tic;
 for q = 1:numel(LADW)
     [l_hat, e_hat, H_hat, J, fout, P, npts, Mbar_hat, gF_hat, gB_hat, sout] = ...
         run_level(LADW(q), R_select, cal, gq, u, mgB, UF, l0, H0, USE_BIAS, BASE);
-    SER(q,:) = [l_hat, gF_hat];
+    SER(q,:) = [l_hat, fout.gF_W];        % col 2 = current-base gain, both bases
     fprintf('  Nr=%3d  N=%4d   l_hat %9.3f um   %s %10.6f   rms %9.3g pN%s', ...
             LADW(q), npts, l_hat, sout.labels.gF_name, gF_hat, fout.rms, newline);
     if nc_hit, break; end
@@ -291,6 +348,25 @@ if ~nc_hit
 end
 fmax = fout.fmax;
 lb   = sout.labels;
+
+%% ---- (6s) full-node evaluation ---------------------------------------------
+% [ADDED 2026-09-28 user decision] The calibrated model is evaluated on EVERY
+% node with |p| <= R_select, not only on the npts points it was fitted on -- the
+% same out-of-sample convention as the flux main.m. Nothing is refitted: the
+% measurement comes from the same harmonic model, the prediction from the
+% parameters just found. The residual is the 3-vector norm per (node,
+% excitation), so NMAE is the flux definition with the field replaced by force.
+NI_   = size(u, 2);
+f_ev  = zeros(3, size(Pn,1), NI_);
+for j = 1:NI_
+    f_ev(:,:,j) = (0.5 * mgB * UF * gq(Pn, Icol(:,j), 'du')).';   % currents, not u
+end
+r_ev   = base_model(build_L(Pn, l_hat, e_hat, cal.Pc_base), H_hat, u, 1) - f_ev;
+res_ev = vecnorm(reshape(r_ev, 3, []), 2, 1).';          % [pN], Np_eval*NI x 1
+fn_ev  = vecnorm(reshape(f_ev, 3, []), 2, 1).';
+nmae_ev = sum(res_ev) / sum(fn_ev) * 100;
+fprintf('[eval] %d nodes x %d excitations: NMAE %.4f %%  mean %.4f pN  max %.4f pN  (on the %d fitted points: %.4f %%)%s', ...
+        size(Pn,1), NI_, nmae_ev, mean(res_ev), max(res_ev), npts, fout.nmae, newline);
 d.l = NaN;  d.gF = NaN;  d.gB = NaN;  d.M = NaN;  d.e = NaN;   % no truth in this mode
 
 fprintf('%s---- calibration, base=%s, source=%s, L=%d ----%s', ...
@@ -298,8 +374,8 @@ fprintf('%s---- calibration, base=%s, source=%s, L=%d ----%s', ...
 fprintf('  l_hat  %12.4f um%s', l_hat, newline);
 fprintf('  %-6s %12.6g      [%s, fitted]%s', lb.gF_name, gF_hat, lb.gF_unit, newline);
 fprintf('  %-6s %12.6g      [%s, derived via mgB]%s', lb.gB_name, gB_hat, lb.gB_unit, newline);
-fprintf('  rms residual %.4g pN   peak |f| %.4g pN   (%d points x %d excitations)%s', ...
-        fout.rms, fmax, npts, size(u,2), newline);
+fprintf('  rms residual %.4g pN   NMAE %.4f %%   peak |f| %.4g pN   (%d points x %d excitations)%s', ...
+        fout.rms, fout.nmae, fmax, npts, size(u,2), newline);
 fprintf('  %s checks: diag>0 %d  diag-dominant %d  offdiag<0 %d  max|rowsum| %.3g%s', ...
         lb.M_name, sout.chk.diag_pos, sout.chk.diag_dominant, sout.chk.offdiag_neg, ...
         sout.chk.rowsum_max, newline);
@@ -326,6 +402,24 @@ rec = struct('base',BASE, ...
 % the convergence can be re-plotted without re-running anything.
 if ~SELF
     rec.MATNAME = '';         % no flux .mat was read in this mode
+    % [MODIFIED 2026-09-28] NMAE is now the FULL-NODE figure (what the PDF
+    % prints); the in-sample one is kept beside it for traceability.
+    rec.NMAE     = nmae_ev;       % all nodes with |p| <= R_select
+    rec.NMAE_in  = fout.nmae;     % on the npts fitted points
+    rec.NMAE_on  = 'eval points';
+    rec.Np_eval  = size(Pn, 1);
+    rec.P_eval   = Pn;            % um, actuator frame
+    rec.res_eval = res_ev;        % ||f - f_hat|| per (node, excitation) [pN]
+    rec.fn_eval  = fn_ev;         % ||f||        per (node, excitation) [pN]
+    rec.res_mean = mean(res_ev);  rec.res_max = max(res_ev);
+    rec.R_samp   = min(R_select, R_SAMP_MAX);     % radius the sample points reach [um]
+    rec.Icol     = Icol;          % coil currents behind each excitation column [A]
+    if strcmp(BASE, 'voltage')
+        rec.V = Vmat;             % 6 x 6 sensor read-out [mV], column j = pole j driven at 1 A
+        rec.SEN_NXY = SEN_NXY;    rec.sensor_r = SEN_R;   rec.axial_tol = SEN_H;
+        rec.S_hall  = cfg.S_hall; rec.sensor_pos = spos;  rec.sensor_n = snrm;
+        rec.sensor_frame = 'maxwell';
+    end
     rec.LDEG   = LDEG;        rec.EXC  = EXC;
     rec.NMAE_sph = sinfo.NMAE_all;   rec.K_sph = sinfo.K;
     rec.ladder = LADW(:);     rec.SER  = SER;    % SER(:,1)=l_hat, SER(:,2)=F g
@@ -341,18 +435,16 @@ tag      = 'single';  if USE_BIAS, tag = 'eighteen'; end
 matdir   = fullfile(FMX, 'data', MODEL, '.mat');
 if ~exist(matdir, 'dir'), mkdir(matdir); end
 matfile = fullfile(matdir, [rec.stem '_' tag '.mat']);
-save(matfile, '-struct', 'rec');
-fprintf('saved %s%s', matfile, newline);
+if SAVE_OUT
+    save(matfile, '-struct', 'rec');
+    fprintf('saved %s%s', matfile, newline);
+end
 
 %% ---- (8) PDF ---------------------------------------------------------------
-% emit_force_results lays out the self-consistency comparison (it prints l_m,
-% B g,m, Mbar_m next to the fitted ones). In sph mode those truths do not exist,
-% so the PDF is left for a later, purpose-written emitter rather than fed NaNs.
-if SELF
-    emit_force_results(matfile);
-else
-    fprintf('[pdf] skipped: emit_force_results is the self-consistency layout%s', newline);
-end
+% [MODIFIED 2026-09-28] emit_force_results now has a layout for each mode
+% (selfcheck: measure vs calibration; sph: calibrated parameters only), so the
+% PDF is always the last step.
+if SAVE_OUT, emit_force_results(matfile); end
 
 %% ---- local -----------------------------------------------------------------
 function s = verdict(ok)
@@ -365,18 +457,68 @@ function [l_hat, e_hat, H_hat, J, fout, P, npts, Mbar_hat, gF_hat, gB_hat, sout]
 %   The measurement is the real one:  f = (1/2) * mgB * grad(b.b), with grad
 %   taken analytically from the harmonic model (sph_field's 'du' returns
 %   d(b.b)/dx_j). UF puts it in pN.
-    [~, ~, si] = conv_design_ws(Nr, R_select, ...
+    Rs = R_select;
+    if isfield(cal,'R_samp_max'), Rs = min(R_select, cal.R_samp_max); end
+    [~, ~, si] = conv_design_ws(Nr, Rs, ...
                     struct('points_only',true, 'R_act',cal.R_act, 'quiet',true));
     P    = si.P_act;                  % um, actuator frame
+    % [ADDED 2026-09-29] Iron filter, the same one the flux sampler applies. The
+    % pole tips sit at r = R_norm on the six axes, so once R_select reaches them
+    % the outer shell lands on steel: there is no field there to measure, and
+    % with l0 = R_norm the point also coincides with the initial charge. For
+    % R_select below the tips nothing is removed and the design is unchanged.
+    if isfield(cal, 'cfg')
+        Pm   = (P * cal.R_act) * 1e-6;                        % measure frame [m]
+        keep = filter_iron_nodes(Pm(:,1), Pm(:,2), Pm(:,3) + cal.cfg.SPH_OFST, cal.cfg);
+        tip  = [cal.cfg.pole_tip_x; cal.cfg.pole_tip_y; cal.cfg.pole_tip_z_wp].';   % 6 x 3 [m]
+        dmin = min(sqrt((Pm(:,1)-tip(:,1).').^2 + (Pm(:,2)-tip(:,2).').^2 + ...
+                        (Pm(:,3)-tip(:,3).').^2), [], 2);
+        keep = keep(:) & dmin > 1e-9;                         % the tip point itself is steel
+        P    = P(keep, :);
+    end
     npts = size(P, 1);
     NI   = size(u, 2);
+    % uf = the coil CURRENTS behind each column [A]. The harmonic model gq is a
+    % model of the field per ampere, so the measurement is always generated from
+    % the currents -- never from u, which in the voltage base is in mV.
+    % [FIXED 2026-09-28] u was passed to gq in both bases; with u = V that made
+    % the "measured" force ~V^2 too large and the fit never finished.
+    uf = u;
+    if strcmp(BASE, 'voltage'), uf = double(abs(u(:,1:6) \ u) > 0.5); end   % 0/1
     f_m  = zeros(3, npts, NI);
     for j = 1:NI
-        f_m(:,:,j) = (0.5 * mgB * UF * gq(P, u(:,j), 'du')).';
+        f_m(:,:,j) = (0.5 * mgB * UF * gq(P, uf(:,j), 'du')).';
     end
+    % [MODIFIED 2026-09-29 user decision] The voltage base is fitted in its own
+    %   form, exactly the current-base expression with F H_I -> F H_V and F -> V:
+    %       f_ij = (F H_V * V_j)' * L_i(l, e) * (F H_V * V_j)
+    %   The optimiser iterates l, e and F H_V directly; u = V is the known input.
+    %   No change of variable and no V^-1 anywhere in the fit.
     [l_hat, e_hat, H_hat, J, fout] = fitting_force(f_m, P, cal.Pc_base, l0, H0, u, USE_BIAS);
     fout.fmax = max(abs(f_m), [], 'all');
+    % NMAE, the vector-norm form the flux side uses: the 3-vector residual is
+    % measured per (point, excitation) and only then summed, so the two
+    % packages' fit errors are directly comparable.
+    rp = base_model(build_L(P, l_hat, e_hat, cal.Pc_base), H_hat, u, 1) - f_m;
+    fout.nmae = sum(vecnorm(reshape(rp, 3, []), 2, 1)) ...
+              / sum(vecnorm(reshape(f_m, 3, []), 2, 1)) * 100;
     [Mbar_hat, gF_hat, gB_hat, sout] = solve_force(H_hat, mgB, l_hat, UF, BASE);
+    % solve_force fixes signs by flipping COLUMNS of H. That leaves the force
+    % unchanged only when u is the identity (current base). With u = V a column
+    % flip of F H_V changes the model, so in the voltage base the fitted matrix
+    % must already have a positive diagonal; if it does not, stop rather than
+    % hand back a matrix that no longer reproduces the fit.
+    if strcmp(BASE, 'voltage')
+        assert(sout.nflip == 0, 'main:voltageSign', ...
+               ['F H_V came back with a negative diagonal in column(s) %s; a column ' ...
+                'flip is not a symmetry of the voltage-base model'], mat2str(sout.flipped));
+    end
+    % [2026-09-28 user decision] The convergence point is the current base's: the
+    % judge watches l_hat and the current-base gain in BOTH bases, as the flux
+    % main.m does (it judges on g_I and applies V only afterwards). The gain of
+    % F H_V * V is that same quantity expressed from the fitted voltage matrix.
+    Hc = H_hat * (u(:,1:6) / uf(:,1:6));
+    fout.gF_W = (6 * abs(Hc(1,1)) / 5)^2;
 end
 
 function i0 = judge(v, tolS, KS, tolC, KC, kout)
@@ -423,5 +565,13 @@ function s = force_stem(rec)
     % different calibrations and must not overwrite each other.
     lt = '';
     if isfield(rec,'LDEG') && ~isempty(rec.LDEG), lt = sprintf('_L%d', rec.LDEG); end
-    s = sprintf('%s_R%d_N%d%s%s%s', rec.base, round(rec.R_select), rec.npts, v, so, lt);
+    % [ADDED 2026-09-28] the excitation set changes the answer, so it has to be in
+    % the name. pairs21 is the default and stays untagged; anything else is
+    % tagged, otherwise two runs at the same point count overwrite each other
+    % (which is exactly what happened once).
+    et = '';
+    if isfield(rec,'EXC') && ~isempty(rec.EXC) && ~strcmpi(rec.EXC,'pairs21')
+        et = ['_' lower(rec.EXC)];
+    end
+    s = sprintf('%s_R%d_N%d%s%s%s%s', rec.base, round(rec.R_select), rec.npts, v, so, lt, et);
 end

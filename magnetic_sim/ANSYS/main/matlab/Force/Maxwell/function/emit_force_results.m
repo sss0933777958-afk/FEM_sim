@@ -40,9 +40,25 @@ function emit_force_results(matfile)
     fprintf(fid, '\\usepackage[margin=1in]{geometry}\n\\usepackage{amsmath}\n');
     fprintf(fid, '\\setlength{\\parindent}{0pt}\n\\begin{document}\n');
 
+    % [ADDED 2026-09-24] Two layouts. FSRC='sph' is a REAL calibration: the
+    % measurement is 0.5*mgB*grad(b.b) taken from a harmonic model of the FEM
+    % field, so there is no truth to sit beside the fitted parameters and the
+    % Measure section is replaced by the measurement's provenance.
+    SPH = isfield(rec,'FSRC') && strcmpi(rec.FSRC,'sph');
+
+    if SPH
+        fprintf(fid, '\\section*{Force model calibration: %s base}\n', rec.base);
+        fprintf(fid, '\\texttt{%s} / \\texttt{%s}, %d points, $R\\le%g~\\mu$m\n', ...
+                texesc(rec.model), texesc(rec.VARIANT), rec.npts, rec.R_select);
+    else
     fprintf(fid, '\\section*{Force model self-consistency: %s base}\n', rec.base);
     fprintf(fid, '\\texttt{%s} / \\texttt{%s}, %d points, $R\\le%g~\\mu$m\n', ...
             texesc(rec.model), texesc(rec.MATNAME), rec.npts, rec.R_select);
+    end
+    % [MODIFIED 2026-09-28 user decision] The sph layout prints the calibrated
+    % parameters only: no gauge relations, no measurement prose, no RMS line,
+    % no reference block. The selfcheck layout keeps them, being a comparison.
+    if ~SPH
     fprintf(fid, '\\[ {}^{M}g_{B} = %.4g~\\mathrm{A}\\,\\mu\\mathrm{m}^{2}/\\mathrm{mT} \\]\n', rec.mgB);
 
     % The two relations that define the gauge. F g is the whole prefactor, so
@@ -50,33 +66,88 @@ function emit_force_results(matfile)
     fprintf(fid, '\\[ %s = \\frac{U_{F}\\,{}^{M}g_{B}}{2\\hat{\\ell}}\\bigl(%s\\bigr)^{2}, \\qquad U_{F} = %g \\]\n', ...
             lb.gF_tex, lb.gB_tex, rec.UF);
     fprintf(fid, '\\[ %s = \\sqrt{%s}\\;%s \\]\n', lb.H_tex, lb.gF_tex, lb.M_tex);
+    end
 
-    % ---- measurement side (the flux calibration f_m was generated from) ----
+    % ---- measurement side (selfcheck only) ----------------------------------
+    if ~SPH
     fprintf(fid, '\\subsection*{Measure}\n');
     fprintf(fid, '\\[ \\hat{\\ell}_{m} = %.4f~\\mu\\mathrm{m} \\]\n', rec.l_m);
-    T.scalar_unit(fid, lb.gB_tex_m, rec.gB_m, lb.gB_texu);
-    T.scalar_unit(fid, lb.gF_tex_m, rec.gF_m, lb.gF_texu);
-    T.mat(fid, lb.M_tex_m, rec.Mbar_m, pole, '');
+    % [ADDED 2026-09-30] The measure may come from a different base than the model
+    % being calibrated (current-base truth, voltage-base model). rec.labels_m and
+    % rec.u_m then carry the measure side's own names, units and excitation.
+    lm = lb;   um = rec.u;
+    if isfield(rec,'labels_m'), lm = rec.labels_m; end
+    if isfield(rec,'u_m'),      um = rec.u_m;      end
+    T.scalar_unit(fid, lm.gB_tex_m, rec.gB_m, lm.gB_texu);
+    T.scalar_unit(fid, lm.gF_tex_m, rec.gF_m, lm.gF_texu);
+    T.mat(fid, lm.M_tex_m, rec.Mbar_m, pole, '');
     % [ADDED] the excitation matrix itself: column j is u_j, the excitation that
     % produced f_m for pole j. Voltage -> V [mV] (the sensor read-out), current
     % -> F [A]. No auto-factor (user decision): the entries are printed as the
     % actual mV, not as a mantissa with a 10^3 pulled out in front.
-    T.mat(fid, sprintf('%s~[\\mathrm{%s}]', lb.u_tex, lb.u_unit), rec.u, pole, '');
+    T.mat(fid, sprintf('%s~[\\mathrm{%s}]', lm.u_tex, lm.u_unit), um, pole, '');
     if rec.USE_BIAS
-        T.mat(fid, '(e/\hat{\ell})_{m}', e2E36(rec.e_m), pole, '');
+        T.mat(fid, '\hat{e}_{m}', e2E36(rec.e_m), pole, '');
+    end
     end
 
     % ---- recovered side ----------------------------------------------------
-    fprintf(fid, '\\subsection*{Calibration}\n');
+    if ~SPH, fprintf(fid, '\\subsection*{Calibration}\n'); end
     fprintf(fid, '\\[ \\hat{\\ell} = %.4f~\\mu\\mathrm{m} \\]\n', rec.l_hat);
     T.scalar_unit(fid, lb.gF_tex, rec.gF_hat, lb.gF_texu);
     T.scalar_unit(fid, lb.gB_tex, rec.gB_hat, lb.gB_texu);
     T.mat(fid, lb.M_tex, rec.Mbar_hat, pole, '');
     if rec.USE_BIAS
-        T.mat(fid, 'e/\hat{\ell}', e2E36(rec.e_hat), pole, '');
+        T.mat(fid, '\hat{e}', e2E36(rec.e_hat), pole, '');
     end
-    T.mat(fid, lb.H_tex, rec.H_hat, pole, '');
-    fprintf(fid, '\\[ \\mathrm{RMS~residual} = %s~\\mathrm{pN} \\]\n', sci(rec.rms));
+    % voltage: the entries are ~1e-3, four decimals would leave one digit, so the
+    % power of ten is pulled out in front (same 'auto' mode the flux PDF uses)
+    hm = '';   if strcmp(rec.base,'voltage'), hm = 'auto'; end
+    T.mat(fid, lb.H_tex, rec.H_hat, pole, hm);
+    % [ADDED 2026-09-28] G, the same quantity the flux PDF prints as G [mT]:
+    % the six charges each excitation puts on the poles, G = B g * Mbar * u.
+    % Only the six single-pole columns of u are used (u(:,1:6)); in a pairs21
+    % run the 15 pair columns are sums of these and add nothing to read.
+    T.mat(fid, 'G~[\mathrm{mT}]', rec.gB_hat * rec.Mbar_hat * rec.u(:,1:6), pole, '');
+    % [ADDED 2026-09-28] voltage base: the sensor read-out the matrices above act on
+    if (SPH || isfield(rec,'u_m')) && strcmp(rec.base,'voltage') && isfield(rec,'V')
+        T.mat(fid, 'V~[\mathrm{mV}]', rec.V, pole, '');
+    end
+    if ~SPH
+        fprintf(fid, '\\[ \\mathrm{RMS~residual} = %s~\\mathrm{pN} \\]\n', sci(rec.rms));
+    end
+    % [ADDED 2026-09-24] NMAE, same vector-norm definition the flux side uses,
+    % so the two packages' fit errors can be read against each other.
+    if isfield(rec,'NMAE') && isfinite(rec.NMAE)
+        fprintf(fid, ['\\[ \\mathrm{NMAE} = \\frac{\\sum_{ij}\\left\\|' ...
+                      'f_{ij} - \\hat{f}_{ij}\\right\\|}{\\sum_{ij}\\left\\|' ...
+                      'f_{ij}\\right\\|}\\cdot 100 = %.4f\\%% \\]\n'], rec.NMAE);
+    end
+    % Optional reference block: a flux calibration of the SAME data, for the
+    % side-by-side. Written by the caller as rec.ref (name/l/gB/NMAE/npts).
+    if ~SPH && isfield(rec,'ref') && isstruct(rec.ref)
+        r = rec.ref;
+        % [MODIFIED 2026-09-28] the heading travels with the reference, so the
+        % block can carry a flux calibration or another force run.
+        ttl = 'Flux calibration of the same data';
+        if isfield(r,'title') && ~isempty(r.title), ttl = r.title; end
+        fprintf(fid, '\\subsection*{%s}\n', texesc(ttl));
+        fprintf(fid, '\\texttt{%s}, %d points\n', texesc(r.name), r.npts);
+        fprintf(fid, ['\\[ \\hat{\\ell} = %.4f~\\mu\\mathrm{m}, \\qquad %s = ' ...
+                      '%.6g~\\mathrm{%s}, \\qquad \\mathrm{NMAE} = %.4f\\%% \\]\n'], ...
+                r.l, lb.gB_tex, r.gB, lb.gB_texu, r.NMAE);
+        fprintf(fid, ['\\[ \\Delta\\hat{\\ell} = %+.3f\\%%, \\qquad \\Delta %s = ' ...
+                      '%+.3f\\%%, \\qquad \\left\\|\\Delta %s\\right\\|_{F} = %+.3f\\%% \\]\n'], ...
+                (rec.l_hat-r.l)/r.l*100, lb.gB_tex, (rec.gB_hat-r.gB)/r.gB*100, ...
+                lb.M_tex, norm(rec.Mbar_hat-r.Mbar,'fro')/norm(r.Mbar,'fro')*100);
+        % lb.M_tex already carries a subscript, so the tag is appended, not
+        % subscripted -- "\bar{K}_{I}_{flux}" is a double subscript and fails.
+        % [FIXED 2026-09-28] the tag travels with the reference: it said "flux"
+        % even when the reference was another force run.
+        tg = 'flux';
+        if isfield(r,'tag') && ~isempty(r.tag), tg = r.tag; end
+        T.mat(fid, sprintf('%s\\,(\\mathrm{%s})', lb.M_tex, tg), r.Mbar, pole, '');
+    end
 
     fprintf(fid, '\\end{document}\n');
     fclose(fid);

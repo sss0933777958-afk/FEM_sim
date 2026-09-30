@@ -9,7 +9,7 @@ function [Mbar_hat, gF_hat, gB_hat, out] = solve_force(H_hat, mgB, l_hat, UF, ba
 %     base   : 'current' (default) | 'voltage' -- LABELS AND UNITS ONLY
 %
 %     Mbar_hat : 6 x 6 gauged matrix, Mbar(1,1) = 5/6
-%                  current -> K_I bar        voltage -> D bar
+%                  current -> K_I bar        voltage -> M bar
 %     gF_hat   : force gain  F g   <- WHAT THE GAUGE COMPUTES
 %                  current -> F g_I [pN/A^2] voltage -> F g_V [pN/mV^2]
 %     gB_hat   : field gain  B g   <- DERIVED from gF_hat
@@ -55,7 +55,7 @@ function [Mbar_hat, gF_hat, gB_hat, out] = solve_force(H_hat, mgB, l_hat, UF, ba
 %   The remaining structure of Mbar is NOT imposed; out.chk reports it as an
 %   independent check. Read it per base: diag_pos and diag_dominant are
 %   meaningful for both, but offdiag_neg and a near-zero rowsum_max are charge
-%   neutrality properties of K_I bar and are NOT expected of D bar -- a voltage
+%   neutrality properties of K_I bar and are NOT expected of M bar -- a voltage
 %   run legitimately reports offdiag_neg = 0 and a rowsum of order 1. Those two
 %   are inherited from whatever Mbar the flux calibration produced, so they say
 %   something about that calibration, never about this gauge.
@@ -126,8 +126,8 @@ function lb = force_labels(base)
     else
         lb = struct( ...
             'u_name',   'V',            'u_unit',    'mV', ...
-            'u_tex',    'V',            'M_name',    'D bar', ...
-            'M_tex',    '\bar{D}',      'M_tex_m',   '\bar{D}_{m}', ...
+            'u_tex',    'V',            'M_name',    'M bar', ...   % [MODIFIED 2026-09-30] D bar -> M bar
+            'M_tex',    '\bar{M}',      'M_tex_m',   '\bar{M}_{m}', ...
             'gF_name',  'F g_V',        'gF_tex',    '{}^{F}\hat{g}_{V}', ...
             'gF_tex_m', '{}^{F}\hat{g}_{V,m}', ...
             'gF_unit',  'pN/mV^2',      'gF_texu',   'pN/mV^{2}', ...
