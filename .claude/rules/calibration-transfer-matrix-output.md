@@ -42,7 +42,7 @@ Flux 的全部項目，再加上力增益與力轉移矩陣：
 只印校正誤差 RMS，不印 NMAE、RMSPE：
 
 ```
-RMS = sqrt(J / N)
+RMS = sqrt(J / (3 · M · N))
 ```
 
-J 為校正點上的殘差平方和（擬合 cost），N 為校正點數。Flux 的單位是 mT，Force 是 pN。
+J 為校正點上的殘差平方和（擬合 cost），3 為分量數，M 為激發數（六極 = 6），N 為校正點數；即每個殘差分量的均方根。Flux 的單位是 mT，Force 是 pN。

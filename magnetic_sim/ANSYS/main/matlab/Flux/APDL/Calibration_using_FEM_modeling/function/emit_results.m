@@ -73,11 +73,12 @@ function emit_e(fid, rec, T, pole)
     end
 end
 
-% ---- 校正誤差 RMS = sqrt(J/N)：J = 校正點殘差平方和 [mT^2]、N = 校正點數 ----
+% ---- 校正誤差 RMS = sqrt(J/(3*M*N))：J = 校正點殘差平方和 [mT^2]、3 分量、M 激發數、N 校正點數 ----
 function emit_rms(fid, rec)
     assert(isfield(rec,'J') && isfield(rec,'npts'), 'emit_results: .mat 缺 J 或 npts，無法算校正誤差 RMS');
-    fprintf(fid, '\\[ \\mathrm{RMS} = \\sqrt{J/N} = %.4g~\\mathrm{mT}, \\quad N = %d \\]\n', ...
-            sqrt(rec.J / rec.npts), rec.npts);
+    M = 6;   if isfield(rec,'G') && ~isempty(rec.G), M = size(rec.G, 2); end
+    fprintf(fid, '\\[ \\mathrm{RMS} = \\sqrt{J/(3 \\cdot %d \\cdot N)} = %.4g~\\mathrm{mT}, \\quad N = %d \\]\n', ...
+            M, sqrt(rec.J / (3 * M * rec.npts)), rec.npts);
 end
 
 % ---- 由 17 偏移建 E36（3×6，含 e6z 約束；不加 Pc_base）----
