@@ -4,6 +4,6 @@
 
 **內容**：
 - `settings.local.json` — 本機 Claude Code 設定（權限 allowlist 等）。
-- ~~`rules/`~~ — **已於 2026-07-06 移到 `../magnetic_sim/.claude/rules/`**（使用者拍板，改放磁學模擬層）。
+- `rules/` — 規則檔（2026-10-03 由 `magnetic_sim/.claude/rules/` 移回本層，session 開在 repo 根時才會自動載入）。
 
-**相關**：repo 總覽見 `../CLAUDE.md`（Quick Triggers 列出各規則觸發片語）與 `../README.md`；規則逐條說明見 `../magnetic_sim/.claude/rules/README.md`。
+**相關**：repo 總覽見 `../CLAUDE.md`（Quick Triggers 列出各規則觸發片語）與 `../README.md`。

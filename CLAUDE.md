@@ -1,91 +1,68 @@
 # FEM Simulation Workspace
 
-`FEM_sim/` 是**通用 FEM 模擬容器**。磁學相關的模擬全部收在 `magnetic_sim/` 這一類底下，再依**求解器**分子層：目前為 `magnetic_sim/ANSYS/`（未來可並列 `COMSOL/` 等），其下 `main/` 為活躍工作區（model topics：`long2016_hexapole_halfcut` 主力 / `kuo_quadrupole` / `zhang_quadrupole`），`backup/` 歸檔非活躍設計（`hexapole-long2016/`、`hung/`）；未來其他模擬類別（如靜電 / 結構 / 熱）會與 `magnetic_sim/` **並列**為 `FEM_sim/` 的兄弟資料夾。
+`FEM_sim/` 是 FEM 模擬容器，session 一律開在這個根目錄。**本檔是全 repo 唯一的 CLAUDE.md。**
+活躍工作全在 `magnetic_sim/ANSYS/main/`（下稱 `main/`），求解器有 APDL 與 Maxwell 兩條線。
+`magnetic_sim/ANSYS/backup/` 是歸檔，活躍程式不得依賴它。
 
-> 🗂 **本檔 = 容器級 + `backup/` 樹適用。活躍工作區 `main/` 的權威完整規則在 `magnetic_sim/ANSYS/main/CLAUDE.md`**
-> （在 `main/` 或其子夾工作時自動載入、為準）。在 `backup/hexapole-long2016`、`backup/hung` 工作時 `main/CLAUDE.md`
-> **不會**載入 → 本檔的跨設計約束（Hexapole Constraints / Rules / Prohibitions / Notation / Commands）
-> **就是 backup/ 的規則來源，故保留**。⚠ 這些跨設計約束**與 `main/CLAUDE.md` 鏡像**，改一處要同步另一處。
-> 開新 session 做 FEM：主力活在 `main/` → **開在 `main/`**（吃到 main/CLAUDE.md + 本檔 + rules）；只碰 backup/ 才靠本檔。
+## 🔒 鐵則
 
-## Quick Triggers
-- 當工作涉及 `magnetic_sim/ANSYS/main/` 目錄（cwd 在 magnetic_sim/ANSYS/main/、編輯 magnetic_sim/ANSYS/main/* 檔案）時，參照 `magnetic_sim/ANSYS/main/CLAUDE.md`（含資料夾架構地圖 + 產物落點），所有新產物寫進 magnetic_sim/ANSYS/main/ 下對應子目錄，不得寫到其他設計目錄或外部路徑
-- 當使用者要求 SolidWorks 出檔／解析 STEP／寫 MT_Geom／檢查模型 等操作時（自然語觸發，例「出 STEP」「解析 STEP」「建 APDL 幾何」「檢查模型」），對應 SOP 在 `magnetic_sim/ANSYS/main/reference/workflows/`（入口 `workflows/README.md`）
-- 當工作涉及「**清 db / 清 sim 副產物 / 清 ANSYS results / 磁碟滿 / 整理 result dir**」等清理動作時，**動手前必須先完整讀 `magnetic_sim/.claude/rules/ansys-db-cleanup.md`**；該規則寫死 `db/` 三層政策（`geom/` 整層刪、`mesh/` 保主 `.db`+主 log、`sim/` 再加主 `.rmg`）、**刪 `geom/` 前必先掃 >100MB 的錯置網格 db**、保留白名單、強制 dry-run 與使用者批准
-- 當使用者貼一個 `model_check/<model>/<...>.iges|.step` 路徑時，**Claude 必須從路徑第二層認出這是哪個物理模型**（`long_fei` = Long Fei 半切六極 / `hung_hexapole` / `NTU_hexapole`），把它當作後續對話的「當前討論模型」，**不要問「這是哪個模型？」**
-- 當工作涉及「**改 ANSYS 幾何 / 改 mt_constants / 寫新 APDL 幾何腳本 / 對齊 CAD / ANSYS 跟 CAD 不一致**」等動作時，**動手前必須先完整讀 `magnetic_sim/.claude/rules/ansys-cad-alignment.md`**；該規則寫死「CAD STEP/IGES 是 source of truth、ANSYS 數值必對齊 CAD、改前必量 CAD、不一致必通報使用者由其拍板、預設 Path A(改 ANSYS)」
-- 當工作涉及「**跑 COMSOL / LiveLink / mphserver / 連 COMSOL server / 跑 .mph**」等動作時（非活躍；`.mph` 模型在 `magnetic_sim/COMSOL/mph/`，腳本與 launcher 已不存在），連線法見 SOP `magnetic_sim/ANSYS/main/reference/workflows/comsol-livelink.md`：獨立啟 `comsolmphserver.exe` + 另一個 `matlab.exe -batch` 內 `mphstart(2036)` 兩個 process，**不要用整合式 `comsolmphserver matlab`**（Win + R2025b 壞）
-- 當工作涉及「**配 FEM 場的擬合 / 改 I_actual·I_in / 寫新 charge fit / 用 fit 參數預測不同電流**」時，**動手前必須先讀 `magnetic_sim/.claude/rules/fit-current-matches-sim.md`**；該規則寫死「模型電流 I 必須等於 FEM 激發電流（目前 1A），不可塞操作電流 0.6A（會把 1/0.6 假因子灌進 gB、預測需補正）；例外＝用 0.6A 把 1A 場縮到操作點的 V/V 矩陣」
-- 當工作涉及「**讀 / 載入 ANSYS 結果（抽 .dat / import_ansys_data / 載入 coilN / postproc 或算矩陣·fit·畫場圖前載入 result）**」時，**動手前必須先讀 `magnetic_sim/.claude/rules/result-read-safety.md`**，照三層執行：①讀前回報絕對路徑+dataset+期望指紋，≥2 候選讓使用者選不自己猜 ②讀後核指紋（matched 節點數 + \|B\| max + case_tag，baseline vs `gap200um_mueq` 同節點數只能靠 \|B\| 低 ~30% 區分）對不上就停 ③查 `magnetic_sim/ANSYS/main/ANSYS_data/<topic>/RESULTS_MAP.md` 凌駕 memory（目前已建 long2016_hexapole_halfcut）
-- 當工作涉及「**把 CAD/STEP 真實幾何匯進 ANSYS / IGESIN 匯不進 / ~PARAIN / Parasolid 匯入 / 建真實幾何模型**」時，參照 `magnetic_sim/.claude/rules/cad-import-ansys.md`（跨設計通用）；**複雜 CAD 不要 primitive 硬拼**，走 STEP →(SpaceClaim)→ `.x_t` →(`ac4para` 產 ANF)→ MAPDL `/INPUT` → `.db`（`IGESIN` 2025R2 只 SMOOTH 會爆、`~PARAIN` bat 不穩已繞過；`ac4para` 要 PATH 含 `ansys\bin\winx64`；model=公尺MKS、IGES=mm）；另 STEP→OCP→IGES(mm) 供檢查
-- 當工作涉及「**把 ANSYS 建完的幾何交付使用者疊 CAD/SolidWorks 檢查**（出檔給你看 / 交付幾何 / 疊 CAD 對一下 / 輸出給我檢查）」時，**動手前先讀 `magnetic_sim/.claude/rules/deliver-step-for-check.md`**；該規則寫死「交付檢查**一律出 STEP、不出 ANSYS IGES**」（ANSYS `IGESOUT` 的 IGES 被 SolidWorks/OCC 讀成英吋 ×25.4，units flag 6→2 + name `2HMM` 都救不了）；改用 OCC（OCP）從原始 STEP solid + primitive 實體 compound、`write.step.unit=MM` 產明確 mm STEP，交付前 OCC 讀回驗 bbox；範本 `apdl/NTU_hexapole/geom/scripts/make_pole_assembly_step.py`
+1. **不擅自更動檔案架構**：未經使用者明確指示，不得移動 / 改名 / 刪除 / 新建資料夾 / 重組目錄 / 搬移檔案，一律**先問**。新增功能組資料夾也算。改既有檔的**內文**不受此限。
+2. **改動同步 README**：改某夾內容 → 更新該夾 `README.md`；新增 / 改名 / 移動夾（須先問）→ 更新上層索引 README 與本檔「資料夾地圖」。範圍只限受影響的那幾份。
+3. 所有新產物寫進 `main/` 下對應子目錄，不得寫到其他設計目錄或外部路徑。
 
-## Commands
+## 資料夾地圖
 
-### ANSYS 可用性
+`main/` 底下（每夾有自己的 `README.md`，動該夾前先讀）：
 
-**執行 ANSYS 前必須先確認路徑存在**。本機實際安裝位置：
+| 資料夾 | 放什麼 |
+|---|---|
+| `CAD_model/<model>/` | SolidWorks 原檔 + STEP（幾何 **source of truth**） |
+| `model_check/<model>/` | 交付檢查用的 mm STEP |
+| `apdl/<model>/{geom,mesh,sim,postproc}/` | APDL deck |
+| `ANSYS_data/<model>/{data,db}/` | APDL 輸出：`.dat` 場、`.db` 模型；每個 model 有 `RESULTS_MAP.md` |
+| `matlab/Flux/{APDL/Calibration_using_FEM_modeling,Maxwell}/` | 磁場校正（電流版 / 電壓版） |
+| `matlab/Force/{APDL/Calibration_using_FEM_modeling,Maxwell}/` | 力模型校正 |
+| `figures/` | 論文圖與其繪圖腳本（`paper_fig/`、`paper_fig_plot/`） |
+| `reference/` | LaTeX 原稿 + PDF + 論文 |
+
+MATLAB 校正包結構：`config/`（模型設定）、`function/` + `main/`（校正求解）、`data/`（校正結果 `.mat`，只留最終定案版）、`results/`（PDF）、`utils/scripts/`（額外計算的腳本）、`utils/data/`（額外計算的結果）、`plot/`（只畫圖）、`figures/<model>/{current,voltage}/`。與校正無關的分析一律走 `utils/scripts` → `utils/data` → `plot`，不另開暫存資料夾。
+
+Maxwell 專案在 repo 外：`D:\Maxwell_sim\<model>\{cad,project,scripts,export,materials}\`（`export/` 是匯出的 `.fld` 場）。
+
+資料流：
 
 ```
-G:\ANSYS Inc\v252\ansys\bin\winx64\MAPDL.exe
+CAD_model (STEP) ─┬─ apdl deck → MAPDL → ANSYS_data/*.dat ─────────┐
+                  └─ D:\Maxwell_sim project → AEDT → export/*.fld ──┤
+                                                                    ↓
+              matlab/{Flux,Force}/…/main → data/*.mat → utils → plot → figures/*.png、results/*.pdf
 ```
 
-若路徑不存在（例如換機器或版本），在標準位置（`C:\Program Files\ANSYS Inc\<version>\...`）或其他磁碟搜尋後再跑。
+## Quick Triggers（動手前先讀全文）
 
-### 典型指令
+規則檔都在 `.claude/rules/`。
 
-```bash
-ANSYS="G:\ANSYS Inc\v252\ansys\bin\winx64\MAPDL.exe"
+| 觸發 | 規則檔 |
+|---|---|
+| 清 db / 清 sim 副產物 / 清 ANSYS results / 磁碟滿 | `ansys-db-cleanup.md`（`geom/` 整層刪、`mesh/` 保主 `.db`+主 log、`sim/` 再加主 `.rmg`；**刪 `geom/` 前必先掃 >100MB 的錯置網格 db**；保留白名單、強制 dry-run 與使用者批准） |
+| 動校正包的結構 / 輸出 / 座標系 / 編號 / 單位 | `calibration-shared-structure.md`（結構凍結、改先問）、`calibration-transfer-matrix-output.md`、`actuator-frame.md`、`pole-coil-numbering.md`、`unit-reference.md` |
+| 畫圖 / 改圖 / 調字級 | `figure-style.md` |
+| 寫 / 改任何 `plot/**` 腳本 | `plot-scripts-pure.md`（只准 load `.mat` → 畫圖） |
+| 動 `results/` | `results-pdf-only.md`（只放 PDF） |
+| 新建檔案 / 取檔名 / 命名 variant | `short-names.md` |
+| 想複製一支腳本做變體 | `modify-existing-files.md`（改現有那支） |
+| 腳本需要模型常數 / 看到 `addpath(backup)` | `no-backup-data.md`（一律走 `model_config(...)`） |
 
-# Run single coil (batch mode, no GUI) — run from magnetic_sim/ANSYS/backup/hexapole-long2016/
-cd magnetic_sim/ANSYS/backup/hexapole-long2016
-"$ANSYS" -b -np 4 -m 24000 \
-  -dir "results/coil1" -j "coil1" \
-  -i "$(pwd)/apdl/MT_Modeling_Geometry_Meshing_Solving_Coil1.txt" \
-  -o "results/coil1/solve.out"
+## ANSYS 可用性
 
-# Run all 6 coils sequentially
-for i in 1 2 3 4 5 6; do
-  "$ANSYS" -b -np 4 -m 24000 \
-    -dir "results/coil${i}" -j "coil${i}" \
-    -i "$(pwd)/apdl/MT_Modeling_Geometry_Meshing_Solving_Coil${i}.txt" \
-    -o "results/coil${i}/solve.out"
-done
-```
-
-## Architecture
-```
-FEM_sim/                   Git root — 通用 FEM 模擬容器
-├── README.md                            Project overview
-├── CLAUDE.md                            This file
-├── .gitignore                           Excludes ANSYS outputs
-├── .claude/                            Git-root Claude config (settings.local.json, README)
-├── magnetic_sim/                        磁學模擬類別（目前唯一類別）
-│   ├── .claude/rules/                   Path-scoped editing rules (moved here 2026-07-06)
-│   └── ANSYS/                           ANSYS 求解器子層（未來可並列 COMSOL/ 等）
-│       ├── main/                        ★ 活躍設計：4-pole MEMS Quadrupole (Harrison-style；原 kuo/)
-│       │   ├── apdl/{geom,sim,postproc,sweep}/  APDL scripts
-│       │   ├── matlab/                  MATLAB analysis (含 common/ resolver)
-│       │   ├── ANSYS_data/<model>/<case>/  FEM .dat/.db (gitignored)
-│       │   ├── MATLAB_data/<model>/<fn>/   MATLAB outputs (.mat/.csv)
-│       │   ├── figures/                 All figures (incl. reports)
-│       │   ├── model_check/          Geometry deliverables (mm STEP; IGES/ removed 2026-07-13, IGES 中繼走 scratch)
-│       │   ├── CAD/                     SolidWorks/STEP originals
-│       │   ├── comsol/ + mph/          COMSOL LiveLink scripts + .mph models
-│       │   ├── semulator/               SEMulator process flow
-│       │   └── reference/               LaTeX 原稿 + PDF + workflows/(SOP) + 論文 PDF（原 doc/，2026-08-23 改名）
-│       └── backup/                      歸檔（非活躍設計）
-│           ├── hexapole-long2016/       Long 2016 dissertation hexapole design
-│           └── hung/                    Hung hexapole design (build workflow)
-└── (future: electric_sim/ 等其他 FEM 類別，與 magnetic_sim/ 並列)
-```
+執行 MAPDL 前先確認路徑存在：`G:\ANSYS Inc\v252\ansys\bin\winx64\MAPDL.exe`。不存在就先搜尋其他磁碟再跑。
 
 ## Hexapole Design Constraints (Mandatory)
 
 These constraints apply to ALL hexapole designs in this repo. They are non-negotiable.
 
 1. **Orthogonal pair axes**: 3 opposing pole pairs (P1-P2, P3-P4, P5-P6) must have mutually perpendicular connecting lines
-2. **Tips on common sphere**: All 6 pole tips at distance R_norm from WP center (R_norm is adjustable)
+2. **Tips on common sphere**: All 6 pole tips at distance R_norm from the sphere center (R_norm is adjustable)
 3. **60-degree azimuthal offset**: Upper layer rotated 60 deg relative to Lower layer
 4. **alpha = arctan(sqrt(2)) = 54.74 deg is FIXED**: derived from constraints 1-3, not a free parameter
    - `R_norm_xy = R_norm * sqrt(2/3)` and `R_norm_z = R_norm / sqrt(3)` — these formulas are locked
@@ -98,53 +75,25 @@ These constraints apply to ALL hexapole designs in this repo. They are non-negot
 - Always verify `D,ALL,MAG,0` boundary condition exists before `/SOLU`
 - Preserve original commented-out code (prefixed `!****`) unless asked to remove
 - Use tab indentation matching original style
-- Use dissertation notation (B, Phi, q, K_I, rho, R_a, g_I, etc.) in all discussion and code comments
-- Always refer to poles by paper name (P1-P6); mention APDL index only when editing APDL code
 
 ## Prohibitions
 - NEVER commit ANSYS output files (*.rst, *.db, *.full, etc.)
 - NEVER change geometry parameters without explicit user approval
-- NEVER modify element types or material properties without approval
+- NEVER modify element types (SOLID96, SOURC36) or material properties without approval
 - NEVER remove boundary condition section (`[ADDED]` block near line 500)
-- NEVER 跑任何 db / sim 清理（rm intermediates / rm result dir）前未先讀 `magnetic_sim/.claude/rules/ansys-db-cleanup.md` 全文；違反 = 違規
+- NEVER 跑任何 db / sim 清理（rm intermediates / rm result dir）前未先讀 `.claude/rules/ansys-db-cleanup.md` 全文；違反 = 違規
 - NEVER 刪 `db/geom/` 前未先掃「>100MB 的 .db」——那是錯置的**網格** db（孤本、含指紋基準網格），必須先搬進 `db/mesh/`
 - NEVER 寫 `rm -f <jobname>*` 清 ANSYS 檔（會連主 `.rmg` + `.db` 一起刪）——用規則裡的針對性 pattern
-- NEVER 改 ANSYS 幾何尺寸或 mt_constants 前未先量對應 CAD（SolidWorks STEP/IGES）並比對；發現不一致**不可自己選一個值**，必須通報使用者由其拍板（per `magnetic_sim/.claude/rules/ansys-cad-alignment.md`）
 - NEVER change alpha (54.74 deg) or the R_norm_xy / R_norm_z formulas
 - NEVER produce a pole configuration that violates pair-axis orthogonality
 
 ## Notation Standard
-All symbols and terms follow Fei Long's 2016 dissertation. See the full glossary:
-- `magnetic_sim/ANSYS/backup/hexapole-long2016/docs/notation-glossary.md` - **canonical** symbol/term mapping
+All symbols and terms follow Fei Long's 2016 dissertation (B, Phi, q, K_I, rho, R_a, g_I, N_c, ...).
 
-Key conventions:
-- Use **paper pole names** (P1-P6) in all user-facing text, figures, and discussion
-- APDL coil indices (1-6) only in APDL code and raw data context
-- **Mapping is PER-MODEL, not a global rule** — it is each deck's build order, not physics.
+- Use **paper pole names** (P1-P6) in all user-facing text, figures, and discussion; APDL coil indices (1-6) only in APDL code and raw data context
+- **Coil → pole mapping is PER-MODEL, not a global rule** — it is each deck's build order, not physics.
   long2016 `[1,3,6,5,2,4]` / NTU `[1,3,6,5,2,4]` / **hung `identity`**; new models: identity (coil k = Pk).
-  Never copy another model's map — see `magnetic_sim/.claude/rules/pole-coil-numbering.md` (the old
-  global claim "APDL {1..6} = Paper {P1,P3,P6,P5,P2,P4}" was wrong and silently corrupted hung's K̄_I).
-- Physical quantities use dissertation symbols: B, Phi, q, K_I, R_hat, L_i, rho, R_a, g_I, N_c
+  Never copy another model's map — see `.claude/rules/pole-coil-numbering.md`.
+- **禁用 "WP" 這個字眼**（使用者拍板 2026-08-06）：圖、軸標、圖例、註解、對話一律不用。那一點就叫**原點**（六極尖共球球心 = 繪圖座標原點），圖上以黑點標示、不加文字。既有檔不強制回溯清理，動到哪個檔就順手改。
 - Two meanings of rho: physical (500 um) vs fitted (900 um) — always clarify which
-- Units: ANSYS outputs Tesla; figures use mT for WP region; dissertation Fig. 2.4 uses Gauss
-
-## Detailed Docs
-- `magnetic_sim/ANSYS/backup/hexapole-long2016/docs/fitting-methods.md` - **[A]→[J]→[B-6x] fitting methods, [B-6x] is final**
-- `magnetic_sim/ANSYS/backup/hexapole-long2016/docs/model-validation.md` - APDL vs dissertation comparison
-- `magnetic_sim/ANSYS/backup/hexapole-long2016/docs/notation-glossary.md` - unified notation, dissertation alignment
-- `magnetic_sim/ANSYS/backup/hexapole-long2016/docs/coil-winding-sign-convention.md` - pole polarity & coil_sign correction
-- `magnetic_sim/ANSYS/backup/hexapole-long2016/docs/charge-model-fitting.md` - point-charge model derivation
-- `magnetic_sim/ANSYS/backup/hexapole-long2016/docs/ansys-environment.md` - ANSYS install, batch mode, hardware
-- `magnetic_sim/ANSYS/backup/hexapole-long2016/docs/simulation-parameters.md` - geometry, materials, mesh, solver
-- `magnetic_sim/ANSYS/backup/hexapole-long2016/docs/workflow.md` - 4-stage simulation-to-publication pipeline
-- `magnetic_sim/ANSYS/backup/hexapole-long2016/docs/troubleshooting.md` - known errors and fixes
-
-## Compact Instructions
-When context is compressed, preserve:
-1. The 6 scripts differ ONLY in CURR_ARRAY (coil N has CURR_ARRAY(N)=1)
-2. Boundary condition D,ALL,MAG,0 is mandatory for DSP solver
-3. Results go to magnetic_sim/ANSYS/backup/hexapole-long2016/results/coilN/ directories
-4. User prefers Traditional Chinese explanations
-5. Use paper pole names P1-P6 (not APDL indices) in all discussion
-6. Notation follows Long 2016 dissertation — see `magnetic_sim/ANSYS/backup/hexapole-long2016/docs/notation-glossary.md`
-7. alpha = 54.74 deg is FIXED for all hexapole designs
+- Units: ANSYS outputs Tesla; figures use mT（完整單位表見 `unit-reference.md`）
