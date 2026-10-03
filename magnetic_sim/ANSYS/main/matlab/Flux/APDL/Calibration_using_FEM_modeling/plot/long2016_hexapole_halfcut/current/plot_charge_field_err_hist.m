@@ -16,13 +16,13 @@ I_actual = 1;                 % 驅動電流 [A] = FEM 激發
 NB       = 40;                % 直方圖 bin 數
 
 %% ---- paths（同 current_base/main.m）--------------------------------------------
-TREE = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
+TREE = ['G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
         'long2016_hexapole_halfcut\Calibration_using_FEM_modeling\current_base'];
 % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live config。
-CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+CALROOT = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
 addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
 addpath(fullfile(TREE,'code','main_function'));
-results_root = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
+results_root = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
 figdir = fullfile(TREE,'figures','single_param');
 if ~exist(figdir,'dir'); mkdir(figdir); end
 

@@ -38,7 +38,7 @@
 1. **確認 geom 與 sim 參數一致**:`grep "POLE_R\|POLE_L\|TURNS\|R_sphere"` 兩檔比對
 2. **準備結果目錄**:
    ```powershell
-   $RES = "G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\{topic}\{case_tag}\coil$N"
+   $RES = "G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\{topic}\{case_tag}\coil$N"
    New-Item -ItemType Directory -Force $RES | Out-Null
    ```
 3. **跑 ANSYS batch**(**`-dir` 一定要絕對路徑** — memory `feedback_keep_topdirs_clean`):

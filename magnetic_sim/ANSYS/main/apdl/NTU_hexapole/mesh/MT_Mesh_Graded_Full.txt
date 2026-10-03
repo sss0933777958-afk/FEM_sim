@@ -17,7 +17,7 @@
 !   ★ 本輪不建 sensor 加密球。
 ! ============================================================================
 
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\NTU_hexapole\db\mesh\full_assembly_sleeve'
+/CWD,'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\NTU_hexapole\db\mesh\full_assembly_sleeve'
 Finish
 /cle
 /CLEAR,NOSTART

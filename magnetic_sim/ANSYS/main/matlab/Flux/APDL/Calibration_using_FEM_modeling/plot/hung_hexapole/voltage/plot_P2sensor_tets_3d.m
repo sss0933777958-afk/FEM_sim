@@ -12,14 +12,14 @@ function plot_P2sensor_tets_3d(PREVIEW)
     DPI = 200;
 
     % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live 樹。
-    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    CALROOT = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
     addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
-    addpath(['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
+    addpath(['G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
              'hung_hexapole\Calibration_using_FEM_modeling\voltage_base\code\function']);
     cnst = model_config('hung_hexapole');
     [sp, sn] = build_sensor_geometry(cnst);
-    rr   = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\data';
-    MESH = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\data\mesh\standard\csv';
+    rr   = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\data';
+    MESH = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\data\mesh\standard\csv';
     SENSOR_R = 0.15e-3; AXIAL_TOL = 0.10e-3;
 
     % ---- 真實局部網格 → triangulation ----
@@ -77,7 +77,7 @@ function plot_P2sensor_tets_3d(PREVIEW)
     if PREVIEW
         out = fullfile(tempdir,'p2sensor_tets3d_preview.png');
     else
-        out = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
+        out = ['G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
                'hung_hexapole\Calibration_using_FEM_modeling\voltage_base\figures\shared\P2sensor_tets_3d.png'];
     end
     exportgraphics(fig, out, 'Resolution', DPI);

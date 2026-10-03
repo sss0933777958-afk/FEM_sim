@@ -369,7 +369,7 @@ VPLOT
 ALLSEL, ALL
 ! [MODIFIED 2026-08-04] model_check 的 topic 夾早已改名 long2016_hexapole_halfcut → long_fei
 !   （見 model_check/long_fei/README.md 命名慣例），原路徑不存在、IGESOUT 會失敗。
-IGESOUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\model_check\long_fei\Geom_WithCoil', 'iges'
+IGESOUT, 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\model_check\long_fei\Geom_WithCoil', 'iges'
 
 ! [!! IMPORTANT POST-STEP !!] ANSYS IGESOUT writes unit flag = 6 (metres) regardless
 ! of /UNITS setting. Since geometry numbers are in mm here, the IGES gets read 1000×

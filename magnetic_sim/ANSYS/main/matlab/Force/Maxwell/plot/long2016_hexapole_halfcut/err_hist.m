@@ -37,7 +37,7 @@ et    = '';   if ~strcmpi(EXC,'pairs21'), et = ['_' lower(EXC)]; end
 MATD  = fullfile(FMX,'data',MODEL,'.mat');
 st = '';   if strcmp(BASE,'voltage'), st = ['_soff' strrep(sprintf('%g',SOFF),'.','p') 'mm']; end
 S.eighteen = pick_(MATD, sprintf('%s_R%d_N*%s_L*%s_eighteen.mat', BASE, RSEL, st, et), EXC);
-OUT   = fullfile(FMX,'figures',MODEL);
+OUT   = fullfile(FMX,'figures',MODEL,BASE);
 
 FS = 60;  FSLEG = 45;  FSLAB = 44;  LWBOX = 5.0;  CANV = 14.5;
 BLU = [0.05 0.10 0.95];   RED = [0.85 0.10 0.10];

@@ -9,10 +9,10 @@
 !   coil2 = +1 RAW (P1; all-source negate done in MATLAB post, same as baseline coil2/standard).
 !   Output -> data/gap_200um/coil2/ (OVERWRITES old coil-pillar/baseline gap200, user confirmed).
 ! ============================================================================
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\sim\gap200_sb_graded'
+/CWD,'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\sim\gap200_sb_graded'
 /CLEAR,NOSTART
 /TITLE, Long2016 halfcut graded gap200 mu_eff on support base (coil2)
-RESUME,'mesh_graded','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\mesh\graded'
+RESUME,'mesh_graded','db','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\mesh\graded'
 
 /PREP7
 *afun,DEG
@@ -98,20 +98,20 @@ ALLSEL,ALL
 /HEADER,OFF,OFF,OFF,OFF,OFF,OFF
 /FORMAT,10,,20,12,,
 /PAGE,1000000,,1000000
-/OUTPUT,'coil2_coord_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\gap_200um\coil2'
+/OUTPUT,'coil2_coord_all','dat','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\gap_200um\coil2'
 NLIST,ALL, , ,COORD
 /OUTPUT
-/OUTPUT,'coil2_bfield_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\gap_200um\coil2'
+/OUTPUT,'coil2_bfield_all','dat','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\gap_200um\coil2'
 PRNSOL,B,COMP
 /OUTPUT
 LOCAL,12,2, 0, 0, SPH_OFST
 CSYS,12
 NSEL,S,LOC,X, 0, 2e-3
 CSYS,0
-/OUTPUT,'coil2_coord_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\gap_200um\coil2'
+/OUTPUT,'coil2_coord_wp','dat','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\gap_200um\coil2'
 NLIST,ALL, , ,COORD
 /OUTPUT
-/OUTPUT,'coil2_bfield_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\gap_200um\coil2'
+/OUTPUT,'coil2_bfield_wp','dat','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\gap_200um\coil2'
 PRNSOL,B,COMP
 /OUTPUT
 ALLSEL,ALL

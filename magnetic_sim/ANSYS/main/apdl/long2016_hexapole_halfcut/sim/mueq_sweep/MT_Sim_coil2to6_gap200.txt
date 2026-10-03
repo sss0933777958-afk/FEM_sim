@@ -6,10 +6,10 @@
 !   coilK = +1 RAW (same as baseline/coil1); all-source via MATLAB post-negate.
 !   mu_eff (effective_permeability.pdf 2-seg, gap=200um): upper 59.267241 / lower 71.014493
 ! ============================================================================
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\sim\mueq_sweep'
+/CWD,'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\sim\mueq_sweep'
 /CLEAR,NOSTART
 /TITLE, gap200 2-seg coils 2..6
-RESUME,'mesh_baseline','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\mesh\mesh_baseline'
+RESUME,'mesh_baseline','db','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\mesh\mesh_baseline'
 
 /PREP7
 *afun,DEG
@@ -64,14 +64,14 @@ SET,LAST $ ALLSEL,ALL
 /HEADER,OFF,OFF,OFF,OFF,OFF,OFF
 /FORMAT,10,,20,12,,
 /PAGE,1000000,,1000000
-/OUTPUT,'coil2_coord_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil2\gap200um_mueq'
+/OUTPUT,'coil2_coord_all','dat','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil2\gap200um_mueq'
 NLIST,ALL, , ,COORD $ /OUTPUT
-/OUTPUT,'coil2_bfield_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil2\gap200um_mueq'
+/OUTPUT,'coil2_bfield_all','dat','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil2\gap200um_mueq'
 PRNSOL,B,COMP $ /OUTPUT
 LOCAL,12,2, 0, 0, SPH_OFST $ CSYS,12 $ NSEL,S,LOC,X, 0, 2e-3 $ CSYS,0
-/OUTPUT,'coil2_coord_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil2\gap200um_mueq'
+/OUTPUT,'coil2_coord_wp','dat','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil2\gap200um_mueq'
 NLIST,ALL, , ,COORD $ /OUTPUT
-/OUTPUT,'coil2_bfield_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil2\gap200um_mueq'
+/OUTPUT,'coil2_bfield_wp','dat','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil2\gap200um_mueq'
 PRNSOL,B,COMP $ /OUTPUT
 ALLSEL,ALL $ CSYS,0 $ FINISH
 
@@ -90,14 +90,14 @@ SET,LAST $ ALLSEL,ALL
 /HEADER,OFF,OFF,OFF,OFF,OFF,OFF
 /FORMAT,10,,20,12,,
 /PAGE,1000000,,1000000
-/OUTPUT,'coil3_coord_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil3\gap200um_mueq'
+/OUTPUT,'coil3_coord_all','dat','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil3\gap200um_mueq'
 NLIST,ALL, , ,COORD $ /OUTPUT
-/OUTPUT,'coil3_bfield_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil3\gap200um_mueq'
+/OUTPUT,'coil3_bfield_all','dat','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil3\gap200um_mueq'
 PRNSOL,B,COMP $ /OUTPUT
 LOCAL,12,2, 0, 0, SPH_OFST $ CSYS,12 $ NSEL,S,LOC,X, 0, 2e-3 $ CSYS,0
-/OUTPUT,'coil3_coord_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil3\gap200um_mueq'
+/OUTPUT,'coil3_coord_wp','dat','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil3\gap200um_mueq'
 NLIST,ALL, , ,COORD $ /OUTPUT
-/OUTPUT,'coil3_bfield_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil3\gap200um_mueq'
+/OUTPUT,'coil3_bfield_wp','dat','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil3\gap200um_mueq'
 PRNSOL,B,COMP $ /OUTPUT
 ALLSEL,ALL $ CSYS,0 $ FINISH
 
@@ -116,14 +116,14 @@ SET,LAST $ ALLSEL,ALL
 /HEADER,OFF,OFF,OFF,OFF,OFF,OFF
 /FORMAT,10,,20,12,,
 /PAGE,1000000,,1000000
-/OUTPUT,'coil4_coord_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil4\gap200um_mueq'
+/OUTPUT,'coil4_coord_all','dat','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil4\gap200um_mueq'
 NLIST,ALL, , ,COORD $ /OUTPUT
-/OUTPUT,'coil4_bfield_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil4\gap200um_mueq'
+/OUTPUT,'coil4_bfield_all','dat','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil4\gap200um_mueq'
 PRNSOL,B,COMP $ /OUTPUT
 LOCAL,12,2, 0, 0, SPH_OFST $ CSYS,12 $ NSEL,S,LOC,X, 0, 2e-3 $ CSYS,0
-/OUTPUT,'coil4_coord_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil4\gap200um_mueq'
+/OUTPUT,'coil4_coord_wp','dat','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil4\gap200um_mueq'
 NLIST,ALL, , ,COORD $ /OUTPUT
-/OUTPUT,'coil4_bfield_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil4\gap200um_mueq'
+/OUTPUT,'coil4_bfield_wp','dat','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil4\gap200um_mueq'
 PRNSOL,B,COMP $ /OUTPUT
 ALLSEL,ALL $ CSYS,0 $ FINISH
 
@@ -142,14 +142,14 @@ SET,LAST $ ALLSEL,ALL
 /HEADER,OFF,OFF,OFF,OFF,OFF,OFF
 /FORMAT,10,,20,12,,
 /PAGE,1000000,,1000000
-/OUTPUT,'coil5_coord_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil5\gap200um_mueq'
+/OUTPUT,'coil5_coord_all','dat','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil5\gap200um_mueq'
 NLIST,ALL, , ,COORD $ /OUTPUT
-/OUTPUT,'coil5_bfield_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil5\gap200um_mueq'
+/OUTPUT,'coil5_bfield_all','dat','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil5\gap200um_mueq'
 PRNSOL,B,COMP $ /OUTPUT
 LOCAL,12,2, 0, 0, SPH_OFST $ CSYS,12 $ NSEL,S,LOC,X, 0, 2e-3 $ CSYS,0
-/OUTPUT,'coil5_coord_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil5\gap200um_mueq'
+/OUTPUT,'coil5_coord_wp','dat','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil5\gap200um_mueq'
 NLIST,ALL, , ,COORD $ /OUTPUT
-/OUTPUT,'coil5_bfield_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil5\gap200um_mueq'
+/OUTPUT,'coil5_bfield_wp','dat','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil5\gap200um_mueq'
 PRNSOL,B,COMP $ /OUTPUT
 ALLSEL,ALL $ CSYS,0 $ FINISH
 
@@ -168,14 +168,14 @@ SET,LAST $ ALLSEL,ALL
 /HEADER,OFF,OFF,OFF,OFF,OFF,OFF
 /FORMAT,10,,20,12,,
 /PAGE,1000000,,1000000
-/OUTPUT,'coil6_coord_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil6\gap200um_mueq'
+/OUTPUT,'coil6_coord_all','dat','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil6\gap200um_mueq'
 NLIST,ALL, , ,COORD $ /OUTPUT
-/OUTPUT,'coil6_bfield_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil6\gap200um_mueq'
+/OUTPUT,'coil6_bfield_all','dat','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil6\gap200um_mueq'
 PRNSOL,B,COMP $ /OUTPUT
 LOCAL,12,2, 0, 0, SPH_OFST $ CSYS,12 $ NSEL,S,LOC,X, 0, 2e-3 $ CSYS,0
-/OUTPUT,'coil6_coord_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil6\gap200um_mueq'
+/OUTPUT,'coil6_coord_wp','dat','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil6\gap200um_mueq'
 NLIST,ALL, , ,COORD $ /OUTPUT
-/OUTPUT,'coil6_bfield_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil6\gap200um_mueq'
+/OUTPUT,'coil6_bfield_wp','dat','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil6\gap200um_mueq'
 PRNSOL,B,COMP $ /OUTPUT
 ALLSEL,ALL $ CSYS,0 $ FINISH
 

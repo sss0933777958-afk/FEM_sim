@@ -4,9 +4,9 @@
 !   啟動：MAPDL -b -dir <figures 夾> -j vimg -i 本檔 -o vimg.out
 !   （db 路徑寫死在 RESUME；PNG 落 /CWD=figures 夾，名 vimg000.png…）
 ! ============================================================================
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\figures\NTU_hexapole\full_assembly_mesh'
+/CWD,'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\figures\NTU_hexapole\full_assembly_mesh'
 /FILNAME,vimg,1
-RESUME,'full_assembly','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\NTU_hexapole\db\mesh\full_assembly\'
+RESUME,'full_assembly','db','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\NTU_hexapole\db\mesh\full_assembly\'
 /PREP7
 
 ! 白底、深前景（報告風）

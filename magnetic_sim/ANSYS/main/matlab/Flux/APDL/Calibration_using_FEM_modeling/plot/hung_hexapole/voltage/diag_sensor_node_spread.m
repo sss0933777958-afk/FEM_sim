@@ -5,14 +5,14 @@
 % I=1A、sensor_spheres 加密網格、圓柱 Ø0.3mm×0.1mm（同 extract_Vmat）。
 
 clear; clc;
-TREE = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
+TREE = ['G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
         'hung_hexapole\Calibration_using_FEM_modeling\voltage_base'];
 % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live 樹。
-CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+CALROOT = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
 addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
 addpath(fullfile(TREE,'code','main_function')); addpath(fullfile(TREE,'code','function'));
 addpath(fullfile(TREE,'code','main_function'));
-results_root = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\data';
+results_root = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\data';
 
 SENSOR_R = 0.15e-3; AXIAL_T = 0.10e-3;
 cnst = model_config('hung_hexapole');

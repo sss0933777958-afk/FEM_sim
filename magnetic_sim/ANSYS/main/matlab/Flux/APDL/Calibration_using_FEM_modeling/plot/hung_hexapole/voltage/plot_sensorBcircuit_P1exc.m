@@ -16,13 +16,13 @@ function plot_sensorBcircuit_P1exc(pole_i, I_scale)
 
     %% ---- paths ----
     % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live 樹。
-    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    CALROOT = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
     addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
-    addpath(['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
+    addpath(['G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
              'hung_hexapole\Calibration_using_FEM_modeling\voltage_base\code\function']);
     cnst = model_config('hung_hexapole');
-    rr = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\data';
-    figdir = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
+    rr = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\data';
+    figdir = ['G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
               'hung_hexapole\Calibration_using_FEM_modeling\voltage_base\figures'];
 
     %% ---- sensor 幾何 + 切面 + world-up 顯示基底 ----

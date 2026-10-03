@@ -108,7 +108,7 @@ function plot_sensor_mounting_tip400(POLE, PREVIEW)
     if PREVIEW
         out = fullfile(tempdir, sprintf('sensor_mounting_tip400_%s_preview.png',POLE));  exportgraphics(gcf,out,'Resolution',150);
     else
-        fdir = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\long2016_hexapole_halfcut\Calibration_using_FEM_modeling\voltage_base\figures\shared';
+        fdir = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\long2016_hexapole_halfcut\Calibration_using_FEM_modeling\voltage_base\figures\shared';
         out = fullfile(fdir, sprintf('sensor_mounting_tip400_%s.png',POLE));  exportgraphics(gcf,out,'Resolution',200);
     end
     fprintf('saved %s\n', out);

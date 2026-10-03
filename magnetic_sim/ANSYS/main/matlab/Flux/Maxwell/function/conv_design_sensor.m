@@ -10,7 +10,8 @@ function [x, y, z, B, tri, info] = conv_design_sensor(Nx, Ny, opt)
 %   ⚠ **本函式只做兩件事：①決定內插點位置 ②三線性內插取場。**
 %     組 V（投影到 n̂ 再取體積平均）交給 build_V_matrix —— 它逐 sensor 呼叫本函式
 %     拿「點與場」，自己只做 V(i,kc) = S_hall * mean(b·n̂)。
-%     設計現在是**定值**（使用者 2026-08-28 定案 Nx=Ny=100），main.m 不再跑 sensor 收斂迴圈：
+%     設計現在是**定值**（使用者定案 Nx=Ny=200 -> 31730 點；2026-09-28 再次確認，
+%     本檔先前寫 100 是過期註解），main.m 不再跑 sensor 收斂迴圈：
 %
 %       V = build_V_matrix(..., [Nx Ny], ...);      % 內部呼叫本函式
 %
@@ -33,7 +34,7 @@ function [x, y, z, B, tri, info] = conv_design_sensor(Nx, Ny, opt)
 %       x_i = -R + 2R*i/Nx     i = 0..Nx      （格線 Nx+1 條）
 %       y_j = -R + 2R*j/Ny     j = 0..Ny
 %       保留 x^2 + y^2 <= R^2；全部落在 z = H/2（span='center' 時 z = 0）
-%     -> 點數 ~ (pi/4)*(Nx+1)*(Ny+1)。定案 Nx=Ny=100 -> 7845 點、點距 3 um。
+%     -> 點數 ~ (pi/4)*(Nx+1)*(Ny+1)。定案 Nx=Ny=200 -> 31730 點、點距 1.5 um。
 %     ✅ 這個擺法修掉了前一版（三軸等分）的兩個加權偏差：中心面 = 軸向中點法
 %        （前版 z=H*j/Nz 是右端點、整層偏頂面）、笛卡兒格 = 面積權重天生均勻
 %        （前版等分半徑 + 未加權平均會偏內圈）。

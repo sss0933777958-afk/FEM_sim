@@ -17,7 +17,7 @@ MESH_VARIANT="${MESH_VARIANT:-$VARIANT}"
 #   0=MVP（需 AX/AY/AZ 元素，SOLID96 不適用）| 1=MVP-RSP | 2=RSP | 3=DSP（現行預設）| 4=GSP
 MAGOPT="${MAGOPT:-3}"
 MAPDL="G:/ANSYS Inc/v252/ansys/bin/winx64/MAPDL.exe"
-ROOT="G:/my_workspace/code/FEM_sim/magnetic_sim/ANSYS/main"
+ROOT="G:/my_workspace/FEM_sim/magnetic_sim/ANSYS/main"
 DECK="$ROOT/apdl/long2016_hexapole_halfcut/sim/graded/MT_Sim_graded_all.txt"
 SIMCWD="$ROOT/ANSYS_data/long2016_hexapole_halfcut/db/sim/$VARIANT"
 DATADIR="$ROOT/ANSYS_data/long2016_hexapole_halfcut/data/$VARIANT"

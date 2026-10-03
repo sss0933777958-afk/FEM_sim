@@ -59,7 +59,7 @@ from OCP.BRepBndLib import BRepBndLib
 from OCP.GProp import GProp_GProps
 from OCP.BRepGProp import BRepGProp
 
-ROOT = r"G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main"
+ROOT = r"G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main"
 SRC = ROOT + r"\CAD_model\long_fei\STEP\long2016_hexapolehalfcut_geom.STEP"
 OUT = ROOT + r"\CAD_model\long_fei\STEP\long2016_hexapolehalfcut_gap.STEP"
 

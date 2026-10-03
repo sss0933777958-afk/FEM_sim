@@ -19,12 +19,12 @@ function plot_charge_circuit_sideview()
 
     %% --- Paths (import_ansys_data / mt_constants live in backup analysis) ---
     % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live config。
-    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    CALROOT = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
     addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
 
-    CAL = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
+    CAL = ['G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
            'long2016_hexapole_halfcut\Calibration_using_FEM_modeling'];
-    DATA_ROOT = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\' ...
+    DATA_ROOT = ['G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\' ...
                  'long2016_hexapole_halfcut\data\no_gap\coil1'];
 
     %% --- View + sampling params (measure/APDL frame, mm) ---

@@ -8,7 +8,7 @@
 ! 目標節點數 > 700k，供與 Dfillet _conv 做「pole 幾何」對照
 ! =======================================
 
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\hung\results\coil1\round_filleted_conv'
+/CWD,'G:\my_workspace\FEM_sim\magnetic_sim\hung\results\coil1\round_filleted_conv'
 
 /PREP7
 *afun, DEG

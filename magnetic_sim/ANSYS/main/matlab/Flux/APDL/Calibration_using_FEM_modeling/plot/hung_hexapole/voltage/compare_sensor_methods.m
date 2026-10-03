@@ -17,14 +17,14 @@
 clear; clc;
 
 %% ---- paths ----------------------------------------------------------------
-TREE = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
+TREE = ['G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
         'hung_hexapole\Calibration_using_FEM_modeling\voltage_base'];
 % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live 樹。
-CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+CALROOT = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
 addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
 addpath(fullfile(TREE,'code','main_function')); addpath(fullfile(TREE,'code','function'));                                                      % 三個 extract_Vmat*
 addpath(fullfile(TREE,'code','main_function'));                                                      % 三個 extract_Vmat*
-results_root = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\data';
+results_root = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\data';
 mesh_csv_dir = fullfile(results_root,'mesh','standard','csv');   % sensor_local_{nodes,elems}.csv（standard 拓樸，csv/ 子夾）
 resdir       = fullfile(TREE,'results','eighteen_param');
 if ~exist(resdir,'dir'); mkdir(resdir); end

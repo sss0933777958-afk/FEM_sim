@@ -104,7 +104,7 @@ function plot_sigma_hist(USE_BIAS, R_FIT, R_EVAL, NSAMP, force, MODEL, GEOM, VAR
     % [ADDED 2026-08-28] variant 後綴：同一 model 有多版場（zhi_peng 的 maxwell_split /
     %   maxwell_gap）時，只帶 model 名會互相覆蓋。照 short-names 剝掉整棵樹都一樣的
     %   'maxwell' -> '_split' / '_gap'（與 plot_svd_polar 同慣例）。
-    CAL0 = fullfile('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main','matlab','Flux','Maxwell');
+    CAL0 = fullfile('G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main','matlab','Flux','Maxwell');
     addpath(fullfile(CAL0,'function'), fullfile(CAL0,'utils'), fullfile(CAL0,'common_path'));
     cfg0 = model_config(MODEL, GEOM);
     if ~isempty(VARIANT) && ~strcmpi(VARIANT, cfg0.default_variant)
@@ -144,7 +144,7 @@ function S = compute(MODEL, GEOM, VARIANT, R_FIT, R_EVAL, USE_BIAS, here, NSAMP)
     % [MODIFIED 2026-08-28] Tree moved under matlab/Flux/; the old hardcoded path is gone,
     %   so addpath silently failed and an APDL copy of model_config/solve_* could shadow
     %   the Maxwell ones.
-    MAIN = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main';
+    MAIN = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main';
     CAL  = fullfile(MAIN,'matlab','Flux','Maxwell');
     addpath(fullfile(CAL,'function'), fullfile(CAL,'utils'), fullfile(CAL,'common_path'));
 

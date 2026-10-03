@@ -22,7 +22,7 @@ from OCP.BRepBndLib import BRepBndLib
 from OCP.GProp import GProp_GProps
 from OCP.BRepGProp import BRepGProp
 
-ROOT    = r"G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main"
+ROOT    = r"G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main"
 SCRATCH = r"C:\Users\Kuo\AppData\Local\Temp\claude\G--my-workspace\b77e29dd-bd9c-479e-93f7-d3abb6bbd5e1\scratchpad"
 IGES = SCRATCH + r"\sensor_refine.iges"
 OUT  = ROOT + r"\model_check\long_fei\sensor_refine.step"

@@ -38,8 +38,8 @@ from OCP.BRep import BRep_Builder
 
 # Base geometry + output. Override via argv: python add_coils_iges.py <base> <out>
 # base may be STEP or IGES (auto-detected by extension). Defaults = gap version.
-BASE = r"G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\model_check\long_fei\long2016_hexapole_gap.iges"
-OUT  = r"G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\model_check\long_fei\long2016_hexapole_gap_coil.iges"
+BASE = r"G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\model_check\long_fei\long2016_hexapole_gap.iges"
+OUT  = r"G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\model_check\long_fei\long2016_hexapole_gap_coil.iges"
 if len(sys.argv) >= 3:
     BASE, OUT = sys.argv[1], sys.argv[2]
 

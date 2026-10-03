@@ -18,8 +18,8 @@
 set -u
 
 MAPDL="G:\\ANSYS Inc\\v252\\ansys\\bin\\winx64\\MAPDL.exe"
-ROOT_U="/g/my_workspace/code/FEM_sim/magnetic_sim/ANSYS/main"
-ROOT_W="G:\\my_workspace\\code\\FEM_sim\\magnetic_sim\\ANSYS\\main"
+ROOT_U="/g/my_workspace/FEM_sim/magnetic_sim/ANSYS/main"
+ROOT_W="G:\\my_workspace\\FEM_sim\\magnetic_sim\\ANSYS\\main"
 
 DECK="$ROOT_U/apdl/NTU_hexapole/sim/full_assembly/MT_Sim_FullAssembly.txt"
 SIMCWD_U="$ROOT_U/ANSYS_data/NTU_hexapole/db/sim/full_assembly_sleeve"

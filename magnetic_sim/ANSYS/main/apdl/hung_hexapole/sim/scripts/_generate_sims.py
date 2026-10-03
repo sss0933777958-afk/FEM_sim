@@ -1,6 +1,6 @@
 """從 MT_Sim_P1_gap200.txt 生成 P2-P6 (只差 CURR_ARRAY: coilN=1 餘 0 + 輸出路徑 coilN)。"""
 import re,pathlib
-d=pathlib.Path(r"G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\apdl\hung_hexapole\sim\gap200um_mueq")
+d=pathlib.Path(r"G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\apdl\hung_hexapole\sim\gap200um_mueq")
 tmpl=(d/"MT_Sim_P1_gap200.txt").read_text(encoding="utf-8")
 for N in range(2,7):
     s=tmpl

@@ -20,8 +20,8 @@
 
 HERE = fileparts(mfilename('fullpath'));                      % .../plot/<model>
 FMX  = fileparts(fileparts(HERE));                            % .../Force/Maxwell
-DAT  = fullfile(FMX, 'data', 'long2016_hexapole_halfcut', '.mat');
-FIG  = fullfile(FMX, 'figures', 'long2016_hexapole_halfcut');
+DAT  = fullfile(FMX,'utils','data');
+FIG  = fullfile(FMX,'figures','long2016_hexapole_halfcut','current');
 
 S   = load(fullfile(DAT, 'sph_shell.mat'));
 SH  = S.SH;   nS = numel(SH);

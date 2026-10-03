@@ -67,7 +67,7 @@ function plot_interp_tet_schematic(PREVIEW)
     if PREVIEW
         out = fullfile(tempdir,'interp_tet_schematic_preview.png');
     else
-        out = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
+        out = ['G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
                'long2016_hexapole_halfcut\Calibration_using_FEM_modeling\voltage_base\figures\shared\interp_tet_schematic.png'];
     end
     exportgraphics(fig, out, 'Resolution', DPI);

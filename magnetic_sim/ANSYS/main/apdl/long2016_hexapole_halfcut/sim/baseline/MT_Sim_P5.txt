@@ -1,6 +1,6 @@
 !****/CWD,'C:\Users\feilong\Desktop\Fei Long Ansys\Magnetic Tweezers LowPermeability'
 !****/CWD,'D:\Fei Long ANSYS\Magnetic Tweezers LowPermeability'
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\standard\coil5'   ! [MODIFIED 2026-08-06] 對齊 data/<variant>/coil<N> 佈局（原 coil5\standard 是 2026-07-14 翻轉前的舊路徑）
+/CWD,'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\standard\coil5'   ! [MODIFIED 2026-08-06] 對齊 data/<variant>/coil<N> 佈局（原 coil5\standard 是 2026-07-14 翻轉前的舊路徑）
 
 Finish
 /cle

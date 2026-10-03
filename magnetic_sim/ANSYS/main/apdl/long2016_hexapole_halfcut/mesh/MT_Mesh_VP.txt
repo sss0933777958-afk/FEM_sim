@@ -39,7 +39,7 @@
 !     (a) 下面 /CWD 的結尾夾名   (b) /FILNAME 的 jobname   (c) 下方 SMRT_LVL
 !   已用過的組合：  vp / mesh_vp / SMRT_LVL=8（定案 VP 網格，416,294 節點）
 !                   vp6 / mesh_vp6 / SMRT_LVL=6（加密對照，檢驗 smrt8 鋼件過粗是否為 +32% 主因）
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\mesh\vp6'
+/CWD,'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\mesh\vp6'
 Finish
 /cle
 /CLEAR,NOSTART

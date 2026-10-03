@@ -33,12 +33,25 @@ FTAG  = '';  if ~strcmp(WFILE,'rbf_w6'), FTAG = WFILE(7:end); end
 HERE = fileparts(mfilename('fullpath'));                      % .../plot/<model>
 FMX  = fileparts(fileparts(HERE));                            % .../matlab/Force/Maxwell
 MAIN = fileparts(fileparts(fileparts(FMX)));                  % .../main
-FIG  = fullfile(FMX, 'figures', 'long2016_hexapole_halfcut'); % figure output dir
-DAT  = fullfile(FMX, 'data', 'long2016_hexapole_halfcut', '.mat');  % .mat home
+FIG  = fullfile(FMX,'figures','long2016_hexapole_halfcut','current'); % figure output dir
+DAT  = fullfile(FMX,'utils','data');  % .mat home
 %   [MODIFIED 2026-09-11] the rbf_*.mat now live with the Force package, not temp_code.
 CAL  = fullfile(MAIN,'matlab','Flux','Maxwell');
 addpath(fullfile(CAL,'function'), fullfile(CAL,'utils'), fullfile(CAL,'common_path'));
 
+% [ADDED 2026-09-14] RESF_OVR names a precomputed residual .mat (Drbf, D18, RIN, BINWUT,
+%   FTAG, NMAE300/NMAE150), so the histogram is drawn without recomputing anything.
+%   rbf_h18_R500.mat = RBF rbf_field(500, rho 240, lam 1e-4) vs the eighteen-parameter model
+%   calibrated on r <= 300 (calib_current_maxwell_axshN97_R300_eighteen), residuals at the
+%   FEM nodes r <= 300 for all six coils.  The branch below is the old in-script computation.
+RESF = '';  if exist('RESF_OVR','var'), RESF = RESF_OVR; end
+if ~isempty(RESF)
+Q = load(fullfile(DAT,[RESF '.mat']));
+Drbf = Q.Drbf;  D18 = Q.D18;  RIN = Q.RIN;  BINWUT = Q.BINWUT;  FTAG = Q.FTAG;  Ni = Q.Ni;
+fprintf(['%s : %s vs %s, nodes r <= %g um (%d x 6)' newline], RESF, Q.WFILE, Q.MATN, RIN, Ni);
+fprintf(['NMAE r<=%g: RBF %.4f %% | eighteen %.4f %%    r<=150: RBF %.4f %% | eighteen %.4f %%' newline], ...
+        RIN, Q.NMAE300, Q.NMAE150);
+else
 S = load(fullfile(DAT,[WFILE '.mat']));
 fprintf(['weights ' WFILE ' : rho = %g um, lam = %.0e' newline], S.RHO, S.LAM);
 P = S.P;  Np = S.Np;
@@ -76,6 +89,7 @@ for k = 1:6
     fprintf('%6d %10.4f %10.4f %8.2f\n', k, n1, n2, n2/n1);
 end
 save(fullfile(DAT,['rbf_h18' FTAG '.mat']), 'Drbf','D18','RIN','Ni','MATN','BINWUT','WFILE');
+end
 
 % ================================ figure ======================================
 e1 = D18(:);   e2 = Drbf(:);                    % red = eighteen, blue = RBF

@@ -26,7 +26,7 @@
    → `magnetic_sim/ANSYS/main/ANSYS_data/{topic}/{case_tag}/coil*_{H1,H2}_*.dat`
 3. **MATLAB 算 ratio**:
    ```matlab
-   cd 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\analysis\{topic}'
+   cd 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\analysis\{topic}'
    run('ratio_H1_H2.m')           % 既有腳本,讀 dat 算 H1/H2 → 印表
    % 或反向版本
    run('ratio_H1_H2_opp.m')

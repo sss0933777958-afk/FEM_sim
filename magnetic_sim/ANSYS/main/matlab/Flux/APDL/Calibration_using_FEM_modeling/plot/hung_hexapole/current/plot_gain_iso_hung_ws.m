@@ -24,7 +24,7 @@ function plot_gain_iso_hung_ws(R_EVAL_um, XLOG)
     if nargin < 1, R_EVAL_um = []; end                                      % [ADDED] 預設 = 各自工作半徑（現值行為）
     if nargin < 2, XLOG = false; end                                        % [ADDED] 預設 linear（現值行為）
 
-    HUNG_CAL = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
+    HUNG_CAL = ['G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
                 'hung_hexapole\Calibration_using_FEM_modeling'];
 
     % ---- 變體：variant 夾 / legend / 工作半徑 / 顏色 ----

@@ -38,9 +38,9 @@ function plot_p1_circuit_3d()
     if ~exist(figdir,'dir'); mkdir(figdir); end
     addpath(fullfile(vbase,'code','function'));                % ntu_pole_profile / ntu_draw_plate
     % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live 樹。
-    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    CALROOT = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
     addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
-    droot = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\NTU_hexapole\data';
+    droot = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\NTU_hexapole\data';
 
     variants = {'full_assembly_sleeve','full_assembly'};
     tags     = {'sleeve','nosleeve'};

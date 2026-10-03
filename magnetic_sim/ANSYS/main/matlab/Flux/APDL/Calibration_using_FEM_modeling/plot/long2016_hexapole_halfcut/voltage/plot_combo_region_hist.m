@@ -9,7 +9,7 @@
 clear; clc;
 here=fileparts(mfilename('fullpath')); CAL=fileparts(fileparts(fileparts(here))); MODELDIR=fileparts(CAL);
 % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live config。
-CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+CALROOT = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
 addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
 addpath(fullfile(MODELDIR,'common'));
 addpath(fullfile(CAL,'current_base','code','main_function'));

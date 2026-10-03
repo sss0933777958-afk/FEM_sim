@@ -11,10 +11,13 @@ function [V, exc_sign, sensor_pos, sensor_n, dbg] = build_V_matrix(cfg, variant,
 %   上極永遠貼自己的完整錐面，不受此參數影響。
 %BUILD_V_MATRIX  電壓提取：sensor 幾何 → 每 sensor 圓柱撒點 → 內插 raw 場 → 6×6 V[mV]。
 %   [V, exc_sign] = BUILD_V_MATRIX(cfg, variant, raw, S_hall, SOFF_upper, n_uniform, sensor_r, axial_tol, sensor_override, V_METHOD)
-%   sensor 幾何來源優先序：
+%   sensor 幾何來源優先序（[MODIFIED 2026-09-27] 三者**都必須是 Maxwell 全域座標**）：
 %     ① sensor_override（可選 struct .pos/.n，escape hatch）
 %     ② cfg.sensor_pos / cfg.sensor_n（config「提供」的幾何，如 tip400um）
 %     ③ utils/pole_sensor_geometry（**sensor 幾何唯一來源**；CAD 實測錐體 + 真實氣隙）
+%   ⚠ 框：電壓路徑一律留在 **Maxwell / ANSYS 全域座標、不做任何平移**（.fld 場也在該框）。
+%     本檔不再對 sensor_pos 加 SPH_OFST；①② 若還是舊的 WP 框值，呼叫端要自己先加上去。
+%     見 .claude/rules/actuator-frame.md 的「電壓路徑例外」。
 %   V_METHOD：'csv-tet'（預設；讀 sensor_local CSV 建 tet 重心內插——需 CSV 與 solve mesh 同網格）
 %             'scattered'（座標式 scatteredInterpolant 直接對 raw solve 場取樣——CSV≠solve mesh 時用，如 tip400）。
 %             'grid'（**建議**；2026-08-23 加）：Maxwell 的 .fld 是規則格 —— 直接「定位格子
@@ -59,7 +62,10 @@ function [V, exc_sign, sensor_pos, sensor_n, dbg] = build_V_matrix(cfg, variant,
     if ~GRID, rng(0); end
     cen = zeros(3,6);  samp = cell(1,6);  sfld = cell(1,6);
     for i = 1:6
-        ci = sensor_pos(:,i) + [0;0;cfg.SPH_OFST];    % WP 框 → ANSYS 框
+        % [MODIFIED 2026-09-27 使用者拍板] 不再平移。sensor 幾何（pole_sensor_geometry /
+        %   cfg.sensor_pos / override）**已經是 Maxwell 全域座標**，.fld 場也是，
+        %   故整條電壓路徑同框、直接用。見 .claude/rules/actuator-frame.md 的「電壓路徑例外」。
+        ci = sensor_pos(:,i);                          % Maxwell 全域框（無平移）
         cen(:,i) = ci;
         ni = sensor_n(:,i);
         if GRID

@@ -10,4 +10,4 @@
 
 **命名 / 慣例**：以極尖距（`0.46mm` / `0.67mm`）+ revision（`_V*`）命名；charge fit 已得 A≈493µm（err 4.4%，target 490）。`zhipeng` 為原作者原始件名。
 
-**相關**：`../README.md`、`../../CLAUDE.md`、`ansys-cad-alignment.md`、`reference/workflows/cad-export.md`。
+**相關**：`../README.md`、`../../../../../CLAUDE.md`、`ansys-cad-alignment.md`、`reference/workflows/cad-export.md`。

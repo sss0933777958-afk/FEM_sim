@@ -11,7 +11,7 @@ Run from any shell:
 from pathlib import Path
 import re
 
-REPO = Path(r"G:\my_workspace\code\FEM_sim")
+REPO = Path(r"G:\my_workspace\FEM_sim")
 SRC_DIR = REPO / "kuo" / "apdl" / "sim" / "long2016_hexapole_full"
 DST_DIR = REPO / "kuo" / "apdl" / "sim" / "long2016_hexapole_halfcut"
 DST_DIR.mkdir(parents=True, exist_ok=True)

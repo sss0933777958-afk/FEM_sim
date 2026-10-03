@@ -37,8 +37,8 @@ from OCP.TopAbs import TopAbs_SOLID
 from OCP.TopoDS import TopoDS, TopoDS_Compound
 from OCP.BRep import BRep_Builder
 
-STEP = r"G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\CAD_model\long_fei\STEP\long2016_hexapolehalfcut_geom.STEP"
-OUT  = r"G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\model_check\long_fei\long2016_hexapole_gap.iges"
+STEP = r"G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\CAD_model\long_fei\STEP\long2016_hexapolehalfcut_geom.STEP"
+OUT  = r"G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\model_check\long_fei\long2016_hexapole_gap.iges"
 
 # --- gap cutter box (mm) ---------------------------------------------------
 # All 3 UPPER poles (azimuth 60/180/300) have an identical 220 mm^2 support base at

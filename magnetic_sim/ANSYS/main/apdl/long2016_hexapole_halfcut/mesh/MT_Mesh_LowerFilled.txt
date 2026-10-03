@@ -22,7 +22,7 @@
 ! [MODIFIED 2026-08-04] 落點與 jobname 對齊 run_graded_all.sh 的慣例（db/mesh/<V>/mesh_<V>.db），
 !   VARIANT=lower_filled 即可直接 RESUME；同時 db/geom → db/mesh 也符合 db-folder-retention
 !   （mesh-only 產物歸 db/mesh/，db/geom/ 只放純幾何）。
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\mesh\lower_filled'
+/CWD,'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\mesh\lower_filled'
 Finish
 /cle
 /CLEAR,NOSTART

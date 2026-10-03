@@ -7,7 +7,7 @@ function plot_frames_lattice_bias_3d()
 %   單位 µm；框 = box on + daspect（cube、view-robust）。
 
     % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live config。
-    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    CALROOT = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
     addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
     here   = fileparts(mfilename('fullpath'));
     nofix  = fileparts(fileparts(here));                            % .../current_base

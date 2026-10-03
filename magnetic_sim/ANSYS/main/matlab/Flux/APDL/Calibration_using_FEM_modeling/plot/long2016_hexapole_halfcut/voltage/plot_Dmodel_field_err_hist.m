@@ -22,12 +22,12 @@ ell0     = 0.5e-3;           % ell_hat 初值 [m]（= ell_design；fit_bias 在 
 NB       = 40;                % 直方圖 bin 數（定案前可改）
 
 %% ---- paths（沿用既有函式，同 main_Dmatrix.m）------------------------------
-CAL  = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
+CAL  = ['G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
         'long2016_hexapole_halfcut\Calibration_using_FEM_modeling'];
 % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live config。 原註：mt_constants/import_ansys_data/filter_iron_nodes
-CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+CALROOT = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
 addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
-addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\common');  % ansys_path
+addpath('G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\common');  % ansys_path
 addpath(fullfile(CAL,'current_base','code','main_function'));  % load_coils_actuator/select_ball/fitting/build_S_matrix
 model = 'long2016_hexapole_halfcut';
 figdir = fullfile(CAL,'voltage_base','figures','eighteen_param');

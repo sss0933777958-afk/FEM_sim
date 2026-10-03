@@ -4,12 +4,12 @@ function plot_P2pole_circuit_2d(PREVIEW)
 %   箭頭=單位方向、顏色=|B|(log)。
     if nargin < 1 || isempty(PREVIEW), PREVIEW = false; end
     % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live config。
-    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    CALROOT = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
     addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
-    addpath(['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
+    addpath(['G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
              'long2016_hexapole_halfcut\Calibration_using_FEM_modeling\voltage_base\code\function']);
     cnst = model_config('long2016_hexapole_halfcut','tip40um');
-    rr = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
+    rr = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
 
     d = import_ansys_data(fullfile(rr,'graded_p2','coil1'),'p2reg_full','coil1');   % 已 all-source（不翻）；_full=Z 擴到 holder 頂
     X = [d.x, d.y, d.z-cnst.SPH_OFST]*1e3;  B = [d.bx, d.by, d.bz];
@@ -57,7 +57,7 @@ function plot_P2pole_circuit_2d(PREVIEW)
     ax.Toolbar.Visible='off';
 
     if PREVIEW, out=fullfile(tempdir,'p2pole2d.png');
-    else, out=['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
+    else, out=['G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
                'long2016_hexapole_halfcut\Calibration_using_FEM_modeling\voltage_base\figures\shared\P2pole_circuit_2d.png']; end
     exportgraphics(fig,out,'Resolution',200); fprintf('saved: %s\n', out);
 end

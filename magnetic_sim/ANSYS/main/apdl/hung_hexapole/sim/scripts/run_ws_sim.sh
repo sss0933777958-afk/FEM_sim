@@ -9,14 +9,14 @@
 # ---------------------------------------------------------------------------
 set -u
 MAPDL="G:\\ANSYS Inc\\v252\\ansys\\bin\\winx64\\MAPDL.exe"
-ROOT="G:/my_workspace/code/FEM_sim/magnetic_sim/ANSYS/main"
+ROOT="G:/my_workspace/FEM_sim/magnetic_sim/ANSYS/main"
 DECK="$ROOT/apdl/hung_hexapole/sim/gap_200um/MT_Sim_P1.txt"
 SIMDIR="$ROOT/apdl/hung_hexapole/sim"
 
 for tag in "$@"; do
-  meshdb_w="G:\\my_workspace\\code\\FEM_sim\\magnetic_sim\\ANSYS\\main\\ANSYS_data\\hung_hexapole\\db\\mesh\\mesh_graded_${tag}"
+  meshdb_w="G:\\my_workspace\\FEM_sim\\magnetic_sim\\ANSYS\\main\\ANSYS_data\\hung_hexapole\\db\\mesh\\mesh_graded_${tag}"
   simcwd_u="$ROOT/ANSYS_data/hung_hexapole/db/sim/${tag}"
-  simcwd_w="G:\\my_workspace\\code\\FEM_sim\\magnetic_sim\\ANSYS\\main\\ANSYS_data\\hung_hexapole\\db\\sim\\${tag}"
+  simcwd_w="G:\\my_workspace\\FEM_sim\\magnetic_sim\\ANSYS\\main\\ANSYS_data\\hung_hexapole\\db\\sim\\${tag}"
   datadir="$ROOT/ANSYS_data/hung_hexapole/data/${tag}"
   mkdir -p "$simcwd_u"
   for N in 1 2 3 4 5 6; do

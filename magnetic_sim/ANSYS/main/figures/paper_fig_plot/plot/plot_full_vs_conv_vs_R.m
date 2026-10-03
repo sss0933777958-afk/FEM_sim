@@ -152,9 +152,9 @@ function S = sweep_fullref(MODEL, GEOM, VARIANT, R_um, l0, TOLREF, RELAX, KREF, 
     if nargin < 7 || isempty(RELAX), RELAX = false; end
     if nargin < 8, KREF = []; end
     if nargin < 9 || isempty(NRX), NRX = 10; end
-    MW = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Flux\Maxwell';
+    MW = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\Flux\Maxwell';
     addpath(fullfile(MW,'function'), fullfile(MW,'utils'));
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\temp_code\scripts');  % sample_equal_h / sample_rings
+    addpath('G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\temp_code\scripts');  % sample_equal_h / sample_rings
 
     cfg = model_config(MODEL, GEOM);
     if isempty(VARIANT), VARIANT = cfg.default_variant; end
@@ -296,7 +296,7 @@ function S = sweep(here, MODEL, GEOM, R_um, l0, TOL, KWIN, NDMAX, old)
 % 全格點曲線讀既有快取；減量曲線逐 R 重算（設計固定、只有球半徑變）。
 %   old（選填）：舊快取。其 R 已算過者直接沿用，只跑新增的 R（判準相同才可沿用）。
     if nargin < 9, old = []; end
-    CAL = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Flux\Maxwell';
+    CAL = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\Flux\Maxwell';
     addpath(fullfile(CAL,'function'), fullfile(CAL,'common_path'), fullfile(CAL,'utils'));
     addpath(fullfile(CAL,'utils','long2016_hexapole_halfcut'));
 

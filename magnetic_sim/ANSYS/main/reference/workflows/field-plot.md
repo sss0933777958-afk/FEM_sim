@@ -39,7 +39,7 @@
 2. **討論 style** — 字體大小、title 文字、legend、colormap、line thickness
 3. **MATLAB MCP preview** — render 草圖,**先看不存**
 4. ⏸ **使用者批准** content + style
-5. **存到 `magnetic_sim/ANSYS/main/figures/{topic}/{case_tag}/<file>.png`**(見 `main/CLAUDE.md` 資料夾架構地圖)
+5. **存到 `magnetic_sim/ANSYS/main/figures/{topic}/{case_tag}/<file>.png`**(見 `../../../../../CLAUDE.md` 資料夾架構地圖)
 
 ## 產物
 

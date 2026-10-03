@@ -23,15 +23,15 @@ function plot_gain_iso_overlay(variant, variant_hung, labels, out_tag)
     %   本檔靠「後 addpath 覆蓋」同時取得 long 與 hung 兩套 mt_constants，該語意保持不變。
     % ⚠ 本檔仍有**其他**死相依（LONG_CAL/HUNG_CAL 指向已刪除的舊 per-model 樹、
     %   load_coils_actuator 已不存在）→ 目前跑不起來，需另外重寫才能復活。
-    CALROOT       = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    CALROOT       = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
     LONG_ANALYSIS = fullfile(CALROOT,'config','long2016_hexapole_halfcut','tip40um');
     HUNG_CORE     = fullfile(CALROOT,'config','hung_hexapole');
-    LONG_CAL = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\hung_hexapole\Calibration_using_FEM_modeling';
-    HUNG_CAL = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\hung_hexapole\Calibration_using_FEM_modeling';
+    LONG_CAL = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\hung_hexapole\Calibration_using_FEM_modeling';
+    HUNG_CAL = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\hung_hexapole\Calibration_using_FEM_modeling';
 
     %% ---- long：只取電荷 lattice Pc_base + fit（不需 FEM 節點）----
     addpath(LONG_ANALYSIS);
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\common');  % ansys_path resolver
+    addpath('G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\common');  % ansys_path resolver
     addpath(fullfile(LONG_CAL,'current_base','code','main_function'));      % load_coils_actuator
     cnstL = mt_constants();                                               % long
     DL = load_coils_actuator('hung_hexapole', cnstL, [1,3,6,5,2,4], 'all', variant);

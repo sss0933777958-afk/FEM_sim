@@ -26,7 +26,7 @@ from OCP.BRepExtrema import BRepExtrema_DistShapeShape
 from OCP.TopoDS import TopoDS_Compound
 from OCP.BRep import BRep_Builder
 
-ROOT = r"G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main"
+ROOT = r"G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main"
 SCR  = r"C:\Users\Kuo\AppData\Local\Temp\claude\G--my-workspace\b77e29dd-bd9c-479e-93f7-d3abb6bbd5e1\scratchpad"
 IGES = SCR + r"\sensor_misplace.iges"
 OUT  = ROOT + r"\model_check\long_fei\sensor_misplace.step"

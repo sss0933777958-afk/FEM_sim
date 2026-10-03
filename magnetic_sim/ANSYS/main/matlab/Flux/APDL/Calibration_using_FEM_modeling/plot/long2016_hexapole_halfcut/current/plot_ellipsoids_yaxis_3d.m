@@ -6,7 +6,7 @@ function plot_ellipsoids_yaxis_3d()
 %   ★ model-derived。橢球需 daspect([1 1 1]) 才不變形。輸出 current_base/figures/ellipsoids_yaxis_3d.png。
 
     % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live config。
-    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    CALROOT = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
     addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
     cnst = model_config('long2016_hexapole_halfcut','tip40um');
     here   = fileparts(mfilename('fullpath'));

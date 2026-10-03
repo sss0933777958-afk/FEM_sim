@@ -6,4 +6,4 @@
 - `ANSYS/` — ANSYS MAPDL 求解器子層（含 `main/` 活躍設計 + `backup/` 歸檔）。
 - `COMSOL/` — COMSOL 求解器子層（與 ANSYS/ 並列），目前存 `.mph` 模型。
 
-**相關**：repo 總覽見 `../CLAUDE.md` / `../README.md`；ANSYS 活躍設計導覽見 `ANSYS/main/CLAUDE.md`。
+**相關**：repo 總覽見 `../CLAUDE.md` / `../README.md`；ANSYS 活躍設計導覽見 `../CLAUDE.md`。

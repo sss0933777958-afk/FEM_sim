@@ -7,10 +7,10 @@
 ! param (SPH_OFST=0/AIR_CYL_R/AIR_CYL_H/TURNS/COIL_THK/COIL_H) 都存在 db、RESUME 帶回。
 ! mesh/solve 分離：mesh deck = ../../mesh/MT_Mesh_SinglePole_Filled.txt。
 ! ====================================================================
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\sim\singlepole\halfcut'
+/CWD,'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\sim\singlepole\halfcut'
 FINISH
 /CLEAR,NOSTART
-RESUME,'mesh_halfcut','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\sim\singlepole\halfcut'
+RESUME,'mesh_halfcut','db','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\sim\singlepole\halfcut'
 /FILNAME,sim_halfcut,1
 
 ! ===== [MODIFIED] 重下 coil 電流 (翻向 1A，明確) =====
@@ -47,20 +47,20 @@ ALLSEL, ALL
 /HEADER, OFF,OFF,OFF,OFF,OFF,OFF
 /FORMAT, 10, , 20, 12, ,
 /PAGE, 1000000, , 1000000
-/OUTPUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil1\singlepole\halfcut\coord_all', 'dat'
+/OUTPUT, 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil1\singlepole\halfcut\coord_all', 'dat'
 NLIST, ALL, , , COORD
 /OUTPUT
-/OUTPUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil1\singlepole\halfcut\bfield_all', 'dat'
+/OUTPUT, 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil1\singlepole\halfcut\bfield_all', 'dat'
 PRNSOL, B, COMP
 /OUTPUT
 LOCAL, 12, 2, 0, 0, SPH_OFST
 CSYS, 12
 NSEL, S, LOC, X, 0, 2e-3
 CSYS, 0
-/OUTPUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil1\singlepole\halfcut\coord_tip', 'dat'
+/OUTPUT, 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil1\singlepole\halfcut\coord_tip', 'dat'
 NLIST, ALL, , , COORD
 /OUTPUT
-/OUTPUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil1\singlepole\halfcut\bfield_tip', 'dat'
+/OUTPUT, 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil1\singlepole\halfcut\bfield_tip', 'dat'
 PRNSOL, B, COMP
 /OUTPUT
 ALLSEL, ALL

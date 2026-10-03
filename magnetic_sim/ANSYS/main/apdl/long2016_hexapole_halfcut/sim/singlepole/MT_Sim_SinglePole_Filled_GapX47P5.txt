@@ -7,10 +7,10 @@
 ! param (SPH_OFST=0/AIR_CYL_R/AIR_CYL_H/TURNS/COIL_THK/COIL_H) 都存在 db、RESUME 帶回。
 ! mesh/solve 分離：mesh deck = ../../mesh/MT_Mesh_SinglePole_Filled.txt。
 ! ====================================================================
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\sim\singlepole\filled_gap_x47p5'
+/CWD,'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\sim\singlepole\filled_gap_x47p5'
 FINISH
 /CLEAR,NOSTART
-RESUME,'mesh_filled','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\sim\singlepole\filled_gap_x47p5'
+RESUME,'mesh_filled','db','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\sim\singlepole\filled_gap_x47p5'
 /FILNAME,sim_filled,1
 
 ! ===== [MODIFIED] 重下 coil 電流 (翻向 1A，明確) =====
@@ -47,20 +47,20 @@ ALLSEL, ALL
 /HEADER, OFF,OFF,OFF,OFF,OFF,OFF
 /FORMAT, 10, , 20, 12, ,
 /PAGE, 1000000, , 1000000
-/OUTPUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil1\singlepole\filled_gap_x47p5\coord_all', 'dat'
+/OUTPUT, 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil1\singlepole\filled_gap_x47p5\coord_all', 'dat'
 NLIST, ALL, , , COORD
 /OUTPUT
-/OUTPUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil1\singlepole\filled_gap_x47p5\bfield_all', 'dat'
+/OUTPUT, 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil1\singlepole\filled_gap_x47p5\bfield_all', 'dat'
 PRNSOL, B, COMP
 /OUTPUT
 LOCAL, 12, 2, 0, 0, SPH_OFST
 CSYS, 12
 NSEL, S, LOC, X, 0, 2e-3
 CSYS, 0
-/OUTPUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil1\singlepole\filled_gap_x47p5\coord_tip', 'dat'
+/OUTPUT, 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil1\singlepole\filled_gap_x47p5\coord_tip', 'dat'
 NLIST, ALL, , , COORD
 /OUTPUT
-/OUTPUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil1\singlepole\filled_gap_x47p5\bfield_tip', 'dat'
+/OUTPUT, 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil1\singlepole\filled_gap_x47p5\bfield_tip', 'dat'
 PRNSOL, B, COMP
 /OUTPUT
 
@@ -73,7 +73,7 @@ nwp = NODE(0,0,0)
 *GET, wny, NODE, nwp, LOC, Y
 *GET, wnz, NODE, nwp, LOC, Z
 wbmag = sqrt(wbx*wbx + wby*wby + wbz*wbz)
-/OUTPUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil1\singlepole\filled_gap_x47p5\wpcenter', 'txt'
+/OUTPUT, 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil1\singlepole\filled_gap_x47p5\wpcenter', 'txt'
 *VWRITE, nwp, wnx*1e6, wny*1e6, wnz*1e6, wbx*1e3, wby*1e3, wbz*1e3, wbmag*1e3
 ('WP center node=',F10.0,'  loc(um)=',3F9.2,'  B(mT)=',3F11.4,'  |B|(mT)=',F11.4)
 /OUTPUT

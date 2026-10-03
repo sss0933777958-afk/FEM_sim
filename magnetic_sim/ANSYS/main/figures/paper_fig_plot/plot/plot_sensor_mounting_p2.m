@@ -18,7 +18,7 @@ function plot_sensor_mounting_p2(SOFF, WITHFIELD, CMODE, MODEL)
     if ~exist(figdir,'dir'); mkdir(figdir); end
     % [MODIFIED 2026-08-08] 不再 addpath backup（規則 no-backup-data）；改用 live config +
     %   utils/pole_sensor_geometry（sensor 幾何唯一來源）。幾何改用 CAD STEP 實測的真實錐體。
-    CAL = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Flux\APDL\Calibration_using_FEM_modeling';
+    CAL = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\Flux\APDL\Calibration_using_FEM_modeling';
     addpath(fullfile(CAL,'function'), fullfile(CAL,'utils'));
     cnst = model_config('long2016_hexapole_halfcut', 'tip40um');
 
@@ -35,7 +35,7 @@ function plot_sensor_mounting_p2(SOFF, WITHFIELD, CMODE, MODEL)
     %   志鵬是**平板極**，貼附幾何與長飛本質不同（見下方 ISZHI 分支）。
     ISZHI = nargin >= 4 && ~isempty(MODEL) && strcmp(MODEL,'zhi_peng');
     if ISZHI
-        MXC = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Flux\Maxwell';
+        MXC = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\Flux\Maxwell';
         addpath(fullfile(MXC,'function'), fullfile(MXC,'utils'), fullfile(MXC,'common_path'));
         cnst = model_config('zhi_peng','R500');
         assert(~WITHFIELD, 'zhi_peng 版目前不支援 WITHFIELD');
@@ -118,7 +118,7 @@ function plot_sensor_mounting_p2(SOFF, WITHFIELD, CMODE, MODEL)
             end
         end
         if ~exist('Xs','var')
-            CAL = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Flux\APDL\Calibration_using_FEM_modeling';
+            CAL = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\Flux\APDL\Calibration_using_FEM_modeling';
             addpath(fullfile(CAL,'function'));  addpath(fullfile(CAL,'common_path'));
             zoff = -cnst.SPH_OFST*1e3;                       % raw z → WP frame
             d   = import_ansys_data(ansys_path('long2016_hexapole_halfcut','data','graded','coil1'), 'all', 'coil1');

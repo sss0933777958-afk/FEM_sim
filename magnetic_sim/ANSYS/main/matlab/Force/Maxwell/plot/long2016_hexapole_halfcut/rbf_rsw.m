@@ -23,8 +23,8 @@ REUSE = true;
 HERE = fileparts(mfilename('fullpath'));                      % .../plot/<model>
 FMX  = fileparts(fileparts(HERE));                            % .../matlab/Force/Maxwell
 MAIN = fileparts(fileparts(fileparts(FMX)));                  % .../main
-FIG  = fullfile(FMX, 'figures', 'long2016_hexapole_halfcut'); % figure output dir
-DAT  = fullfile(FMX, 'data', 'long2016_hexapole_halfcut', '.mat');  % .mat home
+FIG  = fullfile(FMX,'figures','long2016_hexapole_halfcut','current'); % figure output dir
+DAT  = fullfile(FMX,'utils','data');  % .mat home
 %   [MODIFIED 2026-09-11] the rbf_*.mat now live with the Force package, not temp_code.
 MATF = fullfile(DAT,'rbf_rsw.mat');
 if REUSE && isfile(MATF)

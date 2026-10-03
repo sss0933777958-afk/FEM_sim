@@ -23,14 +23,14 @@ N_LEVELS = [100, 1000, 10000];  % 要比較的取樣點數
 M        = 30;                  % 每個 N 跑幾個 seed（估 SE）
 
 %% ---- paths -----------------------------------------------------------------
-CAL  = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
+CAL  = ['G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
         'long2016_hexapole_halfcut\Calibration_using_FEM_modeling'];
 % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live config。
-CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+CALROOT = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
 addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
 addpath(fullfile(CAL,'voltage_base','code','main_function')); addpath(fullfile(CAL,'voltage_base','code','function'));
 addpath(fullfile(CAL,'voltage_base','code','main_function'));
-results_root = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
+results_root = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
 mesh_csv_dir = fullfile(results_root,'mesh','graded','csv');
 
 cnst = model_config('long2016_hexapole_halfcut','tip40um');

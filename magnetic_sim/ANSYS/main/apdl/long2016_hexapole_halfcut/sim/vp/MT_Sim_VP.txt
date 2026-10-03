@@ -20,10 +20,10 @@
 ! [ADDED 2026-08-04] 網格變體開關 —— 與 mesh/MT_Mesh_VP.txt 的 SMRT_LVL 配對，六處手動同步：
 !   /CWD 尾夾名、RESUME 的 jobname + 夾名、下方四個 /OUTPUT 的 data 夾名。
 !   已用過：vp（SMRT_LVL=8，定案）/ vp6（SMRT_LVL=6，加密對照）
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\sim\vp6'
+/CWD,'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\sim\vp6'
 /CLEAR,NOSTART
 /TITLE, Long2016 halfcut VECTOR POTENTIAL (SOLID237) - coil 1
-RESUME,'mesh_vp6','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\mesh\vp6'
+RESUME,'mesh_vp6','db','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\mesh\vp6'
 
 /PREP7
 *afun,DEG
@@ -108,20 +108,20 @@ ALLSEL,ALL
 /HEADER,OFF,OFF,OFF,OFF,OFF,OFF
 /FORMAT,10,,20,12,,
 /PAGE,1000000,,1000000
-/OUTPUT,'coil1_coord_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\vp6\coil1'
+/OUTPUT,'coil1_coord_all','dat','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\vp6\coil1'
 NLIST,ALL, , ,COORD
 /OUTPUT
-/OUTPUT,'coil1_bfield_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\vp6\coil1'
+/OUTPUT,'coil1_bfield_all','dat','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\vp6\coil1'
 PRNSOL,B,COMP
 /OUTPUT
 LOCAL,12,2, 0, 0, SPH_OFST
 CSYS,12
 NSEL,S,LOC,X, 0, 2e-3
 CSYS,0
-/OUTPUT,'coil1_coord_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\vp6\coil1'
+/OUTPUT,'coil1_coord_wp','dat','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\vp6\coil1'
 NLIST,ALL, , ,COORD
 /OUTPUT
-/OUTPUT,'coil1_bfield_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\vp6\coil1'
+/OUTPUT,'coil1_bfield_wp','dat','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\vp6\coil1'
 PRNSOL,B,COMP
 /OUTPUT
 ALLSEL,ALL

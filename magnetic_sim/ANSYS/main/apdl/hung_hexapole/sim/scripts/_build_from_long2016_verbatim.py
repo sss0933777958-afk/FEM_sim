@@ -20,8 +20,8 @@ Usage:
 """
 from pathlib import Path
 
-LONG2016_SRC = Path(r"G:\my_workspace\code\FEM_sim\magnetic_sim\hexapole-long2016\apdl\MT_Modeling_Geometry_Meshing_Solving_Coil1.txt")
-KUO_HALFCUT_DIR = Path(r"G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\apdl\long2016_hexapole_halfcut\sim")
+LONG2016_SRC = Path(r"G:\my_workspace\FEM_sim\magnetic_sim\hexapole-long2016\apdl\MT_Modeling_Geometry_Meshing_Solving_Coil1.txt")
+KUO_HALFCUT_DIR = Path(r"G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\apdl\long2016_hexapole_halfcut\sim")
 
 # Kuo POST1 export block (verbatim from current MT_Sim_P1.txt end)
 POST1_KUO = """
@@ -74,7 +74,7 @@ def build(pole_n: int) -> None:
 
     # 1. /CWD point to kuo halfcut result dir (line 3 has pmero path)
     cwd_pattern_pmero = "/CWD,'C:\\Users\\pmero\\Documents\\Lab406\\FEM_sim\\hexapole-long2016\\results\\coil1'   ! [MODIFIED] output to magnetic_sim/hexapole-long2016/results/coil1"
-    cwd_kuo = f"/CWD,'G:\\my_workspace\\code\\FEM_sim\\kuo\\results\\long2016_hexapole_halfcut\\coil{pole_n}'   ! [KUO] halfcut sim output"
+    cwd_kuo = f"/CWD,'G:\\my_workspace\\FEM_sim\\kuo\\results\\long2016_hexapole_halfcut\\coil{pole_n}'   ! [KUO] halfcut sim output"
     if cwd_pattern_pmero not in text:
         raise RuntimeError("/CWD pmero path marker not found")
     text = text.replace(cwd_pattern_pmero, cwd_kuo)

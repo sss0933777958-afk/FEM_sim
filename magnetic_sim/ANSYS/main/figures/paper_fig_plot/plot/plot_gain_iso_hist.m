@@ -73,7 +73,7 @@ function plot_gain_iso_hist(USE_BIAS, R_FIT, R_EVAL, force, BINW, CMP, NTK, ZBAS
     if ~exist(figdir,'dir'); mkdir(figdir); end
     % [MODIFIED 2026-08-28] Tree moved under matlab/Flux/; the old hardcoded path is gone,
     %   so addpath silently failed and an APDL copy of model_config/solve_* could shadow it.
-    MAINR = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main';
+    MAINR = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main';
     CAL   = fullfile(MAINR,'matlab','Flux','Maxwell');
     addpath(fullfile(CAL,'function'), fullfile(CAL,'utils'), fullfile(CAL,'common_path'));
     % [MODIFIED 2026-08-21] 移除 addpath(utils/long2016_hexapole_halfcut)：utils/ 已扁平化，

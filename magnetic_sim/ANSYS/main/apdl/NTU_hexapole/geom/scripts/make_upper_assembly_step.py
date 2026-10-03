@@ -25,7 +25,7 @@ from OCP.TopAbs import TopAbs_SOLID
 from OCP.Bnd import Bnd_Box
 from OCP.BRepBndLib import BRepBndLib
 
-ROOT     = r"G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main"
+ROOT     = r"G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main"
 SRC_STEP = ROOT + r"\CAD_model\NTU_hexapole\STEP\建棋模擬_上層\上層組合.STEP"
 OUT_STEP = ROOT + r"\model_check\NTU_hexapole\upper_assembly.step"
 

@@ -2,14 +2,14 @@ function diag_Vmat_sign()
 % DIAG_VMAT_SIGN  印 baseline 6×6 all-source Vmat 的 sign 表，找出哪些 off-diagonal 為正。
 %   目的：確認「P2-under-P1 讀正」是不是唯一異常，還是 P4/P5（其他上極）也有。
 %   列=sensor 極 P1..P6；欄=激發（APDL coil1..6 = paper P1,P3,P6,P5,P2,P4）。
-    TREE = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
+    TREE = ['G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
             'long2016_hexapole_halfcut\Calibration_using_FEM_modeling\voltage_base'];
     % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live config。
-    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    CALROOT = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
     addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
     addpath(fullfile(TREE,'code','main_function')); addpath(fullfile(TREE,'code','function'));
     addpath(fullfile(TREE,'code','main_function'));
-    rr = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
+    rr = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
 
     cnst = model_config('long2016_hexapole_halfcut','tip40um');
     apdl_to_paper_idx = [1,3,6,5,2,4];

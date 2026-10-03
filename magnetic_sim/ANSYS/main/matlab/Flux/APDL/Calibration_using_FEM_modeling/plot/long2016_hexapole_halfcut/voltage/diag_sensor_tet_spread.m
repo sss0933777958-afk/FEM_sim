@@ -25,14 +25,14 @@ AXIAL_T   = 0.10e-3;       % 圓柱高 [m]
 RUN_ALL_COILS = false;     % true = B/C 對 6 coil 全掃（幾何 A 不變）；預設只 self 激發
 
 %% ---- paths（沿用，不另寫）-----------------------------------------------
-CAL  = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
+CAL  = ['G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
         'long2016_hexapole_halfcut\Calibration_using_FEM_modeling'];
 % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live config。 原註：mt_constants/import_ansys_data
-CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+CALROOT = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
 addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
 addpath(fullfile(CAL,'voltage_base','code','main_function')); addpath(fullfile(CAL,'voltage_base','code','function'));                            % build_sensor_geometry
 addpath(fullfile(CAL,'voltage_base','code','main_function'));                            % build_sensor_geometry
-results_root = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
+results_root = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
 mesh_csv_dir = fullfile(results_root,'mesh','graded','csv');
 
 %% ---- 常數 + 慣例 + 修正 sensor 位置 -------------------------------------

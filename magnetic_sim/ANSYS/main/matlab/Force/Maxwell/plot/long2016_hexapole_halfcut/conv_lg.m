@@ -48,7 +48,7 @@ else
     fprintf('N_c: single %d, eighteen %d -> axis ends at %d%s', ...
             ra.npts, rb.npts, NC, newline);
 end
-OUT   = fullfile(FMX,'figures',MODEL);
+OUT   = fullfile(FMX,'figures',MODEL,'current');
 if ~exist(OUT,'dir'), mkdir(OUT); end
 
 FS    = 60;        % tick numbers          (rule 1)

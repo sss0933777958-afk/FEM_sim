@@ -4,7 +4,7 @@
 ! 本輪用為主 run（配合 baseline _conv），收斂檢驗延後再談
 ! =======================================
 
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\hung\results\coil5\filleted_l250_conv'
+/CWD,'G:\my_workspace\FEM_sim\magnetic_sim\hung\results\coil5\filleted_l250_conv'
 
 /PREP7
 *afun, DEG

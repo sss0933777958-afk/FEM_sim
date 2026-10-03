@@ -2,7 +2,7 @@
 
 六極電磁微探針的 FEM 模擬 + 集總參數（點磁荷）模型校正。目前**唯一活躍**的工作根。
 
-**完整規則與導覽見本夾的 [`CLAUDE.md`](CLAUDE.md)**（架構地圖、資料流、繪圖規則、鐵則、Quick Triggers）。
+**完整規則與導覽見 repo 根目錄的 [`CLAUDE.md`](../../../CLAUDE.md)**（鐵則、資料夾地圖、資料流、Quick Triggers）。
 本檔只是**人看的入口**：這裡有什麼、東西放哪、怎麼跑。
 
 ## 三個 model topic
@@ -28,7 +28,6 @@
 | `matlab/` | 分析碼，第一層分 `APDL/` 與 `Maxwell/` 兩個**求解器分支** | 校正、算矩陣、畫圖、讀寫 `.mat` |
 | `figures/` | `paper_fig/Section*/`（論文圖）+ `paper_fig_plot/{plot,data}`（產生端）+ `.pptx` | 論文圖 |
 | `reference/` | LaTeX 推導 / 報告 PDF + `workflows/`（操作 SOP）+ 論文 PDF | 推導、跑流程前查 SOP |
-| `.claude/` | Claude Code 本地設定 | 通常不動 |
 
 > ⚠ `IGES/` 與 `MATLAB_data/` **已移除**：交付一律出 STEP（`model_check/`），`.mat` 一律放
 > `matlab/<分支>/data/<model>/.mat/`。
@@ -76,4 +75,4 @@ ANSYS="G:\ANSYS Inc\v252\ansys\bin\winx64\MAPDL.exe"
 6. **清 db / sim 前先讀 `ansys-db-cleanup.md`**（`geom/` 整層刪、`mesh/`+`sim/` 留主檔）。
 7. 對外一律用 **P1–P6**（paper 名）；APDL coil index 只在改 deck / raw 脈絡時提。
 
-完整清單見 `CLAUDE.md` 的 Quick Triggers 與 `../../.claude/rules/`（21 條）。
+完整清單見 `../../../CLAUDE.md` 的 Quick Triggers 與 `../../../.claude/rules/`（23 條）。

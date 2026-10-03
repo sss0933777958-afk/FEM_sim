@@ -15,10 +15,10 @@ from OCP.BRepBndLib import BRepBndLib
 from OCP.gp import gp_Trsf
 from OCP.BRepBuilderAPI import BRepBuilderAPI_Transform
 
-STEP = r"G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\CAD_model\hung_hexapole\STEP\Full_Assembly.STEP"
+STEP = r"G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\CAD_model\hung_hexapole\STEP\Full_Assembly.STEP"
 OUTS = [
-    r"G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\IGES\hung_hexapole\hung_hexapole_full.iges",
-    r"G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\model_check\hung_hexapole\hung_hexapole_full.iges",
+    r"G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\IGES\hung_hexapole\hung_hexapole_full.iges",
+    r"G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\model_check\hung_hexapole\hung_hexapole_full.iges",
 ]
 
 def bbox(shape):

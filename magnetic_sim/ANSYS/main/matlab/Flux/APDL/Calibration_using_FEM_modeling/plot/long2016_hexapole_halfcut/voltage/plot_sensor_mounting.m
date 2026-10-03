@@ -12,7 +12,7 @@ function plot_sensor_mounting(POLE, PREVIEW)
 
     % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）；sensor 幾何改由
     %   utils/pole_sensor_geometry 供給（唯一來源、CAD 實測錐體 + 真實氣隙 0.41mm）。
-    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    CALROOT = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
     addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'));
     cnst = model_config('long2016_hexapole_halfcut','tip40um');
     [SPOS, SNOR, GEO] = pole_sensor_geometry(cnst);

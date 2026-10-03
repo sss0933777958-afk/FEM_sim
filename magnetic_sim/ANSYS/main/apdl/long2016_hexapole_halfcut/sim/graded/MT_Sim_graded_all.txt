@@ -18,10 +18,10 @@
 !     driver 預設 MESH_VARIANT=$VARIANT、MAGOPT=3 → VARIANT=graded 時逐字等價原 deck（baseline 不變）。
 !   ⚠ TURNS/几何常數 /CWD /RESUME /export 路徑皆與 basegap 一致，只差 RESUME 網格 + 輸出夾。
 ! ============================================================================
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\sim\XVARIANTX'
+/CWD,'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\sim\XVARIANTX'
 /CLEAR,NOSTART
 /TITLE, Long2016 halfcut ORIGINAL graded (no gap) - coil XCOILX
-RESUME,'mesh_XMESHVARX','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\mesh\XMESHVARX'
+RESUME,'mesh_XMESHVARX','db','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\mesh\XMESHVARX'
 
 /PREP7
 *afun,DEG
@@ -80,20 +80,20 @@ ALLSEL,ALL
 /HEADER,OFF,OFF,OFF,OFF,OFF,OFF
 /FORMAT,10,,20,12,,
 /PAGE,1000000,,1000000
-/OUTPUT,'coilXCOILX_coord_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\XVARIANTX\coilXCOILX'
+/OUTPUT,'coilXCOILX_coord_all','dat','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\XVARIANTX\coilXCOILX'
 NLIST,ALL, , ,COORD
 /OUTPUT
-/OUTPUT,'coilXCOILX_bfield_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\XVARIANTX\coilXCOILX'
+/OUTPUT,'coilXCOILX_bfield_all','dat','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\XVARIANTX\coilXCOILX'
 PRNSOL,B,COMP
 /OUTPUT
 LOCAL,12,2, 0, 0, SPH_OFST
 CSYS,12
 NSEL,S,LOC,X, 0, 2e-3
 CSYS,0
-/OUTPUT,'coilXCOILX_coord_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\XVARIANTX\coilXCOILX'
+/OUTPUT,'coilXCOILX_coord_wp','dat','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\XVARIANTX\coilXCOILX'
 NLIST,ALL, , ,COORD
 /OUTPUT
-/OUTPUT,'coilXCOILX_bfield_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\XVARIANTX\coilXCOILX'
+/OUTPUT,'coilXCOILX_bfield_wp','dat','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\XVARIANTX\coilXCOILX'
 PRNSOL,B,COMP
 /OUTPUT
 ALLSEL,ALL

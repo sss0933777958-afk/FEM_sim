@@ -118,9 +118,9 @@ SOLV  = fileparts(CAL);                                      % .../main/matlab
 ANSYS = fileparts(fileparts(fileparts(SOLV)));               % .../ANSYS
 addpath(fullfile(CAL, 'function'));                                     % pipeline + import_maxwell_fld / filter_iron_nodes / conv_design_ws
 addpath(fullfile(CAL, 'common_path'));                                  % 共用路徑 resolver（如有）
-addpath(fullfile(CAL, 'utils'));                                          % [ADDED 2026-08-08] pole_sensor_geometry（sensor 幾何唯一來源）
 
 %% ---- pipeline 前段（共用）---------------------------------------------------
+
 cfg = model_config(MODEL, GEOM);
 if isempty(VARIANT),   VARIANT   = cfg.default_variant;              end
 if isempty(INTERP_TO), INTERP_TO = getdef(cfg, 'interp_to', '');     end
@@ -147,6 +147,7 @@ Pc_base = ad.Pc_base;
 %   ⚠ GRID_NRPT=[]（全格點取樣）時評估點 = 取樣點，新舊值逐位相同。
 [P_ev, B_ev, npts_ev] = cfg.select_ball(ad, R_select);
 fprintf('[eval] NMAE 評估點雲：R<=%g um 內全部格點 %d 點\n', R_select*1e6, npts_ev);
+
 F = zeros(6, cfg.N_I);
 for j = 1:cfg.N_I, F(cfg.apdl_to_paper_idx(j), j) = 1; end
 

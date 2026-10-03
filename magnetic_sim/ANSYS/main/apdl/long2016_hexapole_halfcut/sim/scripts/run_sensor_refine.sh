@@ -12,7 +12,7 @@
 set -u
 MESH_ONLY="${MESH_ONLY:-0}"
 MAPDL="G:/ANSYS Inc/v252/ansys/bin/winx64/MAPDL.exe"
-ROOT="G:/my_workspace/code/FEM_sim/magnetic_sim/ANSYS/main"
+ROOT="G:/my_workspace/FEM_sim/magnetic_sim/ANSYS/main"
 MDECK="$ROOT/apdl/long2016_hexapole_halfcut/mesh/MT_Mesh_SensorRefine.txt"
 SDECK="$ROOT/apdl/long2016_hexapole_halfcut/sim/sensor_refine/MT_Sim_SensorRefine.txt"
 # [ADDED 2026-08-05] CASE：加密球組的 case tag。

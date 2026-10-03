@@ -70,4 +70,4 @@ R_select=150e-6;          % 定案取樣半徑
 ## 相關
 
 `APDL/Calibration_using_FEM_modeling/README.md`（管線總覽）、同夾 `function/README.md`（逐函式速查）、
-`../CLAUDE.md`（資料夾架構地圖）、`../ANSYS_data/<model>/RESULTS_MAP.md`（讀結果前必查）。
+`../../../../CLAUDE.md`（資料夾架構地圖）、`../ANSYS_data/<model>/RESULTS_MAP.md`（讀結果前必查）。

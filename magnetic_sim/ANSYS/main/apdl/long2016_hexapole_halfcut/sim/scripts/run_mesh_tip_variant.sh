@@ -14,7 +14,7 @@
 #     （ESEL,S,MAT,,MAT_MT 先選 → 只多拉鋼、不拉空氣）；Z 界 -11.5→-12.0 使上極後退尖仍排除於 Step2。
 set -u
 MAPDL="G:/ANSYS Inc/v252/ansys/bin/winx64/MAPDL.exe"
-ROOT="G:/my_workspace/code/FEM_sim/magnetic_sim/ANSYS/main"
+ROOT="G:/my_workspace/FEM_sim/magnetic_sim/ANSYS/main"
 DECK="$ROOT/apdl/long2016_hexapole_halfcut/mesh/MT_Mesh_Graded.txt"
 
 TAG="${1:?用法: bash run_mesh_tip_variant.sh <tag> <POLE_TIP_R值> [WP_REF_LVL]  例 tip400um 400.0e-6}"

@@ -4,7 +4,7 @@ Build NTU_hexapole pole+post ASSEMBLY as a mm STEP for user check (SolidWorks).
 Why STEP (not ANSYS IGES): ANSYS IGESOUT .iges is read as INCH (x25.4) by
 SolidWorks & OpenCascade even after units flag 6->2 and units-name '2HMM' patches
 (both fail). STEP declares SI_UNIT(.MILLI.,.METRE.) unambiguously -> reads correct.
-See rule: magnetic_sim/.claude/rules/deliver-step-for-check.md
+See rule: .claude/rules/deliver-step-for-check.md
 
 Geometry (pole/magnet local frame = the frame pole.STEP / pole.iges use):
   - 磁極 (magnetic pole)  : original pole.STEP solid (flat planar pole, 0.25mm thick).
@@ -28,7 +28,7 @@ from OCP.TopAbs import TopAbs_SOLID
 from OCP.Bnd import Bnd_Box
 from OCP.BRepBndLib import BRepBndLib
 
-ROOT = r"G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main"
+ROOT = r"G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main"
 POLE_STEP = ROOT + r"\CAD_model\NTU_hexapole\STEP\pole.STEP"
 OUT_STEP  = ROOT + r"\model_check\NTU_hexapole\pole_assembly.step"
 

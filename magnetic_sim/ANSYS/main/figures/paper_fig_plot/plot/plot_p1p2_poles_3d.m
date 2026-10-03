@@ -20,11 +20,11 @@ function plot_p1p2_poles_3d(SOURCE, FLD, XLin, ZLin, YHW, EXC)
     figdir = fullfile(fileparts(here), 'paper_fig', 'Section3_A');
     if ~exist(figdir,'dir'); mkdir(figdir); end
     % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live 樹。
-    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Flux\APDL\Calibration_using_FEM_modeling';
+    CALROOT = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\Flux\APDL\Calibration_using_FEM_modeling';
     % [MODIFIED 2026-08-14] ⚠ Maxwell\function 必須**先**加：addpath 預設 prepend，後加的會蓋前面。
     %   原本順序讓 Maxwell 的 model_config 蓋掉 APDL 版 → 拿到 identity 的 coil→pole map，
     %   P2 被解成 coil2（實際應為 coil5），載到錯的激發資料。
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Flux\Maxwell\function');   % import_maxwell_fld
+    addpath('G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\Flux\Maxwell\function');   % import_maxwell_fld
     addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
     c = model_config('long2016_hexapole_halfcut','tip40um');
 

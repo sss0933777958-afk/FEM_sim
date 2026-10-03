@@ -7,11 +7,11 @@
 !   線圈：內半徑3.5/外半徑7.5/徑厚4.0/高4.2mm、與導柱同軸、z 中心18.7(z[16.6,20.8])、1A×50匝反向。
 !   APDL coil 1-6 → 方位 0/120/240/60/180/300° → 紙名 P1/P3/P6/P5/P2/P4（同 long_fei）。
 ! ============================================================================
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\NTU_hexapole\db\sim\full_assembly_sleeve'
+/CWD,'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\NTU_hexapole\db\sim\full_assembly_sleeve'
 Finish
 
 ! ----- RESUME mesh-only 模型（幾何+網格+材料+空氣；含 params SC 等）-----
-RESUME,'full_assembly_sleeve','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\NTU_hexapole\db\mesh\full_assembly_sleeve\'
+RESUME,'full_assembly_sleeve','db','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\NTU_hexapole\db\mesh\full_assembly_sleeve\'
 
 /PREP7
 *afun, DEG
@@ -94,10 +94,10 @@ ALLSEL,ALL
 /FORMAT,10,,20,12,,
 /PAGE,1000000,,1000000
 
-/OUTPUT,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\NTU_hexapole\data\full_assembly_sleeve\coil%CN%\full_assembly_sleeve_coord_all','dat'
+/OUTPUT,'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\NTU_hexapole\data\full_assembly_sleeve\coil%CN%\full_assembly_sleeve_coord_all','dat'
 NLIST,ALL, , ,COORD
 /OUTPUT
-/OUTPUT,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\NTU_hexapole\data\full_assembly_sleeve\coil%CN%\full_assembly_sleeve_bfield_all','dat'
+/OUTPUT,'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\NTU_hexapole\data\full_assembly_sleeve\coil%CN%\full_assembly_sleeve_bfield_all','dat'
 PRNSOL,B,COMP
 /OUTPUT
 

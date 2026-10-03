@@ -41,4 +41,4 @@
 
 > 慣例：新增 / 改 deck 時，務必在 `/CWD` 後補上 `! [MESH] <scheme>` 標頭，並同步本表。
 
-**相關**：見 `../README.md`、`../../../CLAUDE.md`、`.claude/rules/{apdl-editing,fit-current-matches-sim,result-read-safety}.md`、`reference/workflows/apdl-fem-run.md`。
+**相關**：見 `../README.md`、`../../../../../../CLAUDE.md`、`.claude/rules/{apdl-editing,fit-current-matches-sim,result-read-safety}.md`、`reference/workflows/apdl-fem-run.md`。

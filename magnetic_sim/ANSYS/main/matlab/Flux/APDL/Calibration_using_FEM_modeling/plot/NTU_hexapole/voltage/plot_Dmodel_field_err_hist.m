@@ -8,12 +8,12 @@
 clear; clc;
 
 VARIANT = 'full_assembly';  R_select = 300e-6;  ell0 = 0.5e-3;
-CAL = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
+CAL = ['G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
        'NTU_hexapole\Calibration_using_FEM_modeling'];
 % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live 樹。
-CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+CALROOT = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
 addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
-addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\common');  % ansys_path
+addpath('G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\common');  % ansys_path
 addpath(fullfile(CAL,'current_base','code','main_function'));   % NTU mt_constants/load/select_ball/fitting/build_S_matrix (LAST→NTU 版勝出)
 model = 'NTU_hexapole';  apdl_to_paper_idx = [1,3,6,5,2,4];
 figdir = fullfile(CAL,'voltage_base','figures','eighteen_param');  if ~exist(figdir,'dir'); mkdir(figdir); end

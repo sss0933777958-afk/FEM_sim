@@ -8,7 +8,7 @@ function plot_actuator_ellipsoids_3d()
 %   ★ model-derived。box on + daspect（不變形）、view(120,25)。輸出 current_base/figures/actuator_frame_ellipsoids_3d.png。
 
     % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live config。
-    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    CALROOT = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
     addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
     cnst = model_config('long2016_hexapole_halfcut','tip40um');
     here   = fileparts(mfilename('fullpath'));

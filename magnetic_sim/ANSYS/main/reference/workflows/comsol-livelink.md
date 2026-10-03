@@ -61,7 +61,7 @@ matlab -batch "run('magnetic_sim/ANSYS/main/comsol/{topic}/run_<task>.m')"
 ```matlab
 addpath('G:\my_workspace\software\COMSOL62\Multiphysics\mli');
 mphstart(2036);
-cd('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\comsol\{topic}');
+cd('G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\comsol\{topic}');
 <task_script_name>;   % 不加 .m
 ```
 

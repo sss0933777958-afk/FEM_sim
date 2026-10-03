@@ -7,16 +7,16 @@
 % 誤差 = 逐點逐激發 |B_model−B_FEM|（向量差大小，mT）；bin 0.005；選項①粗體框圖。
 % =========================================================================
 clear; clc;
-OUTDIR = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
+OUTDIR = ['G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
           'long2016_hexapole_halfcut\Calibration_using_FEM_modeling\current_base\figures'];   % <== 本副本輸出位置
 
 VARIANT='gap_200um'; R_select=150e-6; ell0=0.5e-3;   % ell0 [m]（fit_bias 在 SI）
-CAL = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
+CAL = ['G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
        'long2016_hexapole_halfcut\Calibration_using_FEM_modeling'];
 % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live config。
-CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+CALROOT = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
 addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
-addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\common');
+addpath('G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\common');
 addpath(fullfile(CAL,'current_base','code','main_function'));     % load_coils_actuator/select_ball/fitting/build_S_matrix/solve_KI_bar_gain
 model='long2016_hexapole_halfcut'; cnst=mt_constants(); apdl_to_paper_idx=[1,3,6,5,2,4];
 if ~exist(OUTDIR,'dir'); mkdir(OUTDIR); end

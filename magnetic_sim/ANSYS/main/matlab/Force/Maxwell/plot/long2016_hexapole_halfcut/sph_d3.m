@@ -21,8 +21,8 @@
 
 HERE = fileparts(mfilename('fullpath'));
 FMX  = fileparts(fileparts(HERE));
-DAT  = fullfile(FMX, 'data', 'long2016_hexapole_halfcut', '.mat');
-FIG  = fullfile(FMX, 'figures', 'long2016_hexapole_halfcut');
+DAT  = fullfile(FMX,'utils','data');
+FIG  = fullfile(FMX,'figures','long2016_hexapole_halfcut','current');
 
 S = load(fullfile(DAT, 'sph_d3.mat'));
 fprintf(['solid harmonics L = %d, fitted on r <= %d um' newline], S.Lq, S.R0);

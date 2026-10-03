@@ -24,13 +24,13 @@ function plot_P1P2_air_circuit_3d(PREVIEW, FOCUS, VIEW, VARIANT, DATASET, FLIP)
     DPI = 200;
 
     % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live config。
-    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    CALROOT = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
     addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
-    addpath(['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
+    addpath(['G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
              'long2016_hexapole_halfcut\Calibration_using_FEM_modeling\voltage_base\code\function']);
     cnst = model_config('long2016_hexapole_halfcut','tip40um');
     [sp, sn] = build_sensor_geometry(cnst);
-    rr = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
+    rr = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
 
     % ---- 載 coil1（P1 激發）→ 視 FLIP 決定是否 all-source 翻號 ----
     d = import_ansys_data(fullfile(rr, VARIANT, 'coil1'),DATASET,'coil1');
@@ -142,7 +142,7 @@ function plot_P1P2_air_circuit_3d(PREVIEW, FOCUS, VIEW, VARIANT, DATASET, FLIP)
     ax.Toolbar.Visible='off';
 
     %% ---- 輸出 ----
-    base = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
+    base = ['G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
             'long2016_hexapole_halfcut\Calibration_using_FEM_modeling\voltage_base\figures\shared\'];
     switch FOCUS
         case 'sensor', nm='P2sensor_air_circuit_3d'; defv=[-32 16];

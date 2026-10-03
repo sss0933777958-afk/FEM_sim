@@ -235,7 +235,7 @@ FMX_  = fileparts(here_);
 MAINR = fileparts(fileparts(fileparts(FMX_)));          % .../ANSYS/main
 CALR  = fullfile(MAINR, 'matlab', 'Flux', 'Maxwell');
 addpath(fullfile(CALR,'function'), fullfile(CALR,'utils'), fullfile(CALR,'common_path'));
-addpath(fullfile(FMX_, 'utils'));                       % sph_field
+addpath(fullfile(FMX_,'function'));                       % sph_field
 
 cfg = model_config(MODEL, GEOM);
 % The model superposes RAW per-ampere fields, so the all-source presentation

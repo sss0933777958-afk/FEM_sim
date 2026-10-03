@@ -13,16 +13,16 @@ function plot_upperP2P5_circuit_3d(EXC, VARIANT, SHOW_FIELD)
     DPI = 200;
 
     % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live config。
-    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    CALROOT = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
     addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
     % [MODIFIED] 原本 addpath 舊 per-model 樹 voltage_base\code\function（已刪除）→ 改掛共用 function/
-    addpath(['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\' ...
+    addpath(['G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\' ...
              'Calibration_using_FEM_modeling\function']);           % import_ansys_data / filter_iron_nodes
     cnst = model_config('long2016_hexapole_halfcut','tip40um');
     [sp, sn] = sensor_geometry_local(cnst);                 % 3×6 sensor 中心/法線（WP 框 [m]）
                                                             % [MODIFIED] 原 build_sensor_geometry 隨舊樹刪除，
                                                             %   改用照抄 build_V_matrix.m 之 canonical local（見檔末）
-    rr = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
+    rr = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
 
     % ---- 激發 coil；all-source：只在「激發極是下極 sink」時翻號 ----
     apdl_to_paper_idx = [1,3,6,5,2,4];
@@ -39,7 +39,7 @@ function plot_upperP2P5_circuit_3d(EXC, VARIANT, SHOW_FIELD)
     rxy=cnst.R_norm_xy*1e3; rz=cnst.R_norm_z*1e3; Rnorm=sqrt(rxy^2+rz^2);
 
     % [MODIFIED] 落點改 paper 圖夾（原 voltage_base\figures\shared 已隨舊樹刪除）
-    base = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\figures\paper_fig\Section3_A\';
+    base = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\figures\paper_fig\Section3_A\';
     if ~exist(base,'dir'), mkdir(base); end
 
     % ---- paper 圖設定（使用者拍板 2026-07-31：P2+P5 兩極、az=30/el=30、graded、激發 P2）----

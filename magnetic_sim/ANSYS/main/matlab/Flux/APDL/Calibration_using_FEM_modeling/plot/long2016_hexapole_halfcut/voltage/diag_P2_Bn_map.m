@@ -14,10 +14,10 @@ function diag_P2_Bn_map(PREVIEW)
 
     %% ---- paths ----
     % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live config + utils/pole_sensor_geometry。
-    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    CALROOT = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
     addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
     cnst = model_config('long2016_hexapole_halfcut','tip40um');
-    rr   = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
+    rr   = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
 
     %% ---- 載 baseline coil1 (P1 激發) ----
     d = import_ansys_data(fullfile(rr,'standard','coil1'),'all','coil1');
@@ -96,7 +96,7 @@ function diag_P2_Bn_map(PREVIEW)
     if PREVIEW
         out = fullfile(tempdir,'P2_Bn_sign_map_preview.png');
     else
-        out = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
+        out = ['G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
                'long2016_hexapole_halfcut\Calibration_using_FEM_modeling\voltage_base\figures\shared\' ...
                'P2_Bn_sign_map_standard.png'];
     end

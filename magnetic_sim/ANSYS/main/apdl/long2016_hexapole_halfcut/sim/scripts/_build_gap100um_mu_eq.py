@@ -14,7 +14,7 @@ Run:  python _build_gap100um_mu_eq.py
 """
 import pathlib
 
-ROOT = pathlib.Path(r"G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\apdl\long2016_hexapole_halfcut\sim")
+ROOT = pathlib.Path(r"G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\apdl\long2016_hexapole_halfcut\sim")
 SRC  = ROOT / "gap200um_mueq"
 DST  = ROOT / "gap100um_mueq"
 DST.mkdir(exist_ok=True)

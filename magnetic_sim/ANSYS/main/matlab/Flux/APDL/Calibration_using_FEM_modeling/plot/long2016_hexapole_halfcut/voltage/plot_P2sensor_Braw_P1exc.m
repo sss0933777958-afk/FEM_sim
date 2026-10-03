@@ -53,12 +53,12 @@ function plot_P2sensor_Braw_P1exc(MODE, PREVIEW, VARIANT, FLIP, WIN, FILLEMPTY)
 
     %% ---- paths ----
     % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live config。
-    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    CALROOT = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
     addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
-    addpath(['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
+    addpath(['G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
              'long2016_hexapole_halfcut\Calibration_using_FEM_modeling\voltage_base\code\function']);
     cnst = model_config('long2016_hexapole_halfcut','tip40um');
-    rr   = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
+    rr   = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
 
     %% ---- P2 sensor 幾何（i=2）----
     [sensor_pos, sensor_n] = build_sensor_geometry(cnst);   % WP 框 [m]
@@ -289,7 +289,7 @@ function plot_P2sensor_Braw_P1exc(MODE, PREVIEW, VARIANT, FLIP, WIN, FILLEMPTY)
     if PREVIEW
         out = fullfile(tempdir,['p2sensor_preview_' MODE vsuf fsuf wsuf isuf '.png']);
     else
-        out = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
+        out = ['G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
                'long2016_hexapole_halfcut\Calibration_using_FEM_modeling\voltage_base\figures\shared\' ...
                'P2sensor_Braw_P1exc_' MODE vsuf fsuf wsuf isuf '.png'];
     end

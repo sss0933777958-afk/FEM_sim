@@ -28,8 +28,8 @@ CCAP = [];   if isfield(OVR_,'CCAP'), CCAP = OVR_.CCAP; end
 MODEL = 'long2016_hexapole_halfcut';
 here  = fileparts(mfilename('fullpath'));
 FMX   = fileparts(fileparts(here));
-S     = load(fullfile(FMX,'data',MODEL,'.mat',sprintf('emap_R%d_P%s_%s.mat',RSEL,PTAG,TAG)));
-OUT   = fullfile(FMX,'figures',MODEL);
+S     = load(fullfile(FMX,'utils','data',sprintf('emap_R%d_P%s_%s.mat',RSEL,PTAG,TAG)));
+OUT   = fullfile(FMX,'figures',MODEL,'current');
 
 FS = 60;  FSLAB = 50;  LWBOX = 5.0;
 RIN = 4.1;                        % disc radius on paper [in]

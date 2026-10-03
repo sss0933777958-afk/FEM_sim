@@ -4,7 +4,7 @@
 ! 用途：比對 3-pass 結果做 mesh convergence 驗證
 ! =======================================
 
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\hung\results\coil1\filleted_conv'
+/CWD,'G:\my_workspace\FEM_sim\magnetic_sim\hung\results\coil1\filleted_conv'
 
 /PREP7
 *afun, DEG

@@ -13,13 +13,13 @@ function plot_upperP2P5_circuit_3d(EXC, VARIANT, SHOW_FIELD)
     DPI = 200;
 
     % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live 樹。
-    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    CALROOT = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
     addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
-    addpath(['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
+    addpath(['G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
              'hung_hexapole\Calibration_using_FEM_modeling\voltage_base\code\function']);
     cnst = model_config('hung_hexapole');
     [sp, sn] = build_sensor_geometry(cnst);                 % 3×6 sensor 中心/法線（WP 框 [m]）
-    rr = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\data';
+    rr = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\data';
 
     % ---- 激發 coil；all-source：只在「激發極是下極 sink」時翻號 ----
     apdl_to_paper_idx = [1,3,6,5,2,4];
@@ -35,7 +35,7 @@ function plot_upperP2P5_circuit_3d(EXC, VARIANT, SHOW_FIELD)
     X = [d.x, d.y, d.z-cnst.SPH_OFST]*1e3;  B = [d.bx,d.by,d.bz];      % WP 框 [mm]
     rxy=cnst.R_norm_xy*1e3; rz=cnst.R_norm_z*1e3; Rnorm=sqrt(rxy^2+rz^2);
 
-    base = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
+    base = ['G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
             'hung_hexapole\Calibration_using_FEM_modeling\voltage_base\figures\shared\'];
 
     % ---- 兩張圖設定 ----

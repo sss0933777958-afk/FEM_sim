@@ -5,11 +5,11 @@
 # Usage:  ./run_sweep.sh [um ...]     (default 500 501 ... 550 ; pilot e.g. ./run_sweep.sh 500 525 550)
 set -u
 ANSYS="G:/ANSYS Inc/v252/ansys/bin/winx64/MAPDL.exe"
-BASE="G:/my_workspace/code/FEM_sim/magnetic_sim/ANSYS/main"
+BASE="G:/my_workspace/FEM_sim/magnetic_sim/ANSYS/main"
 TEMPLATE="$BASE/apdl/long2016_hexapole_halfcut/sim/singlepole_tipcut_sweep/MT_Sweep_Tipcut_template.txt"
 SCRATCH="$BASE/ANSYS_data/long2016_hexapole_halfcut/db/singlepole/tipcut_sweep"
 DATA_UNIX="$BASE/ANSYS_data/long2016_hexapole_halfcut/data/coil1/singlepole/tipcut_sweep"
-DATA_WIN='G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil1\singlepole\tipcut_sweep'
+DATA_WIN='G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\coil1\singlepole\tipcut_sweep'
 DECKS="$SCRATCH/_decks"
 mkdir -p "$SCRATCH" "$DECKS" "$DATA_UNIX"
 

@@ -74,7 +74,7 @@ function plot_svd_polar(USE_BIAS, R_um, SRC, MODEL, GEOM, VARIANT, NFORCE, CLIMC
         % [ADDED 2026-08-15] 對照組：改餵 **APDL** 的校正結果（就是參考圖 gain_polar_*.png
         %   用的那顆 fit_fixl_R150um_gap_200um.mat）。用來證明「同一支腳本、同一個 R，
         %   換資料源會長成什麼樣」——把「畫錯」與「資料/半徑差異」分離。
-        CALA = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Flux\APDL\Calibration_using_FEM_modeling';
+        CALA = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\Flux\APDL\Calibration_using_FEM_modeling';
         A = load(fullfile(CALA,'data','long2016_hexapole_halfcut','.mat','fit_fixl_R150um_gap_200um.mat'));
         ell_m = A.ell*1e-6;   Hhat = A.gB * A.Khat;   Pc = cfg.Pc_base;   % fit_fixl = single、無偏移
         fprintf('資料 APDL fit_fixl (參考圖用的同一顆)\n  l_hat=%.1f um  gB=%.4f mT/A\n', ell_m*1e6, A.gB);

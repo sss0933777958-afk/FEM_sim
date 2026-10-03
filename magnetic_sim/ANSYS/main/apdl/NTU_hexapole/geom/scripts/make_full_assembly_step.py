@@ -24,7 +24,7 @@ from OCP.TopAbs import TopAbs_SOLID
 from OCP.Bnd import Bnd_Box
 from OCP.BRepBndLib import BRepBndLib
 
-ROOT = r"G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main"
+ROOT = r"G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main"
 POLE = ROOT + r"\CAD_model\NTU_hexapole\STEP\pole.STEP"
 ASM  = ROOT + r"\CAD_model\NTU_hexapole\STEP\總組合.STEP"   # [ADDED 階段③] yoke = solid06
 OUT  = ROOT + r"\model_check\NTU_hexapole\full_assembly.step"

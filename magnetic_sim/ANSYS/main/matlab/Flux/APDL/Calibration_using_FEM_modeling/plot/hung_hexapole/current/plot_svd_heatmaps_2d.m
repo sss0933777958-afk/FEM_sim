@@ -13,7 +13,7 @@ function plot_svd_heatmaps_2d()
     here    = fileparts(mfilename('fullpath'));
     fixdir  = fileparts(fileparts(here));
     % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live hung config。
-    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    CALROOT = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
     addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
     figdir  = fullfile(fixdir,'figures','single_param');  if ~exist(figdir,'dir'); mkdir(figdir); end
 

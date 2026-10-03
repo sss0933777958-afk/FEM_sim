@@ -17,10 +17,10 @@
 !   激發 coil 由寫死 1 改成 placeholder **XCOILX**，由 run_sensor_refine.sh sed（COILS 預設 "1 5"）。
 !   coil1 = P1 自激、coil5 = P2 自激（map [1,3,6,5,2,4]；⚠ coil2 是 P3 不是 P2）。
 ! ============================================================================
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\sim\sensor_refine_p1p2'
+/CWD,'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\sim\sensor_refine_p1p2'
 /CLEAR,NOSTART
 /TITLE, Long2016 halfcut sensor-refine p1p2 lvXLVX - coil XCOILX
-RESUME,'mesh_lvXLVX','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\mesh\sensor_refine_p1p2'
+RESUME,'mesh_lvXLVX','db','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\db\mesh\sensor_refine_p1p2'
 
 /PREP7
 *afun,DEG
@@ -77,20 +77,20 @@ ALLSEL,ALL
 /HEADER,OFF,OFF,OFF,OFF,OFF,OFF
 /FORMAT,10,,20,12,,
 /PAGE,1000000,,1000000
-/OUTPUT,'coilXCOILX_coord_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\sensor_refine_p1p2\lvXLVX\coilXCOILX'
+/OUTPUT,'coilXCOILX_coord_all','dat','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\sensor_refine_p1p2\lvXLVX\coilXCOILX'
 NLIST,ALL, , ,COORD
 /OUTPUT
-/OUTPUT,'coilXCOILX_bfield_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\sensor_refine_p1p2\lvXLVX\coilXCOILX'
+/OUTPUT,'coilXCOILX_bfield_all','dat','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\sensor_refine_p1p2\lvXLVX\coilXCOILX'
 PRNSOL,B,COMP
 /OUTPUT
 LOCAL,12,2, 0, 0, SPH_OFST
 CSYS,12
 NSEL,S,LOC,X, 0, 2e-3
 CSYS,0
-/OUTPUT,'coilXCOILX_coord_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\sensor_refine_p1p2\lvXLVX\coilXCOILX'
+/OUTPUT,'coilXCOILX_coord_wp','dat','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\sensor_refine_p1p2\lvXLVX\coilXCOILX'
 NLIST,ALL, , ,COORD
 /OUTPUT
-/OUTPUT,'coilXCOILX_bfield_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\sensor_refine_p1p2\lvXLVX\coilXCOILX'
+/OUTPUT,'coilXCOILX_bfield_wp','dat','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data\sensor_refine_p1p2\lvXLVX\coilXCOILX'
 PRNSOL,B,COMP
 /OUTPUT
 ALLSEL,ALL

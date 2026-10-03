@@ -93,7 +93,8 @@ model_config
 | 檔 | 簽章 | 做什麼 |
 |---|---|---|
 | **emit_tex.m** | `T = emit_tex()` | 低階 LaTeX helper handle：`T.mat`（6×6 bmatrix）、`T.e`（3×6 偏移矩陣）、`T.scalar_unit`。數字格式慣例：`|指數|≥2` 才抽 `×10ⁿ`、正值不加 `+`。|
-| **emit_results.m** | `emit_results(matfile)` | 讀自描述 `.mat` → 寫 LaTeX → inline `xelatex` → PDF 到 `results/<model>/<single|eighteen>/model_results_<base>_<variant>.pdf`。current 印 `K̄_I / ᴮĤ_I[mT/A] / ℓ̂ / G / F / ĝ_I / RMSPE`；voltage 印 `D̄ / ᴮĤ_V[mT/mV] / ℓ̂ / G / V / ĝ_V`（欄重排回 paper 序）；`USE_BIAS` 另印 `e[µm]`；都印 𝒞/κ。清中間檔只留 pdf。|
+| **emit_results.m** | `emit_results(matfile)` | 讀自描述 `.mat` → 寫 LaTeX → inline `xelatex` → PDF 到 `results/<model>/<single|eighteen>/<base>_R<半徑>[_N<點數>][_<tag>][_soff<N>mm].pdf`。current 印 `ᴮĝ_I / K̄_I / ᴮĤ_I[mT/A] / ℓ̂ / ê / RMS`；voltage 印 `ᴮĝ_V / M̄ / ᴮĤ_V[mT/mV] / ℓ̂ / ê / V / RMS`（V 欄重排回 paper 序）；`ê` 只在 eighteen 印；`RMS = √(J/N)[mT]`。清中間檔只留 pdf。|
+| **pole_sensor_geometry.m** | `[pos, nhat, geo] = pole_sensor_geometry(cfg, opt)` | 六顆 Hall sensor 的中心位置與外法線 n+（sensor 幾何唯一來源）。`build_V_matrix` 與 config 呼叫。|
 
 ---
 

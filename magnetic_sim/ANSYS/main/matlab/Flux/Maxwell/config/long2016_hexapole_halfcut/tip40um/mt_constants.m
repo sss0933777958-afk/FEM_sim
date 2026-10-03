@@ -106,6 +106,19 @@ function c = mt_constants()
     %   截距 R0 不寫死，由 POLE_TIP_R 經虛擬錐頂公式導出（見 sensor_geometry），故 tip 變體自動跟著走。
     c.pole_cone_slope = [0.20330, 0.19463];           % [下極, 上極]
 
+    % [ADDED 2026-09-28 user decision] Sensor placement uses the numbers of
+    %   reference/Sensor location/Sensor_location.pdf VERBATIM, not values derived
+    %   from the CAD slope above (the two differ by 0.13-0.17 um at L = 4.572 mm):
+    %     P = R_norm*e1(phi1) + L*cos(beta)*e2(phi2)
+    %         + [R0 + (L - t)*sin(beta)]*r + 0.41*n,   n = cos(beta)*r - sin(beta)*e2
+    %   pole_sensor_geometry reads this struct when present. Order is [lower, upper].
+    c.sensor_doc = struct( ...
+        'phi1_deg', 35.2644, ...                      % |elevation| of e1, origin -> tip
+        'phi2_deg', [0, 36.5895], ...                 % elevation of e2, the pole axis
+        'beta_deg', [11.49, 11.01], ...               % half cone angle
+        'R0',       0.03922e-3, ...                   % cone radius at the fillet tangent [m]
+        't',        [0.03280e-3, 0.03198e-3]);        % fillet length along the generatrix [m]
+
     % [ADDED 2026-08-08] 尖端倒圓的**軸向推進量**（CAD STEP 實測，六根極一致）。
     %   = 錐面與 40µm 倒圓球的「切點」距極尖的軸向距離。切點落在球面 90deg-beta 處（非赤道），
     %   故軸向只推進 0.0322mm、**不是 0.04**（實測交界圓 t=0.03216 / r=0.0391~0.0394，

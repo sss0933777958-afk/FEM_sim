@@ -12,13 +12,13 @@
 ! [KUO 2026-06-15] This is one COMBINED solve writing coil2..6 .dat to a single CWD.
 !   New per-coil layout = coilN/graded/. CWD set to coil2/graded below; AFTER re-running
 !   this script, move coil3/4/5/6_*_wp.dat from coil2/graded/ to their own coilN/graded/.
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\coil2\graded'
+/CWD,'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\coil2\graded'
 
 FINISH
 /CLEAR,NOSTART
 
 ! ---- restore the master graded mesh (model + P1 solution; mesh is what we reuse) ----
-RESUME,'3DMTmagneticfield','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\coil1\graded\'
+RESUME,'3DMTmagneticfield','db','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\coil1\graded\'
 
 ! ---- defensively redefine the few constants we need (RESUME normally restores them) ----
 *afun,DEG

@@ -11,7 +11,7 @@
 clear; clc;
 
 VARIANT = 'gap_200um';
-CAL = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
+CAL = ['G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
        'long2016_hexapole_halfcut\Calibration_using_FEM_modeling'];
 FIX_MAT   = fullfile(CAL,'current_base','data',    sprintf('field_err_hist_%s.mat', VARIANT));
 NOFIX_MAT = fullfile(CAL,'current_base','data', sprintf('field_err_hist_%s.mat', VARIANT));

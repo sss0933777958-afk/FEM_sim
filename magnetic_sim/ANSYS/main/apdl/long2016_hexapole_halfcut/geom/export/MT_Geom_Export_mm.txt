@@ -17,7 +17,7 @@
 
 ! [MODIFIED] /CWD points to neutral scratch dir; ANSYS .db/.out/.png stay there
 ! [MODIFIED] IGESOUT at end of file writes .iges directly into magnetic_sim/ANSYS/main/model_check/ dir
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\geom_export_mm'
+/CWD,'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\geom_export_mm'
 
 Finish
 /cle
@@ -301,6 +301,6 @@ IGES_SC = 1.0/25.4
 VLSCALE, ALL, , , IGES_SC, IGES_SC, IGES_SC, , 0, 1
 ALLSEL, ALL
 ! [MODIFIED] Absolute path so IGES lands in magnetic_sim/ANSYS/main/model_check/ even though /CWD is elsewhere
-IGESOUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\model_check\long_fei\long2016_hexapole_no_gap', 'iges'
+IGESOUT, 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\model_check\long_fei\long2016_hexapole_no_gap', 'iges'
 
 FINISH

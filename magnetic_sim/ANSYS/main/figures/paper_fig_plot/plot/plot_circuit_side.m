@@ -47,10 +47,10 @@ function plot_circuit_side(USE_BIAS, WITH_DIST, CHARGE_SRC, DUAL, PAIR, MODEL, V
     here   = fileparts(fileparts(mfilename('fullpath')));
     figdir = fullfile(fileparts(here), 'paper_fig', 'Section2_E');
     if ~exist(figdir,'dir'); mkdir(figdir); end
-    CAL = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Flux\APDL\Calibration_using_FEM_modeling';   % 場來源固定 APDL
+    CAL = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\Flux\APDL\Calibration_using_FEM_modeling';   % 場來源固定 APDL
     addpath(fullfile(CAL,'function'));  addpath(fullfile(CAL,'common_path'));
     % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live 樹。
-    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Flux\APDL\Calibration_using_FEM_modeling';
+    CALROOT = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\Flux\APDL\Calibration_using_FEM_modeling';
     addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
     c = model_config('long2016_hexapole_halfcut','tip40um');
     if ISZHI
@@ -74,6 +74,15 @@ function plot_circuit_side(USE_BIAS, WITH_DIST, CHARGE_SRC, DUAL, PAIR, MODEL, V
 
     % [MODIFIED 2026-08-03] 視野模式三選一：base / dist(含 WP 中心) / dual(DUAL 專用，見 win())
     MODE = 'base';  if WITH_DIST, MODE = 'dist'; end;  if DUAL, MODE = 'dual'; end
+    % [ADDED 2026-09-28] CHARGE_SRC='force': charges from the FORCE calibration
+    %   (single + eighteen, both drawn, each labelled with its distance to the
+    %   origin), laid out by the nine figure rules. Separate window and renderer,
+    %   so every older mode is left exactly as it was.
+    ISFRC = strcmpi(CHARGE_SRC,'force');
+    if ISFRC
+        assert(~ISZHI, 'the force calibration exists for long2016 only');
+        DUAL = true;   WITH_DIST = false;   MODE = 'dual_f';
+    end
     % [ADDED 2026-08-28 使用者指定] 志鵬的雙電荷圖改用 'dual_zhi' 視窗：**兩個 panel 共用
     %   同一個 z 軸、且以原點置中** → 上極 P2(左) 的板落在原點上方、下極 P1(右) 落在下方，
     %   一眼看得出誰上誰下。長飛的 'dual' 視窗維持逐字不變。
@@ -92,8 +101,9 @@ function plot_circuit_side(USE_BIAS, WITH_DIST, CHARGE_SRC, DUAL, PAIR, MODEL, V
                 qb1=charge_zhi(pl,true ,c,VARIANT,here); qf1=charge_zhi(pl,false,c,VARIANT,here);
                 qb2=charge_zhi(pu,true ,c,VARIANT,here); qf2=charge_zhi(pu,false,c,VARIANT,here);
             else
-            qb1=charge_xz(pl,true ,c,CAL,CHARGE_SRC); qf1=charge_xz(pl,false,c,CAL,CHARGE_SRC);
-            qb2=charge_xz(pu,true ,c,CAL,CHARGE_SRC); qf2=charge_xz(pu,false,c,CAL,CHARGE_SRC);
+            [qb1,rb1]=charge_xz(pl,true ,c,CAL,CHARGE_SRC); [qf1,rf1]=charge_xz(pl,false,c,CAL,CHARGE_SRC);
+            [qb2,rb2]=charge_xz(pu,true ,c,CAL,CHARGE_SRC); [qf2,rf2]=charge_xz(pu,false,c,CAL,CHARGE_SRC);
+            S1.qbr=rb1; S1.qfr=rf1;   S2.qbr=rb2; S2.qfr=rf2;      % 3-D distance to the origin [um]
             end
             S1.qbx=rho_of(qb1,phi)*1e3; S1.qbz=qb1(3)*1e3; S1.qfx=rho_of(qf1,phi)*1e3; S1.qfz=qf1(3)*1e3;
             S2.qbx=rho_of(qb2,phi)*1e3; S2.qbz=qb2(3)*1e3; S2.qfx=rho_of(qf2,phi)*1e3; S2.qfz=qf2(3)*1e3;
@@ -117,6 +127,12 @@ function plot_circuit_side(USE_BIAS, WITH_DIST, CHARGE_SRC, DUAL, PAIR, MODEL, V
         end
     end
     SL = S2;  SR = S1;                                  % [MODIFIED] 左右對調：上極在左、下極在右（merged/dist 一致）
+    if ISFRC
+        % force figures live with the Force package, not under paper_fig (user's call)
+        fdir = fullfile(fileparts(fileparts(here)), 'matlab','Force','Maxwell','figures', MODEL);
+        fig_force(SL, SR, CLIM2, CTK, fullfile(fdir, sprintf('circuit_side_force_%s.png', pstr)));
+        return
+    end
     % [ADDED 2026-08-05] 箭頭方向：**左子圖(上極)指向工作區中心**、右子圖(下極)指向磁荷（使用者拍板）
     SL.arrow_to = 'center';   SR.arrow_to = 'charge';
     w1 = H*diff(SL.XL)/diff(SL.ZL);   w2 = H*diff(SR.XL)/diff(SR.ZL);
@@ -167,6 +183,9 @@ function [XL,ZL,XT,ZT] = win(role, MODE)
     switch role
         case 1
             switch MODE
+                case 'dual_f'                            % [ADDED 2026-09-28] figure rules 5/9: three ticks,
+                    % end gaps equal to the spacing (0.3), square 1.2 x 1.2, origin centred in z
+                    XL=[-0.3 0.9]; ZL=[-0.6 0.6]; XT=[0 0.3 0.6];         ZT=[-0.3 0 0.3];
                 case 'dual_zhi'                          % [ADDED 2026-08-28] 志鵬：z 軸與左 panel 共用、原點置中
                     % 下極板 z ∈ [-0.289,-0.111]、single 磁荷 z = -0.430 → [-0.5,0.5] 全含。
                     % 框 1.0 x 1.0（axis equal → 正方形，與左 panel 等寬等高）。
@@ -181,6 +200,8 @@ function [XL,ZL,XT,ZT] = win(role, MODE)
             end
         case 2
             switch MODE
+                case 'dual_f'                            % [ADDED 2026-09-28] mirror of the lower-pole window
+                    XL=[-0.9 0.3]; ZL=[-0.6 0.6]; XT=[-0.6 -0.3 0];       ZT=[-0.3 0 0.3];
                 case 'dual_zhi'                          % [ADDED 2026-08-28] 志鵬：與右 panel 完全同一個 z 軸
                     % 上極板 z ∈ [+0.111,+0.289] 落在原點**上方**、single 磁荷 z = +0.430。
                     % ρ 視窗是右 panel 的鏡像 → 兩格等寬，版面左右對稱。
@@ -243,6 +264,7 @@ function S = load_panel(pidx, role, phi, USE_BIAS, c, CAL, MODE, CHARGE_SRC)
     rho =  x*cos(phi) + y*sin(phi);                     % [MODIFIED] 面內座標
     perp = -x*sin(phi) + y*cos(phi);                    % 離側視面的垂距（取代舊的 |y|）
     slab=100; cell=0.016;                               % 垂距全取(不限薄板) / grid 格邊 ~0.016mm
+    if strcmp(MODE,'dual_f'), cell = 0.020; end         % [ADDED] 1.2 mm window -> 60 x 60 cells
     nx=round(diff(XL)/cell); nz=round(diff(ZL)/cell);
     inwin = rho>=XL(1)&rho<=XL(2) & z>=ZL(1)&z<=ZL(2) & abs(perp)<slab;
     gi=find(inwin);
@@ -291,8 +313,25 @@ function [qc, qcr_um] = charge_xz(pidx, USE_BIAS, c, CAL, CHARGE_SRC)
 % [ADDED] 電荷位置(single = l̂·d̂；eighteen = l̂·R_actᵀ·(Pc_base+E))。
 %   CHARGE_SRC='apdl'|'maxwell' 只換讀哪一份 R150 校正 .mat——**場永遠是 APDL,不受此影響**。
 %   兩分支幾何(tip40um)完全相同 → d̂ / R_act / Pc_base 共用;e 的欄一律 paper 序 P1..P6。
-    if strcmpi(CHARGE_SRC,'maxwell')
-        CDIR  = fullfile('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\Flux\Maxwell', ...
+    if strcmpi(CHARGE_SRC,'force')
+        % [ADDED 2026-09-28] force calibration records (Force/Maxwell, singles6).
+        %   They store l_hat in um and the offsets as e_hat; converted here so the
+        %   code below is shared. One record per tag is expected, no guessing.
+        FDIR = fullfile('G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\Force\Maxwell', ...
+                        'data','long2016_hexapole_halfcut','.mat');
+        tg = 'single';  if USE_BIAS, tg = 'eighteen'; end
+        L  = dir(fullfile(FDIR, sprintf('current_R150_N*_L9_singles6_%s.mat', tg)));
+        assert(isscalar(L), 'expected exactly one force record for %s, found %d', tg, numel(L));
+        M  = load(fullfile(FDIR, L.name), 'l_hat', 'e_hat');
+        tip = [c.pole_tip_x; c.pole_tip_y; c.pole_tip_z_wp];  dhat = tip./vecnorm(tip);
+        R_act = [dhat(:,1),dhat(:,3),dhat(:,5)].';
+        Pc = make_Pc(M.e_hat, R_act*dhat);
+        qc = M.l_hat*1e-6 * (R_act.' * Pc(:,pidx));
+        qcr_um = norm(qc)*1e6;
+        fprintf('  [charge src=force/%s] %s  l_hat=%.2f um  |r|=%.2f um\n', tg, L.name, M.l_hat, qcr_um);
+        return
+    elseif strcmpi(CHARGE_SRC,'maxwell')
+        CDIR  = fullfile('G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\Flux\Maxwell', ...
                          'data','long2016_hexapole_halfcut','.mat');
         cfile = @(tag) fullfile(CDIR, sprintf('calib_current_maxwell_R150_%s.mat', tag));
     else
@@ -313,6 +352,78 @@ function [qc, qcr_um] = charge_xz(pidx, USE_BIAS, c, CAL, CHARGE_SRC)
     qcr_um = norm(qc)*1e6;                               % 電荷到 WP 中心的 3D 總距離 [µm]（含 y 分量）
     fprintf('  [charge src=%s] WP = (%.3f, %.3f) mm   l_hat=%.1f um   |r|=%.1f um\n', ...
             CHARGE_SRC, qc(1)*1e3, qc(3)*1e3, M.l_hat*1e6, qcr_um);
+end
+
+% ============================================================================
+function fig_force(SL, SR, CL, CTK, outp)
+% [ADDED 2026-09-28] Two square panels + one colorbar, laid out by the nine
+%   figure rules: tick numbers 60, box 5.0, horizontal endpoints numbered (by
+%   hand, they are not ticks), vertical endpoints not, three equally spaced ticks
+%   with end gaps equal to the spacing. Canvas in inches, written with print --
+%   exportgraphics would trim the border and change the proportions.
+%   Tick numbers, colorbar numbers and the distance labels are tex + bold: the
+%   latex interpreter ignores FontWeight.
+    FS = 60;  FSD = 45;  FSLAB = 50;  LWBOX = 5.0;
+    PS = 12;  LM = 2.7;  MG = 2.9;  BM = 1.9;  TM = 0.6;      % panel side, margins [in]
+    CG = 0.5; CW = 0.40; CR = 3.6;
+    W  = LM + PS + MG + PS + CG + CW + CR;   H = BM + PS + TM;
+    fig = figure('Color','w','Units','inches','Position',[0.3 0.3 W H],'Visible','off');
+    SS = {SL, SR};   X0 = [LM, LM+PS+MG];
+    for k = 1:2
+        S  = SS{k};
+        ax = axes(fig,'Units','inches','Position',[X0(k) BM PS PS]);
+        try, ax.Toolbar = []; end                                    %#ok<TRYNC>
+        try, ax.Interactions = []; end                               %#ok<TRYNC>
+        hold(ax,'on');
+        patch(ax, S.pox, S.poz, [0.82 0.84 0.88], 'FaceAlpha',0.30, ...
+              'EdgeColor',[0.28 0.30 0.36], 'LineWidth',4.0);
+        nb = 28;  edges = linspace(0,CL(2),nb+1);  cmap = turbo(nb);  lw = linspace(1.0,3.6,nb);
+        for q = 1:nb
+            if q < nb, m = S.Bm_mT>=edges(q) & S.Bm_mT<edges(q+1); else, m = S.Bm_mT>=edges(q); end
+            if any(m)
+                quiver(ax, S.Xs(m), S.Zs(m), S.Uq(m), S.Wq(m), 0, 'Color',cmap(q,:), ...
+                       'LineWidth',lw(q), 'MaxHeadSize',0.35);
+            end
+        end
+        draw_axis_line(ax, S);
+        set(findobj(ax,'Type','line'), 'LineWidth', 4.5);            % the axis line and its head
+        plot(ax, 0, 0, '+', 'Color','k', 'MarkerSize',44, 'LineWidth',5.5);
+        CB = [0.12 0.24 0.45];   CP = [1 0.30 0.65];
+        plot(ax, S.qfx, S.qfz, 'o', 'MarkerFaceColor',CB, 'MarkerEdgeColor','k', 'MarkerSize',36, 'LineWidth',3);
+        plot(ax, S.qbx, S.qbz, 'o', 'MarkerFaceColor',CP, 'MarkerEdgeColor','k', 'MarkerSize',36, 'LineWidth',3);
+        % Distance label for the eighteen-parameter charge only (user's call,
+        %   2026-09-28); the single-parameter charge is drawn but not labelled.
+        %   Placed by hand per panel, in free air: clear of the pole outline,
+        %   the axis line, the frame and both markers.
+        if k == 1, pb = [-0.68 0.17];                                % left, upper pole
+        else,      pb = [ 0.62 -0.19];                               % right, lower pole
+        end
+        text(ax, pb(1), pb(2), sprintf('%.2f \\mum', S.qbr), ...
+             'Color',CP*0.85, 'FontSize',FSD, 'FontWeight','bold', 'Interpreter','tex', ...
+             'HorizontalAlignment','center', 'VerticalAlignment','middle');   % no background box (user's call)
+        axis(ax,'equal');  xlim(ax,S.XL);  ylim(ax,S.ZL);
+        box(ax,'on');  grid(ax,'off');
+        set(ax, 'FontSize',FS, 'FontWeight','bold', 'LineWidth',LWBOX, ...
+                'TickDir','in', 'TickLength',[.018 .018], 'XTick',S.XT, 'YTick',S.ZT, ...
+                'Units','inches', 'Position',[X0(k) BM PS PS]);
+        colormap(ax, turbo);  clim(ax, CL);
+        yoff = S.ZL(1) - 0.022*diff(S.ZL);
+        for xv = S.XL
+            text(ax, xv, yoff, sprintf('%g',xv), 'HorizontalAlignment','center', ...
+                 'VerticalAlignment','top', 'FontSize',FS, 'FontWeight','bold', 'Clipping','off');
+        end
+        hold(ax,'off');
+    end
+    cb = colorbar(ax, 'Units','inches');
+    cb.Position = [X0(2)+PS+CG, BM, CW, PS];   ax.Position = [X0(2) BM PS PS];
+    cb.FontSize = FS;  cb.FontWeight = 'bold';  cb.LineWidth = LWBOX;
+    cb.Limits = CL;    cb.Ticks = CTK;
+    cb.Label.Interpreter = 'latex';  cb.Label.String = '$\mathbf{\|b\|\;(mT)}$';
+    cb.Label.FontSize = FSLAB;
+    set(fig, 'PaperUnits','inches', 'PaperPosition',[0 0 W H], 'PaperSize',[W H]);
+    print(fig, outp, '-dpng', '-r100');
+    close(fig);
+    fprintf('wrote %s\n', outp);
 end
 
 % ============================================================================

@@ -1,0 +1,379 @@
+/CWD,'C:\Documents and Settings\MEadmin\Desktop\Fei Long Ansys\Magnetic Tweezers'
+
+/CLEAR,NOSTART
+/PREP7
+
+
+! -------------------------------
+! ******** MODELING: ************
+! -------------------------------
+
+POLE_NUM = 6
+COUNTER  = 0
+
+*dim, POLE_ARRAY,,  POLE_NUM
+*dim, PROT_ARRAY,,  POLE_NUM
+
+*afun, DEG   !----Using degree
+BTOL, 1e-6   !----BoOL tolerence
+/UNITS, SI
+
+R_norm    = 500e-6       !----working radius
+R_norm_xy = R_norm*sqrt(2.0/3.0)
+R_norm_z  = R_norm/sqrt(3.0)
+
+YOKE_IN_R  = 84.5e-3/2.0    !----Inner radius of yoke
+YOKE_OUT_R = 105.5e-3/2.0
+YOKE_MID_R = (YOKE_IN_R + YOKE_OUT_R)/2.0
+YOKE_H     = 2.0e-3
+PROT_R     = 10.0e-3/2.0
+PROT_H     = 7.0e-3
+
+POLE_R        = 6.0e-3/2
+POLE_TIP_R    = 40.0e-6    !----40um
+POLE_CONE_LEN = 15e-3
+POLE_CONE_HYP = sqrt(POLE_CONE_LEN**2 + POLE_R**2)
+ANG1 = acos(POLE_R/POLE_CONE_HYP)
+ANG2 = 90 - ANG1
+L = POLE_CONE_LEN*POLE_TIP_R/POLE_R
+POLE_TIP_CENTER = L/cos(ANG2)
+POLE_CONE2_LEN  = L*cos(ANG2)
+POLE_TIP_R2     = POLE_TIP_R*cos(ANG2)
+POLE_TIP_FILLET_LEN = POLE_TIP_CENTER - POLE_TIP_R
+
+
+
+! -------------------------------
+! ******* YOKE MODELING: ********
+! -------------------------------
+WPLANE, 1,0,0,0,,,,,,
+WPcsys,-1,0
+
+! **** 1 yoke: ****
+CYL4,0,0,YOKE_IN_R,0,YOKE_OUT_R,360,YOKE_H
+
+! **** 6 protrusion: ****
+*do, prot_ind, 1, POLE_NUM,1
+		
+	WPLANE,1,0,0,0,,,,,,
+	WPcsys,-1,0
+
+        *if, prot_ind,LE,3, then
+                temp_prot_h = -PROT_H
+		temp_prot_ang = 120*(prot_ind - 1)
+	*else
+		WPOFFS,0,0,YOKE_H
+		temp_prot_h = PROT_H
+		temp_prot_ang = 120*(prot_ind - 4) + 60
+	*endif
+
+	CYL4,YOKE_MID_R*cos(temp_prot_ang),YOKE_MID_R*sin(temp_prot_ang),PROT_R, ,,,temp_prot_h
+*enddo
+
+! **** Unite the yoke and protrusion: ****
+FLST,2, 1 + POLE_NUM, 6,ORDE, 2
+FITEM,2, 1
+FITEM,2,-(1+POLE_NUM)
+VADD,P51X
+
+*get, vol_yoke_ind, VOLU,,NUM, MAX
+
+
+! ----------------------------
+! **** 3 lower poles: ********
+! ----------------------------
+X0_LOW = YOKE_MID_R*cos(0)
+Y0_LOW = YOKE_MID_R*sin(0)
+Z0_LOW = -PROT_H
+
+*do, pole_ind,1,3,1
+
+	WPLANE, 1,0,0,0,,,,,,
+	WPcsys,-1,0
+        ROTA_ANG = 120*(pole_ind-1)
+	WPROTA, ROTA_ANG,    !----Rotate about z axis
+
+	*get, VL_NUM, VOLU, ,NUM, MAX
+	VL_START = VL_NUM + 1
+	numstr, VOLU, VL_START
+
+	! **** Lower pole holer: ****
+	BLOCK, X0_LOW - 5e-3,  X0_LOW + 11e-3, Y0_LOW - 5e-3,  Y0_LOW + 5e-3,  Z0_LOW - 10e-3, Z0_LOW          !----index: VL_START
+	BLOCK, X0_LOW - 5e-3,  X0_LOW - 2e-3,  Y0_LOW - 10e-3, Y0_LOW + 10e-3, Z0_LOW - 10e-3, Z0_LOW - 5e-3
+	BLOCK, X0_LOW - 10e-3, X0_LOW - 2e-3,  Y0_LOW - 5e-3,  Y0_LOW + 5e-3,  Z0_LOW - 10e-3, Z0_LOW - 2e-3
+	BLOCK, X0_LOW - 10e-3, X0_LOW - 5e-3,  Y0_LOW - 10e-3, Y0_LOW + 10e-3, Z0_LOW - 10e-3, Z0_LOW - 5e-3
+
+	! **** Key points & line: ****
+	*get, KP_NUM, KP  , ,NUM, MAX
+	*get, LI_NUM, LINE, ,NUM, MAX
+	KP_START = KP_NUM + 1
+	LI_START = LI_NUM + 1
+	numstr, KP,   KP_START
+	numstr, LINE, LI_START
+
+	l1 = abs( R_norm_xy )
+        l1_ang = atan2( 0 , R_norm_xy )
+        l2 = sqrt( (R_norm_xy + (POLE_CONE2_LEN - POLE_TIP_FILLET_LEN))**2 + POLE_TIP_R2**2 )
+	l2_ang = atan2( POLE_TIP_R2 , (R_norm_xy + (POLE_CONE2_LEN - POLE_TIP_FILLET_LEN)) )
+	l3 = sqrt( POLE_CONE_LEN**2 + POLE_R**2 )
+	l3_ang = atan2( POLE_R , POLE_CONE_LEN )
+	l4 = sqrt( (X0_LOW - 10e-3)**2 + POLE_R**2 )
+	l4_ang = atan2( POLE_R , (X0_LOW - 10e-3) )
+	l5 = abs( X0_LOW - 10e-3 )
+	l5_ang = atan2( 0 , (X0_LOW - 10e-3) )
+	l6 = abs( R_norm_xy + POLE_TIP_R )
+	l6_ang = atan2( 0, R_norm_xy + POLE_TIP_R )
+	K , , l1*cos(ROTA_ANG + l1_ang) , l1*sin(ROTA_ANG + l1_ang), Z0_LOW - 6e-3
+	K , , l2*cos(ROTA_ANG + l2_ang) , l2*sin(ROTA_ANG + l2_ang), Z0_LOW - 6e-3
+	K , , l3*cos(ROTA_ANG + l3_ang) , l3*sin(ROTA_ANG + l3_ang), Z0_LOW - 6e-3
+	K , , l4*cos(ROTA_ANG + l4_ang) , l4*sin(ROTA_ANG + l4_ang), Z0_LOW - 6e-3
+	K , , l5*cos(ROTA_ANG + l5_ang) , l5*sin(ROTA_ANG + l5_ang), Z0_LOW - 6e-3
+	K , , l6*cos(ROTA_ANG + l6_ang) , l6*sin(ROTA_ANG + l6_ang), Z0_LOW - 6e-3  !---- for arc generation
+
+	LARC , KP_START , KP_START + 1 , KP_START + 5 , POLE_TIP_R
+	L , KP_START + 1 , KP_START + 2,,,,,,,,
+	L , KP_START + 2 , KP_START + 3,,,,,,,,
+	L , KP_START + 3 , KP_START + 4,,,,,,,,
+	L , KP_START + 4 , KP_START,,,,,,,,
+
+	! **** Create Area: ****
+	*get, AR_NUM, AREA, ,NUM, MAX
+	AR_START = AR_NUM + 1
+	numstr, AREA, AR_START
+
+	AL, LI_START, LI_START + 1, LI_START + 2, LI_START + 3, LI_START + 4
+
+	! **** Rotate area to get volume: ****
+	VROTAT, AR_START, ,,,,,KP_START,KP_START + 4,,4
+
+	! **** Unite the volumn: ****
+	*get, vl_ind_temp, VOLU,,NUM,MAX
+	FLST,2,(vl_ind_temp - VL_START + 1),6,ORDE,2
+	FITEM,2,VL_START
+	FITEM,2,-vl_ind_temp
+	VADD,P51X
+
+	*get, vol_pole_ind, VOLU,,NUM,MAX
+	VADD, VL_NUM, vol_pole_ind
+
+	*get, vol_unite_ind, VOLU,,NUM,MAX
+
+	BLOCK,0,X0_LOW - 10e-3,Y0_LOW - 10e-3,Y0_LOW + 10e-3,Z0_LOW - 6e-3, Z0_LOW
+
+	VSBV, vol_unite_ind,vol_unite_ind + 1
+
+	GPLOT
+
+*enddo
+
+
+! ---------------------------
+! **** 3 upper pole: ********
+! ---------------------------
+	X0_HIGH = YOKE_MID_R*cos(0)
+	Y0_HIGH = YOKE_MID_R*sin(0)
+	Z0_HIGH = YOKE_H + PROT_H
+
+*do, pole_ind,4,6,1
+	WPLANE, 1,0,0,0,,,,,,
+	WPcsys,-1,0
+        ROTA_ANG = 120*(pole_ind-4) + 60
+	WPROTA, ROTA_ANG, 
+
+	*get, VL_NUM, VOLU, ,NUM, MAX
+	VL_START = VL_NUM + 1
+	numstr, VOLU, VL_START
+
+
+	! **** Upper pole holder: ****
+	BLoCK, X0_HIGH - 3.5e-3,  X0_HIGH + 8.5e-3, Y0_HIGH - 5e-3,  Y0_HIGH + 5e-3,  Z0_HIGH, Z0_HIGH + 10e-3
+	BLOCK, X0_HIGH - 6.5e-3,  X0_HIGH - 3.5e-3, Y0_HIGH - 11e-3, Y0_HIGH + 11e-3, Z0_HIGH, Z0_HIGH + 10e-3
+	BLOCK, X0_HIGH - 16.5e-3, X0_HIGH - 6.5e-3, Y0_HIGH - 11e-3, Y0_HIGH + 11e-3, Z0_HIGH, Z0_HIGH + 10e-3
+
+        tip_upper_x = R_norm_xy*cos(ROTA_ANG)
+        tip_Upper_y = R_norm_xy*sin(ROTA_ANG)
+	tip_upper_z = Z0_LOW - 6e-3 + R_norm_z*2
+	
+	end_upper_x0 = X0_HIGH - 11.5e-3
+	end_upper_y0 = Y0_HIGH
+        end_upper_z0 = Z0_HIGH + 5e-3
+	end_upper_x = sqrt( end_upper_x0**2 + end_upper_y0**2 )*cos(ROTA_ANG)
+	end_upper_y = sqrt( end_upper_x0**2 + end_upper_y0**2 )*sin(ROTA_ANG)
+	end_upper_z = end_Upper_z0
+
+	INCLINE_VECTORx = end_upper_x - tip_upper_x
+	INCLINE_VECTORy = end_upper_y - tip_upper_y
+	INCLINE_VECTORz = end_upper_z - tip_upper_z
+
+	INCLINE_ANG = atan2( INCLINE_VECTORz, sqrt(INCLINE_VECTORx**2+INCLINE_VECTORy**2) )
+
+	! **** Key points & line: ****
+	*get, KP_NUM, KP  , ,NUM, MAX
+	*get, LI_NUM, LINE, ,NUM, MAX
+	KP_START = KP_NUM + 1
+	LI_START = LI_NUM + 1
+	numstr, KP,   KP_START
+	numstr, LINE, LI_START
+
+        p1x = tip_upper_x
+	p1y = tip_upper_y
+	p1z = tip_upper_z
+	
+        p2x = p1x + (POLE_CONE2_LEN - POLE_TIP_FILLET_LEN)*cos(INCLINE_ANG)*cos(ROTA_ANG) - POLE_TIP_R2*sin(ROTA_ANG)
+	p2y = p1y + (POLE_CONE2_LEN - POLE_TIP_FILLET_LEN)*cos(INCLINE_ANG)*sin(ROTA_ANG) + POLE_TIP_R2*cos(ROTA_ANG)
+        p2z = p1z + (POLE_CONE2_LEN - POLE_TIP_FILLET_LEN)*sin(INCLINE_ANG)
+
+	p3x = p1x + POLE_CONE_LEN*cos(INCLINE_ANG)*cos(ROTA_ANG) - POLE_R*sin(ROTA_ANG)
+	p3y = p1y + POLE_CONE_LEN*cos(INCLINE_ANG)*sin(ROTA_ANG) + POLE_R*cos(ROTA_ANG)
+	p3z = p1z + POLE_CONE_LEN*sin(INCLINE_ANG)
+
+	p4x = end_upper_x - POLE_R*sin(ROTA_ANG)
+	p4y = end_upper_y + POLE_R*cos(ROTA_ANG)
+	p4z = end_upper_z
+
+	p5x = end_upper_x
+	p5y = end_upper_y
+	p5z = end_upper_z
+
+        p6x = p1x + POLE_CONE_LEN*cos(INCLINE_ANG)*cos(ROTA_ANG)
+	p6y = p1y + POLE_CONE_LEN*cos(INCLINE_ANG)*sin(ROTA_ANG)
+        p6z = p1z + POLE_CONE_LEN*sin(INCLINE_ANG)
+
+	K,, p1x , p1y , p1z
+	K,, p2x , p2y , p2z
+	K,, p3x , p3y , p3z
+	K,, p4x , p4y , p4z
+	K,, p5x , p5y , p5z
+	K,, p6x , p6y , p6z
+
+        LARC , KP_START , KP_START + 1 , KP_START + 5 , POLE_TIP_R
+	L , KP_START + 1 , KP_START + 2,,,,,,,,
+	L , KP_START + 2 , KP_START + 3,,,,,,,,
+	L , KP_START + 3 , KP_START + 4,,,,,,,,
+	L , KP_START + 4 , KP_START,,,,,,,,
+
+	! **** Create Area: ****
+	*get, AR_NUM, AREA, ,NUM, MAX
+	AR_START = AR_NUM + 1
+	numstr, AREA, AR_START
+
+	AL, LI_START, LI_START + 1, LI_START + 2, LI_START + 3, LI_START + 4
+
+	! **** Rotate area to get volume: ****
+	VROTAT, AR_START, ,,,,,KP_START,KP_START + 4,,4
+        
+	! **** Unite the volumn: ****
+	*get, vl_ind_temp, VOLU,,NUM,MAX
+	FLST,2,(vl_ind_temp - VL_START + 1),6,ORDE,2
+	FITEM,2,VL_START
+	FITEM,2,-vl_ind_temp
+	VADD,P51X
+
+	*get, vol_pole_ind, VOLU,,NUM,MAX
+	VADD, VL_NUM, vol_pole_ind
+
+
+	GPLOT
+
+*enddo
+
+
+
+!--------------------------
+! **** Create Sphere: *****
+!--------------------------
+SPH_FINE_R = 5e-3    !----5mm
+SPH_OUT_R = 100e-3  !----150mm
+SPH_OFST = Z0_LOW - 6e-3 + R_norm_z
+
+WPLANE, 1,0,0,0,,,,,,
+WPcsys,-1,0
+WPOFFS,0,0,SPH_OFST
+ 
+*get, VL_NUM, VOLU, ,NUM, MAX
+VL_START = VL_NUM + 1
+numstr, VOLU, VL_START
+
+SPH4, 0,0, 0,SPH_FINE_R               !---- fine sphere (VL_START)
+SPHERE, SPH_FINE_R, SPH_OUT_R, 0,360  !---- outer sphere (VL_START+1)
+
+VGEN,2,VL_NUM,VL_NUM,1,0,0,0,,,0   !---- 0:copy (VL_START+2)
+VGEN,2,VL_NUM,VL_NUM,1,0,0,0,,,0   !---- 0:copy (VL_START+3)
+VSBV,VL_START,VL_START+2           !----(VL_START+3)
+VSBV,VL_START+1,VL_START+3         !----(VL_START)
+
+V_ID_MT = VL_NUM
+V_ID_SPH_IN = VL_START + 4
+V_ID_SPH_OUT = VL_START
+
+
+
+!--------------------------------------
+! **** Change color of air volume: ****
+!--------------------------------------
+/COLOR , VOLU , RED , VL_START+4 , VL_START+4 , 1  !----inner
+/TRLCY , VOLU , 0.7 , VL_START+4
+
+/COLOR , VOLU , BLUE , VL_START , VL_START , 1     !----outer
+/TRLCY , VOLU , 0.9  , VL_START
+
+!/REPLOT
+VPLOT
+
+!------------------------
+! **** Create Coils: ****
+!------------------------
+COIL_IN_R  = 5e-3
+COIL_OUT_R = 8e-3
+
+*get, VL_NUM, VOLU, ,NUM, MAX
+VL_START = VL_NUM + 1
+numstr, VOLU, VL_START
+
+*dim, COIL_ID_ARRAY,, POLE_NUM
+
+! **** 6 coils: ****
+*do, coil_id, 1, POLE_NUM,1
+		
+	WPLANE,1,0,0,0,,,,,,
+	WPcsys,-1,0
+
+        *if, coil_id,LE,3, then
+                temp_prot_h = -PROT_H
+		temp_prot_ang = 120*(coil_id - 1)
+	*else
+		WPOFFS,0,0,YOKE_H
+		temp_prot_h = PROT_H
+		temp_prot_ang = 120*(coil_id - 4) + 60
+	*endif
+
+	CYL4,YOKE_MID_R*cos(temp_prot_ang),YOKE_MID_R*sin(temp_prot_ang),COIL_IN_R,, COIL_OUT_R,,temp_prot_h
+	
+        *get, COIL_ID_ARRAY(coil_id), VOLU, ,NUM, MAX
+        
+        /COLOR , VOLU,YELL , COIL_ID_ARRAY(coil_id) , COIL_ID_ARRAY(coil_id) , 1
+	/TRLCY , VOLU,0.5  , COIL_ID_ARRAY(coil_id)
+
+	/REPLOT
+	VPLOT
+
+*enddo
+
+
+! **** subtract 6 coils: ****
+
+
+
+
+
+	
+
+
+
+/REPLOT
+VPLOT
+
+
+
+
+

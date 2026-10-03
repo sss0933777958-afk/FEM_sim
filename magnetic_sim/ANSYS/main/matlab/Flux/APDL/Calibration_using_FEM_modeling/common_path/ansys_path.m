@@ -25,7 +25,9 @@ function p = ansys_path(model, varargin)
     %   per-model 專案將退役）。位置 = .../main/matlab/APDL/Calibration_using_FEM_modeling/common_path
     %   → 往上爬 4 層到 .../main（common_path→Calibration→APDL→matlab→main；與原 <model>/common 深度相同）。
     here = fileparts(mfilename('fullpath'));                       % .../APDL/Calibration_using_FEM_modeling/common_path
-    root = fileparts(fileparts(fileparts(fileparts(here))));      % .../main
+    % [FIXED 2026-09-28] one more level: the tree moved matlab/APDL -> matlab/Flux/APDL
+    %   (2026-08-25), so four levels up landed on .../main/matlab, not .../main.
+    root = fileparts(fileparts(fileparts(fileparts(fileparts(here)))));   % .../main
     base = fullfile(root, DATA_DIRNAME);                          % .../main/ANSYS_data
 
     if nargin == 0

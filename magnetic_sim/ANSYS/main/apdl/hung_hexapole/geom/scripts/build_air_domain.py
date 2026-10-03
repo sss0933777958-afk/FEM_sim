@@ -21,7 +21,7 @@ from OCP.TopTools import TopTools_ListOfShape
 from OCP.Interface import Interface_Static
 Interface_Static.SetCVal_s("write.step.unit", "MM")  # declare MM so downstream (Mechanical) reads mm not m
 
-STEP_IN = r"G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\CAD_model\hung_hexapole\STEP\Full_Assembly.STEP"
+STEP_IN = r"G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\CAD_model\hung_hexapole\STEP\Full_Assembly.STEP"
 STEP_OUT= r"C:\Users\Kuo\AppData\Local\Temp\claude\G--my-workspace\a41529f7-cb06-482b-bf27-63298351ac0c\scratchpad\hung_air.step"
 R_SPHERE = 150.0  # mm
 

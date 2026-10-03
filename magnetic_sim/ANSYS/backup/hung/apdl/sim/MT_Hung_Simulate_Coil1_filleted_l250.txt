@@ -5,7 +5,7 @@
 ! 只改 R_sphere，其他 (fillet, pole, block, yoke, coil, mesh) 與基底完全一致
 ! =======================================
 
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\hung\results\coil1\filleted_l250'
+/CWD,'G:\my_workspace\FEM_sim\magnetic_sim\hung\results\coil1\filleted_l250'
 
 /PREP7
 *afun, DEG

@@ -362,7 +362,7 @@ VLSCALE, ALL, , , IGES_SC, IGES_SC, IGES_SC, , 0, 1
 ALLSEL, ALL
 ! [MODIFIED] Absolute path so IGES lands in magnetic_sim/ANSYS/main/model_check/ even though /CWD is elsewhere
 ! [MODIFIED 2026-08-05] output name -> sensor_refine_p1p2 (steel + 3 R0.3 marker spheres)
-IGESOUT, 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\model_check\long_fei\sensor_refine_p1p2', 'iges'
+IGESOUT, 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\model_check\long_fei\sensor_refine_p1p2', 'iges'
 
 ! [!! POST-STEP !!] ANSYS writes unit flag = 6 regardless. This deck scaled to inch magnitude
 !   above (IGES_SC = 1/25.4), so the flag must be patched 6 -> 1 (INCH) to match:

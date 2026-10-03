@@ -17,11 +17,11 @@ ell0     = 0.5e-3;           % ell_hat 初值 [m]（fit_bias 在 SI）
 NB       = 40;                % 直方圖 bin 數
 
 %% ---- paths（同 current_base/main.m）-----------------------------------------
-TREE = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
+TREE = ['G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
         'long2016_hexapole_halfcut\Calibration_using_FEM_modeling\current_base'];
-addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\common');     % ansys_path
+addpath('G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\common');     % ansys_path
 % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live config。
-CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+CALROOT = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
 addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
 addpath(fullfile(TREE,'code','main_function'));
 model  = 'long2016_hexapole_halfcut';

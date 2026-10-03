@@ -5,10 +5,10 @@ function plot_circle_force_coil1()
 %   3 subplot：Fx/Fy/Fz (pN) vs 圓上取樣點 index。輸出 figures/shared/circle_force_coil1.png。
 
     model = 'long2016_hexapole_halfcut';
-    ML    = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut';
+    ML    = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut';
     addpath(fullfile(ML,'common'));                                                   % ansys_path
     % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live config。
-    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    CALROOT = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
     addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
     here   = fileparts(mfilename('fullpath'));
     cbase  = fileparts(fileparts(here));

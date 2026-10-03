@@ -5,15 +5,15 @@ function plot_err_hist_orig_vs_new(variant)
 %   從該位置 V̄ 反推電荷 Ĝ=Ĥ_V·V̄ → 重建場 A·Ĝ → 與 FEM Bstack 逐點逐激發比。18-param bias。
     if nargin<1 || isempty(variant), variant = 'full_assembly'; end
 
-    CAL = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
+    CAL = ['G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
            'NTU_hexapole\Calibration_using_FEM_modeling'];
     % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live 樹。
-    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    CALROOT = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
     addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
-    addpath('G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\common');
+    addpath('G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\long2016_hexapole_halfcut\common');
     addpath(fullfile(CAL,'current_base','code','main_function'));
     addpath(fullfile(CAL,'voltage_base','code','main_function'));
-    results_root = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\NTU_hexapole\data';
+    results_root = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\NTU_hexapole\data';
     here = fileparts(mfilename('fullpath'));  base = fileparts(fileparts(here));
 
     S = load(fullfile(base,'data',sprintf('calib_D_%s.mat',variant)));   % R_select/S_hall/n_uniform/apdl/paper

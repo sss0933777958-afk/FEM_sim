@@ -6,15 +6,15 @@ function diag_P2P1_gap_trend()
 %   注意：sensor B·n+ 為「局部單點內插」估計（baseline 粗網格 sensor 圓柱內節點少）。
 
     % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live 樹。
-    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    CALROOT = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
     addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
-    addpath(['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
+    addpath(['G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
              'hung_hexapole\Calibration_using_FEM_modeling\voltage_base\code\function']);
     cnst = model_config('hung_hexapole');
     [sp, sn] = build_sensor_geometry(cnst);
-    rr  = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\data';
+    rr  = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\data';
     mcd = fullfile(rr,'mesh','standard','csv');
-    figdir = ['G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
+    figdir = ['G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\' ...
               'hung_hexapole\Calibration_using_FEM_modeling\voltage_base\figures'];
 
     %% ---- 標準局部網格 → triangulation（恆用 baseline；gap 同 node_id）----

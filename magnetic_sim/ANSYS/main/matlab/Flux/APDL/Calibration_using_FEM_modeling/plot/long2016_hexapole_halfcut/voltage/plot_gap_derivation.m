@@ -56,7 +56,7 @@ function plot_gap_derivation(PREVIEW)
           'FontSize',15,'FontWeight','bold');
     ax.Toolbar.Visible = 'off';
 
-    fdir = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\long2016_hexapole_halfcut\Calibration_using_FEM_modeling\voltage_base\figures\shared';
+    fdir = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\long2016_hexapole_halfcut\Calibration_using_FEM_modeling\voltage_base\figures\shared';
     if PREVIEW, out = fullfile(tempdir,'gap_derivation_preview.png'); res=150;
     else,       out = fullfile(fdir,'gap_derivation.png'); res=200; end
     exportgraphics(gcf, out, 'Resolution', res);

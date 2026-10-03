@@ -4,7 +4,7 @@
 ! BTOL=1e-6, VGLUE 恢復
 ! =======================================
 
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\hung\results\coil1\filleted'
+/CWD,'G:\my_workspace\FEM_sim\magnetic_sim\hung\results\coil1\filleted'
 
 /PREP7
 *afun, DEG

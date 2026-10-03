@@ -27,7 +27,7 @@ function plot_pole_circuit_side(force)
 
     if nargin < 1 || isempty(force), force = false; end
     HERE   = fileparts(fileparts(mfilename('fullpath')));
-    ROOT   = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
+    ROOT   = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\long2016_hexapole_halfcut\data';
     FIGDIR = fullfile(fileparts(HERE), 'paper_fig', 'Section3_A');
     CACHE  = fullfile(HERE, 'data', 'pole_circuit_side.mat');
     if ~exist(FIGDIR,'dir'), mkdir(FIGDIR); end

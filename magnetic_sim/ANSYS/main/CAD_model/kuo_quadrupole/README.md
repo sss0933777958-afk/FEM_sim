@@ -10,4 +10,4 @@
 
 **命名 / 慣例**：variant 以幾何特徵命名（`Lp` 極尖距、`0.46mm` / `0.67mm` 變體、`ScaleDown`）。`.SLDPRT/.SLDASM` 為可編輯母檔、`.STEP` 為解析/交換用。改 ANSYS 幾何前**必先量對應 CAD**，不一致須停下通報使用者拍板（per `../../.claude/`→ `ansys-cad-alignment.md`）。
 
-**相關**：上層 `../README.md`、`../../CLAUDE.md`；對齊規則 `ansys-cad-alignment.md`；出檔 / 抽參數 SOP 見 `reference/workflows/`。
+**相關**：上層 `../README.md`、`../../../../../CLAUDE.md`；對齊規則 `ansys-cad-alignment.md`；出檔 / 抽參數 SOP 見 `reference/workflows/`。

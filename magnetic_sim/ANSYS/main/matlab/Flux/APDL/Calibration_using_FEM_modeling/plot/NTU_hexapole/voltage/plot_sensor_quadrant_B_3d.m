@@ -27,11 +27,11 @@ function plot_sensor_quadrant_B_3d(REGION)
     if ~exist(figdir,'dir'); mkdir(figdir); end
     addpath(fullfile(vbase,'code','function'));
     % [MODIFIED 2026-08-08] 脫離 backup（規則 no-backup-data）→ live 樹。
-    CALROOT = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
+    CALROOT = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\matlab\APDL\Calibration_using_FEM_modeling';
     addpath(fullfile(CALROOT,'function'), fullfile(CALROOT,'utils'), fullfile(CALROOT,'common_path'));
     % ⚠ addpath 預設「前置」→ 最後加的贏。NTU mt_constants 必須排在 backup 之後才蓋得過 long2016 同名檔。
     addpath(fullfile(fileparts(vbase),'current_base','code','main_function'));   % NTU mt_constants
-    droot = 'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\NTU_hexapole\data';
+    droot = 'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\NTU_hexapole\data';
 
     cnst = model_config('NTU_hexapole');
     c  = cnst.sensor_pos(:,1)*1e3;          % P1 sensor 中心 [mm]

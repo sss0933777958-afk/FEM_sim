@@ -6,8 +6,8 @@
 #          bash reextract_ws.sh R700 1              # 單一變體單一 coil（測試）
 set -u
 MAPDL="G:\\ANSYS Inc\\v252\\ansys\\bin\\winx64\\MAPDL.exe"
-ROOT="G:/my_workspace/code/FEM_sim/magnetic_sim/ANSYS/main"
-DROOT_W="G:\\my_workspace\\code\\FEM_sim\\magnetic_sim\\ANSYS\\main\\ANSYS_data\\hung_hexapole"
+ROOT="G:/my_workspace/FEM_sim/magnetic_sim/ANSYS/main"
+DROOT_W="G:\\my_workspace\\FEM_sim\\magnetic_sim\\ANSYS\\main\\ANSYS_data\\hung_hexapole"
 
 # 若第二個參數是單一數字 → 單 coil 測試
 tags=(); coils=(1 2 3 4 5 6)

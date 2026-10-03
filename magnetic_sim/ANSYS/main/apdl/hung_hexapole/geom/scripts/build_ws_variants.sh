@@ -14,7 +14,7 @@
 # ---------------------------------------------------------------------------
 set -u
 MAPDL="G:\\ANSYS Inc\\v252\\ansys\\bin\\winx64\\MAPDL.exe"
-ROOT="G:/my_workspace/code/FEM_sim/magnetic_sim/ANSYS/main"
+ROOT="G:/my_workspace/FEM_sim/magnetic_sim/ANSYS/main"
 DECK="$ROOT/apdl/hung_hexapole/geom/export/MT_Geom_FullAssembly.txt"
 GEOM="$ROOT/ANSYS_data/hung_hexapole/db/geom"
 MC="$ROOT/model_check/hung_hexapole"

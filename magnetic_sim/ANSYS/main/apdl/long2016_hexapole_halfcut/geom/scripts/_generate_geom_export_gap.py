@@ -15,7 +15,7 @@ Run from any shell:
 """
 from pathlib import Path
 
-REPO = Path(r"G:\my_workspace\code\FEM_sim")
+REPO = Path(r"G:\my_workspace\FEM_sim")
 GEOM_DIR = REPO / "kuo" / "apdl" / "geom" / "long2016_hexapole_halfcut"
 
 

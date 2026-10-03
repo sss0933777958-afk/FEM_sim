@@ -5,10 +5,10 @@
 !   → 覆蓋 data/gap_200um/coil4/（取代舊 μ_eff 版；all-source negate 在 MATLAB post）。
 !   6 顆 coil 腳本只差激發 coil 編號（R,4=+1），其餘完全同步。WP 在原點。
 ! ============================================================================
-/CWD,'G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\db\sim\gap_200um_solve'
+/CWD,'G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\db\sim\gap_200um_solve'
 /CLEAR,NOSTART
 /TITLE, hung_hexapole geometric 200um air-slab gap - coil 4
-RESUME,'mesh_graded','db','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\db\mesh\mesh_graded_basegap'
+RESUME,'mesh_graded','db','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\db\mesh\mesh_graded_basegap'
 
 /PREP7
 *afun,DEG
@@ -47,20 +47,20 @@ ALLSEL,ALL
 /HEADER,OFF,OFF,OFF,OFF,OFF,OFF
 /FORMAT,10,,20,12,,
 /PAGE,1000000,,1000000
-/OUTPUT,'coil4_coord_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\data\gap_200um\coil4'
+/OUTPUT,'coil4_coord_all','dat','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\data\gap_200um\coil4'
 NLIST,ALL, , ,COORD
 /OUTPUT
-/OUTPUT,'coil4_bfield_all','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\data\gap_200um\coil4'
+/OUTPUT,'coil4_bfield_all','dat','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\data\gap_200um\coil4'
 PRNSOL,B,COMP
 /OUTPUT
 LOCAL,12,2,0,0,0
 CSYS,12
 NSEL,S,LOC,X,0,2e-3
 CSYS,0
-/OUTPUT,'coil4_coord_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\data\gap_200um\coil4'
+/OUTPUT,'coil4_coord_wp','dat','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\data\gap_200um\coil4'
 NLIST,ALL, , ,COORD
 /OUTPUT
-/OUTPUT,'coil4_bfield_wp','dat','G:\my_workspace\code\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\data\gap_200um\coil4'
+/OUTPUT,'coil4_bfield_wp','dat','G:\my_workspace\FEM_sim\magnetic_sim\ANSYS\main\ANSYS_data\hung_hexapole\data\gap_200um\coil4'
 PRNSOL,B,COMP
 /OUTPUT
 ALLSEL,ALL
