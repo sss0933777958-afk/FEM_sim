@@ -1,69 +1,59 @@
-# FEM Simulation Workspace
+# FEM_sim
 
-`FEM_sim/` 是通用 FEM 模擬容器。磁學模擬（磁鑷／hexapole／quadrupole）全部收在 `magnetic_sim/` 類別下；未來其他 FEM 類別會與之並列。
+六極電磁微探針（hexapole magnetic tweezers）的 FEM 模擬與點磁荷模型校正。
 
-ANSYS APDL magnetostatic finite element simulation of hexapole magnetic tweezers for biophysics research.
+- 求解器：ANSYS MAPDL（APDL）、ANSYS Maxwell
+- 分析：MATLAB
+- 模型：長飛 2016 半切六極（主力）、志鵬平板六極、hung、NTU
 
-## Overview
-
-This project implements FEM simulation of a 6-pole magnetic tweezers device, computing the magnetic field (B) under unit-excitation for each coil. Results feed into a point-charge model fitting pipeline for force calibration.
-
-Based on: **Fei Long, "Design, Fabrication, and Calibration of a Hexapole Magnetic Tweezers," PhD Dissertation, Ohio State University, 2016.**
-
-## Repository Structure
+## 資料夾
 
 ```
-FEM_sim/                     通用 FEM 模擬容器
-├── magnetic_sim/            磁學模擬類別
-│   └── ANSYS/               ANSYS 求解器子層（未來可並列 COMSOL/ 等）
-│       ├── main/            ★ 活躍設計：4-pole MEMS Quadrupole (Harrison-style；原 kuo/)
-│       │   ├── apdl/        ANSYS APDL simulation & extraction scripts
-│       │   ├── matlab/      MATLAB analysis (含 common/ resolver)
-│       │   ├── ANSYS_data/  FEM .dat/.db (gitignored)
-│       │   ├── MATLAB_data/ MATLAB outputs (.mat/.csv)
-│       │   ├── figures/     Figures (.png)
-│       │   └── ...          CAD/ IGES/ comsol/ mph/ reference/ ...
-│       └── backup/          歸檔（非活躍設計）
-│           ├── hexapole-long2016/  Long 2016 dissertation hexapole design
-│           └── hung/        Hung hexapole design
-│
-└── (future: electric_sim/ 等其他 FEM 類別，與 magnetic_sim/ 並列)
+magnetic_sim/ANSYS/
+├── main/                    活躍工作區
+│   ├── CAD_model/           SolidWorks 原檔 + STEP（幾何的依據）
+│   ├── model_check/         交付檢查用的 mm STEP
+│   ├── apdl/<model>/        APDL 腳本
+│   ├── ANSYS_data/<model>/  APDL 結果（.dat、.db，不進 git）
+│   ├── matlab/
+│   │   ├── Flux/            磁場模型校正（APDL / Maxwell 兩個分支）
+│   │   └── Force/           力模型校正
+│   ├── figures/             論文圖
+│   └── reference/           推導、報告、論文
+└── backup/                  歸檔的舊設計
 ```
 
-## Prerequisites
+Maxwell 專案與匯出的場（`.fld`）放在 repo 外：`D:\Maxwell_sim\<model>\`。
 
-- **ANSYS MAPDL** 2025 R2 (or compatible version)
-- **MATLAB** R2024b+ (Optimization Toolbox for fitting)
-- ~60 GB disk space for full simulation results (6 coils)
+## 校正包的結構
 
-## Quick Start
+以 `matlab/Flux/Maxwell/` 為例（Force 沒有自己的 `config/`，共用這裡的）：
 
-Run a single coil simulation (batch mode):
-```bash
-cd magnetic_sim/ANSYS/backup/hexapole-long2016
-"C:\Program Files\ANSYS2025R2\v252\ansys\bin\winx64\MAPDL.exe" -b -np 4 -m 24000 \
-  -dir "results/coil1" -j "coil1" \
-  -i "$(pwd)/apdl/MT_Modeling_Geometry_Meshing_Solving_Coil1.txt" \
-  -o "results/coil1/solve.out"
-```
+| 資料夾 | 放什麼 |
+|---|---|
+| `config/` | 各模型的設定與幾何 |
+| `main/main.m` | 校正主程式，改檔頂的參數切換模型與 current / voltage |
+| `function/` | 校正用函式 |
+| `data/` | 校正結果 `.mat`（只留定案版） |
+| `results/` | 校正結果 PDF |
+| `utils/scripts/`、`utils/data/` | 額外分析的計算腳本與結果 |
+| `plot/` | 只做繪圖的腳本 |
+| `figures/<model>/{current,voltage}/` | 圖 |
 
-Process results in MATLAB:
+## 怎麼跑
+
 ```matlab
-cd magnetic_sim/ANSYS/backup/hexapole-long2016/analysis
-fit_charge_model        % [A] baseline fit
-fit_all6_with_bias      % [B-6x] final 19-parameter fit
+run('magnetic_sim/ANSYS/main/matlab/Flux/Maxwell/main/main.m')   % 磁場校正
+run('magnetic_sim/ANSYS/main/matlab/Force/Maxwell/main/main.m')  % 力模型校正
 ```
 
-## Key Results (hexapole-long2016)
+跑完會自動存 `.mat` 到 `data/`、出 PDF 到 `results/`。
 
-| Method | Parameters | Error | R_a (A/Wb) |
-|--------|-----------|-------|------------|
-| [A] Baseline | ell=835 um | 4.94% | 9.21e8 |
-| [J] Joint 6-coil | ell=766-818 um | 1.11% | ~1.01e9 |
-| [B-6x] Final | 19 params | 0.07% | 1.03e9 |
+## 環境
 
-## References
+- ANSYS 2025 R2（MAPDL、Maxwell）
+- MATLAB R2025b
 
-- Long, F. (2016). PhD Dissertation, Ohio State University.
-- Zhang, Z. & Menq, C.H. (2011). IEEE/ASME Trans. Mechatronics.
-- Long, F., Matsuura, T. & Bhatt, D. (2016). Actively Controlled Hexapole Electromagnetic Actuating System.
+## 參考
+
+Fei Long, *Design, Fabrication, and Calibration of a Hexapole Magnetic Tweezers*, PhD Dissertation, Ohio State University, 2016.
