@@ -7,6 +7,7 @@
 reference/
 ├── workflows/                ← ★ 流程 SOP（cad-export / apdl-fem-run / charge-model-fit / …）
 │                               入口見 workflows/README.md
+├── Question/                 ← 待討論 / 待辦的研究問題（每題一份 .md）
 ├── charge_model_fitting/     ← 電荷模型擬合推導（fitting_derivation / general / <model>/）
 ├── Solve_B_matrix/<model>/   ← B_S 矩陣推導
 ├── Br_analysis/<model>/      ← Br 分析

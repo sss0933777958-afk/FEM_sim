@@ -36,7 +36,7 @@ Maxwell 專案與匯出的場（`.fld`）放在 repo 外：`D:\Maxwell_sim\<mode
 | `function/` | 校正用函式 |
 | `data/` | 校正結果 `.mat`（只留定案版） |
 | `results/` | 校正結果 PDF |
-| `utils/scripts/`、`utils/data/` | 額外分析的計算腳本與結果 |
+| `utils/scripts/<model>/`、`utils/data/<model>/` | 額外分析的計算腳本與結果（依模型分夾） |
 | `plot/` | 只做繪圖的腳本 |
 | `figures/<model>/{current,voltage}/` | 圖 |
 

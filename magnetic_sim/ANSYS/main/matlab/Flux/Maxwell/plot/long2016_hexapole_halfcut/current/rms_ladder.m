@@ -1,12 +1,12 @@
 %% rms_ladder.m -- calibration RMS vs number of calibration points (long2016, current)
-%  Reads only utils/data/rms_ladder.mat (written by utils/scripts/rms_ladder.m).
+%  Reads only utils/data/long2016_hexapole_halfcut/rms_ladder.mat (written by utils/scripts/long2016_hexapole_halfcut/rms_ladder.m).
 %  One figure per model (single series -> no legend):
 %    figures/long2016_hexapole_halfcut/current/rms_single.png
 %    figures/long2016_hexapole_halfcut/current/rms_eighteen.png
 
 here = fileparts(mfilename('fullpath'));                           % .../plot/<model>/current
 CAL  = fileparts(fileparts(fileparts(here)));                      % .../Flux/Maxwell
-S    = load(fullfile(CAL, 'utils', 'data', 'rms_ladder.mat'));
+S    = load(fullfile(CAL, 'utils', 'data', 'long2016_hexapole_halfcut', 'rms_ladder.mat'));
 OUTD = fullfile(CAL, 'figures', S.MODEL, 'current');
 
 % ---- style (figure-style.md) ----------------------------------------------

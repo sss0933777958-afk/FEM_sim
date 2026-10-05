@@ -5,13 +5,13 @@
 %  slowly in relative terms.
 %  Test: fit both models once on a fine ladder (fixed parameters), get the residual-squared profile
 %  e2(r), then predict eps(Nc) from the shell weights alone and compare with rms_ladder.mat.
-%  Output: utils/data/rms_radial.mat
+%  Output: utils/data/<MODEL>/rms_radial.mat
 
 MODEL = 'long2016_hexapole_halfcut';   GEOM = 'tip40um';   VARIANT = 'maxwell';
 R = 150e-6;   l0 = 0.5e-3;   NRF = 200;                      % fine ladder for the profile
 NC = [523 667];                                              % converged points (ten-level criterion)
 
-here = fileparts(mfilename('fullpath'));   CAL = fileparts(fileparts(here));
+here = fileparts(mfilename('fullpath'));   CAL = fileparts(fileparts(fileparts(here)));
 addpath(fullfile(CAL, 'function'), fullfile(CAL, 'common_path'));
 cfg = model_config(MODEL, GEOM);
 raw = extract_maxwell_data(cfg, 'all', VARIANT);
@@ -22,7 +22,7 @@ r  = vecnorm(P, 2, 2);                                       % point radius [m]
 rs = (0:NRF).' * R / NRF;                                    % shell radii (0 = centre)
 sh = round(r / (R / NRF));                                   % shell index of every point
 
-L  = load(fullfile(CAL, 'utils', 'data', 'rms_ladder.mat'));
+L  = load(fullfile(CAL, 'utils', 'data', MODEL, 'rms_ladder.mat'));
 e2s = nan(NRF+1, 2);   q = nan(1,2);   outer = nan(1,2);   eps_pred = nan(numel(L.Nr), 2);
 for m = 1:2
     [e, l_hat, J] = fitting(P, Bs, ad.Pc_base, l0, m == 2);
@@ -52,7 +52,7 @@ fprintf('share of residual^2 (shell sum) at r > 0.8R : single %.1f%%, eighteen %
 fprintf('centre residual^2 / outer-shell residual^2 : single %.4f, eighteen %.4f\n', ...
         e2s(1,1)/e2s(end,1), e2s(1,2)/e2s(end,2));
 
-out = fullfile(CAL, 'utils', 'data', 'rms_radial.mat');
+out = fullfile(CAL, 'utils', 'data', MODEL, 'rms_radial.mat');
 save(out, 'rs', 'e2s', 'q', 'outer', 'eps_pred', 'eps_act', 'NRF', 'NC');
 fprintf('saved %s\n', out);
 
