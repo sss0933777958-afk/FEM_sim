@@ -7,10 +7,10 @@
 % 0 .. 360 inside a ring, starting at (phi, theta) = (-90, 0) from I_INIT.  Multistart at every grid point: the
 % previous grid point's solution (chain) plus NS random starts; among the feasible results (exitflag > 0 and
 % ||f_hat - r_hat|| < TOLC) the smallest ||I_hat||^2 is kept.  phi = +-90 is a single direction: solved once, copied.
-% Global-optimality certificate: Lagrangian L = ||I_hat||^2 + sum_k lambda_k (I_hat' Q_k I_hat - r_k) (same sign
-% convention as fmincon, lambda = lambda.eqnonlin); if E + sum_k lambda_k Q_k is positive semidefinite then for every
-% feasible I
-%   ||I||^2 = I' (E + sum lambda_k Q_k) I - lambda' r_hat >= -lambda' r_hat = ||I_opt_hat||^2,
+% Global-optimality certificate: Lagrangian L = ||I_hat||^2 - sum_k lambda_k (I_hat' Q_k I_hat - r_k) (document
+% convention; fmincon uses +, so lambda = -lambda.eqnonlin); if E - sum_k lambda_k Q_k is positive semidefinite then
+% for every feasible I
+%   ||I||^2 = I' (E - sum lambda_k Q_k) I + lambda' r_hat >= lambda' r_hat = ||I_opt_hat||^2,
 % i.e. the solution is the global minimum (sufficient condition).  MINEIG = smallest eigenvalue; CERT = MINEIG >= -TOLE.
 % Check: f_hat = [I_opt_hat' Q_k I_opt_hat]_k is compared with r_hat (err = ||f_hat - r_hat||).
 % Also: capacity = ((1/4pi) * int int rho^3 cos(phi) dtheta dphi)^(1/3), isotropy = min rho / max rho.
@@ -60,9 +60,9 @@ for a = 1:NPH
             if ef <= 0 || norm(f - r) >= TOLC, continue; end
             NFEAS(a,b) = NFEAS(a,b) + 1;
             if I.'*I < best
-                best = I.'*I;  lam = lm.eqnonlin;
+                best = I.'*I;  lam = -lm.eqnonlin;
                 IOPT(:,a,b) = I;  FHAT(:,a,b) = f;  LAM(:,a,b) = lam;  RHO(a,b) = 1/best;  ERR(a,b) = norm(f - r);
-                MINEIG(a,b) = min(eig(eye(6) + (lam(1)*Q(:,:,1) + lam(2)*Q(:,:,2) + lam(3)*Q(:,:,3))));
+                MINEIG(a,b) = min(eig(eye(6) - (lam(1)*Q(:,:,1) + lam(2)*Q(:,:,2) + lam(3)*Q(:,:,3))));
             end
         end
         if isfinite(best), x0 = IOPT(:,a,b); end           % best solution seeds the next grid point
@@ -82,7 +82,7 @@ fprintf('p = [%g %g %g] um, %d x %d grid (%d directions), 1 + %d starts each, %.
 fprintf('rho: %.4f .. %.4f pN/A^2 | capacity %.4f pN/A^2 | isotropy %.4f\n', min(RHO(:)), max(RHO(:)), cap, iso);
 fprintf('no feasible start: %d | max ||f_hat - r_hat|| %.2e | feasible starts per point: min %d, median %g\n', ...
         nnz(nofs & U), max(ERR(:)), min(NFEAS(U)), median(NFEAS(U)));
-fprintf('PSD certificate: %d / %d directions certified | min eig(E + sum lambda_k Q_k): %.2e\n', ...
+fprintf('PSD certificate: %d / %d directions certified | min eig(E - sum lambda_k Q_k): %.2e\n', ...
         nnz(CERT & U), nnz(U), min(MINEIG(:)));
 fprintf('seam |rho(360) - rho(0)| / rho(0): max %.2e\n', max(seam));
 R_act = cal.R_act;  l_hat = cal.l_m;
