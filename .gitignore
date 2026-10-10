@@ -102,3 +102,9 @@ desktop.ini
 
 # scratch figures (working dir, not deliverables)
 magnetic_sim/ANSYS/main/temp_figures/
+
+# MATLAB project files auto-created by the MATLAB MCP tool (project_path = repo root); keep local, never commit
+/FEM_sim.prj
+/toolbox.ignore
+/resources/project/
+/.gitattributes
