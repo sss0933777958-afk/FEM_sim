@@ -54,9 +54,10 @@ function [pos, nhat, geo] = pole_sensor_geometry(cfg, opt)
 %          .face_lower  'cone'（預設）| 'flat' | 'upper_cone'（填滿極的上錐面，對照用）
 %          .air         離面氣隙 [m]（預設 0.41e-3）
 %          .psi         繞極軸旋轉 [rad]，純量或 1x6（預設 0）
+%          .frame       'wp'（預設，球心在原點）| 'global'（Maxwell 全域，球心 = [0;0;SPH_OFST]）
 %
 % 輸出
-%   pos   3x6  sensor 中心（WP frame, m）
+%   pos   3x6  sensor 中心（opt.frame 指定的框, m）
 %   nhat  3x6  外法線 n+（單位向量）
 %   geo   struct，供畫圖/診斷共用同一組幾何：
 %          .tip 3x6 極尖T   .axis 3x6 e2   .rad0 3x6 rhat(0)   .tanv 3x6 tvec
@@ -85,6 +86,16 @@ function [pos, nhat, geo] = pole_sensor_geometry(cfg, opt)
     T_TAN  = gv('t_tan',      [0.0328e-3, 0.0311e-3]);   % [下極, 上極] 倒圓段斜距 [m]
     PSI    = gv('psi',        0);
     if isscalar(PSI), PSI = repmat(PSI, 1, 6); end
+    % [ADDED 2026-10-04] Frame of the position vectors. Every position is measured from the
+    %   common tip-sphere centre C (T = C + R_norm*e1); directions do not depend on C.
+    %     'wp'     (default) C = 0              -> sphere centre at the origin (plot scripts)
+    %     'global'           C = [0;0;SPH_OFST] -> Maxwell global frame (voltage path,
+    %                                             same frame as the .fld field; no shift later)
+    FRAME  = gv('frame',      'wp');
+    C = zeros(3,1);
+    if strcmpi(FRAME, 'global')
+        C = cfg.SPH_OFST(:);   if isscalar(C), C = [0; 0; C]; end
+    end
 
     % [ADDED 2026-08-28] **平板極分支**（cfg.sensor_mount='plate'，如 zhi_peng）。
     %   長飛那套（沿錐面母線走 SOFF、垂直錐面留氣隙）在平板極上不成立：貼附面是
@@ -97,7 +108,7 @@ function [pos, nhat, geo] = pole_sensor_geometry(cfg, opt)
     if isfield(cfg,'sensor_mount') && strcmpi(cfg.sensor_mount,'plate')
         tb   = cfg.POLE_TIP_BAND;
         BLAT = gv('b_lat', 0);   if isscalar(BLAT), BLAT = repmat(BLAT,1,6); end
-        tipP = [cfg.pole_tip_x; cfg.pole_tip_y; cfg.pole_tip_z_wp];
+        tipP = C + [cfg.pole_tip_x; cfg.pole_tip_y; cfg.pole_tip_z_wp];   % [MODIFIED 2026-10-04] + C
         pos  = zeros(3,6);  nhat = zeros(3,6);
         e2l  = zeros(3,6);  tvec = zeros(3,6);  ehr = zeros(3,6);
         soff = zeros(1,6);
@@ -171,7 +182,7 @@ function [pos, nhat, geo] = pole_sensor_geometry(cfg, opt)
         if upcone, sg = +1; end                          %   （對稱於下錐面；用於 lower_filled 對照）
 
         e1   = dir((2*(~low)-1)*psi0, th);           % 下極 -psi0 / 上極 +psi0
-        T    = ell*e1;
+        T    = C + ell*e1;                           % [MODIFIED 2026-10-04] 球心 + R_norm*e1
         ax   = dir(el, th);                          % e2 = 極軸
         rad0 = dir(el + sg*pi/2, th);                % 徑向、朝貼附面側
         tv   = [-sin(th); cos(th); 0];               % 切向、垂直子午面

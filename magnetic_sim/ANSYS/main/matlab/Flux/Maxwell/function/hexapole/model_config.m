@@ -13,6 +13,7 @@ function cfg = model_config(model, geom)
     if nargin < 2, geom = ''; end
     here = fileparts(mfilename('fullpath'));              % .../function
     CAL  = fileparts(here);                               % .../Calibration_using_FEM_modeling
+    if ~isfolder(fullfile(CAL, 'config')), CAL = fileparts(CAL); end   % function/hexapole/ -> one level more
     base = fullfile(CAL, 'config', model);
     if ~isfolder(base)
         error('model_config:unknownModel', 'no config for model ''%s'' (expected folder %s)', model, base);

@@ -45,7 +45,8 @@ function [V, exc_sign, sensor_pos, sensor_n, dbg] = build_V_matrix(cfg, variant,
         % [MODIFIED 2026-08-08] 改呼叫 utils/pole_sensor_geometry（sensor 幾何唯一來源），
         %   原本的 local sensor_geometry 已移除。
         [sensor_pos, sensor_n] = pole_sensor_geometry(cfg, struct( ...
-            'soff_upper', SOFF_upper, 'soff_lower', SOFF_lower, 'face_lower', FACE_lower));
+            'soff_upper', SOFF_upper, 'soff_lower', SOFF_lower, 'face_lower', FACE_lower, ...
+            'frame', 'global'));                       % [MODIFIED 2026-10-04] 直接在 Maxwell 全域定義
     end
 
     % ② 每 sensor 圓柱內取 n_uniform 點（ANSYS 框）——兩內插法共用
