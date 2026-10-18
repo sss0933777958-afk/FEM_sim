@@ -1,4 +1,4 @@
-function plot_gain_iso_hist(USE_BIAS, R_FIT, R_EVAL, force, BINW, CMP, NTK, ZBASE)
+function plot_gain_iso_hist(USE_BIAS, R_FIT, R_EVAL, force, BINW, CMP, NTK, ZBASE, NFORCE)
 % plot_gain_iso_hist -- 兩個六極設計的控制指標分布疊圖（Long Fei vs Zhi-Peng）
 % =========================================================================
 %   [MODIFIED 2026-08-21 使用者要求] **校正半徑與評估半徑分離**：
@@ -99,6 +99,9 @@ function plot_gain_iso_hist(USE_BIAS, R_FIT, R_EVAL, force, BINW, CMP, NTK, ZBAS
     %   目的是「以絕對尺度看分布在全量程中的位置」，與現行的放大版並存，
     %   故檔名加後綴 **_z0**（zero-based），不覆蓋原檔。僅對 CMP='solo' 生效、只出 Design A。
     if nargin < 8 || isempty(ZBASE), ZBASE = false; end
+    % [ADDED 2026-10-04] NFORCE: N_c override for long2016 (Design A) only; [] = axsh cache.
+    %   Settled R150 values (RMS 10 % criterion): single 43 / eighteen 55.
+    if nargin < 9, NFORCE = []; end
     switch lower(CMP)
         case 'design'
             MD = { 'long2016_hexapole_halfcut', 'tip40um', '',              'Design A',  [0.05 0.10 0.95];
@@ -168,7 +171,8 @@ function plot_gain_iso_hist(USE_BIAS, R_FIT, R_EVAL, force, BINW, CMP, NTK, ZBAS
         if exist(cf,'file') && ~force
             D{a} = load(cf);   fprintf('由快取載入 %s\n', cf);
         else
-            D{a} = compute_one(MD{a,1}, MD{a,2}, MD{a,3}, R_FIT, R_EVAL, USE_BIAS, here, CAL);
+            nf_ = [];   if strcmp(MD{a,1},'long2016_hexapole_halfcut'), nf_ = NFORCE; end
+            D{a} = compute_one(MD{a,1}, MD{a,2}, MD{a,3}, R_FIT, R_EVAL, USE_BIAS, here, CAL, nf_);
             S = D{a};   save(cf, '-struct', 'S');
             fprintf('已存 %s\n', cf);
         end
@@ -317,7 +321,7 @@ function plot_gain_iso_hist(USE_BIAS, R_FIT, R_EVAL, force, BINW, CMP, NTK, ZBAS
 end
 
 % ============================================================================
-function S = compute_one(model, geom, variant, R_FIT, R_EVAL, USE_BIAS, here, CAL)
+function S = compute_one(model, geom, variant, R_FIT, R_EVAL, USE_BIAS, here, CAL, NFORCE)
 % 校正用 **R<=R_FIT 的收斂點設計 N_c**（降取樣，等測度網格）；
 % 評估（畫直方圖）用 **R<=R_EVAL 的全部真實 .fld 格點**。
     fprintf('--- %s：載入 + 校正（N_c 降取樣 @R<=%d um）---\n', model, R_FIT);
@@ -362,6 +366,7 @@ function S = compute_one(model, geom, variant, R_FIT, R_EVAL, USE_BIAS, here, CA
     if ~any(ok_), ok_ = isfinite(NCv(:).'); end
     cd_ = find(ok_);   [~,jj_] = min(abs(Rv_(cd_) - R_FIT));   ix_ = cd_(jj_);
     Nc  = NCv(ix_);
+    if nargin >= 9 && ~isempty(NFORCE), Nc = NFORCE; end   % [ADDED 2026-10-04]
     o_  = struct('model',model,'geom',geom,'variant',variant,'frame','actuator','quiet',true);
     Pd_ = [];   Bd_ = [];
     for Nr_ = ceil((Nc-1)/6) + (0:2)         % 濾鐵可能吃掉幾點 -> N 不一定剛好是 6*Nr+1

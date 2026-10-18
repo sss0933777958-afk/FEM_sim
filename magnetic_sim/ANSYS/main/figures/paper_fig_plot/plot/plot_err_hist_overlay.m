@@ -1,4 +1,4 @@
-function plot_err_hist_overlay(SRC, Rsel_um, CONV, MODEL, GEOM, VARIANT, ZSUF, NCSET, BINWUT, XCAP)
+function plot_err_hist_overlay(SRC, Rsel_um, CONV, MODEL, GEOM, VARIANT, ZSUF, NCSET, BINWUT, XCAP, CALMAT)
 % plot_err_hist_overlay -- long2016 半切六極 R=150µm：fix vs bias 絕對殘差「疊圖」
 % =========================================================================
 %   同一取樣球(R=150µm)、同一絕對殘差定義 |b_FEM − S·ĝ_I·K̄·I| (mT)：
@@ -34,6 +34,10 @@ function plot_err_hist_overlay(SRC, Rsel_um, CONV, MODEL, GEOM, VARIANT, ZSUF, N
     % [ADDED 2026-08-27] XCAP: force the residual-axis upper limit [mT] instead of letting
     %   xlim_pick derive it. Anything past XCAP is clipped from view (the count is printed).
     if nargin < 10, XCAP = []; end
+    % [ADDED 2026-10-04] CALMAT = {single.mat, eighteen.mat}: take e / l_hat / G straight
+    %   from the calibration results in Flux/Maxwell/data/<model>/.mat/ (no refit here).
+    %   Requires CONV=true. File names are relative to that folder.
+    if nargin < 11, CALMAT = {}; end
     here   = fileparts(fileparts(mfilename('fullpath')));
     figdir = fullfile(fileparts(here), 'paper_fig', 'Section2_E');
     if ~exist(figdir,'dir'); mkdir(figdir); end
@@ -51,7 +55,17 @@ function plot_err_hist_overlay(SRC, Rsel_um, CONV, MODEL, GEOM, VARIANT, ZSUF, N
     fprintf('取樣範圍 R <= %d um：npts = %d\n', Rum, npts);
 
     % ---- 兩模型各擬合一次 → 逐節點×激發 絕對殘差 (mT) ----
-    if CONV
+    if CONV && ~isempty(CALMAT)
+        mdir = fullfile(CAL, 'data', MODEL, '.mat');
+        ca = load(fullfile(mdir, CALMAT{1}), 'e', 'l_hat', 'G', 'npts');
+        cb = load(fullfile(mdir, CALMAT{2}), 'e', 'l_hat', 'G', 'npts');
+        fprintf('calib .mat：single %s (l=%.1f um)｜eighteen %s (l=%.1f um)\n', ...
+                CALMAT{1}, ca.l_hat*1e6, CALMAT{2}, cb.l_hat*1e6);
+        fprintf('N_c：single %d 點｜eighteen %d 點（評估集 = %d 個真實格點）\n', ...
+                ca.npts, cb.npts, npts);
+        err0 = fit_abs_resid(P, Bstack, Pc_base, F, npts, false, ca);
+        err1 = fit_abs_resid(P, Bstack, Pc_base, F, npts, true,  cb);
+    elseif CONV
         addpath(fullfile(CAL,'utils'), fullfile(CAL,'utils','long2016_hexapole_halfcut'));
         n1_ = NCSET(1);   if ~isfinite(n1_), n1_ = []; end
         n2_ = NCSET(2);   if ~isfinite(n2_), n2_ = []; end

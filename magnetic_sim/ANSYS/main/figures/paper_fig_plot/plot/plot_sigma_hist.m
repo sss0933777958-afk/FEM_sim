@@ -1,4 +1,4 @@
-function plot_sigma_hist(USE_BIAS, R_FIT, R_EVAL, NSAMP, force, MODEL, GEOM, VARIANT, XR, BINW, NTK)
+function plot_sigma_hist(USE_BIAS, R_FIT, R_EVAL, NSAMP, force, MODEL, GEOM, VARIANT, XR, BINW, NTK, NFORCE)
 % plot_sigma_hist -- 三個奇異值 σ₁ σ₂ σ₃ 在整個工作空間的分布疊圖（Long Fei 半切六極）
 % =========================================================================
 %   使用者拍板 2026-08-18：
@@ -98,6 +98,9 @@ function plot_sigma_hist(USE_BIAS, R_FIT, R_EVAL, NSAMP, force, MODEL, GEOM, VAR
     %   （zhi_peng split = 3、zhi_peng gap = 5），故參數化。預設 3 → 已定案的
     %   long2016 版重跑輸出不變。
     if nargin < 11 || isempty(NTK), NTK = 3; end
+    % [ADDED 2026-10-04] NFORCE: calibration point count N_c override ([] = read the axsh cache).
+    %   Settled long2016 R150 values (RMS 10 % criterion): single 43 / eighteen 55.
+    if nargin < 12, NFORCE = []; end
 
     tag  = 'single';   if USE_BIAS, tag = 'eighteen'; end
     msfx = '';  if ~strcmp(MODEL,'long2016_hexapole_halfcut'), msfx = ['_' MODEL]; end
@@ -120,7 +123,7 @@ function plot_sigma_hist(USE_BIAS, R_FIT, R_EVAL, NSAMP, force, MODEL, GEOM, VAR
     if exist(cf,'file') && ~force
         S = load(cf);   fprintf('由快取載入 %s\n', cf);
     else
-        S = compute(MODEL, GEOM, VARIANT, R_FIT, R_EVAL, USE_BIAS, here, NSAMP);
+        S = compute(MODEL, GEOM, VARIANT, R_FIT, R_EVAL, USE_BIAS, here, NSAMP, NFORCE);
         save(cf, '-struct', 'S');   fprintf('已存 %s\n', cf);
     end
 
@@ -140,7 +143,7 @@ function plot_sigma_hist(USE_BIAS, R_FIT, R_EVAL, NSAMP, force, MODEL, GEOM, VAR
 end
 
 % ============================================================================
-function S = compute(MODEL, GEOM, VARIANT, R_FIT, R_EVAL, USE_BIAS, here, NSAMP)
+function S = compute(MODEL, GEOM, VARIANT, R_FIT, R_EVAL, USE_BIAS, here, NSAMP, NFORCE)
     % [MODIFIED 2026-08-28] Tree moved under matlab/Flux/; the old hardcoded path is gone,
     %   so addpath silently failed and an APDL copy of model_config/solve_* could shadow
     %   the Maxwell ones.
@@ -185,6 +188,7 @@ function S = compute(MODEL, GEOM, VARIANT, R_FIT, R_EVAL, USE_BIAS, here, NSAMP)
     if ~any(ok_), ok_ = isfinite(NCv(:).'); end
     cd_ = find(ok_);   [~,jj_] = min(abs(Rv_(cd_) - R_FIT));   ix_ = cd_(jj_);
     Nc  = NCv(ix_);
+    if nargin >= 9 && ~isempty(NFORCE), Nc = NFORCE; end   % [ADDED 2026-10-04]
     o_  = struct('model',MODEL,'geom',GEOM,'variant',VARIANT,'frame','actuator','quiet',true);
     Pd_ = [];   Bd_ = [];
     for Nr_ = ceil((Nc-1)/6) + (0:2)         % 濾鐵可能吃掉幾點 -> N 不一定剛好是 6*Nr+1

@@ -1,4 +1,4 @@
-function plot_conv_vs_R(force, MODEL, GEOM, VARIANT, SUF, WHICH)
+function plot_conv_vs_R(force, MODEL, GEOM, VARIANT, SUF, WHICH, NOLINE)
 % plot_conv_vs_R -- 「用收斂點的點數校正，拿真實 FEM 格點驗證」隨取樣半徑 R 的變化
 % =========================================================================
 %   對每一個取樣半徑 R 做三件事：
@@ -41,6 +41,9 @@ function plot_conv_vs_R(force, MODEL, GEOM, VARIANT, SUF, WHICH)
     %   {'rms'} 只產 sqrt(J/N)、{'nmae'} 只產 NMAE。
     if nargin < 6 || isempty(WHICH), WHICH = {'rms','nmae'}; end
     if ischar(WHICH), WHICH = {WHICH}; end
+    % [ADDED 2026-10-04] SUF='_ladder': N_c per R from Flux/Maxwell/utils/data/rms_ladder_R.mat
+    %   (10 consecutive rungs within 10 % of RMS_inf). NOLINE=true: markers only, '_pts' suffix.
+    if nargin < 7 || isempty(NOLINE), NOLINE = false; end
     % R 掃描範圍與逐 R 的收斂設計都來自 full_vs_conv_vs_R_maxwell.mat（見檔頭）
 
     here   = fileparts(fileparts(mfilename('fullpath')));
@@ -84,10 +87,10 @@ function plot_conv_vs_R(force, MODEL, GEOM, VARIANT, SUF, WHICH)
     %   in-sample 的 sqrt(minJ/(3·N_c·6))（S.rmsc1/rmsc2）仍算、仍存快取，但不出圖
     %   —— 它會因為 eighteen 自由度多而天生偏低，不能用來比「預測能力」。
     if any(strcmp(WHICH,'rms'))
-        mk('rms',  S.rms1,  S.rms2,  '$\mathbf{\sqrt{J/N}\;(mT)}$',              figdir, S.R_um, 0, SUF);
+        mk('rms',  S.rms1,  S.rms2,  '$\mathbf{\sqrt{J/N}\;(mT)}$',              figdir, S.R_um, 0, SUF, NOLINE);
     end
     if any(strcmp(WHICH,'nmae'))
-        mk('nmae', S.nmae1, S.nmae2, '$\mathbf{NMAE\;(\%)}$',                    figdir, S.R_um, 0, SUF);
+        mk('nmae', S.nmae1, S.nmae2, '$\mathbf{NMAE\;(\%)}$',                    figdir, S.R_um, 0, SUF, NOLINE);
     end
 end
 
@@ -112,9 +115,16 @@ function S = sweep_R(MODEL, GEOM, VARIANT, SUF, l0, here)
     ad  = build_actuator_data(raw, cfg);
 
     % 逐 R 的收斂設計：直接讀 plot_full_vs_conv_vs_R 的快取（判準與 N_c 由那支決定）
+    if strcmp(SUF, '_ladder')                          % [ADDED 2026-10-04]
+        L_ = load(fullfile(CAL, 'utils', 'data', 'long2016_hexapole_halfcut', 'rms_ladder_R.mat'));
+        assert(isfield(L_,'KC'), 'rms_ladder_R.mat is not the KC version');
+        D = struct('R_um',L_.R_um(:).', 'n_c1',L_.Nc(:,1).', 'n_c2',L_.Nc(:,2).', ...
+                   'fb_c1',false(1,numel(L_.R_um)), 'fb_c2',false(1,numel(L_.R_um)));
+    else
     df = fullfile(here, 'data', ['full_vs_conv_vs_R_maxwell' SUF '.mat']);
     assert(exist(df,'file')==2, '找不到 %s —— 先跑 plot_full_vs_conv_vs_R(true)', df);
     D    = load(df);
+    end
     R_um = D.R_um(:).';   nR = numel(R_um);
     % [MODIFIED 2026-08-27] tri_c* in the new cache are all zero: the equal-h ladder is a
     %   single index, not an (N_r,N_phi,N_theta) triple. A design is now identified by its
@@ -261,12 +271,14 @@ function S = build_S(l_hat, Pc, P)
 end
 
 % ============================================================================
-function mk(tag, v1, v2, ylab, figdir, R_um, v0, SUF)
+function mk(tag, v1, v2, ylab, figdir, R_um, v0, SUF, NOLINE)
 % 一張圖：橫軸 R [um]（線性），single 藍 / eighteen 紅。
 %   v0（選填）：**R=0 的起始值**（使用者指定曲線自 0 起）。給了就在最前面補一個
 %     (0, v0) 錨點，橫軸自 0 起；ell 用擬合初值 500、其餘量用 0。
     if nargin < 7, v0 = []; end
     if nargin < 8 || isempty(SUF), SUF = ''; end
+    if nargin < 9 || isempty(NOLINE), NOLINE = false; end
+    LS1 = '-o';  LS2 = '-s';   if NOLINE, LS1 = 'o';  LS2 = 's'; end   % [ADDED 2026-10-04]
     if ~isempty(v0)
         R_um = [0, R_um(:).'];   v1 = [v0, v1(:).'];   v2 = [v0, v2(:).'];
     end
@@ -287,9 +299,9 @@ function mk(tag, v1, v2, ylab, figdir, R_um, v0, SUF)
     %   series so the curve is continuous; the surviving points keep their x positions.
     R_um = R_um(:).';   v1 = v1(:).';   v2 = v2(:).';
     k1 = isfinite(v1);   k2 = isfinite(v2);
-    h1 = plot(ax, R_um(k1), v1(k1), '-o', 'Color',c1, 'LineWidth',LW, 'MarkerSize',MS, ...
+    h1 = plot(ax, R_um(k1), v1(k1), LS1, 'Color',c1, 'LineWidth',LW, 'MarkerSize',MS, ...
               'MarkerFaceColor',c1, 'Clipping','off');
-    h2 = plot(ax, R_um(k2), v2(k2), '-s', 'Color',c2, 'LineWidth',LW, 'MarkerSize',MS, ...
+    h2 = plot(ax, R_um(k2), v2(k2), LS2, 'Color',c2, 'LineWidth',LW, 'MarkerSize',MS, ...
               'MarkerFaceColor','w', 'Clipping','off');
 
     box(ax,'on');  grid(ax,'off');
@@ -345,8 +357,9 @@ function mk(tag, v1, v2, ylab, figdir, R_um, v0, SUF)
 
     % [MODIFIED 2026-08-28] '_axsh' is stripped like '_fullref': the sampler is which
     %   ladder produced N_c, not a different figure -- the new run overwrites the old one.
-    out = fullfile(figdir, sprintf('%s_vs_R_conv_maxwell%s.png', ...
-                                   tag, strrep(strrep(SUF,'_fullref',''),'_axsh','')));
+    psuf = '';   if NOLINE, psuf = '_pts'; end
+    out = fullfile(figdir, sprintf('%s_vs_R_conv_maxwell%s%s.png', ...
+                                   tag, strrep(strrep(strrep(SUF,'_fullref',''),'_axsh',''),'_ladder',''), psuf));
     % [MODIFIED 2026-09-02 規則 6] print 取代 exportgraphics：後者會裁掉畫布四周白邊，
     %   正方形畫布匯出後就不是正方形（實測長寬比 0.96 / 1.11）。
     set(fig, 'PaperUnits','inches', 'PaperPosition',[0 0 CANV CANV], 'PaperSize',[CANV CANV]);

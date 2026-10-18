@@ -1,4 +1,4 @@
-function plot_ell_gain_2panel(SUF, NOLINE, AX, PW)
+function plot_ell_gain_2panel(SUF, NOLINE, AX, PW, SRC)
 % plot_ell_gain_2panel -- 降取樣（收斂點設計）結果的 l_hat 與 g_I_hat vs 取樣半徑 R
 % =========================================================================
 %   上下兩個子圖、共用橫軸（取樣半徑 R）：
@@ -39,9 +39,23 @@ function plot_ell_gain_2panel(SUF, NOLINE, AX, PW)
     figdir = fullfile(fileparts(here), 'paper_fig', 'Section2_E');
     if ~exist(figdir,'dir'); mkdir(figdir); end
 
-    df = fullfile(here, 'data', sprintf('full_vs_conv_vs_R_maxwell%s.mat', SUF));
-    assert(exist(df,'file')==2, '找不到 %s —— 先跑 plot_full_vs_conv_vs_R(true)', df);
-    D = load(df);
+    % [ADDED 2026-10-04] SRC: data source.
+    %   ''    -> data/full_vs_conv_vs_R_maxwell<SUF>.mat (old two-stage criterion cache)
+    %   'rms' -> Flux/Maxwell/utils/data/rms_ladder_R.mat (Nc = first N with
+    %            RMS - RMS_inf <= 10 % RMS_inf; written by utils/scripts/rms_ladder.m)
+    %   Output name still follows SUF, so SRC='rms' with SUF='_axsh' overwrites the axsh figure.
+    if nargin < 5 || isempty(SRC), SRC = ''; end
+    if strcmp(SRC, 'rms')
+        df = fullfile(fileparts(fileparts(here)), 'matlab', 'Flux', 'Maxwell', 'utils', 'data', 'long2016_hexapole_halfcut', 'rms_ladder_R.mat');
+        assert(exist(df,'file')==2, '找不到 %s —— 先跑 utils/scripts/rms_ladder.m（RLIST 非空）', df);
+        S = load(df);
+        D = struct('R_um',S.R_um(:).', 'ell_c1',S.l_hat(:,1).'*1e6, 'ell_c2',S.l_hat(:,2).'*1e6, ...
+                   'gI_c1',S.gI(:,1).', 'gI_c2',S.gI(:,2).', 'n_c1',S.Nc(:,1).', 'n_c2',S.Nc(:,2).');
+    else
+        df = fullfile(here, 'data', sprintf('full_vs_conv_vs_R_maxwell%s.mat', SUF));
+        assert(exist(df,'file')==2, '找不到 %s —— 先跑 plot_full_vs_conv_vs_R(true)', df);
+        D = load(df);
+    end
     R = D.R_um(:).';
     % [ADDED 2026-08-27] 丟掉整列都是 NaN 的 R（球內點太少、掃描時直接跳過，例如 R=20）。
     ok = isfinite(D.ell_c1(:).') & isfinite(D.ell_c2(:).') & ...
@@ -70,9 +84,6 @@ function plot_ell_gain_2panel(SUF, NOLINE, AX, PW)
     % [MODIFIED 2026-09-01 套繪圖規則 1/2/3] 刻度 FS / 軸標題 FSLAB / 圖例 FSLEG 拆開；
     %   線寬與 marker 隨刻度字級 36->60 同量級放大，框線 2.5->5.0。
     FS = 60;  FSLAB = 36;  FSLEG = 45;  LW = 5.0;  MS = 12;  LWBOX = 5.0;
-    % [MODIFIED 2026-09-01 使用者指定] 起始點由粉色改**綠色**。
-    CINIT = [0.00 0.65 0.20];      % 起始點（x=0）專用色
-    MSP   = 22;                    % [ADDED 2026-09-01 使用者反映太小] 粉點 marker 尺寸
     if PAPER, FS = 32;  LW = 3.2;  MS = 12;  LWBOX = 4.0; end
     c1 = [0.05 0.10 0.95];      % single   藍
     c2 = [0.85 0.10 0.10];      % eighteen 紅
@@ -159,13 +170,13 @@ function plot_ell_gain_2panel(SUF, NOLINE, AX, PW)
     % [MODIFIED 2026-09-01 使用者指定] 第一個點（x=0 的擬合初值）**不分 single / eighteen**，
     %   兩條系列的該點 marker 用 MarkerIndices 略過，改畫一顆粉色點代表 Initial value。
     %   線仍從 x=0 拉起（MarkerIndices 只影響 marker，不影響線）。
-    MIDX = 2:numel(Rp);
+    % [MODIFIED 2026-10-04 使用者指定] 不再畫綠色 Initial value 點：紅藍兩系列的 marker
+    %   直接畫在同一個初始值（x=0）上。
+    MIDX = 1:numel(Rp);
     h1 = plot(ax1, Rp, e1, LS1, 'Color',c1, 'LineWidth',LW, 'MarkerSize',MS, ...
               'MarkerFaceColor',c1, 'MarkerIndices',MIDX, 'Clipping','off');
     h2 = plot(ax1, Rp, e2, LS2, 'Color',c2, 'LineWidth',LW, 'MarkerSize',MS, ...
               'MarkerFaceColor','w', 'MarkerIndices',MIDX, 'Clipping','off');
-    hp = plot(ax1, Rp(1), e1(1), 'o', 'Color',CINIT, 'MarkerFaceColor',CINIT, ...
-              'MarkerSize',MSP, 'LineStyle','none', 'Clipping','off');
     % [MODIFIED 2026-08-14] 使用者指定：l_hat 縱軸 **自 500 起**，且刻度要把曲線夾在中間
     %   （資料 797~891 → 上下各有 700 / 900 兩個刻度）
     % [ADDED 2026-08-27] 縱軸範圍**依模型分支**。原本兩軸都寫死長飛的值，志鵬的
@@ -251,8 +262,6 @@ function plot_ell_gain_2panel(SUF, NOLINE, AX, PW)
          'MarkerFaceColor',c1, 'MarkerIndices',MIDX, 'Clipping','off');
     plot(ax2, Rp, g2, LS2, 'Color',c2, 'LineWidth',LW, 'MarkerSize',MS, ...
          'MarkerFaceColor','w', 'MarkerIndices',MIDX, 'Clipping','off');
-    plot(ax2, Rp(1), g1(1), 'o', 'Color',CINIT, 'MarkerFaceColor',CINIT, ...
-         'MarkerSize',MSP, 'LineStyle','none', 'Clipping','off');
     style_panel(ax2, XL, XT, YL2, YT2, FS, LWBOX);
     if ~PAPER
         ylabel(ax2, '$\mathbf{{}^{B}\hat{g}_{I}\;(mT/A)}$', 'Interpreter','latex', 'FontSize',FSLAB);
@@ -295,7 +304,7 @@ function plot_ell_gain_2panel(SUF, NOLINE, AX, PW)
     a1p = get(ax1,'Position');
     LFT = a1p(1);   SPAN = a1p(3);   TOPREF = a1p(2) + a1p(4);
     GAPN = 0.022;                                 % 上格框線與圖例之間的淨空
-    NROW = 2;                                     % 第1列兩則、第2列一則
+    NROW = 1;                                     % [MODIFIED 2026-10-04] Initial value 不再列 -> 一列兩則
     lgh  = (NROW*1.15*FSLEG/72 + 0.25) / CANV;    % 列高 x 列數 + 內距（英吋 -> 正規化）
     lgpos = [LFT, TOPREF + GAPN, SPAN, lgh];      % 左右緣切齊座標框
 
@@ -303,9 +312,7 @@ function plot_ell_gain_2panel(SUF, NOLINE, AX, PW)
                    'txt','Single parameter');
     LG(2) = struct('mk','s', 'col',c2,   'face','w',  'msz',MS,  'line',~NOLINE, ...
                    'txt','Eighteen parameters');
-    LG(3) = struct('mk','o', 'col',CINIT,'face',CINIT,'msz',MSP, 'line',false, ...
-                   'txt','Initial value');
-    ROWOF = [1 1 2];
+    ROWOF = [1 1];
     axL = draw_legend_box(fig, lgpos, LG, ROWOF, FSLEG, LW, LWBOX);
 
     if ~isempty(AX), return; end                  % 畫進呼叫端的座標軸：不自己出檔
