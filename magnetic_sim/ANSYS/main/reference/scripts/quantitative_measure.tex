@@ -15,9 +15,9 @@
 \newcommand{\xa}{\hat{\mathbf{x}}_a}
 \newcommand{\ya}{\hat{\mathbf{y}}_a}
 \newcommand{\za}{\hat{\mathbf{z}}_a}
-\newcommand{\Ij}{\mathbf{I}_j}
-\newcommand{\Ijh}{\hat{\mathbf{I}}_j}
-\newcommand{\fij}{\mathbf{f}_{ij}}
+\newcommand{\Ij}{\mathbf{I}}
+\newcommand{\Ijh}{\hat{\mathbf{I}}}
+\newcommand{\fij}{\mathbf{f}_{i}}
 
 \begin{document}
 
@@ -29,13 +29,13 @@
 % ---------------------------------------------------------------------------------------
 \section*{步驟 1}
 
-\subsection*{1.1\ \ 單位方向 $\rh(\theta,\varphi)$}
+\subsection*{1.1\ \ 單位方向 $\rh(\varphi,\theta)$}
 
 以致動座標系的基底 $\{\xa,\ \ya,\ \za\}$ 描述任意單位方向 $\rh$：
 
 \begin{minipage}[c]{0.54\textwidth}
 \[
-\rh(\theta,\varphi)
+\rh(\varphi,\theta)
 =\cos\varphi\cos\theta\,\xa+\cos\varphi\sin\theta\,\ya+\sin\varphi\,\za
 =\begin{bmatrix}
 \cos\varphi\cos\theta\\
@@ -76,17 +76,17 @@
 
 \subsection*{1.2\ \ 電流 $\Ij$}
 
-位置 $\mathbf{p}_i$、第 $j$ 組電流 $\Ij$ 產生的力向量
+位置 $\mathbf{p}_i$、電流 $\Ij$ 產生的力向量
 \[
-\fij=\begin{bmatrix} f_{ij1}\\ f_{ij2}\\ f_{ij3} \end{bmatrix},\qquad
-f_{ijk}=\Ij^{\mathsf T}\,{}^{F}\hat{\mathbf{H}}_{I}^{\mathsf T}\,
+\fij=\begin{bmatrix} f_{i1}\\ f_{i2}\\ f_{i3} \end{bmatrix},\qquad
+f_{ik}=\Ij^{\mathsf T}\,{}^{F}\hat{\mathbf{H}}_{I}^{\mathsf T}\,
 \mathbf{L}_k\!\left(\mathbf{p}_i/\hat{\ell},\,\hat{\mathbf{e}}\right)\,{}^{F}\hat{\mathbf{H}}_{I}\,\Ij,
 \qquad k=1,2,3
 \]
 令
 \[
 \Ij=\sqrt{\|\fij\|}\;\Ijh,\qquad
-\fij\!\left(\mathbf{p}_i,\Ij\right)=\|\fij\|\,\rh
+\mathbf{f}\!\left(\mathbf{p}_i,\Ij\right)=\|\fij\|\,\rh
 \]
 代入力模型：
 \[
@@ -103,51 +103,51 @@ f_{ijk}=\Ij^{\mathsf T}\,{}^{F}\hat{\mathbf{H}}_{I}^{\mathsf T}\,
 \Ijh^{\mathsf T}\,{}^{F}\hat{\mathbf{H}}_{I}^{\mathsf T}\,\mathbf{L}_2\!\left(\mathbf{p}_i/\hat{\ell},\hat{\mathbf{e}}\right){}^{F}\hat{\mathbf{H}}_{I}\,\Ijh\\[2pt]
 \Ijh^{\mathsf T}\,{}^{F}\hat{\mathbf{H}}_{I}^{\mathsf T}\,\mathbf{L}_3\!\left(\mathbf{p}_i/\hat{\ell},\hat{\mathbf{e}}\right){}^{F}\hat{\mathbf{H}}_{I}\,\Ijh
 \end{bmatrix}\\[6pt]
-&=\|\fij\|\;\hat{\mathbf{f}}_{ij}\!\left(\mathbf{p}_i,\Ijh\right)
+&=\|\fij\|\;\hat{\mathbf{f}}\!\left(\mathbf{p}_i,\Ijh\right)
 \end{aligned}
 \]
 比較得
 \[
-\hat{\mathbf{f}}_{ij}\!\left(\mathbf{p}_i,\Ijh\right)=\rh
+\hat{\mathbf{f}}\!\left(\mathbf{p}_i,\Ijh\right)=\rh
 \]
-$\hat{\mathbf{f}}_{ij}(\mathbf{p}_i,\Ijh)$ 稱為單位力量，所對應的電流 $\Ijh$ 稱為單位電流。
+$\hat{\mathbf{f}}(\mathbf{p}_i,\Ijh)$ 稱為單位力量，所對應的電流 $\Ijh$ 稱為單位電流。
 
 % ---------------------------------------------------------------------------------------
 \section*{步驟 2}
 
 期望力 $\mathbf{f}_d$ 拆成大小與方向：
 \[
-\mathbf{f}_d=\|\mathbf{f}_d\|\,\rh(\theta,\varphi)
+\mathbf{f}_d=\|\mathbf{f}_d\|\,\rh(\varphi,\theta)
 \]
 \[
 \mathbf{I}_{\mathrm{opt}}=\arg\min_{\Ij}\ \|\Ij\|^2
-\qquad\text{s.t.}\quad \fij\!\left(\mathbf{p}_i,\Ij\right)=\mathbf{f}_d
+\qquad\text{s.t.}\quad \mathbf{f}\!\left(\mathbf{p}_i,\Ij\right)=\mathbf{f}_d\!\left(\mathbf{p}_i,\mathbf{I}_{\mathrm{opt}}\right)
 \]
 以 $\Ij=\sqrt{\|\fij\|}\;\Ijh$ 替換 $\Ij$：
 \[
 \|\Ij\|^2=\|\fij\|\,\|\Ijh\|^2,\qquad
-\fij\!\left(\mathbf{p}_i,\Ij\right)=\|\fij\|\,\hat{\mathbf{f}}_{ij}\!\left(\mathbf{p}_i,\Ijh\right)=\mathbf{f}_d
+\mathbf{f}\!\left(\mathbf{p}_i,\Ij\right)=\|\fij\|\,\hat{\mathbf{f}}\!\left(\mathbf{p}_i,\Ijh\right)=\mathbf{f}_d
 \]
-限制式給出 $\|\fij\|=\|\mathbf{f}_d\|$、$\hat{\mathbf{f}}_{ij}(\mathbf{p}_i,\Ijh)=\mathbf{f}_d/\|\mathbf{f}_d\|=\rh$，$\|\mathbf{f}_d\|$ 為常數。\\[4pt]
+限制式給出 $\|\fij\|=\|\mathbf{f}_d\|$、$\hat{\mathbf{f}}(\mathbf{p}_i,\Ijh)=\mathbf{f}_d/\|\mathbf{f}_d\|=\rh$，$\|\mathbf{f}_d\|$ 為常數。\\[4pt]
 換成最小範數單位電流問題：
 \[
-\hat{\mathbf{I}}_{\mathrm{opt}}(\varphi,\theta,\mathbf{p}_i)=\arg\min_{\Ijh}\ \|\Ijh\|^2
-\qquad\text{s.t.}\quad \hat{\mathbf{f}}_{ij}\!\left(\mathbf{p}_i,\Ijh\right)=\rh
+\hat{\mathbf{I}}_{\mathrm{opt}}=\arg\min_{\Ijh}\ \|\Ijh\|^2
+\qquad\text{s.t.}\quad \hat{\mathbf{f}}\!\left(\mathbf{p}_i,\Ijh\right)=\rh
 \]
 原問題的解：
 \[
-\mathbf{I}_{\mathrm{opt}}=\sqrt{\|\mathbf{f}_d\|}\;\hat{\mathbf{I}}_{\mathrm{opt}}(\varphi,\theta,\mathbf{p}_i)
+\mathbf{I}_{\mathrm{opt}}=\sqrt{\|\mathbf{f}_d\|}\;\hat{\mathbf{I}}_{\mathrm{opt}}
 \]
 
 % ---------------------------------------------------------------------------------------
 \section*{步驟 3}
 
-固定位置 $\mathbf{p}_i$，以 Lagrange multipliers 求解任意方向 $\rh$ 的 $\hat{\mathbf{I}}_{\mathrm{opt}}(\varphi,\theta,\mathbf{p}_i)$。令
+固定位置 $\mathbf{p}_i$，以 Lagrange multipliers 求解任意方向 $\rh$ 的 $\hat{\mathbf{I}}_{\mathrm{opt}}(\mathbf{p}_i,\varphi,\theta)$。令
 \[
 \mathbf{Q}_k={}^{F}\hat{\mathbf{H}}_{I}^{\mathsf T}\,\mathbf{L}_k\!\left(\mathbf{p}_i/\hat{\ell},\hat{\mathbf{e}}\right){}^{F}\hat{\mathbf{H}}_{I},
 \qquad k=1,2,3
 \]
-限制式 $\hat{\mathbf{f}}_{ij}(\mathbf{p}_i,\Ijh)=\rh$ 的第 $k$ 個分量為 $\Ijh^{\mathsf T}\mathbf{Q}_k\Ijh=r_k$，
+限制式 $\hat{\mathbf{f}}(\mathbf{p}_i,\Ijh)=\rh$ 的第 $k$ 個分量為 $\Ijh^{\mathsf T}\mathbf{Q}_k\Ijh=r_k$，
 Lagrange multipliers $\boldsymbol{\lambda}=\begin{bmatrix}\lambda_1 & \lambda_2 & \lambda_3\end{bmatrix}^{\mathsf T}$：
 \[
 \mathcal{L}\!\left(\Ijh,\boldsymbol{\lambda}\right)
@@ -157,42 +157,52 @@ Lagrange multipliers $\boldsymbol{\lambda}=\begin{bmatrix}\lambda_1 & \lambda_2 
 % ---------------------------------------------------------------------------------------
 \section*{步驟 4}
 
-限制電流大小 $\|\Ij\|\le\|\mathbf{I}\|_{\max}$。由 $\Ij=\sqrt{\|\fij\|}\;\Ijh$：
+由 Lagrange multipliers 得到 $\hat{\mathbf{I}}_{\mathrm{opt}}$，令正規化電流
 \[
-\|\Ij\|^2=\|\fij\|\,\|\Ijh\|^2
-\quad\Longrightarrow\quad
-\|\fij\|=\frac{\|\Ij\|^2}{\|\Ijh\|^2}
+\bar{\mathbf{I}}=\frac{\hat{\mathbf{I}}_{\mathrm{opt}}}{\left\|\hat{\mathbf{I}}_{\mathrm{opt}}\right\|},\qquad
+\|\bar{\mathbf{I}}\|=1
 \]
-代回 $\fij=\|\fij\|\,\rh$：
+以大小為 $\|\mathbf{I}\|$（A）的電流 $\mathbf{I}=\|\mathbf{I}\|\,\bar{\mathbf{I}}$ 代入力模型：
 \[
-\fij=\frac{\|\Ij\|^2}{\|\Ijh\|^2}\,\rh
+\begin{aligned}
+\mathbf{f}\!\left(\mathbf{p}_i,\mathbf{I}(\varphi,\theta)\right)
+&=\|\mathbf{I}\|^2
+\begin{bmatrix}
+\bar{\mathbf{I}}^{\mathsf T}\mathbf{Q}_1\bar{\mathbf{I}}\\[2pt]
+\bar{\mathbf{I}}^{\mathsf T}\mathbf{Q}_2\bar{\mathbf{I}}\\[2pt]
+\bar{\mathbf{I}}^{\mathsf T}\mathbf{Q}_3\bar{\mathbf{I}}
+\end{bmatrix}\\[6pt]
+&=\frac{\|\mathbf{I}\|^2}{\left\|\hat{\mathbf{I}}_{\mathrm{opt}}\right\|^2}
+\begin{bmatrix}
+\hat{\mathbf{I}}_{\mathrm{opt}}^{\mathsf T}\mathbf{Q}_1\hat{\mathbf{I}}_{\mathrm{opt}}\\[2pt]
+\hat{\mathbf{I}}_{\mathrm{opt}}^{\mathsf T}\mathbf{Q}_2\hat{\mathbf{I}}_{\mathrm{opt}}\\[2pt]
+\hat{\mathbf{I}}_{\mathrm{opt}}^{\mathsf T}\mathbf{Q}_3\hat{\mathbf{I}}_{\mathrm{opt}}
+\end{bmatrix}
+=\frac{\|\mathbf{I}\|^2}{\left\|\hat{\mathbf{I}}_{\mathrm{opt}}\right\|^2}\,\hat{\mathbf{f}}\!\left(\mathbf{p}_i,\hat{\mathbf{I}}_{\mathrm{opt}}\right)
+=\frac{\|\mathbf{I}\|^2}{\left\|\hat{\mathbf{I}}_{\mathrm{opt}}\right\|^2}\,\rh(\varphi,\theta)
+\end{aligned}
 \]
-方向 $\rh$ 固定時，取 $\|\Ij\|=\|\mathbf{I}\|_{\max}$、$\Ijh=\hat{\mathbf{I}}_{\mathrm{opt}}(\varphi,\theta,\mathbf{p}_i)$：
+定義
 \[
-\mathbf{f}_{ij,\max}\!\left(\mathbf{p}_i,\varphi,\theta,I_{\max}\right)
-=\frac{\|\mathbf{I}\|_{\max}^2}{\left\|\hat{\mathbf{I}}_{\mathrm{opt}}(\varphi,\theta,\mathbf{p}_i)\right\|^2}\,\rh
+\rho\!\left(\mathbf{p}_i,\rh\right)=\frac{1}{\left\|\hat{\mathbf{I}}_{\mathrm{opt}}\right\|^2}
+\qquad(\mathrm{pN/A^2})
 \]
-$\mathbf{f}_{ij,\max}$ 為位置 $\mathbf{p}_i$、電流大小不超過 $\|\mathbf{I}\|_{\max}$ 時，沿方向 $\rh(\theta,\varphi)$ 所能產生的最大力量。
+代回力量：
+\[
+\mathbf{f}\!\left(\mathbf{p}_i,\mathbf{I}(\varphi,\theta)\right)=\|\mathbf{I}\|^2\,\rho\!\left(\mathbf{p}_i,\rh\right)\rh(\varphi,\theta)
+\]
+$\rho(\mathbf{p}_i,\rh)$ 為在位置 $\mathbf{p}_i$、沿方向 $\rh$ 所能達到之力增益的最大值（$\mathrm{pN/A^2}$）。
 
 % ---------------------------------------------------------------------------------------
 \section*{步驟 5}
 
-定義
 \[
-\rho\!\left(\mathbf{p}_i,\rh\right)=\frac{\left\|\hat{\mathbf{f}}_{ij}\right\|}{\left\|\hat{\mathbf{I}}_{\mathrm{opt}}\right\|^2}
-\qquad(\mathrm{pN/A^2})
-\]
-
-% ---------------------------------------------------------------------------------------
-\section*{步驟 6}
-
-\[
-\mathrm{capacity}(\mathbf{p}_i)
-=\left(\frac{1}{4\pi}\int_{-\pi/2}^{\pi/2}\int_{0}^{2\pi}\rho^3\!\left(\mathbf{p}_i,\rh\right)\cos\varphi\;d\theta\,d\varphi\right)^{1/3}
+\mathcal{C}_f(\mathbf{p}_i)
+=\left(\frac{1}{4\pi}\int_{-\pi/2}^{\pi/2}\int_{0}^{2\pi}\rho^3\!\left(\mathbf{p}_i,\rh(\varphi,\theta)\right)\cos\varphi\;d\theta\,d\varphi\right)^{1/3}
 \qquad(\mathrm{pN/A^2})
 \]
 \[
-\mathrm{isotropy}(\mathbf{p}_i)
+\kappa_f(\mathbf{p}_i)
 =\frac{\displaystyle\min_{\rh}\ \rho\!\left(\mathbf{p}_i,\rh\right)}{\displaystyle\max_{\rh}\ \rho\!\left(\mathbf{p}_i,\rh\right)}
 \]
 

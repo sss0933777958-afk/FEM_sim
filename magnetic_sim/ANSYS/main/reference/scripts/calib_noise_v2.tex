@@ -1,0 +1,345 @@
+% Noise effect on the flux calibration parameter l_hat (rewrite)
+% Compile: xelatex calib_noise_v2.tex   (xelatex needed for the Chinese heading)
+\documentclass[11pt]{article}
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{fontspec}
+\newfontfamily\cjk{Noto Serif CJK TC}
+\DeclareMathAlphabet{\mathpzc}{OT1}{pzc}{m}{it}
+\setlength{\parindent}{0pt}
+
+% Typography: vectors and matrices upright bold (\mathbf), Greek vectors \boldsymbol, scalars italic, not bold.
+% Norms are written without the subscript 2. A prime denotes d/d\hat{\ell}.
+\newcommand{\lh}{\hat{\ell}}
+\newcommand{\dl}{\delta\hat{\ell}}
+\newcommand{\nn}{\mathpzc{n}}   % script n: sensor-noise vector
+
+\begin{document}
+
+\begin{center}
+{\LARGE\bfseries Noise Effect on the Flux Calibration Parameter $\hat{\ell}$}
+\end{center}
+\vspace{6pt}
+
+% ---------------------------------------------------------------------------------------
+\section*{Symbol Definitions}
+
+\[
+\left\{
+\begin{aligned}
+&\tilde{\mathbf{b}}_{ij}=\mathbf{b}_{ij}+\nn_{ij}:\ \text{(noisy flux density, $3\times1$)},\qquad
+\nn_{ij}=\begin{bmatrix}n_{ij,x} & n_{ij,y} & n_{ij,z}\end{bmatrix}^{T}\\[6pt]
+&\mathbf{g}_j=\Big(\sum_{i=1}^{N_c}\mathbf{S}_i^{T}\mathbf{S}_i\Big)^{-1}\sum_{i=1}^{N_c}\mathbf{S}_i^{T}\mathbf{b}_{ij}
+=\mathbf{W}^{-1}\mathbf{c}_j:\ \text{(pole charges, $6\times1$)},\;\;
+\mathbf{g}_j=\begin{bmatrix}g_{j1} & \cdots & g_{j6}\end{bmatrix}^{T}\\[2pt]
+&\qquad\text{where: }\
+\mathbf{W}=\sum_{i=1}^{N_c}\mathbf{S}_i^{T}\mathbf{S}_i:\ (6\times6),\qquad
+\mathbf{c}_j=\sum_{i=1}^{N_c}\mathbf{S}_i^{T}\mathbf{b}_{ij}:\ (6\times1)\\[6pt]
+&\tilde{\mathbf{g}}_j=\Big(\sum_{i=1}^{N_c}\mathbf{S}_i^{T}\mathbf{S}_i\Big)^{-1}\sum_{i=1}^{N_c}\mathbf{S}_i^{T}\tilde{\mathbf{b}}_{ij}
+=\mathbf{W}^{-1}\tilde{\mathbf{c}}_j:\ \text{(noisy pole charges, $6\times1$)},\;\;
+\tilde{\mathbf{g}}_j=\begin{bmatrix}\tilde{g}_{j1} & \cdots & \tilde{g}_{j6}\end{bmatrix}^{T}\\[2pt]
+&\qquad\text{where: }\
+\tilde{\mathbf{c}}_j=\sum_{i=1}^{N_c}\mathbf{S}_i^{T}\tilde{\mathbf{b}}_{ij}:\ (6\times1)\\[6pt]
+&\boldsymbol{\varepsilon}_{ij}=\mathbf{b}_{ij}-\mathbf{S}_i\,\mathbf{g}_j:\ \text{(residual, $3\times1$)},\qquad
+\boldsymbol{\varepsilon}_{ij}=\begin{bmatrix}\varepsilon_{ij,x} & \varepsilon_{ij,y} & \varepsilon_{ij,z}\end{bmatrix}^{T}\\[6pt]
+&\tilde{\boldsymbol{\varepsilon}}_{ij}=\tilde{\mathbf{b}}_{ij}-\mathbf{S}_i\,\tilde{\mathbf{g}}_j:\ \text{(noisy residual, $3\times1$)},\qquad
+\tilde{\boldsymbol{\varepsilon}}_{ij}=\begin{bmatrix}\tilde{\varepsilon}_{ij,x} & \tilde{\varepsilon}_{ij,y} & \tilde{\varepsilon}_{ij,z}\end{bmatrix}^{T}
+\end{aligned}
+\right.
+\]
+
+% ---------------------------------------------------------------------------------------
+\section*{{\cjk 一.}}
+
+\[
+\tilde{J}(\lh)=\sum_{j=1}^{N_I}\sum_{i=1}^{N_c}\tilde{\boldsymbol{\varepsilon}}_{ij}^{T}\tilde{\boldsymbol{\varepsilon}}_{ij}
+\]
+Expanding about $\lh_0$ with $\lh=\lh_0+\dl$:
+\[
+\tilde{J}(\lh_0+\dl)=\tilde{J}(\lh_0)+\tilde{J}'(\lh_0)\,\dl+\tfrac12\,\tilde{J}''(\lh_0)\,\dl^{\,2}+O\!\left(\dl^{\,3}\right)
+\]
+Since the minimizer of $\tilde{J}$ is $\lh_0+\dl$, differentiating with respect to $\dl$:
+\[
+\frac{\partial\tilde{J}}{\partial\,\dl}=\tilde{J}'(\lh_0)+\tilde{J}''(\lh_0)\,\dl+O\!\left(\dl^{\,2}\right)=0
+\]
+Neglecting the higher-order terms:
+\[
+\dl\approx-\frac{\tilde{J}'(\lh_0)}{\tilde{J}''(\lh_0)}
+\]
+
+% ---------------------------------------------------------------------------------------
+\section*{{\cjk 二.} Numerator: First Derivative $\tilde{J}'(\hat{\ell}_0)$}
+
+A prime denotes $d/d\lh$.
+\[
+\tilde{J}'=2\sum_{j=1}^{N_I}\sum_{i=1}^{N_c}\tilde{\boldsymbol{\varepsilon}}_{ij}^{T}\tilde{\boldsymbol{\varepsilon}}_{ij}'
+\]
+Since $\tilde{\mathbf{b}}_{ij}$ does not depend on $\lh$:
+\[
+\tilde{\boldsymbol{\varepsilon}}_{ij}'=-\mathbf{S}_i'\,\tilde{\mathbf{g}}_j-\mathbf{S}_i\,\tilde{\mathbf{g}}_j'
+\]
+Differentiating $\mathbf{W}\tilde{\mathbf{g}}_j=\tilde{\mathbf{c}}_j$:
+\[
+\tilde{\mathbf{g}}_j'=\mathbf{W}^{-1}\left(\tilde{\mathbf{c}}_j'-\mathbf{W}'\tilde{\mathbf{g}}_j\right)
+=\mathbf{W}^{-1}\sum_{i=1}^{N_c}\left(\mathbf{S}_i'^{T}\tilde{\boldsymbol{\varepsilon}}_{ij}-\mathbf{S}_i^{T}\mathbf{S}_i'\,\tilde{\mathbf{g}}_j\right)
+\]
+where:
+\[
+\mathbf{W}'=\sum_{i=1}^{N_c}\left(\mathbf{S}_i'^{T}\mathbf{S}_i+\mathbf{S}_i^{T}\mathbf{S}_i'\right),\qquad
+\tilde{\mathbf{c}}_j'=\sum_{i=1}^{N_c}\mathbf{S}_i'^{T}\tilde{\mathbf{b}}_{ij}
+\]
+
+Substituting $\tilde{\mathbf{g}}_j'$ into $\tilde{\boldsymbol{\varepsilon}}_{ij}'$:
+\[
+\tilde{\boldsymbol{\varepsilon}}_{ij}'=-\mathbf{S}_i'\,\tilde{\mathbf{g}}_j-\mathbf{S}_i\mathbf{W}^{-1}\left(\tilde{\mathbf{c}}_j'-\mathbf{W}'\tilde{\mathbf{g}}_j\right)
+\]
+Substituting $\tilde{\boldsymbol{\varepsilon}}_{ij}'$ into $\tilde{J}'$:
+\[
+\tilde{J}'=-2\sum_{j=1}^{N_I}\sum_{i=1}^{N_c}\tilde{\boldsymbol{\varepsilon}}_{ij}^{T}
+\left[\mathbf{S}_i'\,\tilde{\mathbf{g}}_j+\mathbf{S}_i\mathbf{W}^{-1}\left(\tilde{\mathbf{c}}_j'-\mathbf{W}'\tilde{\mathbf{g}}_j\right)\right]
+\]
+
+Expanding:
+\[
+\begin{aligned}
+\tilde{J}'&=-2\sum_{j=1}^{N_I}\sum_{i=1}^{N_c}\tilde{\boldsymbol{\varepsilon}}_{ij}^{T}\mathbf{S}_i'\,\tilde{\mathbf{g}}_j
+-2\sum_{j=1}^{N_I}\sum_{i=1}^{N_c}\tilde{\boldsymbol{\varepsilon}}_{ij}^{T}\mathbf{S}_i\mathbf{W}^{-1}\tilde{\mathbf{c}}_j'\\
+&\quad+2\sum_{j=1}^{N_I}\sum_{i=1}^{N_c}\tilde{\boldsymbol{\varepsilon}}_{ij}^{T}\mathbf{S}_i\mathbf{W}^{-1}\mathbf{W}'\tilde{\mathbf{g}}_j
+\end{aligned}
+\]
+
+According to $\mathbf{W}\tilde{\mathbf{g}}_j=\tilde{\mathbf{c}}_j$:
+\[
+\sum_{i=1}^{N_c}\tilde{\boldsymbol{\varepsilon}}_{ij}^{T}\mathbf{S}_i
+=\Big(\sum_{i=1}^{N_c}\mathbf{S}_i^{T}\tilde{\boldsymbol{\varepsilon}}_{ij}\Big)^{T}
+=\left(\tilde{\mathbf{c}}_j-\mathbf{W}\tilde{\mathbf{g}}_j\right)^{T}=\mathbf{0}^{T}
+\]
+so the last two terms vanish:
+\[
+\tilde{J}'=-2\sum_{j=1}^{N_I}\sum_{i=1}^{N_c}\tilde{\boldsymbol{\varepsilon}}_{ij}^{T}\mathbf{S}_i'\,\tilde{\mathbf{g}}_j
+\]
+
+% ---------------------------------------------------------------------------------------
+\section*{{\cjk 三.} Noise Propagation into $\tilde{\mathbf{g}}_j$ and $\tilde{\boldsymbol{\varepsilon}}_{ij}$}
+
+Substituting $\tilde{\mathbf{b}}_{ij}=\mathbf{b}_{ij}+\nn_{ij}$ into $\tilde{\mathbf{g}}_j$:
+\[
+\tilde{\mathbf{g}}_j=\mathbf{W}^{-1}\sum_{i=1}^{N_c}\mathbf{S}_i^{T}\left(\mathbf{b}_{ij}+\nn_{ij}\right)
+=\underbrace{\mathbf{W}^{-1}\sum_{i=1}^{N_c}\mathbf{S}_i^{T}\mathbf{b}_{ij}}_{\mathbf{g}_j\ (6\times1)}
++\underbrace{\mathbf{W}^{-1}\sum_{i=1}^{N_c}\mathbf{S}_i^{T}\nn_{ij}}_{\delta\mathbf{g}_j\ (6\times1)}
+=\mathbf{g}_j+\delta\mathbf{g}_j
+\]
+
+Substituting $\tilde{\mathbf{b}}_{ij}=\mathbf{b}_{ij}+\nn_{ij}$ and $\tilde{\mathbf{g}}_j=\mathbf{g}_j+\delta\mathbf{g}_j$ into $\tilde{\boldsymbol{\varepsilon}}_{ij}$:
+\[
+\tilde{\boldsymbol{\varepsilon}}_{ij}=\left(\mathbf{b}_{ij}+\nn_{ij}\right)-\mathbf{S}_i\left(\mathbf{g}_j+\delta\mathbf{g}_j\right)
+=\underbrace{\mathbf{b}_{ij}-\mathbf{S}_i\,\mathbf{g}_j}_{\boldsymbol{\varepsilon}_{ij}\ (3\times1)}
++\underbrace{\nn_{ij}-\mathbf{S}_i\,\delta\mathbf{g}_j}_{\delta\boldsymbol{\varepsilon}_{ij}\ (3\times1)}
+=\boldsymbol{\varepsilon}_{ij}+\delta\boldsymbol{\varepsilon}_{ij}
+\]
+
+Substituting $\tilde{\mathbf{g}}_j$ and $\tilde{\boldsymbol{\varepsilon}}_{ij}$ into $\tilde{J}'$, evaluated at $\lh_0$:
+\[
+\begin{aligned}
+\tilde{J}'(\lh_0)&=-2\sum_{j=1}^{N_I}\sum_{i=1}^{N_c}\left(\boldsymbol{\varepsilon}_{ij}+\delta\boldsymbol{\varepsilon}_{ij}\right)^{T}\mathbf{S}_i'\left(\mathbf{g}_j+\delta\mathbf{g}_j\right)\\
+&=\sum_{j=1}^{N_I}\Bigg[\underbrace{-2\sum_{i=1}^{N_c}\boldsymbol{\varepsilon}_{ij}^{T}\mathbf{S}_i'\,\mathbf{g}_j}_{H_{0,j}}
+\;\underbrace{-\,2\sum_{i=1}^{N_c}\left(\delta\boldsymbol{\varepsilon}_{ij}^{T}\mathbf{S}_i'\,\mathbf{g}_j+\boldsymbol{\varepsilon}_{ij}^{T}\mathbf{S}_i'\,\delta\mathbf{g}_j\right)}_{H_{1,j}}
+\;\underbrace{-\,2\sum_{i=1}^{N_c}\delta\boldsymbol{\varepsilon}_{ij}^{T}\mathbf{S}_i'\,\delta\mathbf{g}_j}_{H_{2,j}}\Bigg]\\
+&=\sum_{j=1}^{N_I}\left(H_{0,j}+H_{1,j}+H_{2,j}\right)
+\end{aligned}
+\]
+where $H_{k,j}$ $(k=0,1,2)$: ($k$-th order term in the noise of the $j$-th excitation, scalar).
+
+$H_{0,j}$ contains no noise; it is $\tilde{J}'$ with $\tilde{\mathbf{b}}_{ij}$ replaced by $\mathbf{b}_{ij}$.
+Since $\lh_0$ is the minimizer of the noise-free cost,
+\[
+\sum_{j=1}^{N_I}H_{0,j}=J'(\lh_0)=0
+\]
+so
+\[
+\tilde{J}'(\lh_0)=\sum_{j=1}^{N_I}\left(H_{1,j}+H_{2,j}\right)
+\]
+
+% ---------------------------------------------------------------------------------------
+\section*{{\cjk 四.} Denominator: Second Derivative $\tilde{J}''(\hat{\ell}_0)$}
+
+Differentiating $\tilde{J}'=2\sum_{j}\sum_{i}\tilde{\boldsymbol{\varepsilon}}_{ij}^{T}\tilde{\boldsymbol{\varepsilon}}_{ij}'$:
+\[
+\tilde{J}''=2\sum_{j=1}^{N_I}\sum_{i=1}^{N_c}\left(\tilde{\boldsymbol{\varepsilon}}_{ij}'^{T}\tilde{\boldsymbol{\varepsilon}}_{ij}'+\tilde{\boldsymbol{\varepsilon}}_{ij}^{T}\tilde{\boldsymbol{\varepsilon}}_{ij}''\right)
+\]
+
+Differentiating $\tilde{\boldsymbol{\varepsilon}}_{ij}'=-\mathbf{S}_i'\,\tilde{\mathbf{g}}_j-\mathbf{S}_i\,\tilde{\mathbf{g}}_j'$:
+\[
+\tilde{\boldsymbol{\varepsilon}}_{ij}''
+=-\left(\mathbf{S}_i''\,\tilde{\mathbf{g}}_j+\mathbf{S}_i'\,\tilde{\mathbf{g}}_j'\right)-\left(\mathbf{S}_i'\,\tilde{\mathbf{g}}_j'+\mathbf{S}_i\,\tilde{\mathbf{g}}_j''\right)
+=-\mathbf{S}_i''\,\tilde{\mathbf{g}}_j-2\,\mathbf{S}_i'\,\tilde{\mathbf{g}}_j'-\mathbf{S}_i\,\tilde{\mathbf{g}}_j''
+\]
+
+Substituting $\tilde{\boldsymbol{\varepsilon}}_{ij}''$ into $\tilde{J}''$ and expanding:
+\[
+\begin{aligned}
+\tilde{J}''&=2\sum_{j=1}^{N_I}\sum_{i=1}^{N_c}\|\tilde{\boldsymbol{\varepsilon}}_{ij}'\|^{2}
+-2\sum_{j=1}^{N_I}\sum_{i=1}^{N_c}\tilde{\boldsymbol{\varepsilon}}_{ij}^{T}\mathbf{S}_i''\,\tilde{\mathbf{g}}_j\\
+&\quad-4\sum_{j=1}^{N_I}\sum_{i=1}^{N_c}\tilde{\boldsymbol{\varepsilon}}_{ij}^{T}\mathbf{S}_i'\,\tilde{\mathbf{g}}_j'
+-2\sum_{j=1}^{N_I}\sum_{i=1}^{N_c}\tilde{\boldsymbol{\varepsilon}}_{ij}^{T}\mathbf{S}_i\,\tilde{\mathbf{g}}_j''
+\end{aligned}
+\]
+
+According to $\mathbf{W}\tilde{\mathbf{g}}_j=\tilde{\mathbf{c}}_j$,
+$\sum_{i}\tilde{\boldsymbol{\varepsilon}}_{ij}^{T}\mathbf{S}_i=\mathbf{0}^{T}$, so the last term vanishes:
+\[
+\tilde{J}''=2\sum_{j=1}^{N_I}\sum_{i=1}^{N_c}\|\tilde{\boldsymbol{\varepsilon}}_{ij}'\|^{2}
+-2\sum_{j=1}^{N_I}\sum_{i=1}^{N_c}\tilde{\boldsymbol{\varepsilon}}_{ij}^{T}\mathbf{S}_i''\,\tilde{\mathbf{g}}_j
+-4\sum_{j=1}^{N_I}\sum_{i=1}^{N_c}\tilde{\boldsymbol{\varepsilon}}_{ij}^{T}\mathbf{S}_i'\,\tilde{\mathbf{g}}_j'
+\]
+
+Substituting $\tilde{\mathbf{b}}_{ij}=\mathbf{b}_{ij}+\nn_{ij}$ and $\tilde{\mathbf{g}}_j=\mathbf{g}_j+\delta\mathbf{g}_j$ into $\tilde{\mathbf{g}}_j'$:
+\[
+\begin{aligned}
+\tilde{\mathbf{g}}_j'&=\mathbf{W}^{-1}\left(\tilde{\mathbf{c}}_j'-\mathbf{W}'\tilde{\mathbf{g}}_j\right)
+=\mathbf{W}^{-1}\Big[\sum_{i=1}^{N_c}\mathbf{S}_i'^{T}\left(\mathbf{b}_{ij}+\nn_{ij}\right)-\mathbf{W}'\left(\mathbf{g}_j+\delta\mathbf{g}_j\right)\Big]\\
+&=\underbrace{\mathbf{W}^{-1}\Big(\sum_{i=1}^{N_c}\mathbf{S}_i'^{T}\mathbf{b}_{ij}-\mathbf{W}'\mathbf{g}_j\Big)}_{\mathbf{g}_j'\ (6\times1)}
++\underbrace{\mathbf{W}^{-1}\Big(\sum_{i=1}^{N_c}\mathbf{S}_i'^{T}\nn_{ij}-\mathbf{W}'\delta\mathbf{g}_j\Big)}_{\delta\mathbf{g}_j'\ (6\times1)}
+=\mathbf{g}_j'+\delta\mathbf{g}_j'
+\end{aligned}
+\]
+
+Substituting $\delta\mathbf{g}_j=\mathbf{W}^{-1}\sum_{i}\mathbf{S}_i^{T}\nn_{ij}$ into $\delta\mathbf{g}_j'$:
+\[
+\delta\mathbf{g}_j'=\mathbf{W}^{-1}\Big(\sum_{i=1}^{N_c}\mathbf{S}_i'^{T}\nn_{ij}-\mathbf{W}'\mathbf{W}^{-1}\sum_{i=1}^{N_c}\mathbf{S}_i^{T}\nn_{ij}\Big)
+=\mathbf{W}^{-1}\sum_{i=1}^{N_c}\left(\mathbf{S}_i'^{T}-\mathbf{W}'\mathbf{W}^{-1}\mathbf{S}_i^{T}\right)\nn_{ij}
+\]
+
+Substituting $\tilde{\mathbf{g}}_j=\mathbf{g}_j+\delta\mathbf{g}_j$ and $\tilde{\mathbf{g}}_j'=\mathbf{g}_j'+\delta\mathbf{g}_j'$ into $\tilde{\boldsymbol{\varepsilon}}_{ij}'$:
+\[
+\tilde{\boldsymbol{\varepsilon}}_{ij}'=-\mathbf{S}_i'\left(\mathbf{g}_j+\delta\mathbf{g}_j\right)-\mathbf{S}_i\left(\mathbf{g}_j'+\delta\mathbf{g}_j'\right)
+=\underbrace{-\mathbf{S}_i'\,\mathbf{g}_j-\mathbf{S}_i\,\mathbf{g}_j'}_{\boldsymbol{\varepsilon}_{ij}'\ (3\times1)}
+\;\underbrace{-\,\mathbf{S}_i'\,\delta\mathbf{g}_j-\mathbf{S}_i\,\delta\mathbf{g}_j'}_{\delta\boldsymbol{\varepsilon}_{ij}'\ (3\times1)}
+=\boldsymbol{\varepsilon}_{ij}'+\delta\boldsymbol{\varepsilon}_{ij}'
+\]
+Substituting all decompositions into $\tilde{J}''$, evaluated at $\lh_0$:
+\[
+\begin{aligned}
+\tilde{J}''(\lh_0)&=2\sum_{j=1}^{N_I}\sum_{i=1}^{N_c}\|\boldsymbol{\varepsilon}_{ij}'+\delta\boldsymbol{\varepsilon}_{ij}'\|^{2}
+-2\sum_{j=1}^{N_I}\sum_{i=1}^{N_c}\left(\boldsymbol{\varepsilon}_{ij}+\delta\boldsymbol{\varepsilon}_{ij}\right)^{T}\mathbf{S}_i''\left(\mathbf{g}_j+\delta\mathbf{g}_j\right)\\
+&\quad-4\sum_{j=1}^{N_I}\sum_{i=1}^{N_c}\left(\boldsymbol{\varepsilon}_{ij}+\delta\boldsymbol{\varepsilon}_{ij}\right)^{T}\mathbf{S}_i'\left(\mathbf{g}_j'+\delta\mathbf{g}_j'\right)\\
+&=\sum_{j=1}^{N_I}\Bigg[\underbrace{2\sum_{i=1}^{N_c}\|\boldsymbol{\varepsilon}_{ij}'\|^{2}
+-2\sum_{i=1}^{N_c}\boldsymbol{\varepsilon}_{ij}^{T}\mathbf{S}_i''\,\mathbf{g}_j
+-4\sum_{i=1}^{N_c}\boldsymbol{\varepsilon}_{ij}^{T}\mathbf{S}_i'\,\mathbf{g}_j'}_{D_{0,j}}\\
+&\qquad+\underbrace{4\sum_{i=1}^{N_c}\boldsymbol{\varepsilon}_{ij}'^{T}\delta\boldsymbol{\varepsilon}_{ij}'
+-2\sum_{i=1}^{N_c}\left(\delta\boldsymbol{\varepsilon}_{ij}^{T}\mathbf{S}_i''\,\mathbf{g}_j+\boldsymbol{\varepsilon}_{ij}^{T}\mathbf{S}_i''\,\delta\mathbf{g}_j\right)
+-4\sum_{i=1}^{N_c}\left(\delta\boldsymbol{\varepsilon}_{ij}^{T}\mathbf{S}_i'\,\mathbf{g}_j'+\boldsymbol{\varepsilon}_{ij}^{T}\mathbf{S}_i'\,\delta\mathbf{g}_j'\right)}_{D_{1,j}}\\
+&\qquad+\underbrace{2\sum_{i=1}^{N_c}\|\delta\boldsymbol{\varepsilon}_{ij}'\|^{2}
+-2\sum_{i=1}^{N_c}\delta\boldsymbol{\varepsilon}_{ij}^{T}\mathbf{S}_i''\,\delta\mathbf{g}_j
+-4\sum_{i=1}^{N_c}\delta\boldsymbol{\varepsilon}_{ij}^{T}\mathbf{S}_i'\,\delta\mathbf{g}_j'}_{D_{2,j}}\Bigg]\\
+&=\sum_{j=1}^{N_I}\left(D_{0,j}+D_{1,j}+D_{2,j}\right)
+\end{aligned}
+\]
+where $D_{k,j}$ $(k=0,1,2)$: ($k$-th order term in the noise of the $j$-th excitation, scalar).
+
+% ---------------------------------------------------------------------------------------
+\section*{{\cjk 五.} Linearization in the Noise}
+
+Substituting $\tilde{J}'(\lh_0)$ and $\tilde{J}''(\lh_0)$ into $\dl$:
+\[
+\dl\approx-\frac{\tilde{J}'(\lh_0)}{\tilde{J}''(\lh_0)}
+=-\frac{\sum_{j}\left(H_{1,j}+H_{2,j}\right)}{\sum_{j}\left(D_{0,j}+D_{1,j}+D_{2,j}\right)}
+\]
+Let $H_k=\sum_{j}H_{k,j}$ and $D_k=\sum_{j}D_{k,j}$ $(k=0,1,2)$:
+\[
+\dl\approx-\frac{H_1+H_2}{D_0+D_1+D_2}=-\frac{H_1+H_2}{D_0}\cdot\frac{1}{1+x},\qquad x=\frac{D_1+D_2}{D_0}
+\]
+Since $x$ is small, $\frac{1}{1+x}=1-x+x^{2}-\cdots$, and grouping by order in the noise:
+\[
+\dl=\underbrace{-\frac{H_1}{D_0}}_{O(\nn)}
++\underbrace{\left(-\frac{H_2}{D_0}+\frac{H_1D_1}{D_0^{2}}\right)}_{O(\nn^{2})}+O\!\left(\nn^{3}\right)
+\]
+Keeping only the first-order term:
+\[
+\dl\approx-\frac{H_1}{D_0}=-\frac{\sum_{j}H_{1,j}}{\sum_{j}D_{0,j}}
+\]
+
+From $H_{1,j}$:
+\[
+H_1=\sum_{j=1}^{N_I}H_{1,j}=-2\sum_{j=1}^{N_I}\sum_{i=1}^{N_c}\left(\delta\boldsymbol{\varepsilon}_{ij}^{T}\mathbf{S}_i'\,\mathbf{g}_j+\boldsymbol{\varepsilon}_{ij}^{T}\mathbf{S}_i'\,\delta\mathbf{g}_j\right)
+\]
+Substituting $\delta\boldsymbol{\varepsilon}_{ij}=\nn_{ij}-\mathbf{S}_i\,\delta\mathbf{g}_j$
+(and $\boldsymbol{\varepsilon}_{ij}^{T}\mathbf{S}_i'\,\delta\mathbf{g}_j=\delta\mathbf{g}_j^{T}\mathbf{S}_i'^{T}\boldsymbol{\varepsilon}_{ij}$, a scalar):
+\[
+\begin{aligned}
+H_1&=-2\sum_{j=1}^{N_I}\sum_{i=1}^{N_c}\left(\nn_{ij}^{T}\mathbf{S}_i'\,\mathbf{g}_j-\delta\mathbf{g}_j^{T}\mathbf{S}_i^{T}\mathbf{S}_i'\,\mathbf{g}_j+\delta\mathbf{g}_j^{T}\mathbf{S}_i'^{T}\boldsymbol{\varepsilon}_{ij}\right)\\
+&=-2\sum_{j=1}^{N_I}\Big[\sum_{i=1}^{N_c}\nn_{ij}^{T}\mathbf{S}_i'\,\mathbf{g}_j
++\delta\mathbf{g}_j^{T}\underbrace{\sum_{i=1}^{N_c}\left(\mathbf{S}_i'^{T}\boldsymbol{\varepsilon}_{ij}-\mathbf{S}_i^{T}\mathbf{S}_i'\,\mathbf{g}_j\right)}_{\mathbf{W}\mathbf{g}_j'}\Big]
+\end{aligned}
+\]
+where $\mathbf{g}_j'=\mathbf{W}^{-1}\sum_{i}\left(\mathbf{S}_i'^{T}\boldsymbol{\varepsilon}_{ij}-\mathbf{S}_i^{T}\mathbf{S}_i'\,\mathbf{g}_j\right)$ has the same form as $\tilde{\mathbf{g}}_j'$.
+
+Substituting $\delta\mathbf{g}_j=\mathbf{W}^{-1}\sum_{i}\mathbf{S}_i^{T}\nn_{ij}$ ($\mathbf{W}$ symmetric):
+\[
+\delta\mathbf{g}_j^{T}\mathbf{W}\mathbf{g}_j'=\Big(\sum_{i=1}^{N_c}\nn_{ij}^{T}\mathbf{S}_i\Big)\mathbf{W}^{-1}\mathbf{W}\mathbf{g}_j'=\sum_{i=1}^{N_c}\nn_{ij}^{T}\mathbf{S}_i\,\mathbf{g}_j'
+\]
+so, with $\boldsymbol{\varepsilon}_{ij}'=-\mathbf{S}_i'\,\mathbf{g}_j-\mathbf{S}_i\,\mathbf{g}_j'$:
+\[
+H_1=-2\sum_{j=1}^{N_I}\sum_{i=1}^{N_c}\nn_{ij}^{T}\left(\mathbf{S}_i'\,\mathbf{g}_j+\mathbf{S}_i\,\mathbf{g}_j'\right)
+=2\sum_{j=1}^{N_I}\sum_{i=1}^{N_c}\boldsymbol{\varepsilon}_{ij}'^{T}\nn_{ij}
+\]
+
+From $D_{0,j}$:
+\[
+D_0=\sum_{j=1}^{N_I}D_{0,j}
+=2\sum_{j=1}^{N_I}\sum_{i=1}^{N_c}\|\boldsymbol{\varepsilon}_{ij}'\|^{2}
+-2\sum_{j=1}^{N_I}\sum_{i=1}^{N_c}\boldsymbol{\varepsilon}_{ij}^{T}\mathbf{S}_i''\,\mathbf{g}_j
+-4\sum_{j=1}^{N_I}\sum_{i=1}^{N_c}\boldsymbol{\varepsilon}_{ij}^{T}\mathbf{S}_i'\,\mathbf{g}_j'
+\]
+This is $\tilde{J}''$ with $\tilde{\mathbf{b}}_{ij}$ replaced by $\mathbf{b}_{ij}$, i.e.\ the second derivative of the noise-free cost:
+\[
+D_0=J''(\lh_0)
+\]
+
+Substituting $H_1$ and $D_0$ into $\dl\approx-H_1/D_0$:
+\[
+\dl\approx-\frac{2}{J''(\lh_0)}\sum_{j=1}^{N_I}\sum_{i=1}^{N_c}\boldsymbol{\varepsilon}_{ij}'^{T}\nn_{ij}
+=\boldsymbol{\mathcal{E}}^{T}\mathbf{N}
+\]
+where:
+\[
+\boldsymbol{\mathcal{E}}=-\frac{2}{J''(\lh_0)}
+\begin{bmatrix}\boldsymbol{\varepsilon}_{11}'\\ \boldsymbol{\varepsilon}_{21}'\\ \vdots\\ \boldsymbol{\varepsilon}_{N_cN_I}'\end{bmatrix}:\ (3N_cN_I\times1),\qquad
+\mathbf{N}=\begin{bmatrix}\nn_{11}\\ \nn_{21}\\ \vdots\\ \nn_{N_cN_I}\end{bmatrix}:\ (3N_cN_I\times1)
+\]
+
+% ---------------------------------------------------------------------------------------
+\section*{{\cjk 六.} Standard Deviation of $\hat{\ell}$}
+
+Noise assumptions:
+\[
+E\left[\nn_{ij}\right]=\mathbf{0},\qquad
+\operatorname{Cov}\left[\nn_{ij}\right]=\sigma^{2}\mathbf{E}_3
+\]
+and $\nn_{ij}$ are independent for different $i$ and $j$,
+where $\sigma$ is the noise standard deviation of each component and $\mathbf{E}_3$ is the $3\times3$ identity matrix.
+
+Taking the variance of $\dl$:
+\[
+\sigma_{\dl}^{2}=\sigma_{\lh}^{2}=\operatorname{Var}\Big(-\frac{2}{J''(\lh_0)}\sum_{j=1}^{N_I}\sum_{i=1}^{N_c}\boldsymbol{\varepsilon}_{ij}'^{T}\nn_{ij}\Big)
+\]
+Since $\operatorname{Var}(cX)=c^{2}\operatorname{Var}(X)$ for a constant $c$, the coefficient comes out squared:
+\[
+\sigma_{\lh}^{2}=\frac{4}{J''(\lh_0)^{2}}\operatorname{Var}\Big(\sum_{j=1}^{N_I}\sum_{i=1}^{N_c}\boldsymbol{\varepsilon}_{ij}'^{T}\nn_{ij}\Big)
+\]
+Since the $\nn_{ij}$ are independent, the variance of the sum is the sum of the variances:
+\[
+\sigma_{\lh}^{2}=\frac{4}{J''(\lh_0)^{2}}\sum_{j=1}^{N_I}\sum_{i=1}^{N_c}\operatorname{Var}\left(\boldsymbol{\varepsilon}_{ij}'^{T}\nn_{ij}\right)
+\]
+Since $\operatorname{Var}\left(\boldsymbol{\varepsilon}_{ij}'^{T}\nn_{ij}\right)=\boldsymbol{\varepsilon}_{ij}'^{T}\operatorname{Cov}\left[\nn_{ij}\right]\boldsymbol{\varepsilon}_{ij}'=\sigma^{2}\|\boldsymbol{\varepsilon}_{ij}'\|^{2}$:
+\[
+\sigma_{\lh}^{2}=\frac{4\sigma^{2}}{J''(\lh_0)^{2}}\sum_{j=1}^{N_I}\sum_{i=1}^{N_c}\|\boldsymbol{\varepsilon}_{ij}'\|^{2}
+\]
+Taking the square root ($J''(\lh_0)>0$ at the minimizer):
+\[
+\sigma_{\lh}=\sigma_{\dl}=\underbrace{\frac{2\sqrt{\sum_{j=1}^{N_I}\sum_{i=1}^{N_c}\|\boldsymbol{\varepsilon}_{ij}'\|^{2}}}{J''(\lh_0)}}_{\eta_{\lh}}\,\sigma
+=\eta_{\lh}\,\sigma
+\]
+where $\eta_{\lh}$: (sensitivity of $\lh$ to the sensor noise, $\mu\mathrm{m}/\mathrm{mT}$).
+
+\end{document}
