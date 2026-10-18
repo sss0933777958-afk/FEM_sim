@@ -25,7 +25,7 @@
 | `figures/` | 論文圖與其繪圖腳本（`paper_fig/`、`paper_fig_plot/`） |
 | `reference/` | LaTeX 原稿 + PDF + 論文 |
 
-MATLAB 校正包結構：`config/`（模型設定）、`function/` + `main/`（校正求解）、`data/`（校正結果 `.mat`，只留最終定案版）、`results/`（PDF）、`utils/scripts/<model>/`（額外計算的腳本）、`utils/data/<model>/`（額外計算的結果；Flux/Maxwell 已依模型分夾，其餘仍是 `utils/{scripts,data}/`）、`plot/`（只畫圖）、`figures/<model>/{current,voltage}/`。與校正無關的分析一律走 `utils/scripts/<model>` → `utils/data/<model>` → `plot`，不另開暫存資料夾。
+MATLAB 校正包結構：`config/`（模型設定）、`function/` + `main/`（校正求解）、`data/`（校正結果 `.mat`，只留最終定案版）、`results/`（PDF）、`utils/scripts/<model>/`（額外計算的腳本）、`utils/data/<model>/`（額外計算的結果；Flux/Maxwell、Force/Maxwell 已依模型分夾，兩個 APDL 包是 `utils/<model>/`）、`plot/`（只畫圖）、`figures/<model>/<極型>/`（Maxwell 兩包依極型分 `hexapole`、`single_pole`、`pair_pole`，不分 current / voltage；APDL 兩包是 `{current,voltage}/`）。與校正無關的分析一律走 `utils/scripts/<model>` → `utils/data/<model>` → `plot`，不另開暫存資料夾。
 
 Maxwell 專案在 repo 外：`D:\Maxwell_sim\<model>\{cad,project,scripts,export,materials}\`（`export/` 是匯出的 `.fld` 場）。
 

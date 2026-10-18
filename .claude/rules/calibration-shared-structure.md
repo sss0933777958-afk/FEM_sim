@@ -10,12 +10,13 @@ function/                  校正求解函式
 main/main.m                driver（頂部旗標切換 model / variant / base / USE_BIAS）
 utils/scripts/<model>/      額外計算的腳本：讀校正 .mat → 運算 → 存到 utils/data/<model>/
 utils/data/<model>/         額外計算的結果 .mat
-                            （Flux/Maxwell 已依模型分夾；其餘三包仍是 utils/scripts/、utils/data/）
+                            （Flux/Maxwell、Force/Maxwell 已依模型分夾；兩個 APDL 包是 utils/<model>/）
 plot/                       只做繪圖的腳本
 common_path/                路徑 resolver
 data/<model>/               校正結果 .mat，只留最終定案的版本（自描述：結果 + 設定條件）
 results/<model>/{single,eighteen}/   PDF（single = USE_BIAS false、eighteen = true）
-figures/<model>/{current,voltage}/   圖檔（不再分 single / eighteen）
+figures/<model>/<極型>/       圖檔：Maxwell 依極型分 hexapole / single_pole / pair_pole，不分 current / voltage、
+                            不分 single / eighteen（APDL 兩包是 figures/<model>/{current,voltage}/）
 ```
 
 資料流：`main + function`（校正 → `data/`）→ `utils/scripts/<model>/`（運算 → `utils/data/<model>/`）→ `plot/`（→ `figures/`）。

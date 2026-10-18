@@ -3,7 +3,7 @@
 ```
 main/main.m + function/   校正 → 存 data/<model>/.mat
 utils/scripts/<model>/    讀 .mat → 運算 → 存 utils/data/<model>/
-plot/                     讀 .mat → 畫圖 → 存 figures/<model>/{current,voltage}/
+plot/                     讀 .mat → 畫圖 → 存 figures/<model>/<極型>/
 ```
 
 `plot/` 底下的腳本（及任何 `plot_*.m`）只准：載入既有 `.mat`、取值、畫圖並輸出圖檔。

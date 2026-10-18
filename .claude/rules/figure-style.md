@@ -9,16 +9,25 @@
 5. 兩軸 tick 彼此等距，且與起點、終點的距離也相等；預設三根（視野平分成 4 段）。
 6. 圖片實體尺寸為正方形。
 7. 圖例框線加粗，與座標框同粗。
-8. 上下堆疊的多面板圖：上層不標水平軸標題、刻度數字與端點數字（刻度線照畫）；上下兩層 `xlim`、`XTick` 必須相同。
-9. 水平軸刻度若是小數，只到小數點後一位（刻度間距取 0.1 的整數倍）。
-10. 單一系列不畫圖例；多系列一定要畫。
-11. 場圖畫真實 FEM 節點原值，不內插。
+8. 水平軸刻度若是小數，只到小數點後一位（刻度間距取 0.1 的整數倍）。
+9. 單一系列不畫圖例；多系列一定要畫。
+10. 場圖畫真實 FEM 節點原值，不內插。
+11. 顏色：用到藍色一律 `[0.05 0.10 0.95]`，用到紅色一律 `[0.85 0.10 0.10]`。
+12. 直方圖的長條不加邊框。
+13. 軸標題第一個英文字母大寫（如 `Cost`、`Distance from tip`、`Percentage count`）；物理符號（x、z、ℓ̂、b_x）維持原本大小寫。
+14. 顏色表（colorbar）用 `jet`、線性刻度，範圍依實際資料（不從 0 起算）；起點與終點都標數字，刻度等距，數值盡量是整數；顏色表外框與座標框同粗。
+15. 圖例位置：框內右上角放得下（不蓋到資料）就放框內右上角；放不下就放到框上方。
+16. 三維圖的邊框：立方體 12 條邊只畫 9 條，拿掉交會在最靠近鏡頭那個角的 3 條，三軸等比例。
 
 ## 做法
 
 - 字級分三個變數放腳本頂部：`FS`=60（刻度）、`FSLEG`=45（圖例）、`FSLAB`（軸標題，沿用原值）。數值集中成常數，不要散寫。
 - 線寬：座標框 `LWBOX`=5.0；圖例框 `lg.LineWidth = LWBOX`；資料線與 marker 依同比例放大；`lg.ItemTokenSize = [55 25]`。
+- 顏色常數放腳本頂部：`CB = [0.05 0.10 0.95];  CR = [0.85 0.10 0.10];`；直方圖 `bar(..., 'EdgeColor','none')`。
 - 先定等距刻度、再由刻度反推軸範圍（`lim = [tk(1)-s, tk(end)+s]`）；水平軸兩端數字用 `text` 補，不放進 `XTick`。
+- 圖例位置：先用 `'Location','northeast'`，出圖後確認沒蓋到資料點或曲線；蓋到就改 `'northoutside'`（可配 `'NumColumns'` 橫排），並把 axes 高度縮小讓圖例與座標框都留在畫布內。
+- 三維邊框：`box(ax,'off')`、`grid(ax,'off')`、`daspect(ax,[1 1 1])`，先 `view` 再用 `draw_box_`（找 `campos` 最近的角點，畫其餘 9 條邊，線寬 `LWBOX`）；`ax.Clipping='off'`、`TickLength [0.025 0.025]`、三軸刻度字 `TickLabelRotation 0`。範本：`matlab/Force/Maxwell/plot/long2016_hexapole_halfcut/sph_shell.m`。
+- 顏色表：`colormap(ax, jet(256))`；範圍與刻度用 `cbar_ticks_([min max])`——候選步長 s ∈ {…, 1 2 3 5 10 20 30 50 …}，`lo = floor(min/s)*s`、`hi = ceil(max/s)*s`，取分段數 3～6 中範圍最窄的；`cb.Limits = [lo hi]`、`cb.Ticks = lo:s:hi`（含兩端）；`cb.LineWidth = LWBOX`、刻度朝內（預設）、`FontSize FS` 加粗；標題用 latex、`FSLAB`。範本：`matlab/Force/Maxwell/plot/long2016_hexapole_halfcut/err_map.m`。
 - 縱軸步長可用兩位有效數字（如 1.1、1.7）以減少上方留白；但整齊步長多浪費 ≤ 20% 時用整齊步長。
 - 字體：刻度、圖例、端點 `text` 用預設 tex interpreter 加 `FontWeight bold`；**只有軸標題用 latex**（latex 不吃 `FontWeight`）。
 - 匯出：畫布用英吋、約 14.5 in 見方；用 `print` 加明確 `PaperPosition`，不要用 `exportgraphics`（會裁白邊、破壞正方形）。建 axes 後關掉 `ax.Toolbar`、`ax.Interactions`。
