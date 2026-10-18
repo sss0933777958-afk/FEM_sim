@@ -55,8 +55,8 @@ KINKS = 1;                  % 'res' only: which cell-face families to mark, [] =
 
 HERE = fileparts(mfilename('fullpath'));
 FMX  = fileparts(fileparts(HERE));
-DAT  = fullfile(FMX,'utils','data');
-FIG  = fullfile(FMX,'figures','long2016_hexapole_halfcut','current');
+DAT  = fullfile(FMX,'utils','data','long2016_hexapole_halfcut');
+FIG  = fullfile(FMX,'figures','long2016_hexapole_halfcut', 'hexapole');
 
 QTY = validatestring(QTY, {'bb','grad','gradp','gradsm','bpts','bbp','res','resp','cmp'}, mfilename, 'QTY');
 switch MESH

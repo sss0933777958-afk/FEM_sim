@@ -52,6 +52,9 @@ function cal = load_flux_calib(model, geom, matname, base)
     FLUX  = fullfile(MROOT, 'Flux', 'Maxwell');
     assert(isfolder(FLUX), 'load_flux_calib:noFlux', 'Flux/Maxwell not found at %s', FLUX);
     addpath(fullfile(FLUX, 'function'));             % model_config lives here
+    if isfolder(fullfile(FLUX, 'function', 'hexapole'))
+        addpath(fullfile(FLUX, 'function', 'hexapole'));   % [MODIFIED 2026-10-07] Flux functions moved here
+    end
 
     datadir = fullfile(FLUX, 'data', model, '.mat');
     assert(isfolder(datadir), 'load_flux_calib:noData', ...

@@ -67,9 +67,7 @@ function [b, grad, info] = sph_field(R, FEM, opts)
 %     I is the excitation vector (NC x 1); it defaults to the first excitation.
 %     The FIELD superposes, so one set of coefficients per excitation is enough
 %     and c(I) = sum_k I_k c_k; the FORCE does not, being quadratic in b.
-%     WARNING  the signatures match RBF_FIELD but the DEFAULTS do not: rbf_field
-%     returns d(b.b)/dx_j when `what` is omitted, this one returns the Jacobian.
-%     Always pass `what` explicitly when comparing the two, e.g.
+%     Always pass `what` explicitly, e.g.
 %         dU = grad(Pq, I, 'du');   F_j = 0.5 * mgB * UF * dU(:,j)      [pN]
 %
 %   OUTPUT 3  info

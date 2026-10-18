@@ -59,12 +59,19 @@ function emit_force_results(matfile)
     % parameters only: no gauge relations, no measurement prose, no RMS line,
     % no reference block. The selfcheck layout keeps them, being a comparison.
     if ~SPH
-    fprintf(fid, '\\[ {}^{M}g_{B} = %.4g~\\mathrm{A}\\,\\mu\\mathrm{m}^{2}/\\mathrm{mT} \\]\n', rec.mgB);
+    fprintf(fid, '\\[ {}^{M}\\hat{g}_{B} = %.4g~\\mathrm{A}\\,\\mu\\mathrm{m}^{2}/\\mathrm{mT} \\]\n', rec.mgB);
 
     % The two relations that define the gauge. F g is the whole prefactor, so
     % the square root sits on F H, not inside F g.
-    fprintf(fid, '\\[ %s = \\frac{U_{F}\\,{}^{M}g_{B}}{2\\hat{\\ell}}\\bigl(%s\\bigr)^{2}, \\qquad U_{F} = %g \\]\n', ...
+    % [MODIFIED 2026-10-06 user decision] Voltage: F g_V is defined as in the CHM force document,
+    % (6/5 h11)^2 with h11 = F H_V(1,1) from the force fit; current keeps the flux-implied form.
+    if strcmp(rec.base, 'voltage')
+    fprintf(fid, '\\[ %s = \\Bigl(\\tfrac{6}{5}\\,h_{11}\\Bigr)^{2}, \\qquad h_{11} = %s(1,1) \\]\n', ...
+            lb.gF_tex, lb.H_tex);
+    else
+    fprintf(fid, '\\[ %s = \\frac{U_{F}\\,{}^{M}\\hat{g}_{B}}{2\\hat{\\ell}}\\bigl(%s\\bigr)^{2}, \\qquad U_{F} = %g \\]\n', ...
             lb.gF_tex, lb.gB_tex, rec.UF);
+    end
     fprintf(fid, '\\[ %s = \\sqrt{%s}\\;%s \\]\n', lb.H_tex, lb.gF_tex, lb.M_tex);
     end
 
