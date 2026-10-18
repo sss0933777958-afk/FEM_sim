@@ -17,7 +17,7 @@ clear;
 here = fileparts(mfilename('fullpath'));                   % .../plot/zhi_peng
 CAL  = fileparts(fileparts(here));                         % .../Flux/Maxwell
 MATD = fullfile(CAL, 'data', 'zhi_peng', '.mat');
-OUT  = fullfile(CAL, 'figures', 'zhi_peng');
+OUT  = fullfile(CAL, 'figures', 'zhi_peng', 'pair_pole');
 if ~exist(OUT, 'dir'), mkdir(OUT); end
 
 LAB_L = [-0.70  0.02];                                     % distance-label position [mm], left panel: free air under the plate

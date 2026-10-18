@@ -1,7 +1,7 @@
 % sp_axis_fit.m -- 1-D charge fit on the 17 axis samples: H(x) = g*I/(x - x_c)^2, data = |b_x| [mT] as exported.
 % cost(x_c, g) = sum_i (|b_x(x_i)| - H(x_i))^2 ; g is linear -> closed form for each x_c, 1-D search on x_c.
 if ~exist('CASE','var'), CASE = 'single_pole'; end   % 'single_pole' | 'pair_pole'
-if ~exist('SAMP','var'), SAMP = 'tip'; end   % 'tip' | 'c500' (see sp_axis_calc.m)
+if ~exist('SAMP','var'), SAMP = 'tip'; end   % 'tip' | 'c500' | 'cyl' (see sp_axis_calc.m)
 clearvars -except CASE SAMP;  close all;
 SFX = '';  if ~strcmp(SAMP, 'tip'), SFX = ['_' SAMP]; end
 here = fileparts(mfilename('fullpath'));  CALROOT = fileparts(fileparts(fileparts(here)));   % .../Flux/Maxwell
@@ -26,5 +26,6 @@ fprintf('x_c = %.4f um   g = %.6g mT*um^2/A (= %.6g mT*mm^2/A)   cost = %.6g mT^
         xc, g, g*1e-6, J, sqrt(J/numel(y)));
 fprintf('%8s %10s %10s %10s\n', 'd[um]', 'data', 'H', 'err');
 fprintf('%8.0f %10.4f %10.4f %10.4f\n', [-xi, y, g*I./(xi-xc).^2, r].');
-dc = linspace(0, 400, 801).';  Hc = g * I ./ (-dc - xc).^2;          % curve vs distance from the tip
+DMAX = 400;  if strcmp(SAMP, 'cyl'), DMAX = 2000; end   % curve range [um] (cyl samples reach 1700 um)
+dc = linspace(0, DMAX, 801).';  Hc = g * I ./ (-dc - xc).^2;          % curve vs distance from the tip
 save(MAT, 'xc', 'g', 'J', 'r', 'dc', 'Hc', '-append');

@@ -14,7 +14,7 @@ clear;
 here = fileparts(mfilename('fullpath'));                   % .../plot/zhi_peng
 CAL  = fileparts(fileparts(here));                         % .../Flux/Maxwell
 MATD = fullfile(CAL, 'data', 'zhi_peng', '.mat');
-OUT  = fullfile(CAL, 'figures', 'zhi_peng');
+OUT  = fullfile(CAL, 'figures', 'zhi_peng', 'pair_pole');
 if ~exist(OUT, 'dir'), mkdir(OUT); end
 
 cases = {'One excitation',  'calib_pair_P1_R150_xa.mat',   [0.05 0.10 0.95];     % blue
