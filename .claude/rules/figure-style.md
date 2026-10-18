@@ -26,8 +26,8 @@
 - 顏色常數放腳本頂部：`CB = [0.05 0.10 0.95];  CR = [0.85 0.10 0.10];`；直方圖 `bar(..., 'EdgeColor','none')`。
 - 先定等距刻度、再由刻度反推軸範圍（`lim = [tk(1)-s, tk(end)+s]`）；水平軸兩端數字用 `text` 補，不放進 `XTick`。
 - 圖例位置：先用 `'Location','northeast'`，出圖後確認沒蓋到資料點或曲線；蓋到就改 `'northoutside'`（可配 `'NumColumns'` 橫排），並把 axes 高度縮小讓圖例與座標框都留在畫布內。
-- 三維邊框：`box(ax,'off')`、`grid(ax,'off')`、`daspect(ax,[1 1 1])`，先 `view` 再用 `draw_box_`（找 `campos` 最近的角點，畫其餘 9 條邊，線寬 `LWBOX`）；`ax.Clipping='off'`、`TickLength [0.025 0.025]`、三軸刻度字 `TickLabelRotation 0`。範本：`matlab/Force/Maxwell/plot/long2016_hexapole_halfcut/sph_shell.m`。
-- 顏色表：`colormap(ax, jet(256))`；範圍與刻度用 `cbar_ticks_([min max])`——候選步長 s ∈ {…, 1 2 3 5 10 20 30 50 …}，`lo = floor(min/s)*s`、`hi = ceil(max/s)*s`，取分段數 3～6 中範圍最窄的；`cb.Limits = [lo hi]`、`cb.Ticks = lo:s:hi`（含兩端）；`cb.LineWidth = LWBOX`、刻度朝內（預設）、`FontSize FS` 加粗；標題用 latex、`FSLAB`。範本：`matlab/Force/Maxwell/plot/long2016_hexapole_halfcut/err_map.m`。
+- 三維邊框：`box(ax,'off')`、`grid(ax,'off')`、`daspect(ax,[1 1 1])`，先 `view` 再用 `draw_box_`（找 `campos` 最近的角點，畫其餘 9 條邊，線寬 `LWBOX`）；`ax.Clipping='off'`、`TickLength [0.025 0.025]`、三軸刻度字 `TickLabelRotation 0`。
+- 顏色表：`colormap(ax, jet(256))`；範圍與刻度用 `cbar_ticks_([min max])`——候選步長 s ∈ {…, 1 2 3 5 10 20 30 50 …}，`lo = floor(min/s)*s`、`hi = ceil(max/s)*s`，取分段數 3～6 中範圍最窄的；`cb.Limits = [lo hi]`、`cb.Ticks = lo:s:hi`（含兩端）；`cb.LineWidth = LWBOX`、刻度朝內（預設）、`FontSize FS` 加粗；標題用 latex、`FSLAB`。
 - 縱軸步長可用兩位有效數字（如 1.1、1.7）以減少上方留白；但整齊步長多浪費 ≤ 20% 時用整齊步長。
 - 字體：刻度、圖例、端點 `text` 用預設 tex interpreter 加 `FontWeight bold`；**只有軸標題用 latex**（latex 不吃 `FontWeight`）。
 - 匯出：畫布用英吋、約 14.5 in 見方；用 `print` 加明確 `PaperPosition`，不要用 `exportgraphics`（會裁白邊、破壞正方形）。建 axes 後關掉 `ax.Toolbar`、`ax.Interactions`。
