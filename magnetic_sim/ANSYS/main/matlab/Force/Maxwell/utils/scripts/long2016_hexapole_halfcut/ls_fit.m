@@ -5,7 +5,8 @@
 %      tau(pbar) = [1, 2xbar, 2ybar, 2zbar, 2xbar*ybar, 2xbar*zbar, 2ybar*zbar, xbar^2, ybar^2, zbar^2]'
 %  Stacking the N_p positions (Sec. 4):  T = [tau(pbar_1)'; ...; tau(pbar_N_p)']  (N_p x 10),  y_i = Ihat_opt at them (N_p x 1)
 %  Normal equations (Sec. 5):  d_i = (T'T)^-1 T' y_i;  (T'T)^-1 T' is shared by every direction and coil (Sec. 6).
-%  Labels y_i: nn_label_sgn.mat (Gurobi-certified I_opt_hat, sign-aligned so that it is continuous in pbar).
+%  Labels y_i: nn_label_sgn.mat (Gurobi-certified I_opt_hat), re-aligned in sign within each direction to the label
+%  at pbar = 0 (the whole 6-vector flips; the force is unchanged).
 %  Actuator frame throughout; coil i = pole P1..P6.
 %  Directions j = 1..N_j: the distinct directions of the label grid (theta = 360 dropped, phi = +-90 kept once at theta = 0),
 %  ordered phi fastest, then theta.
@@ -55,7 +56,13 @@ assert(N_p >= 10 && rank(T) == 10, 'ls_fit:rank', 'T must have full column rank 
 
 % ---- Sec. 5: d_i = (T'T)^-1 T' y_i for every direction and coil at once ----
 I = reshape(S.IOPT(:,:,:,n), N_I, N_phi*N_theta, N_p);
-y = reshape(permute(I(:, U(:), :), [3 2 1]), N_p, []);       % column = y_i(phi_j, theta_j), order (j, i)
+I = I(:, U(:), :);                                           % N_I x N_j x N_p
+% sign alignment within each direction: Ihat_opt and -Ihat_opt give the same force, so the label at every position
+% is flipped as a whole 6-vector when it points against the label at the centre pbar = 0 of the same direction
+p0 = find(all(pbar == 0, 2));
+assert(isscalar(p0), 'ls_fit:centre', 'the fitting positions must contain pbar = 0');
+I = I .* sign(sum(I .* I(:, :, p0), 1) + (sum(I .* I(:, :, p0), 1) == 0));
+y = reshape(permute(I, [3 2 1]), N_p, []);                    % column = y_i(phi_j, theta_j), order (j, i)
 d = (T.'*T) \ (T.'*y);                                        % 10 x (N_j N_I)
 Ihat_LS = reshape(T*d, N_p, N_j, N_I);                      % P' D_LS P at the fitting positions
 
@@ -88,7 +95,7 @@ end
 Pn = [pbar, ones(N_p,1)];  jc = 7;  ic = 4;
 assert(max(abs(sum((Pn*D_LS(:,:,jc,ic)).*Pn, 2) - T*d(:,jc,ic))) < 1e-12, 'ls_fit:D', 'D_LS fill does not match d');
 a = find(S.ph == phi_j(jc));  b = find(S.th == theta_j(jc));
-assert(isequal(squeeze(S.IOPT(ic, a, b, n)), y(:, (ic-1)*N_j + jc)), 'ls_fit:y', 'label column order mismatch');
+assert(isequal(abs(squeeze(S.IOPT(ic, a, b, n))), abs(y(:, (ic-1)*N_j + jc))), 'ls_fit:y', 'label column order mismatch');
 
 save(fullfile(DAT, OUT), 'D_LS', 'd', 'phi_j', 'theta_j', 'pbar', 'l_hat', 'e_ij', 'REG', 'A', 'N_p', 'N_j', 'N_I');
 fprintf('REG %s: N_p = %d, N_j = %d, N_I = %d, cond(T''T) = %.3g -> %s\n', REG, N_p, N_j, N_I, cond(T.'*T), fullfile(DAT, OUT));
