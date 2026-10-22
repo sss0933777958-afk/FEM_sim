@@ -51,6 +51,7 @@ CAD_model (STEP) ─┬─ apdl deck → MAPDL → ANSYS_data/*.dat ────
 | 動 `results/` | `results-pdf-only.md`（只放 PDF） |
 | 新建檔案 / 取檔名 / 命名 variant | `short-names.md` |
 | 想複製一支腳本做變體 | `modify-existing-files.md`（改現有那支） |
+| 照文件寫 / 改腳本 | `doc-symbols.md`（變數、欄位、註解一律用文件符號） |
 | 腳本需要模型常數 / 看到 `addpath(backup)` | `no-backup-data.md`（一律走 `model_config(...)`） |
 
 ## ANSYS 可用性
