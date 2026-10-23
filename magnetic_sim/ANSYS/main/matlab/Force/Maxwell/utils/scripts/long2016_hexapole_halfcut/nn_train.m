@@ -11,6 +11,8 @@
 %  Training: trainnet, Adam, mean-squared error, mini-batch MB (last partial batch used), shuffled every epoch.
 %  RESUME = true: continue from the net saved in the output file (EP more epochs at LR; loss appended;
 %  ep_run, LR_run record the epochs and learning rate of every run).
+%  CONV = true (LOSS = 'label'): stop before EP once the epoch-mean training loss changes by less than TOLE
+%  (relative, 1e-4 = 0.01 %) between consecutive epochs for KE = 10 epochs in a row.
 %  Force check: e_ij = || fhat_NN - fhat_d || / || fhat_d || * 100 %,  fhat_d = r_hat,  fhat_NN_k = I_NN' Q_k I_NN
 %  (Q_k as nn_label.m).
 %  Output: utils/data/long2016_hexapole_halfcut/nn_train[_chain].mat
@@ -26,6 +28,9 @@
 %               GRID = 'edge'  : -A:DP:A (DP = 10 um: 10^3 = 1000 points); actuator frame;
 %    directions as ls_fit.m (phi, theta every 5 deg, N_j = 2522); input x = [r_hat; p / R] (R = 90 um);
 %    custom loop (dlfeval, adamupdate), shuffled every epoch.  RESUME continues the saved run.
+%    INIT = 'chain': start from the net trained on the chain labels (nn_train_chain.mat, same R) -> nn_phys_chain.mat.
+%    LRD < 1: exponential learning-rate decay, LR of epoch e = LR * LRD^(e-1) -> nn_phys_exp.mat.
+%    ep_conv: first epoch at which the epoch-mean loss changed by < TOLE (relative) for KE epochs in a row (NaN: never).
 %    Output nn_phys.mat: net, loss (per epoch: total, force term, LAM term), e_ij (N_j x N_p [%]),
 %    nI (N_j x N_p [A], || I_NN ||), phi_j, theta_j, P, R, A, DP, LAM, MB, EP, LR, NH, ttrain, ep_run, LR_run.
 if ~exist('LOSS','var'), LOSS = 'label'; end
@@ -41,7 +46,12 @@ if ~exist('EP','var'), EP = 500; end
 if ~exist('LR','var'), LR = 1e-3; end
 if ~exist('NH','var'), NH = [64 64]; end
 if ~exist('RESUME','var'), RESUME = false; end
-clearvars -except LOSS LAB R A DP LAM GRID MB EP LR NH RESUME SGN;
+if ~exist('CONV','var'), CONV = false; end
+if ~exist('TOLE','var'), TOLE = 1e-4; end
+if ~exist('KE','var'), KE = 10; end
+if ~exist('INIT','var'), INIT = ''; end
+if ~exist('LRD','var'), LRD = 1; end
+clearvars -except LOSS LAB R A DP LAM GRID MB EP LR NH RESUME SGN CONV TOLE KE INIT LRD;
 here = fileparts(mfilename('fullpath'));  CALROOT = fileparts(fileparts(fileparts(here)));   % .../Force/Maxwell
 addpath(fullfile(CALROOT, 'function'), here);                  % here: nn_net.m
 MODEL = 'long2016_hexapole_halfcut';  GEOM = 'tip40um';
@@ -74,7 +84,8 @@ if strcmp(LOSS, 'phys')
     end
     Q = single(Q);  RH = single(r_hat);
     % ---- training ----
-    OUT = 'nn_phys.mat';
+    OUT = 'nn_phys.mat';  if strcmp(INIT, 'chain'), OUT = 'nn_phys_chain.mat'; end
+    if LRD ~= 1, OUT = 'nn_phys_exp.mat'; end
     lossE = zeros(0, 3);  ep_run = [];  LR_run = [];  t_prev = 0;
     if RESUME
         W = load(fullfile(DAT, OUT));
@@ -83,6 +94,11 @@ if strcmp(LOSS, 'phys')
         avg = W.avg;  avgSq = W.avgSq;  it = W.it;
     else
         net = nn_net(NH);  avg = [];  avgSq = [];  it = 0;
+        if strcmp(INIT, 'chain')                                % pretrained on the chain labels
+            W0 = load(fullfile(DAT, 'nn_train_chain.mat'), 'net', 'R', 'A', 'NH');
+            assert(W0.R == R && W0.A == A && isequal(W0.NH, NH), 'nn_train:init', 'nn_train_chain.mat has another R / A / NH');
+            net = W0.net;
+        end
     end
     rng(numel(ep_run));
     NB = ceil(N_s / MB);
@@ -94,7 +110,7 @@ if strcmp(LOSS, 'phys')
             Xb = dlarray(X(s,:).', 'CB');
             it = it + 1;
             [Lb, gr, parts] = dlfeval(@phys_loss, net, Xb, Q(:,:,:,Pi(s)), RH(J(s),:).', LAM);
-            [net, avg, avgSq] = adamupdate(net, gr, avg, avgSq, it, LR);
+            [net, avg, avgSq] = adamupdate(net, gr, avg, avgSq, it, LR * LRD^(ep-1));
             acc = acc + numel(s) * double(extractdata([Lb, parts]));
         end
         lossE(end+1, :) = acc / N_s;                                %#ok<SAGROW>
@@ -116,8 +132,14 @@ if strcmp(LOSS, 'phys')
     end
     e_ij = reshape(e_ij, N_j, N_p);  nI = reshape(nI, N_j, N_p);
     loss = lossE;
+    rel = abs(diff(loss(:,1))) ./ loss(1:end-1,1);  run_ = 0;  ep_conv = NaN;
+    for e = 1:numel(rel)
+        if rel(e) < TOLE, run_ = run_ + 1; else, run_ = 0; end
+        if run_ >= KE, ep_conv = e + 1;  break; end
+    end
+    fprintf('convergence (%d epochs in a row < %g %%): epoch %g\n', KE, 100*TOLE, ep_conv);
     save(fullfile(DAT, OUT), 'net', 'loss', 'e_ij', 'nI', 'phi_j', 'theta_j', 'P', 'R', 'A', 'DP', 'GRID', 'LAM', 'MB', 'EP', 'LR', 'NH', ...
-         'ttrain', 'ep_run', 'LR_run', 'avg', 'avgSq', 'it');
+         'ttrain', 'ep_run', 'LR_run', 'avg', 'avgSq', 'it', 'INIT', 'LRD', 'ep_conv', 'TOLE', 'KE');
     fprintf('LOSS phys: %d samples, MB %d, epochs %s, LR %s, %.0f s total | final loss %.4g\n', N_s, MB, mat2str(ep_run), ...
             mat2str(LR_run), ttrain, loss(end, 1));
     fprintf('e_ij [%%]: median %.3g, 95th pct %.3g, max %.3g | ||I|| [A]: median %.3g, max %.3g -> %s\n', median(e_ij(:)), ...
@@ -189,11 +211,14 @@ end
 opts = trainingOptions('adam', 'MiniBatchSize',MB, 'MaxEpochs',EP, 'InitialLearnRate',LR, ...
                        'Shuffle','every-epoch', 'Verbose',true, 'VerboseFrequency',50*ceil(N_s/MB), ...
                        'Plots','none', 'ExecutionEnvironment','cpu');
+if CONV, opts.OutputFcn = @(in) conv_stop(in, TOLE, KE); end
 t0 = tic;
 [net, info] = trainnet(X, Y, net, 'mse', opts);
 ttrain = t_prev + toc(t0);
 loss = [loss0; info.TrainingHistory.Loss(:)];
-ep_run = [ep_run, EP];  LR_run = [LR_run, LR];
+ep_done = max(info.TrainingHistory.Epoch);                     % < EP when CONV stopped the run
+ep_run = [ep_run, ep_done];  LR_run = [LR_run, LR];
+if CONV, fprintf('CONV: %d of %d epochs (stopped: %d)\n', ep_done, EP, ep_done < EP); end
 
 % ---- force check (force model as nn_label.m) ----
 I_NN = double(predict(net, X));                                % N_s x 6
@@ -234,4 +259,19 @@ lr = LAM * mean(sum(I.^2, 1));
 Lb = lf + lr;
 gr = dlgradient(Lb, net.Learnables);
 parts = [lf, lr];
+end
+
+function stop = conv_stop(in, TOLE, KE)
+% CONV: epoch-mean training loss; stop after KE consecutive epochs with |L_e - L_(e-1)| / L_(e-1) < TOLE
+persistent ep acc n Lprev cnt
+stop = false;
+if strcmp(in.State, 'start') || isempty(ep), ep = 1;  acc = 0;  n = 0;  Lprev = NaN;  cnt = 0; end
+if ~strcmp(in.State, 'iteration') || isempty(in.TrainingLoss), return, end
+if in.Epoch ~= ep && n > 0                                     % epoch ep finished
+    Le = acc / n;
+    if abs(Le - Lprev) / Lprev < TOLE, cnt = cnt + 1;  else, cnt = 0; end
+    Lprev = Le;  ep = in.Epoch;  acc = 0;  n = 0;
+    stop = cnt >= KE;
+end
+acc = acc + double(in.TrainingLoss);  n = n + 1;
 end
