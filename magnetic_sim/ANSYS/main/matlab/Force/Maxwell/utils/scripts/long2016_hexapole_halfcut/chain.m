@@ -1,92 +1,92 @@
-%% chain.m -- continuation test at the centre pbar = 0: does chaining the Lagrange solution from one direction to the
-%  next remove the jumps of I_opt_hat between neighbouring directions?
+%% chain.m -- position continuation of I_opt_hat inside the LS fitting cube, one direction at a time.
 %  Problem (as nn_label.m / rho_solve.m):  I_opt_hat = argmin ||I_hat||^2  s.t.  I_hat' Q_k I_hat = r_k,  k = 1..3,
-%  Q_k = F H_I' L_k(pbar = 0) F H_I,  r_hat = [cos(phi) cos(theta), cos(phi) sin(theta), sin(phi)].
-%  Directions j = 1..N_j in the ls_fit.m order (phi fastest, then theta; phi = -90 first, i.e. towards P6).
-%    j = 1   : Lagrange conditions by fmincon multistart (NS random starts), then the Gurobi global check
-%              (as rho_solve.m stage 2; the polished Gurobi point replaces it if smaller)
-%    j >= 2  : fmincon from the solution of direction j-1 only (no multistart, no Gurobi)
-%  Compared with the labels nn_label_sgn.mat at pbar = 0 (multistart + Gurobi per direction).
+%  Q_k = F H_I' L_k(pbar) F H_I,  r_hat = [cos(phi) cos(theta), cos(phi) sin(theta), sin(phi)].
+%  Positions: the 30 um grid nodes of the cube |x|, |y|, |z| <= A (A = 45 um: 90 um cube, all octants, N_p = 27).
+%  For every direction j (ls_fit.m order):
+%    centre pbar = 0 : global minimum = the label of nn_label_sgn.mat (multistart + Gurobi)
+%    step 1  along x : (+-1,0,0), (+-2,0,0), ...   start = the node one step closer to the centre along x
+%    step 2  along y : (a,+-1,0), (a,+-2,0), ...   start = (a, b -+ 1, 0)
+%    step 3  along z : (a,b,+-1), (a,b,+-2), ...   start = (a, b, c -+ 1)
+%    i.e. the start of every node is its parent: one step back along z if c ~= 0, else along y, else along x;
+%    fmincon (Lagrange conditions) from the parent's solution only, no multistart, no Gurobi.
 %  Output: utils/data/long2016_hexapole_halfcut/chain.mat
-%    phi_j, theta_j  N_j x 1        [deg]
-%    I_chain         6 x N_j        [A]    chained solution
-%    I_lab           6 x N_j        [A]    label at pbar = 0
-%    ok              N_j x 1               fmincon converged and feasible
-%    cos_step        N_j-1 x 1             cos(I_chain(:,j), I_chain(:,j+1))   (signed)
-%    ratio           N_j x 1               ||I_chain||^2 / ||I_lab||^2   (1 = global minimum reached)
-%    GSTAT           Gurobi status at j = 1
-if ~exist('NS','var'), NS = 40; end
-if ~exist('TLIM','var'), TLIM = 600; end
-clearvars -except NS TLIM;
+%    phi_j, theta_j  N_j x 1          [deg]
+%    pbar            N_p x 3                 positions (normalised), solve order
+%    par             N_p x 1                 parent of each position (0 for the centre)
+%    I_chain         6 x N_j x N_p    [A]    continued solution
+%    I_lab           6 x N_j x N_p    [A]    labels (global minimum per position)
+%    ok              N_j x N_p               fmincon converged and feasible
+%    cos_par         N_j x N_p               cos(I_chain, I_chain at the parent)   (signed; 1 at the centre)
+%    ratio           N_j x N_p               ||I_chain||^2 / ||I_lab||^2   (1 = global minimum reached)
+if ~exist('A','var'), A = 45; end
+clearvars -except A;
 here = fileparts(mfilename('fullpath'));  CALROOT = fileparts(fileparts(fileparts(here)));   % .../Force/Maxwell
 addpath(fullfile(CALROOT, 'function'));
 MODEL = 'long2016_hexapole_halfcut';  GEOM = 'tip40um';
 DAT = fullfile(CALROOT, 'utils', 'data', MODEL);
 S   = load(fullfile(DAT, 'nn_label_sgn.mat'), 'P_act', 'ph', 'th', 'IOPT', 'l_hat', 'MATNAME');
+G   = load(fullfile(DAT, 'nn_grid.mat'), 'H');
+l_hat = S.l_hat;
 
-% ---- Q_k at pbar = 0 (force model as nn_label.m) ----
+% ---- positions in solve order and their parents ----
+n  = find(all(abs(S.P_act) <= A + 1e-9, 2));
+K  = round(S.P_act(n,:) / G.H);                                % lattice index (a, b, c)
+st = ones(numel(n), 1);  st(K(:,2) ~= 0) = 2;  st(K(:,3) ~= 0) = 3;  st(all(K == 0, 2)) = 0;   % 0 centre, 1 x-axis, 2 z = 0 plane, 3 rest
+d  = abs(K(sub2ind(size(K), (1:numel(n)).', max(st, 1))));     % distance along the axis being extended
+[~, o] = sortrows([st, d, K]);  n = n(o);  K = K(o,:);  st = st(o);
+N_p = numel(n);  par = zeros(N_p, 1);
+for p = 2:N_p
+    Kp = K(p,:);  ax = st(p);                                  % step back along the axis of this node's step
+    Kp(ax) = Kp(ax) - sign(Kp(ax));
+    par(p) = find(all(K == Kp, 2));
+    assert(par(p) < p, 'chain:order', 'parent solved after the node');
+end
+pbar = S.P_act(n,:) / l_hat;
+
+% ---- Q_k at every position (force model as nn_label.m) ----
 mgB = 0.0451;  UF = 1e3;                                       % M g_B [A um^2/mT]; unit factor -> pN
 cal = load_flux_calib(MODEL, GEOM, S.MATNAME, 'current');
 gF  = UF * mgB / (2*cal.l_m) * cal.gB_m^2;                     % F g_I [pN/A^2]
 FH  = sqrt(gF) * cal.Mbar_m;                                   % F H_I [sqrt(pN)/A]
-L   = build_L([0 0 0], cal.l_m, cal.e_m, cal.Pc_base);         % 1 x 6 x 6 x 3
-Q   = zeros(6, 6, 3);
-for k = 1:3, Q_k = FH.' * squeeze(L(1,:,:,k)) * FH;  Q(:,:,k) = (Q_k + Q_k.')/2; end
+L   = build_L(pbar * l_hat, cal.l_m, cal.e_m, cal.Pc_base);    % N_p x 6 x 6 x 3
+Q   = zeros(6, 6, 3, N_p);
+for p = 1:N_p
+    for k = 1:3, Q_k = FH.' * squeeze(L(p,:,:,k)) * FH;  Q(:,:,k,p) = (Q_k + Q_k.')/2; end
+end
 
-% ---- directions (ls_fit.m order) and labels at pbar = 0 ----
+% ---- directions (ls_fit.m order) and labels ----
 [PH, TH] = ndgrid(S.ph, S.th);
 U = TH < 360 & (abs(PH) < 90 | TH == 0);
 phi_j = PH(U);  theta_j = TH(U);  N_j = numel(phi_j);
-p0 = find(all(S.P_act == 0, 2));
-I_lab = reshape(S.IOPT(:,:,:,p0), 6, []);  I_lab = I_lab(:, U(:));
+I_lab = reshape(S.IOPT(:,:,:,n), 6, [], N_p);  I_lab = I_lab(:, U(:), :);
+assert(all(K(1,:) == 0), 'chain:centre', 'first node must be the centre');
 
 TOLC = 1e-6;
 opt = optimoptions('fmincon', 'Algorithm','sqp', 'SpecifyObjectiveGradient',true, ...
                    'SpecifyConstraintGradient',true, 'OptimalityTolerance',1e-10, 'ConstraintTolerance',1e-12, ...
                    'StepTolerance',1e-14, 'MaxIterations',1000, 'Display','off');
-r_hat = @(j) [cosd(phi_j(j))*cosd(theta_j(j)); cosd(phi_j(j))*sind(theta_j(j)); sind(phi_j(j))];
-I_chain = nan(6, N_j);  ok = false(N_j, 1);
-
-% ---- j = 1: multistart Lagrange + Gurobi check ----
-rng(0);
-r = r_hat(1);  R0 = randn(6, NS);  X0 = [[0 0 0 0 0 1].', 0.35 * R0 ./ vecnorm(R0)];
-best = inf;
-for s = 1:size(X0, 2)
-    [I, ~, ef] = fmincon(@obj_, X0(:,s), [],[],[],[],[],[], @(x) con_(x, Q, r), opt);
-    if ef > 0 && norm(fq_(I, Q) - r) < TOLC && I.'*I < best, best = I.'*I;  I_chain(:,1) = I; end
-end
-assert(isfinite(best), 'chain:j1', 'no feasible start at j = 1');
-I0 = I_chain(:,1);  B = norm(I0);
-gp = struct('NonConvex',2, 'MIPGap',1e-9, 'MIPGapAbs',1e-12, 'FeasibilityTol',1e-9, 'OptimalityTol',1e-9, ...
-            'NumericFocus',2, 'TimeLimit',TLIM, 'Seed',0, 'OutputFlag',0);
-m = struct('Q',speye(6), 'obj',zeros(6,1), 'A',sparse(0,6), 'rhs',zeros(0,1), 'sense','', ...
-           'lb',-B*ones(6,1), 'ub',B*ones(6,1), 'start',I0);
-for k = 1:3, m.quadcon(k) = struct('Qc',sparse(Q(:,:,k)), 'q',zeros(6,1), 'rhs',r(k), 'sense','='); end
-m.quadcon(4) = struct('Qc',speye(6), 'q',zeros(6,1), 'rhs',B^2, 'sense','<');      % ball bound
-res = gurobi(m, gp);  GSTAT = string(res.status);
-if isfield(res, 'x')
-    [I, ~, ef] = fmincon(@obj_, res.x, [],[],[],[],[],[], @(x) con_(x, Q, r), opt);   % polish
-    if ef > 0 && norm(fq_(I, Q) - r) < TOLC && I.'*I < I0.'*I0, I_chain(:,1) = I; end
-end
-ok(1) = true;
-
-% ---- j >= 2: fmincon from the previous direction's solution ----
-for j = 2:N_j
-    r = r_hat(j);
-    [I, ~, ef] = fmincon(@obj_, I_chain(:,j-1), [],[],[],[],[],[], @(x) con_(x, Q, r), opt);
-    ok(j) = ef > 0 && norm(fq_(I, Q) - r) < TOLC;
-    I_chain(:,j) = I;
+I_chain = nan(6, N_j, N_p);  ok = false(N_j, N_p);
+I_chain(:,:,1) = I_lab(:,:,1);  ok(:,1) = true;
+t0 = tic;
+for j = 1:N_j
+    r = [cosd(phi_j(j))*cosd(theta_j(j)); cosd(phi_j(j))*sind(theta_j(j)); sind(phi_j(j))];
+    for p = 2:N_p
+        Qp = Q(:,:,:,p);
+        [I, ~, ef] = fmincon(@obj_, I_chain(:,j,par(p)), [],[],[],[],[],[], @(x) con_(x, Qp, r), opt);
+        ok(j,p) = ef > 0 && norm(fq_(I, Qp) - r) < TOLC;
+        I_chain(:,j,p) = I;
+    end
+    if mod(j, 250) == 0, fprintf('  %d / %d directions, %.0f s\n', j, N_j, toc(t0)); end
 end
 
-% ---- jumps and optimality ----
-cos_step = (sum(I_chain(:,1:end-1) .* I_chain(:,2:end), 1) ./ (vecnorm(I_chain(:,1:end-1)) .* vecnorm(I_chain(:,2:end)))).';
-ratio    = (vecnorm(I_chain).^2 ./ vecnorm(I_lab).^2).';
+% ---- continuity and optimality ----
+Ip = I_chain(:,:,max(par, 1));
+cos_par = squeeze(sum(I_chain .* Ip, 1) ./ (vecnorm(I_chain, 2, 1) .* vecnorm(Ip, 2, 1)));
+ratio   = squeeze(vecnorm(I_chain, 2, 1).^2 ./ vecnorm(I_lab, 2, 1).^2);
 
-save(fullfile(DAT, 'chain.mat'), 'phi_j', 'theta_j', 'I_chain', 'I_lab', 'ok', 'cos_step', 'ratio', 'GSTAT', 'NS', 'TLIM');
-fprintf('j = 1 (%g, %g): Gurobi %s | converged %d / %d | ratio: min %.6f, max %.4f, > 1.001 at %d directions\n', ...
-        phi_j(1), theta_j(1), GSTAT, nnz(ok), N_j, min(ratio), max(ratio), nnz(ratio > 1.001));
-fprintf('cos_step: min %.3f, < 0.9 at %d of %d steps -> %s\n', min(cos_step), nnz(cos_step < 0.9), N_j - 1, ...
-        fullfile(DAT, 'chain.mat'));
+save(fullfile(DAT, 'chain.mat'), 'phi_j', 'theta_j', 'pbar', 'par', 'I_chain', 'I_lab', 'ok', 'cos_par', 'ratio', 'A', 'N_p', 'N_j');
+fprintf('N_p = %d, N_j = %d | converged %d / %d | cos_par < 0.9: %d | ratio > 1.001: %d (max %.3f) -> %s\n', ...
+        N_p, N_j, nnz(ok), numel(ok), nnz(cos_par < 0.9), nnz(ratio > 1.001), max(ratio(:)), fullfile(DAT, 'chain.mat'));
 
 % ---------------------------------------------------------------------------------------
 function [v, g] = obj_(x)

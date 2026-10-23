@@ -4,7 +4,7 @@ function net = nn_net(NH)
 %   net = NN_NET()        6-64-64-6
 %   net = NN_NET(NH)      hidden widths NH, e.g. [32 32] or [16 16]
 %
-%   Input  x = [r_hat(phi,theta); p/R]   6 x 1   (R = 150 um, actuator frame)
+%   Input  x = [r_hat(phi,theta); p/R]   6 x 1   (R set by the caller, nn_train.m; actuator frame)
 %   Output I_hat_NN                      6 x 1   unit current, pole order P1..P6
 %                                                (same order as rho_solve's I_opt)
 %
