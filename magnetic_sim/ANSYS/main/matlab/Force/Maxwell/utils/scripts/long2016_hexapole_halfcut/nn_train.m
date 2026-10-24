@@ -60,7 +60,8 @@ if ~exist('INIT','var'), INIT = ''; end
 if ~exist('LRD','var'), LRD = 1; end
 if ~exist('LBL','var'), LBL = ''; end
 if ~exist('TEST','var'), TEST = {}; end
-clearvars -except LOSS LAB R A DP LAM GRID MB EP LR NH RESUME SGN CONV TOLE KE INIT LRD LBL TEST;
+if ~exist('SEED','var'), SEED = []; end                       % LOSS = 'phys': rng seed of the initial weights ([] = as before)
+clearvars -except LOSS LAB R A DP LAM GRID MB EP LR NH RESUME SGN CONV TOLE KE INIT LRD LBL TEST SEED;
 here = fileparts(mfilename('fullpath'));  CALROOT = fileparts(fileparts(fileparts(here)));   % .../Force/Maxwell
 addpath(fullfile(CALROOT, 'function'), here);                  % here: nn_net.m
 MODEL = 'long2016_hexapole_halfcut';  GEOM = 'tip40um';
@@ -68,6 +69,7 @@ DAT = fullfile(CALROOT, 'utils', 'data', MODEL);
 if ~isempty(TEST)                                              % ---- evaluate the saved net on the test sets ----
     SFX = '';  if ~isempty(LBL), SFX = ['_' LBL]; end
     if strcmp(LOSS, 'phys'), OUT = 'nn_phys.mat';  if LRD ~= 1, OUT = 'nn_phys_exp.mat'; end, OUT = strrep(OUT, '.mat', [SFX '.mat']);
+        if ~isempty(SEED), OUT = strrep(OUT, '.mat', sprintf('_s%d.mat', SEED)); end
     else, OUT = 'nn_train.mat';  if strcmp(LAB, 'chain'), OUT = 'nn_train_chain.mat'; end, OUT = strrep(OUT, '.mat', [SFX '.mat']);
     end
     W   = load(fullfile(DAT, OUT), 'net', 'R');
@@ -138,6 +140,7 @@ if strcmp(LOSS, 'phys')
     OUT = 'nn_phys.mat';  if strcmp(INIT, 'chain'), OUT = 'nn_phys_chain.mat'; end
     if LRD ~= 1, OUT = 'nn_phys_exp.mat'; end
     if ~isempty(LBL), OUT = strrep(OUT, '.mat', ['_' LBL '.mat']); end   % e.g. nn_phys_exp_d15.mat
+    if ~isempty(SEED), OUT = strrep(OUT, '.mat', sprintf('_s%d.mat', SEED)); end   % e.g. nn_phys_exp_d15_s1.mat
     lossE = zeros(0, 3);  ep_run = [];  LR_run = [];  t_prev = 0;
     if RESUME
         W = load(fullfile(DAT, OUT));
@@ -145,6 +148,7 @@ if strcmp(LOSS, 'phys')
         net = W.net;  lossE = W.loss;  ep_run = W.ep_run;  LR_run = W.LR_run;  t_prev = W.ttrain;
         avg = W.avg;  avgSq = W.avgSq;  it = W.it;
     else
+        if ~isempty(SEED), rng(SEED); end                     % initial weights only; the shuffle seed stays as before
         net = nn_net(NH);  avg = [];  avgSq = [];  it = 0;
         if strcmp(INIT, 'chain')                                % pretrained on the chain labels
             W0 = load(fullfile(DAT, 'nn_train_chain.mat'), 'net', 'R', 'A', 'NH');
@@ -191,7 +195,7 @@ if strcmp(LOSS, 'phys')
     end
     fprintf('convergence (%d epochs in a row < %g %%): epoch %g\n', KE, 100*TOLE, ep_conv);
     save(fullfile(DAT, OUT), 'net', 'loss', 'e_ij', 'nI', 'phi_j', 'theta_j', 'P', 'R', 'A', 'DP', 'GRID', 'LAM', 'MB', 'EP', 'LR', 'NH', ...
-         'ttrain', 'ep_run', 'LR_run', 'avg', 'avgSq', 'it', 'INIT', 'LRD', 'ep_conv', 'TOLE', 'KE');
+         'ttrain', 'ep_run', 'LR_run', 'avg', 'avgSq', 'it', 'INIT', 'LRD', 'ep_conv', 'TOLE', 'KE', 'SEED');
     fprintf('LOSS phys: %d samples, MB %d, epochs %s, LR %s, %.0f s total | final loss %.4g\n', N_s, MB, mat2str(ep_run), ...
             mat2str(LR_run), ttrain, loss(end, 1));
     fprintf('e_ij [%%]: median %.3g, 95th pct %.3g, max %.3g | ||I|| [A]: median %.3g, max %.3g -> %s\n', median(e_ij(:)), ...
