@@ -122,7 +122,7 @@ if strcmp(LOSS, 'phys')
                        'FunctionTolerance',1e-14, 'StepTolerance',1e-14, 'MaxIterations',2000, 'Display','off');
     t0 = tic;
     if SAVED                                                   % the saved fit (TEST runs)
-        F = load(fullfile(DAT, ['ls_fit_phys' SFX '.mat']), 'd', 'LAM');
+        F = load(fullfile(DAT, ['ls_fit_phys' strrep(['_' LAB], '_chain', '') SFX '.mat']), 'd', 'LAM');
         assert(F.LAM == LAM, 'ls_fit:saved', 'saved fit has another LAM');
         d0 = F.d;
     else
@@ -134,7 +134,7 @@ if strcmp(LOSS, 'phys')
     end
     d = reshape(d0, 10, []);
     Ihat_LS = reshape(T*d, N_p, N_j, N_I);
-    OUT = ['ls_fit_phys' SFX '.mat'];
+    OUT = ['ls_fit_phys' strrep(['_' LAB], '_chain', '') SFX '.mat'];   % chain start: ls_fit_phys_d15, nn start: ls_fit_phys_nn_d15
 end
 
 % ---- Sec. 3: fill D_LS_i from d_i = [d44 d14 d24 d34 d12 d13 d23 d11 d22 d33] ----
