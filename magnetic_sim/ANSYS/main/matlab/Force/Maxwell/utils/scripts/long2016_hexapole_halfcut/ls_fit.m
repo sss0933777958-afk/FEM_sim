@@ -9,6 +9,8 @@
 %  at pbar = 0 (the whole 6-vector flips; the force is unchanged).
 %  LAB = 'chain' (REG = 'cube' only): labels from chain.mat instead, i.e. the position continuation from the centre's
 %  global minimum (one branch per direction); output ls_fit_chain.mat.
+%  LBL = 'd15': positions and global labels of nn_label_d15.mat (15 um cube grid, 343 points), chain labels of
+%  chain_d15.mat; outputs tagged _d15 (ls_fit_chain_d15.mat).
 %  Actuator frame throughout; coil i = pole P1..P6.
 %  Directions j = 1..N_j: the distinct directions of the label grid (theta = 360 dropped, phi = +-90 kept once at theta = 0),
 %  ordered phi fastest, then theta.
@@ -38,12 +40,16 @@ if ~exist('A','var'), A = 45; end
 if ~exist('LAB','var'), LAB = 'grb'; end
 if ~exist('LOSS','var'), LOSS = 'label'; end
 if ~exist('LAM','var'), LAM = 0.01; end
-clearvars -except REG A LAB LOSS LAM;
+if ~exist('LBL','var'), LBL = ''; end
+if ~exist('TEST','var'), TEST = {}; end                       % e.g. {'T1','T2'} (LBL = 'd15')
+clearvars -except REG A LAB LOSS LAM LBL TEST;
 here = fileparts(mfilename('fullpath'));  CALROOT = fileparts(fileparts(fileparts(here)));   % .../Force/Maxwell
 addpath(fullfile(CALROOT, 'function'));
 MODEL = 'long2016_hexapole_halfcut';  GEOM = 'tip40um';
 DAT  = fullfile(CALROOT, 'utils', 'data', MODEL);
-S    = load(fullfile(DAT, 'nn_label_sgn.mat'), 'P_act', 'ph', 'th', 'IOPT', 'l_hat', 'MATNAME');
+SFX  = '';  if ~isempty(LBL), SFX = ['_' LBL]; end
+LF   = 'nn_label_sgn.mat';  if ~isempty(LBL), LF = ['nn_label' SFX '.mat']; end
+S    = load(fullfile(DAT, LF), 'P_act', 'ph', 'th', 'IOPT', 'l_hat', 'MATNAME');
 l_hat = S.l_hat;
 [N_I, N_phi, N_theta, ~] = size(S.IOPT);
 
@@ -74,11 +80,11 @@ I = I(:, U(:), :);                                           % N_I x N_j x N_p
 I_opt = I;                                                   % global minimum (for eta)
 if strcmp(LAB, 'chain')
     assert(strcmp(REG, 'cube'), 'ls_fit:LAB', 'LAB = ''chain'' needs REG = ''cube''');
-    C = load(fullfile(DAT, 'chain.mat'), 'I_chain', 'pbar', 'phi_j', 'theta_j', 'A');
+    C = load(fullfile(DAT, ['chain' SFX '.mat']), 'I_chain', 'pbar', 'phi_j', 'theta_j', 'A');
     [hit, loc] = ismembertol(pbar, C.pbar, 1e-12, 'ByRows', true);
     assert(all(hit) && C.A == A && isequal(C.phi_j, phi_j) && isequal(C.theta_j, theta_j), 'ls_fit:chain', 'chain.mat does not match');
     I = C.I_chain(:, :, loc);
-    OUT = 'ls_fit_chain.mat';
+    OUT = ['ls_fit_chain' SFX '.mat'];
 end
 % sign alignment within each direction: Ihat_opt and -Ihat_opt give the same force, so the label at every position
 % is flipped as a whole 6-vector when it points against the label at the centre pbar = 0 of the same direction
@@ -143,6 +149,65 @@ save(fullfile(DAT, OUT), 'D_LS', 'd', 'phi_j', 'theta_j', 'pbar', 'l_hat', 'e_ij
 fprintf('REG %s: N_p = %d, N_j = %d, N_I = %d, cond(T''T) = %.3g -> %s\n', REG, N_p, N_j, N_I, cond(T.'*T), fullfile(DAT, OUT));
 fprintf('e_ij [%%]: median %.3g, 95th pct %.3g, max %.3g | eta: median %.4f, min %.4f\n', median(e_ij(:)), prctile(e_ij(:), 95), ...
         max(e_ij(:)), median(eta(:)), min(eta(:)));
+
+% ---- TEST: the fitted D_LS on test sets of global labels (LBL = 'd15') ----
+%  T1 nn_label_d15.mat (grid nodes), T2 nn_label_d15_mid.mat (cell centres): same direction grid as the fit.
+%  T3 nn_label_d15_off.mat, T4 nn_label_d15_mid_off.mat: directions offset by DA/2; Ihat_LS bilinear in (phi, theta)
+%  between the four surrounding fit directions (theta periodic, phi = +-90 is one direction), each corner's 6-vector
+%  sign-aligned to the first corner over the test positions before weighting (Ihat and -Ihat give the same force).
+%  Per set: e (N_jt x N_t [%]) force error, eta (N_jt x N_t) = ||Ihat_opt||^2 / ||Ihat_LS||^2, P (N_t x 3 [um]),
+%  phi, theta (N_jt x 1 [deg])  -> ls_test<OUT tag>.mat (sets already in the file are kept)
+if ~exist('TEST','var') || isempty(TEST), return, end
+TF  = struct('T1', ['nn_label' SFX '.mat'], 'T2', ['nn_label' SFX '_mid.mat'], ...
+             'T3', ['nn_label' SFX '_off.mat'], 'T4', ['nn_label' SFX '_mid_off.mat']);
+DA  = S.ph(2) - S.ph(1);                                       % fit direction step [deg]
+jof = @(ph, th) find(phi_j == ph & (theta_j == mod(th, 360) | abs(ph) == 90), 1);   % fit direction index
+RES = struct();
+for t = string(TEST)
+    G = load(fullfile(DAT, TF.(t)), 'P_act', 'ph', 'th', 'IOPT');
+    [PHt, THt] = ndgrid(G.ph, G.th);  Ut = THt < 360 & (abs(PHt) < 90 | THt == 0);
+    pht = PHt(Ut);  tht = THt(Ut);  Njt = numel(pht);
+    Pt  = G.P_act;  Nt = size(Pt, 1);
+    ptt = Pt / l_hat;  if strcmp(LOSS, 'phys'), ptt = Pt / A; end   % variable of tau, as in the fit
+    Tt  = [ones(Nt,1), 2*ptt(:,1), 2*ptt(:,2), 2*ptt(:,3), 2*ptt(:,1).*ptt(:,2), 2*ptt(:,1).*ptt(:,3), ...
+           2*ptt(:,2).*ptt(:,3), ptt(:,1).^2, ptt(:,2).^2, ptt(:,3).^2];
+    If  = reshape(Tt * reshape(d, 10, []), Nt, N_j, N_I);      % Ihat_LS of every fit direction at the test positions
+    if isequal(pht, phi_j) && isequal(tht, theta_j)
+        It = If;
+    else                                                       % bilinear in (phi, theta)
+        It = zeros(Nt, Njt, N_I);
+        for q = 1:Njt
+            p0 = floor(pht(q)/DA)*DA;  t0 = floor(tht(q)/DA)*DA;
+            u  = (pht(q) - p0)/DA;     v  = (tht(q) - t0)/DA;
+            jc = [jof(p0, t0), jof(p0+DA, t0), jof(p0, t0+DA), jof(p0+DA, t0+DA)];
+            w  = [(1-u)*(1-v), u*(1-v), (1-u)*v, u*v];
+            Ic = squeeze(If(:, jc(1), :));
+            Iq = w(1) * Ic;
+            for c = 2:4
+                Icc = squeeze(If(:, jc(c), :));
+                Iq  = Iq + w(c) * sign(sum(Icc .* Ic, 'all') + (sum(Icc .* Ic, 'all') == 0)) * Icc;
+            end
+            It(:, q, :) = reshape(Iq, Nt, 1, N_I);
+        end
+    end
+    Lt  = build_L(Pt, cal.l_m, cal.e_m, cal.Pc_base);
+    Qt  = zeros(6, 6, 3, Nt);
+    for p = 1:Nt
+        for k = 1:3, Q_k = FH.' * squeeze(Lt(p,:,:,k)) * FH;  Qt(:,:,k,p) = (Q_k + Q_k.')/2; end
+    end
+    rt  = [cosd(pht).*cosd(tht), cosd(pht).*sind(tht), sind(pht)];
+    Io  = reshape(G.IOPT, N_I, [], Nt);  Io = Io(:, Ut(:), :);
+    RES.(t).e     = force_err(It, Qt, rt);
+    RES.(t).eta   = squeeze(vecnorm(Io, 2, 1)).^2 ./ squeeze(vecnorm(permute(It, [3 2 1]), 2, 1)).^2;
+    RES.(t).P     = Pt;  RES.(t).phi = pht;  RES.(t).theta = tht;
+    fprintf('%s: %d positions x %d directions | e [%%]: median %.3g, 95th %.3g, max %.3g | eta: median %.4f, min %.4f, max %.4f\n', ...
+            t, Nt, Njt, median(RES.(t).e(:)), prctile(RES.(t).e(:), 95), max(RES.(t).e(:)), median(RES.(t).eta(:)), ...
+            min(RES.(t).eta(:)), max(RES.(t).eta(:)));
+end
+TOUT = strrep(OUT, 'ls_fit', 'ls_test');
+if isfile(fullfile(DAT, TOUT)), save(fullfile(DAT, TOUT), '-struct', 'RES', '-append');
+else, save(fullfile(DAT, TOUT), '-struct', 'RES'); end
+fprintf('-> %s\n', fullfile(DAT, TOUT));
 
 % ---------------------------------------------------------------------------------------
 function e_ij = force_err(Ihat_LS, Q, fhat_d)
