@@ -1,5 +1,10 @@
 %% nn_label.m -- training labels of the NN inverse model: I_opt_hat at every grid position and direction.
-%  Positions: nn_grid.mat (P_act, actuator frame, 30 um cubic grid, |p| <= 150 um, 515 points).
+%  Positions: nn_grid.mat (P_act, actuator frame, 30 um cubic grid, |p| <= 150 um, 515 points);
+%  DP set: the cube grid DP * (ceil(-A/DP):floor(A/DP)) on each axis instead (A = 45 um; DP = 15: 7^3 = 343 points),
+%  output and worker files tagged _d<DP> (nn_label_d15.mat).
+%  Test sets (DP set):  MID = true: the cell centres, grid offset by DP/2 (DP = 15: -37.5:15:37.5, 6^3 = 216 points),
+%  tag _mid;  DOFF = DA/2: directions halfway between the grid ones (rho_solve DOFF), tag _off.
+%    T1 nn_label_d15.mat  T2 nn_label_d15_mid.mat  T3 nn_label_d15_off.mat  T4 nn_label_d15_mid_off.mat
 %  Directions: rho_solve grid, phi = -90:DA:90, theta = 0:DA:360 (actuator frame).
 %  Solver: rho_solve.m stage 1 (fmincon multistart = numerical Lagrange conditions + PSD certificate), the same
 %  problem as rho_map.m:  I_opt_hat = argmin ||I_hat||^2  s.t.  I_hat' Q_k I_hat = r_k,  k = 1..3,
@@ -38,15 +43,26 @@ if ~exist('GEV','var'), GEV = 6; end                           % Gurobi check on
 if ~exist('GMAX','var'), GMAX = 60; end                        % directions per checked position
 if ~exist('TLIM','var'), TLIM = 600; end                       % Gurobi TimeLimit per direction [s]
 if ~exist('NMAX','var'), NMAX = Inf; end                       % stop after NMAX new positions (test runs)
-clearvars -except WID NW DA NS MERGE NMAX GEV GMAX TLIM;
+if ~exist('DP','var'), DP = []; end                            % cube-grid spacing [um]; [] = nn_grid.mat
+if ~exist('A','var'), A = 45; end                              % cube half side [um] (DP set)
+if ~exist('MID','var'), MID = false; end                       % cell centres instead of the grid nodes
+if ~exist('DOFF','var'), DOFF = 0; end                         % direction grid offset [deg]
+clearvars -except WID NW DA NS MERGE NMAX GEV GMAX TLIM DP A MID DOFF;
 here = fileparts(mfilename('fullpath'));  CALROOT = fileparts(fileparts(fileparts(here)));   % .../Force/Maxwell
 addpath(fullfile(CALROOT, 'function'), here);                  % here: rho_solve.m
 MODEL = 'long2016_hexapole_halfcut';  GEOM = 'tip40um';
 MATNAME = 'calib_current_maxwell_axshN55_R150_eighteen';
 DAT = fullfile(CALROOT, 'utils', 'data', MODEL);
-G   = load(fullfile(DAT, 'nn_grid.mat'), 'P_act');
-P_act = G.P_act;  NP = size(P_act, 1);
-wfile = @(w) fullfile(DAT, sprintf('nn_label_w%02dof%02d.mat', w, NW));
+if isempty(DP)
+    G = load(fullfile(DAT, 'nn_grid.mat'), 'P_act');  P_act = G.P_act;  TAG = '';
+else
+    g = DP * (ceil(-A/DP):floor(A/DP));  TAG = sprintf('_d%g', DP);
+    if MID, g = g(1:end-1) + DP/2;  TAG = [TAG '_mid']; end
+    if DOFF ~= 0, TAG = [TAG '_off']; end
+    [GX, GY, GZ] = ndgrid(g, g, g);  P_act = [GX(:), GY(:), GZ(:)];
+end
+NP = size(P_act, 1);
+wfile = @(w) fullfile(DAT, sprintf('nn_label%s_w%02dof%02d.mat', TAG, w, NW));
 
 if MERGE
     for w = 1:NW
@@ -64,11 +80,11 @@ if MERGE
     end
     assert(all(DONE), 'nn_label:missing', '%d of %d positions not done yet', nnz(~DONE), NP);
     l_hat = W.l_hat;  gF = W.gF;
-    save(fullfile(DAT, 'nn_label.mat'), 'P_act', 'ph', 'th', 'IOPT', 'RHO', 'ERR', 'MINEIG', 'CERT', 'NFEAS', 'T1', ...
-         'GCHK', 'NGRB', 'NOPT', 'NIMP', 'GEV', 'GMAX', 'TLIM', 'DA', 'NS', 'MODEL', 'MATNAME', 'l_hat', 'gF', '-v7.3');
+    save(fullfile(DAT, ['nn_label' TAG '.mat']), 'P_act', 'ph', 'th', 'IOPT', 'RHO', 'ERR', 'MINEIG', 'CERT', 'NFEAS', 'T1', ...
+         'GCHK', 'NGRB', 'NOPT', 'NIMP', 'GEV', 'GMAX', 'TLIM', 'DA', 'NS', 'MODEL', 'MATNAME', 'l_hat', 'gF', 'DP', 'A', 'MID', 'DOFF', '-v7.3');
     for w = 1:NW, delete(wfile(w)); end
     fprintf('merged %d positions -> %s | certified %.1f %% | max err %.2g | stage-1 time %.1f h total\n', ...
-            NP, fullfile(DAT, 'nn_label.mat'), 100*mean(CERT(:)), max(ERR(:)), sum(T1)/3600);
+            NP, fullfile(DAT, ['nn_label' TAG '.mat']), 100*mean(CERT(:)), max(ERR(:)), sum(T1)/3600);
     return
 end
 
@@ -89,7 +105,7 @@ else
 end
 todo = setdiff(mine, W.idx, 'stable');
 fprintf('worker %d / %d: %d positions, %d done, %d to go\n', WID, NW, numel(mine), numel(W.idx), numel(todo));
-o0 = struct('DA',DA, 'NS',NS, 'GRB',false, 'SEED',0, 'RETRY',true, 'GTHR',1, 'TLIM',TLIM, 'GMAX',GMAX);
+o0 = struct('DA',DA, 'NS',NS, 'GRB',false, 'SEED',0, 'RETRY',true, 'GTHR',1, 'TLIM',TLIM, 'GMAX',GMAX, 'DOFF',DOFF);
 nnew = 0;
 for i = todo
     if nnew >= NMAX, break; end

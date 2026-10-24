@@ -9,6 +9,8 @@
 %    step 3  along z : (a,b,+-1), (a,b,+-2), ...   start = (a, b, c -+ 1)
 %    i.e. the start of every node is its parent: one step back along z if c ~= 0, else along y, else along x;
 %    fmincon (Lagrange conditions) from the parent's solution only, no multistart, no Gurobi.
+%  LBL = 'd15': positions and labels of nn_label_d15.mat (15 um cube grid, 343 points, lattice step 15 um)
+%  instead of nn_label_sgn.mat / nn_grid.mat -> chain_d15.mat.
 %  Output: utils/data/long2016_hexapole_halfcut/chain.mat
 %    phi_j, theta_j  N_j x 1          [deg]
 %    pbar            N_p x 3                 positions (normalised), solve order
@@ -19,13 +21,19 @@
 %    cos_par         N_j x N_p               cos(I_chain, I_chain at the parent)   (signed; 1 at the centre)
 %    ratio           N_j x N_p               ||I_chain||^2 / ||I_lab||^2   (1 = global minimum reached)
 if ~exist('A','var'), A = 45; end
-clearvars -except A;
+if ~exist('LBL','var'), LBL = ''; end
+clearvars -except A LBL;
 here = fileparts(mfilename('fullpath'));  CALROOT = fileparts(fileparts(fileparts(here)));   % .../Force/Maxwell
 addpath(fullfile(CALROOT, 'function'));
 MODEL = 'long2016_hexapole_halfcut';  GEOM = 'tip40um';
 DAT = fullfile(CALROOT, 'utils', 'data', MODEL);
-S   = load(fullfile(DAT, 'nn_label_sgn.mat'), 'P_act', 'ph', 'th', 'IOPT', 'l_hat', 'MATNAME');
-G   = load(fullfile(DAT, 'nn_grid.mat'), 'H');
+if isempty(LBL)
+    S = load(fullfile(DAT, 'nn_label_sgn.mat'), 'P_act', 'ph', 'th', 'IOPT', 'l_hat', 'MATNAME');
+    G = load(fullfile(DAT, 'nn_grid.mat'), 'H');  OUT = 'chain.mat';
+else
+    S = load(fullfile(DAT, ['nn_label_' LBL '.mat']), 'P_act', 'ph', 'th', 'IOPT', 'l_hat', 'MATNAME', 'DP');
+    G = struct('H', S.DP);  OUT = ['chain_' LBL '.mat'];
+end
 l_hat = S.l_hat;
 
 % ---- positions in solve order and their parents ----
@@ -84,9 +92,9 @@ Ip = I_chain(:,:,max(par, 1));
 cos_par = squeeze(sum(I_chain .* Ip, 1) ./ (vecnorm(I_chain, 2, 1) .* vecnorm(Ip, 2, 1)));
 ratio   = squeeze(vecnorm(I_chain, 2, 1).^2 ./ vecnorm(I_lab, 2, 1).^2);
 
-save(fullfile(DAT, 'chain.mat'), 'phi_j', 'theta_j', 'pbar', 'par', 'I_chain', 'I_lab', 'ok', 'cos_par', 'ratio', 'A', 'N_p', 'N_j');
+save(fullfile(DAT, OUT), 'phi_j', 'theta_j', 'pbar', 'par', 'I_chain', 'I_lab', 'ok', 'cos_par', 'ratio', 'A', 'N_p', 'N_j');
 fprintf('N_p = %d, N_j = %d | converged %d / %d | cos_par < 0.9: %d | ratio > 1.001: %d (max %.3f) -> %s\n', ...
-        N_p, N_j, nnz(ok), numel(ok), nnz(cos_par < 0.9), nnz(ratio > 1.001), max(ratio(:)), fullfile(DAT, 'chain.mat'));
+        N_p, N_j, nnz(ok), numel(ok), nnz(cos_par < 0.9), nnz(ratio > 1.001), max(ratio(:)), fullfile(DAT, OUT));
 
 % ---------------------------------------------------------------------------------------
 function [v, g] = obj_(x)

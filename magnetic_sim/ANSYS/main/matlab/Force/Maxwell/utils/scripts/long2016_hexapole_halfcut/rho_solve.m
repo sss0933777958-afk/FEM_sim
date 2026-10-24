@@ -16,15 +16,17 @@ function S = rho_solve(Q, o)
 %     RETRY  a direction with no feasible start gets further batches of NS random starts (random scale 0.05..1)
 %            until one is feasible (false; at most 200 batches, then it stays NaN with a warning)
 %     GMAX   stage 2 on at most GMAX of the uncertified directions, a random subset (seed SEED) (Inf = all)
+%     DOFF   direction grid offset [deg] (0): ph = -90+DOFF:DA:90-DOFF, th = DOFF:DA:360+DOFF (DOFF = DA/2: the
+%            directions halfway between the grid ones, no pole)
 % S   struct: ph th, per-direction NPH x NTH arrays (IOPT FHAT LAM RHO ERR MINEIG NFEAS CERT GLOB KKT and the stage-2
 %     fields GRBD GSTAT GOBJ GBND GGAP DOBJ PLSH), stage-1 copies (*0), cap, iso, gp, t1 / t2 (stage times [s])
 o = fill_(o, struct('DA',5, 'NS',20, 'GRB',true, 'GTHR',0, 'TLIM',60, 'SEED',0, 'I_INIT',[0 0 0 0 0 1].', ...
-                    'X0G',[], 'S1',[], 'RETRY',false, 'GMAX',Inf));
+                    'X0G',[], 'S1',[], 'RETRY',false, 'GMAX',Inf, 'DOFF',0));
 TOLC = 1e-6;  TOLE = 1e-8;                                  % constraint / PSD tolerances
 opt = optimoptions('fmincon', 'Algorithm','sqp', 'SpecifyObjectiveGradient',true, ...
                    'SpecifyConstraintGradient',true, 'OptimalityTolerance',1e-10, 'ConstraintTolerance',1e-12, ...
                    'StepTolerance',1e-14, 'MaxIterations',1000, 'Display','off');
-ph = -90:o.DA:90;  th = 0:o.DA:360;  NPH = numel(ph);  NTH = numel(th);
+ph = -90+o.DOFF:o.DA:90-o.DOFF;  th = o.DOFF:o.DA:360+o.DOFF;  NPH = numel(ph);  NTH = numel(th);
 t0 = tic;
 
 % ---- stage 1: fmincon multistart + PSD certificate ----
