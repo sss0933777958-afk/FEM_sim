@@ -5,6 +5,9 @@
 %    output  Ihat_opt                             (unit force 1 pN, pole order P1..P6)
 %  LAB = 'grb'   : global-minimum labels of nn_label_sgn.mat
 %        'chain' : position-continued labels of chain.mat
+%  LBL = 'd15': positions / labels of nn_label_d15.mat and chain_d15.mat (15 um cube grid, 343 points)
+%        -> nn_train[_chain]_d15.mat
+%  LRD < 1 (LOSS = 'label' too): learning rate LR * LRD^(e-1) at epoch e (trainingOptions piecewise, drop every epoch)
 %  SGN = 'dir'   : re-align the label signs (whole 6-vectors, force unchanged): the centre labels across neighbouring
 %                  directions (max-|cos| spanning tree from (0, 0)), then every position to its direction's centre
 %        'none'  : labels as stored
@@ -51,7 +54,8 @@ if ~exist('TOLE','var'), TOLE = 1e-4; end
 if ~exist('KE','var'), KE = 10; end
 if ~exist('INIT','var'), INIT = ''; end
 if ~exist('LRD','var'), LRD = 1; end
-clearvars -except LOSS LAB R A DP LAM GRID MB EP LR NH RESUME SGN CONV TOLE KE INIT LRD;
+if ~exist('LBL','var'), LBL = ''; end
+clearvars -except LOSS LAB R A DP LAM GRID MB EP LR NH RESUME SGN CONV TOLE KE INIT LRD LBL;
 here = fileparts(mfilename('fullpath'));  CALROOT = fileparts(fileparts(fileparts(here)));   % .../Force/Maxwell
 addpath(fullfile(CALROOT, 'function'), here);                  % here: nn_net.m
 MODEL = 'long2016_hexapole_halfcut';  GEOM = 'tip40um';
@@ -146,7 +150,9 @@ if strcmp(LOSS, 'phys')
             prctile(e_ij(:), 95), max(e_ij(:)), median(nI(:)), max(nI(:)), fullfile(DAT, OUT));
     return
 end
-S   = load(fullfile(DAT, 'nn_label_sgn.mat'), 'P_act', 'ph', 'th', 'IOPT', 'l_hat', 'MATNAME');
+SFX = '';  if ~isempty(LBL), SFX = ['_' LBL]; end
+LF  = 'nn_label_sgn.mat';  if ~isempty(LBL), LF = ['nn_label' SFX '.mat']; end
+S   = load(fullfile(DAT, LF), 'P_act', 'ph', 'th', 'IOPT', 'l_hat', 'MATNAME');
 l_hat = S.l_hat;
 
 % ---- samples ----
@@ -157,7 +163,7 @@ U = TH < 360 & (abs(PH) < 90 | TH == 0);
 phi_j = PH(U);  theta_j = TH(U);  N_j = numel(phi_j);
 Ihat_opt = reshape(S.IOPT(:,:,:,n), 6, [], N_p);  Ihat_opt = Ihat_opt(:, U(:), :);        % 6 x N_j x N_p
 if strcmp(LAB, 'chain')
-    C = load(fullfile(DAT, 'chain.mat'), 'I_chain', 'pbar', 'phi_j', 'theta_j', 'A');
+    C = load(fullfile(DAT, ['chain' SFX '.mat']), 'I_chain', 'pbar', 'phi_j', 'theta_j', 'A');
     [hit, loc] = ismembertol(pbar, C.pbar, 1e-12, 'ByRows', true);
     assert(all(hit) && C.A == A && isequal(C.phi_j, phi_j), 'nn_train:chain', 'chain.mat does not match');
     Ihat_opt = C.I_chain(:, :, loc);
@@ -196,6 +202,7 @@ N_s = size(X, 1);
 
 % ---- training ----
 OUT = 'nn_train.mat';  if strcmp(LAB, 'chain'), OUT = 'nn_train_chain.mat'; end
+OUT = strrep(OUT, '.mat', [SFX '.mat']);
 rng(0);
 loss0 = [];  ep_run = [];  LR_run = [];  t_prev = 0;
 if RESUME                                                      % continue the saved run
@@ -211,6 +218,9 @@ end
 opts = trainingOptions('adam', 'MiniBatchSize',MB, 'MaxEpochs',EP, 'InitialLearnRate',LR, ...
                        'Shuffle','every-epoch', 'Verbose',true, 'VerboseFrequency',50*ceil(N_s/MB), ...
                        'Plots','none', 'ExecutionEnvironment','cpu');
+if LRD ~= 1                                                    % exponential decay: LR * LRD^(e-1)
+    opts.LearnRateSchedule = 'piecewise';  opts.LearnRateDropPeriod = 1;  opts.LearnRateDropFactor = LRD;
+end
 if CONV, opts.OutputFcn = @(in) conv_stop(in, TOLE, KE); end
 t0 = tic;
 [net, info] = trainnet(X, Y, net, 'mse', opts);
@@ -240,7 +250,7 @@ e_ij = reshape(vecnorm(fhat_NN - fhat_d, 2, 2) ./ vecnorm(fhat_d, 2, 2) * 100, N
 e_I  = reshape(vecnorm(I_NN - Y, 2, 2), N_j, N_p);
 
 save(fullfile(DAT, OUT), 'net', 'loss', 'e_ij', 'e_I', 'phi_j', 'theta_j', 'pbar', 'l_hat', 'R', 'A', 'MB', 'EP', 'LR', 'LAB', 'NH', ...
-     'ttrain', 'ep_run', 'LR_run', 'SGN', 'neg_before', 'neg_after');
+     'ttrain', 'ep_run', 'LR_run', 'SGN', 'neg_before', 'neg_after', 'LRD', 'LBL');
 fprintf('LAB %s: %d samples, MB %d, epochs %s, LR %s, %.0f s total | final loss %.3g\n', LAB, N_s, MB, mat2str(ep_run), ...
         mat2str(LR_run), ttrain, loss(end));
 fprintf('e_ij [%%]: median %.3g, 95th pct %.3g, max %.3g -> %s\n', median(e_ij(:)), prctile(e_ij(:), 95), max(e_ij(:)), fullfile(DAT, OUT));
