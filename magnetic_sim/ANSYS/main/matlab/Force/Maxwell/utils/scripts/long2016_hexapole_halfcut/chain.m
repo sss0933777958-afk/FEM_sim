@@ -11,6 +11,9 @@
 %    fmincon (Lagrange conditions) from the parent's solution only, no multistart, no Gurobi.
 %  LBL = 'd15': positions and labels of nn_label_d15.mat (15 um cube grid, 343 points, lattice step 15 um)
 %  instead of nn_label_sgn.mat / nn_grid.mat -> chain_d15.mat.
+%  Not-converged check (every run, also CHK = true: from the saved chain file, no solving): force error of the
+%  entries with ok = false,  e = || fhat(pbar, I_chain) - r_hat || / || r_hat || * 100 %,  -> <output>_err.mat
+%    jn, pn (index of direction / position), phi, theta [deg], P [um], e [%], ratio
 %  Output: utils/data/long2016_hexapole_halfcut/chain.mat
 %    phi_j, theta_j  N_j x 1          [deg]
 %    pbar            N_p x 3                 positions (normalised), solve order
@@ -22,7 +25,8 @@
 %    ratio           N_j x N_p               ||I_chain||^2 / ||I_lab||^2   (1 = global minimum reached)
 if ~exist('A','var'), A = 45; end
 if ~exist('LBL','var'), LBL = ''; end
-clearvars -except A LBL;
+if ~exist('CHK','var'), CHK = false; end
+clearvars -except A LBL CHK;
 here = fileparts(mfilename('fullpath'));  CALROOT = fileparts(fileparts(fileparts(here)));   % .../Force/Maxwell
 addpath(fullfile(CALROOT, 'function'));
 MODEL = 'long2016_hexapole_halfcut';  GEOM = 'tip40um';
@@ -69,6 +73,12 @@ phi_j = PH(U);  theta_j = TH(U);  N_j = numel(phi_j);
 I_lab = reshape(S.IOPT(:,:,:,n), 6, [], N_p);  I_lab = I_lab(:, U(:), :);
 assert(all(K(1,:) == 0), 'chain:centre', 'first node must be the centre');
 
+if CHK                                                         % force error of the saved not-converged entries
+    C = load(fullfile(DAT, OUT), 'I_chain', 'ok', 'ratio');
+    nc_err_(C.I_chain, C.ok, C.ratio, Q, phi_j, theta_j, pbar * l_hat, fullfile(DAT, strrep(OUT, '.mat', '_err.mat')));
+    return
+end
+
 TOLC = 1e-6;
 opt = optimoptions('fmincon', 'Algorithm','sqp', 'SpecifyObjectiveGradient',true, ...
                    'SpecifyConstraintGradient',true, 'OptimalityTolerance',1e-10, 'ConstraintTolerance',1e-12, ...
@@ -95,6 +105,7 @@ ratio   = squeeze(vecnorm(I_chain, 2, 1).^2 ./ vecnorm(I_lab, 2, 1).^2);
 save(fullfile(DAT, OUT), 'phi_j', 'theta_j', 'pbar', 'par', 'I_chain', 'I_lab', 'ok', 'cos_par', 'ratio', 'A', 'N_p', 'N_j');
 fprintf('N_p = %d, N_j = %d | converged %d / %d | cos_par < 0.9: %d | ratio > 1.001: %d (max %.3f) -> %s\n', ...
         N_p, N_j, nnz(ok), numel(ok), nnz(cos_par < 0.9), nnz(ratio > 1.001), max(ratio(:)), fullfile(DAT, OUT));
+nc_err_(I_chain, ok, ratio, Q, phi_j, theta_j, pbar * l_hat, fullfile(DAT, strrep(OUT, '.mat', '_err.mat')));
 
 % ---------------------------------------------------------------------------------------
 function [v, g] = obj_(x)
@@ -107,6 +118,18 @@ function [c, ceq, gc, gceq] = con_(x, Q, r)
     c = [];  gc = [];
     ceq  = [x.'*Q(:,:,1)*x - r(1); x.'*Q(:,:,2)*x - r(2); x.'*Q(:,:,3)*x - r(3)];
     gceq = 2*[Q(:,:,1)*x, Q(:,:,2)*x, Q(:,:,3)*x];
+end
+
+function nc_err_(I_chain, ok, ratio, Q, phi_j, theta_j, P, file)
+% force error e = || fhat - r_hat || / || r_hat || * 100 % of the not-converged entries (ok = false) -> file
+    [jn, pn] = find(~ok);  e = zeros(numel(jn), 1);
+    for k = 1:numel(jn)
+        r = [cosd(phi_j(jn(k)))*cosd(theta_j(jn(k))); cosd(phi_j(jn(k)))*sind(theta_j(jn(k))); sind(phi_j(jn(k)))];
+        e(k) = norm(fq_(I_chain(:, jn(k), pn(k)), Q(:,:,:,pn(k))) - r) / norm(r) * 100;
+    end
+    phi = phi_j(jn);  theta = theta_j(jn);  P = P(pn, :);  ratio = ratio(sub2ind(size(ratio), jn, pn));
+    save(file, 'jn', 'pn', 'phi', 'theta', 'P', 'e', 'ratio');
+    fprintf('not converged %d: force error median %.3g %%, max %.3g %% -> %s\n', numel(jn), median(e), max(e), file);
 end
 
 function f = fq_(x, Q)
