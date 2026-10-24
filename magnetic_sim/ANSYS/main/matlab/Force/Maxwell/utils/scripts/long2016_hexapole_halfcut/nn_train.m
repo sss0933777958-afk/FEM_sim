@@ -67,7 +67,7 @@ MODEL = 'long2016_hexapole_halfcut';  GEOM = 'tip40um';
 DAT = fullfile(CALROOT, 'utils', 'data', MODEL);
 if ~isempty(TEST)                                              % ---- evaluate the saved net on the test sets ----
     SFX = '';  if ~isempty(LBL), SFX = ['_' LBL]; end
-    if strcmp(LOSS, 'phys'), OUT = 'nn_phys.mat';  if LRD ~= 1, OUT = 'nn_phys_exp.mat'; end
+    if strcmp(LOSS, 'phys'), OUT = 'nn_phys.mat';  if LRD ~= 1, OUT = 'nn_phys_exp.mat'; end, OUT = strrep(OUT, '.mat', [SFX '.mat']);
     else, OUT = 'nn_train.mat';  if strcmp(LAB, 'chain'), OUT = 'nn_train_chain.mat'; end, OUT = strrep(OUT, '.mat', [SFX '.mat']);
     end
     W   = load(fullfile(DAT, OUT), 'net', 'R');
@@ -137,6 +137,7 @@ if strcmp(LOSS, 'phys')
     % ---- training ----
     OUT = 'nn_phys.mat';  if strcmp(INIT, 'chain'), OUT = 'nn_phys_chain.mat'; end
     if LRD ~= 1, OUT = 'nn_phys_exp.mat'; end
+    if ~isempty(LBL), OUT = strrep(OUT, '.mat', ['_' LBL '.mat']); end   % e.g. nn_phys_exp_d15.mat
     lossE = zeros(0, 3);  ep_run = [];  LR_run = [];  t_prev = 0;
     if RESUME
         W = load(fullfile(DAT, OUT));

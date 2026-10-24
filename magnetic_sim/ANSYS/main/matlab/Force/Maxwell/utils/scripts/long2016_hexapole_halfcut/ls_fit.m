@@ -42,7 +42,8 @@ if ~exist('LOSS','var'), LOSS = 'label'; end
 if ~exist('LAM','var'), LAM = 0.01; end
 if ~exist('LBL','var'), LBL = ''; end
 if ~exist('TEST','var'), TEST = {}; end                       % e.g. {'T1','T2'} (LBL = 'd15')
-clearvars -except REG A LAB LOSS LAM LBL TEST;
+if ~exist('SAVED','var'), SAVED = false; end                   % LOSS = 'phys': take d from the saved fit, no re-fit
+clearvars -except REG A LAB LOSS LAM LBL TEST SAVED;
 here = fileparts(mfilename('fullpath'));  CALROOT = fileparts(fileparts(fileparts(here)));   % .../Force/Maxwell
 addpath(fullfile(CALROOT, 'function'));
 MODEL = 'long2016_hexapole_halfcut';  GEOM = 'tip40um';
@@ -116,14 +117,20 @@ if strcmp(LOSS, 'phys')
     opt = optimoptions('lsqnonlin', 'Algorithm','levenberg-marquardt', 'SpecifyObjectiveGradient',true, ...
                        'FunctionTolerance',1e-14, 'StepTolerance',1e-14, 'MaxIterations',2000, 'Display','off');
     t0 = tic;
-    for j = 1:N_j
-        dj = lsqnonlin(@(x) e_j(x, T, Q, fhat_d(j,:).', LAM), reshape(d0(:,j,:), [], 1), [], [], opt);
-        d0(:,j,:) = reshape(dj, 10, 1, N_I);
-        if mod(j, 500) == 0, fprintf('  %d / %d directions, %.0f s\n', j, N_j, toc(t0)); end
+    if SAVED                                                   % the saved fit (TEST runs)
+        F = load(fullfile(DAT, ['ls_fit_phys' SFX '.mat']), 'd', 'LAM');
+        assert(F.LAM == LAM, 'ls_fit:saved', 'saved fit has another LAM');
+        d0 = F.d;
+    else
+        for j = 1:N_j
+            dj = lsqnonlin(@(x) e_j(x, T, Q, fhat_d(j,:).', LAM), reshape(d0(:,j,:), [], 1), [], [], opt);
+            d0(:,j,:) = reshape(dj, 10, 1, N_I);
+            if mod(j, 500) == 0, fprintf('  %d / %d directions, %.0f s\n', j, N_j, toc(t0)); end
+        end
     end
     d = reshape(d0, 10, []);
     Ihat_LS = reshape(T*d, N_p, N_j, N_I);
-    OUT = 'ls_fit_phys.mat';
+    OUT = ['ls_fit_phys' SFX '.mat'];
 end
 
 % ---- Sec. 3: fill D_LS_i from d_i = [d44 d14 d24 d34 d12 d13 d23 d11 d22 d33] ----
