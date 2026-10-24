@@ -14,6 +14,13 @@
 %  Not-converged check (every run, also CHK = true: from the saved chain file, no solving): force error of the
 %  entries with ok = false,  e = || fhat(pbar, I_chain) - r_hat || / || r_hat || * 100 %,  -> <output>_err.mat
 %    jn, pn (index of direction / position), phi, theta [deg], P [um], e [%], ratio
+%  FIX = n (> 0): the n not-converged entries with the largest force error (from <output>_err.mat) are solved again
+%  from each inward neighbour (one step back toward the centre along every axis with a nonzero index; a corner has
+%  three), with the same fmincon; the start giving the smallest force error is kept  -> <output>_fix.mat
+%    jn, pn, phi, theta, P, nb (3 x n neighbour positions, NaN if absent), e_nb (3 x n [%]), ratio_nb (3 x n),
+%    best (1 x n, row of nb), I_fix (6 x n), e_fix (1 x n [%]), e_old (1 x n [%]); chain file itself not changed.
+%  APPLY = true (with FIX): I_fix also replaces those entries of the chain file (ok, cos_par, ratio updated), and
+%  <output>_err.mat is rewritten.
 %  Output: utils/data/long2016_hexapole_halfcut/chain.mat
 %    phi_j, theta_j  N_j x 1          [deg]
 %    pbar            N_p x 3                 positions (normalised), solve order
@@ -26,7 +33,9 @@
 if ~exist('A','var'), A = 45; end
 if ~exist('LBL','var'), LBL = ''; end
 if ~exist('CHK','var'), CHK = false; end
-clearvars -except A LBL CHK;
+if ~exist('FIX','var'), FIX = 0; end
+if ~exist('APPLY','var'), APPLY = false; end
+clearvars -except A LBL CHK FIX APPLY;
 here = fileparts(mfilename('fullpath'));  CALROOT = fileparts(fileparts(fileparts(here)));   % .../Force/Maxwell
 addpath(fullfile(CALROOT, 'function'));
 MODEL = 'long2016_hexapole_halfcut';  GEOM = 'tip40um';
@@ -83,6 +92,49 @@ TOLC = 1e-6;
 opt = optimoptions('fmincon', 'Algorithm','sqp', 'SpecifyObjectiveGradient',true, ...
                    'SpecifyConstraintGradient',true, 'OptimalityTolerance',1e-10, 'ConstraintTolerance',1e-12, ...
                    'StepTolerance',1e-14, 'MaxIterations',1000, 'Display','off');
+
+if FIX > 0                                                     % re-solve the worst not-converged entries
+    C  = load(fullfile(DAT, OUT), 'I_chain', 'I_lab');
+    E  = load(fullfile(DAT, strrep(OUT, '.mat', '_err.mat')));
+    [~, o] = sort(E.e, 'descend');  o = o(1:min(FIX, numel(o))).';
+    jn = E.jn(o).';  pn = E.pn(o).';  nf = numel(o);
+    nb = nan(3, nf);  e_nb = nan(3, nf);  ratio_nb = nan(3, nf);  I_nb = nan(6, 3, nf);
+    for q = 1:nf
+        j = jn(q);  p = pn(q);  r = [cosd(phi_j(j))*cosd(theta_j(j)); cosd(phi_j(j))*sind(theta_j(j)); sind(phi_j(j))];
+        for ax = 1:3
+            if K(p,ax) == 0, continue; end
+            Kn = K(p,:);  Kn(ax) = Kn(ax) - sign(Kn(ax));       % inward neighbour along ax
+            nb(ax,q) = find(all(K == Kn, 2));
+            I = fmincon(@obj_, C.I_chain(:,j,nb(ax,q)), [],[],[],[],[],[], @(x) con_(x, Q(:,:,:,p), r), opt);
+            I_nb(:,ax,q) = I;
+            e_nb(ax,q) = norm(fq_(I, Q(:,:,:,p)) - r) / norm(r) * 100;
+            ratio_nb(ax,q) = (I.'*I) / (C.I_lab(:,j,p).'*C.I_lab(:,j,p));
+        end
+    end
+    [e_fix, best] = min(e_nb, [], 1);
+    I_fix = zeros(6, nf);  for q = 1:nf, I_fix(:,q) = I_nb(:,best(q),q); end
+    phi = phi_j(jn).';  theta = theta_j(jn).';  P = pbar(pn,:) * l_hat;  e_old = E.e(o).';
+    save(fullfile(DAT, strrep(OUT, '.mat', '_fix.mat')), 'jn', 'pn', 'phi', 'theta', 'P', 'nb', 'e_nb', 'ratio_nb', ...
+         'best', 'I_fix', 'e_fix', 'e_old');
+    for q = 1:nf
+        fprintf('phi %g theta %g p = [%g %g %g] um | old e %.3g %% | from x/y/z neighbour: e %s %%, ratio %s | best %d\n', ...
+                phi(q), theta(q), round(P(q,:)), e_old(q), mat2str(e_nb(:,q).', 3), mat2str(ratio_nb(:,q).', 4), best(q));
+    end
+    if APPLY                                                   % write the re-solved entries into the chain file
+        W = load(fullfile(DAT, OUT));
+        for q = 1:nf
+            j = jn(q);  p = pn(q);  r = [cosd(phi_j(j))*cosd(theta_j(j)); cosd(phi_j(j))*sind(theta_j(j)); sind(phi_j(j))];
+            I = I_fix(:,q);  W.I_chain(:,j,p) = I;
+            W.ok(j,p) = norm(fq_(I, Q(:,:,:,p)) - r) < TOLC;
+            W.ratio(j,p) = (I.'*I) / (W.I_lab(:,j,p).'*W.I_lab(:,j,p));
+            Ip = W.I_chain(:,j,W.par(p));  W.cos_par(j,p) = (I.'*Ip) / (norm(I)*norm(Ip));
+        end
+        save(fullfile(DAT, OUT), '-struct', 'W');
+        fprintf('applied %d entries -> %s | converged %d / %d | max ratio %.3f\n', nf, fullfile(DAT, OUT), nnz(W.ok), numel(W.ok), max(W.ratio(:)));
+        nc_err_(W.I_chain, W.ok, W.ratio, Q, phi_j, theta_j, pbar * l_hat, fullfile(DAT, strrep(OUT, '.mat', '_err.mat')));
+    end
+    return
+end
 I_chain = nan(6, N_j, N_p);  ok = false(N_j, N_p);
 I_chain(:,:,1) = I_lab(:,:,1);  ok(:,1) = true;
 t0 = tic;
