@@ -12,6 +12,9 @@
 %  on the global-label test sets T1 nn_label_d15, T2 _mid, T3 _off, T4 _mid_off: per set e (N_jt x N_t [%]) force
 %  error, eta (N_jt x N_t) = ||Ihat_opt||^2 / ||I_NN||^2, P (N_t x 3 [um]), phi, theta (N_jt x 1 [deg])
 %  -> nn_test<output tag>.mat (sets already in the file are kept)
+%  GEN = true (with LBL = 'd15'): no training; the saved net gives labels on the T1 positions and directions,
+%  same layout as chain.mat: I_chain (6 x N_j x N_p [A], pole order P1..P6), pbar, phi_j, theta_j, A, plus
+%  e (N_j x N_p [%]) force error  -> nnlab<output tag>.mat (e.g. nnlab_phys_exp_d15_s3.mat)
 %  SGN = 'dir'   : re-align the label signs (whole 6-vectors, force unchanged): the centre labels across neighbouring
 %                  directions (max-|cos| spanning tree from (0, 0)), then every position to its direction's centre
 %        'none'  : labels as stored
@@ -61,7 +64,9 @@ if ~exist('LRD','var'), LRD = 1; end
 if ~exist('LBL','var'), LBL = ''; end
 if ~exist('TEST','var'), TEST = {}; end
 if ~exist('SEED','var'), SEED = []; end                       % LOSS = 'phys': rng seed of the initial weights ([] = as before)
-clearvars -except LOSS LAB R A DP LAM GRID MB EP LR NH RESUME SGN CONV TOLE KE INIT LRD LBL TEST SEED;
+if ~exist('GEN','var'), GEN = false; end
+clearvars -except LOSS LAB R A DP LAM GRID MB EP LR NH RESUME SGN CONV TOLE KE INIT LRD LBL TEST SEED GEN;
+if GEN, TEST = {'T1'}; end                                     % GEN: the T1 positions and directions
 here = fileparts(mfilename('fullpath'));  CALROOT = fileparts(fileparts(fileparts(here)));   % .../Force/Maxwell
 addpath(fullfile(CALROOT, 'function'), here);                  % here: nn_net.m
 MODEL = 'long2016_hexapole_halfcut';  GEOM = 'tip40um';
@@ -100,6 +105,18 @@ if ~isempty(TEST)                                              % ---- evaluate t
             eta(:,p) = (vecnorm(Io(:,:,p), 2, 1).^2 ./ vecnorm(I, 2, 1).^2).';
         end
         RES.(t) = struct('e', e, 'eta', eta, 'P', Pt, 'phi', pht, 'theta', tht);
+        if GEN                                                 % labels of the net on T1
+            I_chain = zeros(6, Njt, Nt);
+            for p = 1:Nt
+                X = single([rt, repmat(Pt(p,:) / W.R, Njt, 1)]);
+                I_chain(:,:,p) = double(extractdata(predict(W.net, dlarray(X.', 'CB'))));
+            end
+            pbar = Pt / cal.l_m;  phi_j = pht;  theta_j = tht;
+            GOUT = strrep(OUT, 'nn_', 'nnlab_');
+            save(fullfile(DAT, GOUT), 'I_chain', 'pbar', 'phi_j', 'theta_j', 'A', 'e', 'OUT');
+            fprintf('labels %d x %d x %d -> %s\n', size(I_chain), fullfile(DAT, GOUT));
+            return
+        end
         fprintf('%s: %d positions x %d directions | e [%%]: median %.3g, 95th %.3g, max %.3g | eta: median %.4f, min %.4f, max %.4f\n', ...
                 t, Nt, Njt, median(e(:)), prctile(e(:), 95), max(e(:)), median(eta(:)), min(eta(:)), max(eta(:)));
     end
