@@ -8,6 +8,10 @@
 %  LBL = 'd15': positions / labels of nn_label_d15.mat and chain_d15.mat (15 um cube grid, 343 points)
 %        -> nn_train[_chain]_d15.mat
 %  LRD < 1 (LOSS = 'label' too): learning rate LR * LRD^(e-1) at epoch e (trainingOptions piecewise, drop every epoch)
+%  TEST = {'T1',...,'T4'} (with LBL = 'd15'): no training; the saved net (output file of LOSS / LAB / LBL) is evaluated
+%  on the global-label test sets T1 nn_label_d15, T2 _mid, T3 _off, T4 _mid_off: per set e (N_jt x N_t [%]) force
+%  error, eta (N_jt x N_t) = ||Ihat_opt||^2 / ||I_NN||^2, P (N_t x 3 [um]), phi, theta (N_jt x 1 [deg])
+%  -> nn_test<output tag>.mat (sets already in the file are kept)
 %  SGN = 'dir'   : re-align the label signs (whole 6-vectors, force unchanged): the centre labels across neighbouring
 %                  directions (max-|cos| spanning tree from (0, 0)), then every position to its direction's centre
 %        'none'  : labels as stored
@@ -55,11 +59,54 @@ if ~exist('KE','var'), KE = 10; end
 if ~exist('INIT','var'), INIT = ''; end
 if ~exist('LRD','var'), LRD = 1; end
 if ~exist('LBL','var'), LBL = ''; end
-clearvars -except LOSS LAB R A DP LAM GRID MB EP LR NH RESUME SGN CONV TOLE KE INIT LRD LBL;
+if ~exist('TEST','var'), TEST = {}; end
+clearvars -except LOSS LAB R A DP LAM GRID MB EP LR NH RESUME SGN CONV TOLE KE INIT LRD LBL TEST;
 here = fileparts(mfilename('fullpath'));  CALROOT = fileparts(fileparts(fileparts(here)));   % .../Force/Maxwell
 addpath(fullfile(CALROOT, 'function'), here);                  % here: nn_net.m
 MODEL = 'long2016_hexapole_halfcut';  GEOM = 'tip40um';
 DAT = fullfile(CALROOT, 'utils', 'data', MODEL);
+if ~isempty(TEST)                                              % ---- evaluate the saved net on the test sets ----
+    SFX = '';  if ~isempty(LBL), SFX = ['_' LBL]; end
+    if strcmp(LOSS, 'phys'), OUT = 'nn_phys.mat';  if LRD ~= 1, OUT = 'nn_phys_exp.mat'; end
+    else, OUT = 'nn_train.mat';  if strcmp(LAB, 'chain'), OUT = 'nn_train_chain.mat'; end, OUT = strrep(OUT, '.mat', [SFX '.mat']);
+    end
+    W   = load(fullfile(DAT, OUT), 'net', 'R');
+    TF  = struct('T1', ['nn_label' SFX '.mat'], 'T2', ['nn_label' SFX '_mid.mat'], ...
+                 'T3', ['nn_label' SFX '_off.mat'], 'T4', ['nn_label' SFX '_mid_off.mat']);
+    mgB = 0.0451;  UF = 1e3;                                   % M g_B [A um^2/mT]; unit factor -> pN
+    RES = struct();
+    for t = string(TEST)
+        G = load(fullfile(DAT, TF.(t)), 'P_act', 'ph', 'th', 'IOPT', 'MATNAME');
+        [PHt, THt] = ndgrid(G.ph, G.th);  Ut = THt < 360 & (abs(PHt) < 90 | THt == 0);
+        pht = PHt(Ut);  tht = THt(Ut);  Njt = numel(pht);
+        Pt  = G.P_act;  Nt = size(Pt, 1);
+        cal = load_flux_calib(MODEL, GEOM, G.MATNAME, 'current');
+        FH  = sqrt(UF * mgB / (2*cal.l_m) * cal.gB_m^2) * cal.Mbar_m;   % F H_I [sqrt(pN)/A]
+        Lt  = build_L(Pt, cal.l_m, cal.e_m, cal.Pc_base);
+        rt  = [cosd(pht).*cosd(tht), cosd(pht).*sind(tht), sind(pht)];
+        Io  = reshape(G.IOPT, 6, [], Nt);  Io = Io(:, Ut(:), :);
+        e = zeros(Njt, Nt);  eta = zeros(Njt, Nt);
+        for p = 1:Nt
+            X = single([rt, repmat(Pt(p,:) / W.R, Njt, 1)]);
+            I = double(extractdata(predict(W.net, dlarray(X.', 'CB'))));      % 6 x Njt
+            f = zeros(3, Njt);
+            for k = 1:3
+                Q_k = FH.' * squeeze(Lt(p,:,:,k)) * FH;  Q_k = (Q_k + Q_k.')/2;
+                f(k,:) = sum(I .* (Q_k * I), 1);
+            end
+            e(:,p)   = vecnorm(f - rt.', 2, 1).' * 100;        % || r_hat || = 1
+            eta(:,p) = (vecnorm(Io(:,:,p), 2, 1).^2 ./ vecnorm(I, 2, 1).^2).';
+        end
+        RES.(t) = struct('e', e, 'eta', eta, 'P', Pt, 'phi', pht, 'theta', tht);
+        fprintf('%s: %d positions x %d directions | e [%%]: median %.3g, 95th %.3g, max %.3g | eta: median %.4f, min %.4f, max %.4f\n', ...
+                t, Nt, Njt, median(e(:)), prctile(e(:), 95), max(e(:)), median(eta(:)), min(eta(:)), max(eta(:)));
+    end
+    TOUT = strrep(OUT, 'nn_', 'nn_test_');  TOUT = strrep(TOUT, 'nn_test_train', 'nn_test');
+    if isfile(fullfile(DAT, TOUT)), save(fullfile(DAT, TOUT), '-struct', 'RES', '-append');
+    else, save(fullfile(DAT, TOUT), '-struct', 'RES'); end
+    fprintf('-> %s\n', fullfile(DAT, TOUT));
+    return
+end
 if strcmp(LOSS, 'phys')
     S = load(fullfile(DAT, 'nn_label_sgn.mat'), 'ph', 'th', 'MATNAME');
     % ---- samples: 1000 grid positions x 2522 directions ----
