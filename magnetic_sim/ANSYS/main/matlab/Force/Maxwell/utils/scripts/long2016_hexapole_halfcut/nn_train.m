@@ -31,6 +31,8 @@
 %    e_ij            N_j x N_p   [%]   relative force error of the network output
 %    e_I             N_j x N_p   [A]   || I_NN - Ihat_opt ||
 %    phi_j, theta_j, pbar, l_hat, R, A, MB, EP, LR, LAB, NH
+%  NH: hidden widths (nn_net.m); NH other than [64 64] adds _h<NH(1)> to every output name
+%  (training, TEST, GEN), e.g. NH = [128 128] -> nn_train_chain_d15_h128.mat, nn_test_chain_d15_h128.mat.
 %
 %  LOSS = 'phys': no labels; the force model is in the loss,
 %    L = || fhat(p_i, Ihat_NN) - r_hat ||^2 + LAM || Ihat_NN ||^2      (mean over the mini-batch)
@@ -67,6 +69,7 @@ if ~exist('SEED','var'), SEED = []; end                       % LOSS = 'phys': r
 if ~exist('GEN','var'), GEN = false; end
 clearvars -except LOSS LAB R A DP LAM GRID MB EP LR NH RESUME SGN CONV TOLE KE INIT LRD LBL TEST SEED GEN;
 if GEN, TEST = {'T1'}; end                                     % GEN: the T1 positions and directions
+HTAG = '';  if ~isequal(NH, [64 64]), HTAG = sprintf('_h%d', NH(1)); end   % NH other than 64-64: output tag, e.g. _h128
 here = fileparts(mfilename('fullpath'));  CALROOT = fileparts(fileparts(fileparts(here)));   % .../Force/Maxwell
 addpath(fullfile(CALROOT, 'function'), here);                  % here: nn_net.m
 MODEL = 'long2016_hexapole_halfcut';  GEOM = 'tip40um';
@@ -77,6 +80,7 @@ if ~isempty(TEST)                                              % ---- evaluate t
         if ~isempty(SEED), OUT = strrep(OUT, '.mat', sprintf('_s%d.mat', SEED)); end
     else, OUT = 'nn_train.mat';  if strcmp(LAB, 'chain'), OUT = 'nn_train_chain.mat'; end, OUT = strrep(OUT, '.mat', [SFX '.mat']);
     end
+    OUT = strrep(OUT, '.mat', [HTAG '.mat']);
     W   = load(fullfile(DAT, OUT), 'net', 'R');
     TF  = struct('T1', ['nn_label' SFX '.mat'], 'T2', ['nn_label' SFX '_mid.mat'], ...
                  'T3', ['nn_label' SFX '_off.mat'], 'T4', ['nn_label' SFX '_mid_off.mat']);
@@ -158,6 +162,7 @@ if strcmp(LOSS, 'phys')
     if LRD ~= 1, OUT = 'nn_phys_exp.mat'; end
     if ~isempty(LBL), OUT = strrep(OUT, '.mat', ['_' LBL '.mat']); end   % e.g. nn_phys_exp_d15.mat
     if ~isempty(SEED), OUT = strrep(OUT, '.mat', sprintf('_s%d.mat', SEED)); end   % e.g. nn_phys_exp_d15_s1.mat
+    OUT = strrep(OUT, '.mat', [HTAG '.mat']);                     % e.g. nn_phys_exp_d15_h128.mat
     lossE = zeros(0, 3);  ep_run = [];  LR_run = [];  t_prev = 0;
     if RESUME
         W = load(fullfile(DAT, OUT));
@@ -271,7 +276,7 @@ N_s = size(X, 1);
 
 % ---- training ----
 OUT = 'nn_train.mat';  if strcmp(LAB, 'chain'), OUT = 'nn_train_chain.mat'; end
-OUT = strrep(OUT, '.mat', [SFX '.mat']);
+OUT = strrep(OUT, '.mat', [SFX HTAG '.mat']);
 rng(0);
 loss0 = [];  ep_run = [];  LR_run = [];  t_prev = 0;
 if RESUME                                                      % continue the saved run
