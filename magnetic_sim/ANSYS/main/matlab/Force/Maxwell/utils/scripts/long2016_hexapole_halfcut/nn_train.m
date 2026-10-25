@@ -33,6 +33,10 @@
 %    phi_j, theta_j, pbar, l_hat, R, A, MB, EP, LR, LAB, NH
 %  NH: hidden widths (nn_net.m); NH other than [64 64] adds _h<NH(1)> to every output name
 %  (training, TEST, GEN), e.g. NH = [128 128] -> nn_train_chain_d15_h128.mat, nn_test_chain_d15_h128.mat.
+%  EP: default 200 with LBL (the d15 runs), 500 without; with LBL, EP other than 200 adds _e<EP> after it
+%  (pass the same EP to TEST), e.g. SEED = 3, EP = 600 -> nn_phys_exp_d15_s3_e600.mat.
+%  EP0 (LOSS = 'phys', RESUME, LBL): epochs already in the saved run; reads the _e<EP0> file and saves under the total
+%  EP0 + EP, e.g. EP0 = 600, EP = 400 -> nn_phys_exp_d15_s3_e1000.mat; the LR decay goes on from epoch EP0 + 1.
 %
 %  LOSS = 'phys': no labels; the force model is in the loss,
 %    L = || fhat(p_i, Ihat_NN) - r_hat ||^2 + LAM || Ihat_NN ||^2      (mean over the mini-batch)
@@ -54,7 +58,6 @@ if ~exist('DP','var'), DP = 30; end
 if ~exist('LAM','var'), LAM = 0.01; end
 if ~exist('GRID','var'), GRID = 'origin'; end
 if ~exist('MB','var'), MB = 256; end
-if ~exist('EP','var'), EP = 500; end
 if ~exist('LR','var'), LR = 1e-3; end
 if ~exist('NH','var'), NH = [64 64]; end
 if ~exist('RESUME','var'), RESUME = false; end
@@ -64,12 +67,17 @@ if ~exist('KE','var'), KE = 10; end
 if ~exist('INIT','var'), INIT = ''; end
 if ~exist('LRD','var'), LRD = 1; end
 if ~exist('LBL','var'), LBL = ''; end
+if ~exist('EP','var'), EP = 500;  if ~isempty(LBL), EP = 200; end, end   % the d15 runs: 200 epochs
+if ~exist('EP0','var'), EP0 = 0; end                           % RESUME (phys, LBL): epochs already in the saved run
 if ~exist('TEST','var'), TEST = {}; end
 if ~exist('SEED','var'), SEED = []; end                       % LOSS = 'phys': rng seed of the initial weights ([] = as before)
 if ~exist('GEN','var'), GEN = false; end
-clearvars -except LOSS LAB R A DP LAM GRID MB EP LR NH RESUME SGN CONV TOLE KE INIT LRD LBL TEST SEED GEN;
+clearvars -except LOSS LAB R A DP LAM GRID MB EP EP0 LR NH RESUME SGN CONV TOLE KE INIT LRD LBL TEST SEED GEN;
 if GEN, TEST = {'T1'}; end                                     % GEN: the T1 positions and directions
 HTAG = '';  if ~isequal(NH, [64 64]), HTAG = sprintf('_h%d', NH(1)); end   % NH other than 64-64: output tag, e.g. _h128
+RTAG = HTAG;                                                   % tag of the run RESUME starts from
+if ~isempty(LBL) && EP0 + EP ~= 200, HTAG = sprintf('%s_e%d', HTAG, EP0 + EP); end   % d15 runs, total epochs other than 200: e.g. _e600
+if ~isempty(LBL) && EP0 ~= 200 && EP0 > 0, RTAG = sprintf('%s_e%d', RTAG, EP0); end
 here = fileparts(mfilename('fullpath'));  CALROOT = fileparts(fileparts(fileparts(here)));   % .../Force/Maxwell
 addpath(fullfile(CALROOT, 'function'), here);                  % here: nn_net.m
 MODEL = 'long2016_hexapole_halfcut';  GEOM = 'tip40um';
@@ -164,9 +172,11 @@ if strcmp(LOSS, 'phys')
     if ~isempty(SEED), OUT = strrep(OUT, '.mat', sprintf('_s%d.mat', SEED)); end   % e.g. nn_phys_exp_d15_s1.mat
     OUT = strrep(OUT, '.mat', [HTAG '.mat']);                     % e.g. nn_phys_exp_d15_h128.mat
     lossE = zeros(0, 3);  ep_run = [];  LR_run = [];  t_prev = 0;
-    if RESUME
-        W = load(fullfile(DAT, OUT));
+    if RESUME                                                  % EP0 > 0: from the EP0-epoch file, saved under the total
+        RIN = OUT;  if EP0 > 0, RIN = strrep(OUT, [HTAG '.mat'], [RTAG '.mat']); end
+        W = load(fullfile(DAT, RIN));
         assert(W.R == R && W.A == A && W.DP == DP && strcmp(W.GRID, GRID) && W.LAM == LAM && isequal(W.NH, NH), 'nn_train:resume', 'saved run differs');
+        assert(EP0 == 0 || sum(W.ep_run) == EP0, 'nn_train:resume', '%s has %d epochs, not EP0 = %d', RIN, sum(W.ep_run), EP0);
         net = W.net;  lossE = W.loss;  ep_run = W.ep_run;  LR_run = W.LR_run;  t_prev = W.ttrain;
         avg = W.avg;  avgSq = W.avgSq;  it = W.it;
     else
@@ -179,6 +189,7 @@ if strcmp(LOSS, 'phys')
         end
     end
     rng(numel(ep_run));
+    e0 = sum(ep_run);                                          % epochs done before: the LR decay continues from there
     NB = ceil(N_s / MB);
     t0 = tic;
     for ep = 1:EP
@@ -188,7 +199,7 @@ if strcmp(LOSS, 'phys')
             Xb = dlarray(X(s,:).', 'CB');
             it = it + 1;
             [Lb, gr, parts] = dlfeval(@phys_loss, net, Xb, Q(:,:,:,Pi(s)), RH(J(s),:).', LAM);
-            [net, avg, avgSq] = adamupdate(net, gr, avg, avgSq, it, LR * LRD^(ep-1));
+            [net, avg, avgSq] = adamupdate(net, gr, avg, avgSq, it, LR * LRD^(e0+ep-1));
             acc = acc + numel(s) * double(extractdata([Lb, parts]));
         end
         lossE(end+1, :) = acc / N_s;                                %#ok<SAGROW>
