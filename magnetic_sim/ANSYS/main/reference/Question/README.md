@@ -8,4 +8,4 @@
 | `force_metrics.md` | 力模型能否定義類似磁通 𝒞 / κ 的 Efficiency index 與 isotropy | 待討論 |
 | `calib_noise.md` | flux 校正出的 ℓ̂、ê 沒考慮雜訊；要怎麼分析雜訊對它們的影響（老師的 ℓ̂₀ + δℓ 推 J 的做法待理解） | 待討論 |
 | `cost_flat_pair.md` | 對極結構單一激發、中心取樣時，cost 曲線在 ℓ̂ 大的一側變平（10.6 簡報第 3、4 頁） | 待討論 |
-| `flux_conversion.md` | 反模型改以磁通表示，最小電流的 Lagrange 解要不要重解（Φ̂_opt = K̄_I Î_opt 的換算、最小磁通時 K̄_I 近奇異的陷阱） | 換算已推導，目標待決（2026-10-28） |
+| `flux_conversion.md` | 反模型改以磁通表示，最小電流解換算成單位磁通：Φ̂_opt = K̄_I Î_opt | 換算已推導，待驗證（2026-10-28） |
