@@ -49,6 +49,9 @@
 %    ep_conv: first epoch at which the epoch-mean loss changed by < TOLE (relative) for KE epochs in a row (NaN: never).
 %    Output nn_phys.mat: net, loss (per epoch: total, force term, LAM term), e_ij (N_j x N_p [%]),
 %    nI (N_j x N_p [A], || I_NN ||), phi_j, theta_j, P, R, A, DP, LAM, MB, EP, LR, NH, ttrain, ep_run, LR_run.
+%  INP (LOSS = 'phys' and TEST): input of the net.  'rhat' (default): x = [r_hat; p / R] (6).
+%    'ang': x = [p / R; phi / 90; theta / 180 - 1] (5; angles in deg normalised to [-1, 1]; a pole phi = +-90 is the
+%    single direction theta = 0, as in the direction grid); adds _ang to every output name, e.g. nn_phys_exp_d15_s3_ang_e1000.mat
 if ~exist('LOSS','var'), LOSS = 'label'; end
 if ~exist('LAB','var'), LAB = 'grb'; end
 if ~exist('R','var'), R = 30;  if strcmp(LOSS, 'phys'), R = 90; end, end
@@ -70,11 +73,14 @@ if ~exist('LBL','var'), LBL = ''; end
 if ~exist('EP','var'), EP = 500;  if ~isempty(LBL), EP = 200; end, end   % the d15 runs: 200 epochs
 if ~exist('EP0','var'), EP0 = 0; end                           % RESUME (phys, LBL): epochs already in the saved run
 if ~exist('TEST','var'), TEST = {}; end
-if ~exist('SEED','var'), SEED = []; end                       % LOSS = 'phys': rng seed of the initial weights ([] = as before)
+if ~exist('SEED','var'), SEED = []; end                       % rng seed of the initial weights ([] = as before); label loss: adds _s<SEED>
 if ~exist('GEN','var'), GEN = false; end
-clearvars -except LOSS LAB R A DP LAM GRID MB EP EP0 LR NH RESUME SGN CONV TOLE KE INIT LRD LBL TEST SEED GEN;
+if ~exist('INP','var'), INP = 'rhat'; end                     % net input: 'rhat' (6) | 'ang' (5)
+clearvars -except LOSS LAB R A DP LAM GRID MB EP EP0 LR NH RESUME SGN CONV TOLE KE INIT LRD LBL TEST SEED GEN INP;
 if GEN, TEST = {'T1'}; end                                     % GEN: the T1 positions and directions
 HTAG = '';  if ~isequal(NH, [64 64]), HTAG = sprintf('_h%d', NH(1)); end   % NH other than 64-64: output tag, e.g. _h128
+if strcmp(INP, 'ang'), HTAG = ['_ang' HTAG]; end                % angle input: e.g. nn_phys_exp_d15_s3_ang_e1000.mat
+NIN = 6;  if strcmp(INP, 'ang'), NIN = 5; end
 RTAG = HTAG;                                                   % tag of the run RESUME starts from
 if ~isempty(LBL) && EP0 + EP ~= 200, HTAG = sprintf('%s_e%d', HTAG, EP0 + EP); end   % d15 runs, total epochs other than 200: e.g. _e600
 if ~isempty(LBL) && EP0 ~= 200 && EP0 > 0, RTAG = sprintf('%s_e%d', RTAG, EP0); end
@@ -89,6 +95,7 @@ if ~isempty(TEST)                                              % ---- evaluate t
     else, OUT = 'nn_train.mat';  if strcmp(LAB, 'chain'), OUT = 'nn_train_chain.mat'; end, OUT = strrep(OUT, '.mat', [SFX '.mat']);
     end
     OUT = strrep(OUT, '.mat', [HTAG '.mat']);
+    if ~strcmp(LOSS, 'phys') && ~isempty(SEED), OUT = strrep(OUT, '.mat', sprintf('_s%d.mat', SEED)); end
     W   = load(fullfile(DAT, OUT), 'net', 'R');
     TF  = struct('T1', ['nn_label' SFX '.mat'], 'T2', ['nn_label' SFX '_mid.mat'], ...
                  'T3', ['nn_label' SFX '_off.mat'], 'T4', ['nn_label' SFX '_mid_off.mat']);
@@ -106,7 +113,7 @@ if ~isempty(TEST)                                              % ---- evaluate t
         Io  = reshape(G.IOPT, 6, [], Nt);  Io = Io(:, Ut(:), :);
         e = zeros(Njt, Nt);  eta = zeros(Njt, Nt);
         for p = 1:Nt
-            X = single([rt, repmat(Pt(p,:) / W.R, Njt, 1)]);
+            X = single(net_in(INP, rt, pht, tht, repmat(Pt(p,:) / W.R, Njt, 1)));
             I = double(extractdata(predict(W.net, dlarray(X.', 'CB'))));      % 6 x Njt
             f = zeros(3, Njt);
             for k = 1:3
@@ -120,7 +127,7 @@ if ~isempty(TEST)                                              % ---- evaluate t
         if GEN                                                 % labels of the net on T1
             I_chain = zeros(6, Njt, Nt);
             for p = 1:Nt
-                X = single([rt, repmat(Pt(p,:) / W.R, Njt, 1)]);
+                X = single(net_in(INP, rt, pht, tht, repmat(Pt(p,:) / W.R, Njt, 1)));
                 I_chain(:,:,p) = double(extractdata(predict(W.net, dlarray(X.', 'CB'))));
             end
             pbar = Pt / cal.l_m;  phi_j = pht;  theta_j = tht;
@@ -150,7 +157,7 @@ if strcmp(LOSS, 'phys')
     phi_j = PH(U);  theta_j = TH(U);  N_j = numel(phi_j);
     r_hat = [cosd(phi_j).*cosd(theta_j), cosd(phi_j).*sind(theta_j), sind(phi_j)];         % N_j x 3
     [J, Pi] = ndgrid(1:N_j, 1:N_p);  J = J(:);  Pi = Pi(:);       % sample s = (j, p)
-    X = single([r_hat(J,:), P(Pi,:) / R]);                         % N_s x 6
+    X = single(net_in(INP, r_hat(J,:), phi_j(J), theta_j(J), P(Pi,:) / R));   % N_s x NIN
     N_s = size(X, 1);
     % ---- force model: fhat_k = I' Q_k I  (Q_k as nn_label.m) ----
     mgB = 0.0451;  UF = 1e3;                                   % M g_B [A um^2/mT]; unit factor -> pN
@@ -181,7 +188,7 @@ if strcmp(LOSS, 'phys')
         avg = W.avg;  avgSq = W.avgSq;  it = W.it;
     else
         if ~isempty(SEED), rng(SEED); end                     % initial weights only; the shuffle seed stays as before
-        net = nn_net(NH);  avg = [];  avgSq = [];  it = 0;
+        net = nn_net(NH, NIN);  avg = [];  avgSq = [];  it = 0;
         if strcmp(INIT, 'chain')                                % pretrained on the chain labels
             W0 = load(fullfile(DAT, 'nn_train_chain.mat'), 'net', 'R', 'A', 'NH');
             assert(W0.R == R && W0.A == A && isequal(W0.NH, NH), 'nn_train:init', 'nn_train_chain.mat has another R / A / NH');
@@ -228,7 +235,7 @@ if strcmp(LOSS, 'phys')
     end
     fprintf('convergence (%d epochs in a row < %g %%): epoch %g\n', KE, 100*TOLE, ep_conv);
     save(fullfile(DAT, OUT), 'net', 'loss', 'e_ij', 'nI', 'phi_j', 'theta_j', 'P', 'R', 'A', 'DP', 'GRID', 'LAM', 'MB', 'EP', 'LR', 'NH', ...
-         'ttrain', 'ep_run', 'LR_run', 'avg', 'avgSq', 'it', 'INIT', 'LRD', 'ep_conv', 'TOLE', 'KE', 'SEED');
+         'ttrain', 'ep_run', 'LR_run', 'avg', 'avgSq', 'it', 'INIT', 'LRD', 'ep_conv', 'TOLE', 'KE', 'SEED', 'INP');
     fprintf('LOSS phys: %d samples, MB %d, epochs %s, LR %s, %.0f s total | final loss %.4g\n', N_s, MB, mat2str(ep_run), ...
             mat2str(LR_run), ttrain, loss(end, 1));
     fprintf('e_ij [%%]: median %.3g, 95th pct %.3g, max %.3g | ||I|| [A]: median %.3g, max %.3g -> %s\n', median(e_ij(:)), ...
@@ -281,6 +288,7 @@ if strcmp(SGN, 'dir')
 end
 r_hat = [cosd(phi_j).*cosd(theta_j), cosd(phi_j).*sind(theta_j), sind(phi_j)];             % N_j x 3
 [J, Pi] = ndgrid(1:N_j, 1:N_p);                                % sample s = (j, p)
+assert(strcmp(INP, 'rhat'), 'nn_train:inp', 'INP = ''ang'' is for LOSS = ''phys'' only');
 X = [r_hat(J(:),:), P(Pi(:),:) / R];                           % N_s x 6
 Y = reshape(permute(Ihat_opt, [2 3 1]), [], 6);                % N_s x 6, same (j, p) order
 N_s = size(X, 1);
@@ -288,6 +296,7 @@ N_s = size(X, 1);
 % ---- training ----
 OUT = 'nn_train.mat';  if strcmp(LAB, 'chain'), OUT = 'nn_train_chain.mat'; end
 OUT = strrep(OUT, '.mat', [SFX HTAG '.mat']);
+if ~isempty(SEED), OUT = strrep(OUT, '.mat', sprintf('_s%d.mat', SEED)); end   % e.g. nn_train_d15_e1000_s2.mat
 rng(0);
 loss0 = [];  ep_run = [];  LR_run = [];  t_prev = 0;
 if RESUME                                                      % continue the saved run
@@ -298,7 +307,9 @@ if RESUME                                                      % continue the sa
     if isfield(V, 'ep_run'), ep_run = V.ep_run;  LR_run = V.LR_run;  else, ep_run = W.EP;  LR_run = W.LR; end
     rng(numel(ep_run));                                        % new shuffle order for the new run
 else
+    if ~isempty(SEED), rng(SEED); end                          % initial weights only
     net = nn_net(NH);
+    rng(0);                                                    % shuffle order as before
 end
 opts = trainingOptions('adam', 'MiniBatchSize',MB, 'MaxEpochs',EP, 'InitialLearnRate',LR, ...
                        'Shuffle','every-epoch', 'Verbose',true, 'VerboseFrequency',50*ceil(N_s/MB), ...
@@ -339,6 +350,12 @@ save(fullfile(DAT, OUT), 'net', 'loss', 'e_ij', 'e_I', 'phi_j', 'theta_j', 'pbar
 fprintf('LAB %s: %d samples, MB %d, epochs %s, LR %s, %.0f s total | final loss %.3g\n', LAB, N_s, MB, mat2str(ep_run), ...
         mat2str(LR_run), ttrain, loss(end));
 fprintf('e_ij [%%]: median %.3g, 95th pct %.3g, max %.3g -> %s\n', median(e_ij(:)), prctile(e_ij(:), 95), max(e_ij(:)), fullfile(DAT, OUT));
+
+function X = net_in(INP, rh, ph, th, pn)
+% net input rows: 'rhat' [r_hat, p/R] (N x 6); 'ang' [p/R, phi/90, theta/180 - 1] (N x 5), angles in deg
+if strcmp(INP, 'ang'), X = [pn, ph(:) / 90, th(:) / 180 - 1];
+else, X = [rh, pn]; end
+end
 
 function [Lb, gr, parts] = phys_loss(net, Xb, Qb, Rb, LAM)
 % LOSS = 'phys':  mean_b || fhat(p_b, I_b) - r_hat_b ||^2 + LAM mean_b || I_b ||^2,  fhat_k = I' Q_k I.

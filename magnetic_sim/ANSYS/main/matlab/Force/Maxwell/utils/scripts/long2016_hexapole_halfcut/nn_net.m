@@ -1,8 +1,9 @@
-function net = nn_net(NH)
-%NN_NET  Inverse-model network 6-NH(1)-NH(2)-6 (tanh, tanh, linear) as a dlnetwork.
+function net = nn_net(NH, NIN)
+%NN_NET  Inverse-model network NIN-NH(1)-NH(2)-6 (tanh, tanh, linear) as a dlnetwork.
 %
 %   net = NN_NET()        6-64-64-6
 %   net = NN_NET(NH)      hidden widths NH, e.g. [32 32] or [16 16]
+%   net = NN_NET(NH, 5)   5 inputs: x = [p/R; phi/90; theta/180 - 1]   (nn_train.m INP = 'ang')
 %
 %   Input  x = [r_hat(phi,theta); p/R]   6 x 1   (R set by the caller, nn_train.m; actuator frame)
 %   Output I_hat_NN                      6 x 1   unit current, pole order P1..P6
@@ -21,7 +22,8 @@ function net = nn_net(NH)
 %   Requires Deep Learning Toolbox.
 
     if nargin < 1 || isempty(NH), NH = [64 64]; end
-    NIN = 6;  NOUT = 6;
+    if nargin < 2 || isempty(NIN), NIN = 6; end
+    NOUT = 6;
     layers = [
         featureInputLayer(NIN, 'Normalization','none', 'Name','x')
         fullyConnectedLayer(NH(1), 'Name','fc1')
