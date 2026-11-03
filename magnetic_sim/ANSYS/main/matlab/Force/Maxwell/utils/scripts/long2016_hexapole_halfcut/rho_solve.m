@@ -5,13 +5,13 @@ function S = rho_solve(Q, o)
 %   stage 1  fmincon (sqp) multistart per direction + Lagrange PSD certificate (CERT)
 %   stage 2  (o.GRB) Gurobi on every direction without the certificate, local fmincon polish, keep the smaller
 %            ||I_hat||^2 only if the polish succeeded (PLSH); GLOB = CERT | Gurobi OPTIMAL
-% Q   6x6x3 force quadratic forms Q_k at the position
+% Q   nxnx3 force quadratic forms Q_k at the position (n = 6, or 5 in the reduced problem of nn_label.m)
 % o   struct, all optional:
 %     DA     direction grid step [deg] (5)          NS    random starts per direction (20)
 %     GRB    run stage 2 (true)                      GTHR  Gurobi Threads, 0 = Gurobi default (0)
 %     TLIM   Gurobi TimeLimit per direction [s] (60) SEED  rng seed of the random starts (0)
-%     I_INIT first start of the first direction ([0 0 0 0 0 1]')
-%     X0G    6 x NPH x NTH extra start per direction, e.g. the solution at a neighbouring position ([])
+%     I_INIT first start of the first direction (last unit vector)
+%     X0G    n x NPH x NTH extra start per direction, e.g. the solution at a neighbouring position ([])
 %     S1     stage-1 struct (fields IOPT FHAT LAM RHO ERR MINEIG NFEAS) -> stage 1 is skipped ([])
 %     RETRY  a direction with no feasible start gets further batches of NS random starts (random scale 0.05..1)
 %            until one is feasible (false; at most 200 batches, then it stays NaN with a warning)
@@ -20,9 +20,10 @@ function S = rho_solve(Q, o)
 %            directions halfway between the grid ones, no pole)
 % S   struct: ph th, per-direction NPH x NTH arrays (IOPT FHAT LAM RHO ERR MINEIG NFEAS CERT GLOB KKT and the stage-2
 %     fields GRBD GSTAT GOBJ GBND GGAP DOBJ PLSH), stage-1 copies (*0), cap, iso, gp, t1 / t2 (stage times [s])
-o = fill_(o, struct('DA',5, 'NS',20, 'GRB',true, 'GTHR',0, 'TLIM',60, 'SEED',0, 'I_INIT',[0 0 0 0 0 1].', ...
+o = fill_(o, struct('DA',5, 'NS',20, 'GRB',true, 'GTHR',0, 'TLIM',60, 'SEED',0, 'I_INIT',[], ...
                     'X0G',[], 'S1',[], 'RETRY',false, 'GMAX',Inf, 'DOFF',0));
 TOLC = 1e-6;  TOLE = 1e-8;                                  % constraint / PSD tolerances
+nv = size(Q, 1);  if isempty(o.I_INIT), o.I_INIT = [zeros(nv-1,1); 1]; end
 opt = optimoptions('fmincon', 'Algorithm','sqp', 'SpecifyObjectiveGradient',true, ...
                    'SpecifyConstraintGradient',true, 'OptimalityTolerance',1e-10, 'ConstraintTolerance',1e-12, ...
                    'StepTolerance',1e-14, 'MaxIterations',1000, 'Display','off');
@@ -35,7 +36,7 @@ if ~isempty(o.S1)
     MINEIG = o.S1.MINEIG;  NFEAS = o.S1.NFEAS;
 else
     rng(o.SEED);
-    IOPT = zeros(6, NPH, NTH);  FHAT = zeros(3, NPH, NTH);  LAM = zeros(3, NPH, NTH);  RHO = nan(NPH, NTH);
+    IOPT = zeros(nv, NPH, NTH);  FHAT = zeros(3, NPH, NTH);  LAM = zeros(3, NPH, NTH);  RHO = nan(NPH, NTH);
     ERR  = nan(NPH, NTH);  MINEIG = nan(NPH, NTH);  NFEAS = zeros(NPH, NTH);
     x0 = o.I_INIT;
     for a = 1:NPH
@@ -45,7 +46,7 @@ else
                 ERR(a,b) = ERR(a,1);  MINEIG(a,b) = MINEIG(a,1);  NFEAS(a,b) = NFEAS(a,1);  continue;
             end
             r  = [cosd(ph(a))*cosd(th(b)); cosd(ph(a))*sind(th(b)); sind(ph(a))];
-            R0 = randn(6, o.NS);  X0 = [x0, 0.35 * R0 ./ vecnorm(R0)];   % chain start + NS random starts
+            R0 = randn(nv, o.NS);  X0 = [x0, 0.35 * R0 ./ vecnorm(R0)];   % chain start + NS random starts
             if ~isempty(o.X0G) && any(o.X0G(:,a,b)), X0 = [X0, o.X0G(:,a,b)]; end   %#ok<AGROW> neighbour start
             best = inf;  nb = 0;
             while true
@@ -57,7 +58,7 @@ else
                     if I.'*I < best
                         best = I.'*I;  lam = -lm.eqnonlin;
                         IOPT(:,a,b) = I;  FHAT(:,a,b) = f;  LAM(:,a,b) = lam;  RHO(a,b) = 1/best;  ERR(a,b) = norm(f - r);
-                        MINEIG(a,b) = min(eig(eye(6) - (lam(1)*Q(:,:,1) + lam(2)*Q(:,:,2) + lam(3)*Q(:,:,3))));
+                        MINEIG(a,b) = min(eig(eye(nv) - (lam(1)*Q(:,:,1) + lam(2)*Q(:,:,2) + lam(3)*Q(:,:,3))));
                     end
                 end
                 if isfinite(best) || ~o.RETRY, break; end
@@ -66,7 +67,7 @@ else
                     warning('rho_solve:infeasible', 'phi %g theta %g: no feasible start after %d batches', ph(a), th(b), nb);
                     break
                 end
-                R0 = randn(6, o.NS);  X0 = (0.05 + 0.95*rand(1, o.NS)) .* R0 ./ vecnorm(R0);
+                R0 = randn(nv, o.NS);  X0 = (0.05 + 0.95*rand(1, o.NS)) .* R0 ./ vecnorm(R0);
             end
             if nb > 0 && isfinite(best)
                 fprintf('    rho_solve: phi %g theta %g feasible after %d extra batch(es) of %d starts\n', ph(a), th(b), nb, o.NS);
@@ -93,12 +94,12 @@ if o.GRB
         a = ia(n);  b = ib(n);
         r  = [cosd(ph(a))*cosd(th(b)); cosd(ph(a))*sind(th(b)); sind(ph(a))];
         I0 = IOPT0(:,a,b);  B = norm(I0);
-        m = struct('Q',speye(6), 'obj',zeros(6,1), 'A',sparse(0,6), 'rhs',zeros(0,1), 'sense','', ...
-                   'lb',-B*ones(6,1), 'ub',B*ones(6,1), 'start',I0);
+        m = struct('Q',speye(nv), 'obj',zeros(nv,1), 'A',sparse(0,nv), 'rhs',zeros(0,1), 'sense','', ...
+                   'lb',-B*ones(nv,1), 'ub',B*ones(nv,1), 'start',I0);
         for k = 1:3
-            m.quadcon(k) = struct('Qc',sparse(Q(:,:,k)), 'q',zeros(6,1), 'rhs',r(k), 'sense','=');
+            m.quadcon(k) = struct('Qc',sparse(Q(:,:,k)), 'q',zeros(nv,1), 'rhs',r(k), 'sense','=');
         end
-        m.quadcon(4) = struct('Qc',speye(6), 'q',zeros(6,1), 'rhs',B^2, 'sense','<');   % ball bound
+        m.quadcon(4) = struct('Qc',speye(nv), 'q',zeros(nv,1), 'rhs',B^2, 'sense','<');   % ball bound
         res = gurobi(m, gp);
         GRBD(a,b) = true;  GSTAT(a,b) = res.status;
         if ~isfield(res, 'x'), continue; end
@@ -111,7 +112,7 @@ if o.GRB
         % to FeasibilityTol, which alone can make ||I||^2 look ~1e-9 smaller than the exact fmincon solution
         if PLSH(a,b) && I.'*I < I0.'*I0
             IOPT(:,a,b) = I;  FHAT(:,a,b) = f;  LAM(:,a,b) = lam;  RHO(a,b) = 1/(I.'*I);  ERR(a,b) = norm(f - r);
-            MINEIG(a,b) = min(eig(eye(6) - (lam(1)*Q(:,:,1) + lam(2)*Q(:,:,2) + lam(3)*Q(:,:,3))));
+            MINEIG(a,b) = min(eig(eye(nv) - (lam(1)*Q(:,:,1) + lam(2)*Q(:,:,2) + lam(3)*Q(:,:,3))));
         end
     end
     for a = find(abs(ph) == 90)                             % pole: copy the single direction
@@ -158,7 +159,7 @@ function [v, g] = obj_(x)
 end
 
 function [c, ceq, gc, gceq] = con_(x, Q, r)
-% equality constraints I_hat' Q_k I_hat - r_k = 0 (k = 1..3) and their gradients (6 x 3)
+% equality constraints I_hat' Q_k I_hat - r_k = 0 (k = 1..3) and their gradients (n x 3)
     c = [];  gc = [];
     ceq  = [x.'*Q(:,:,1)*x - r(1); x.'*Q(:,:,2)*x - r(2); x.'*Q(:,:,3)*x - r(3)];
     gceq = 2*[Q(:,:,1)*x, Q(:,:,2)*x, Q(:,:,3)*x];

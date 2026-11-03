@@ -20,6 +20,26 @@
 %                                               dissertation p. 49, all octants)
 %                                      'all'  = every grid node, |p| <= 150 um (N_p = 515)
 %                                      'oct'  = first octant x, y, z >= 0
+%  VAR = 'flux5' (reference/Force_model/Real_time_inverse model/flux_force_unit.pdf, Sec. 6.5): the weak direction is
+%    excluded, for every grid direction  z_LS_m = P' D_m P (m = 1..5, 5 x 10 coefficients),  P = [xbar ybar zbar 1]',
+%    pbar = p / A (A = 45 um, Sec. 5),  Phi_hat_LS = U_5 z_LS,  fitted by the physics loss with lsqnonlin as LOSS = 'phys':
+%    sum_i || fhat(p_i, Phi_hat_LS) - r_hat ||^2 + LAM || Phi_hat_LS ||^2,  fhat_k = z' Ltilde_k z,  Ltilde_k = U_5' L_k U_5.
+%    Positions nn_grid<GF>.mat, calibration CAL ('single' N43, 'eighteen' N55), directions every DA deg.  Start d^(0): the
+%    quadratic fit of the z of the trained net NN0.  Workers: WID of NW solve directions WID, WID+NW, ... into their own
+%    file (resumable); MERGE = true collects them -> ls_fit_flux5_<CAL><GF>.mat: d (10 x N_j x 5), d0, U_5, sigma, e_ij,
+%    e_ij0, nz (||Phi_hat_LS||^2, N_j x N_p), phi_j, theta_j, P, tdir, itdir, efdir.  JSUB: timing of those directions only.
+%    SWP = true: fit on nn_grid<GF>_mid.mat, test on nn_grid<GF>.mat; adds _swp to the output names.
+%    MTD (with SWP, fit on the 300 points; flux_force_unit.pdf Sec. 5.1 (3), (4), Sec. 6.5, pbar = p / l_hat):
+%      1  two steps: labels z_opt of nn_label (Sec. 6.4), sign aligned, closed-form d_hat_m = (A'A)^-1 A' y_m -> ls_m1_<CAL><GF>.mat
+%      2  one step: physics loss, all D_m together, on the 5 deg training directions, matrix-free L-BFGS, started from the
+%         centre solution of each direction (NS0 random starts), constant in position -> ls_m2_<CAL><GF>.mat
+%      e_q (N_q x N_p [%]): grid directions first, then the cell centres; t_fit [s]; d refers to pbar = p / l_hat.
+%      TEST (any set) with PX: the saved fit at the positions PX every DA/2 deg (bilinear, Sec. 5.1 (2))
+%      -> ls_test_m<MTD>_<CAL><GF>_pts.mat: S25 (e N_q x N_t [%], phi, theta, P), R_act.
+%      OPT = true: also the Sec. 6.4 minimum at PX on the grid directions (rho_solve, Gurobi on every uncertified one) and
+%      eta = ||Phi_hat_opt|| / ||Phi_hat_LS|| (N_j x N_t), nOPT, nLS, GLB (proved global), phi_j, theta_j.
+%    TEST: the saved fit on the positions nn_grid<GF>_mid.mat, 'S2' grid directions, 'S2off' offset by DA/2 (bilinear, Sec. 5.1 (4))
+%    -> ls_test_flux5_<CAL><GF>.mat: per set e (N_jt x N_t [%]), nz, P, phi, theta.
 %  Output: utils/data/long2016_hexapole_halfcut/ls_fit[_all|_oct|_chain].mat
 %    D_LS            4 x 4 x N_j x N_I   [A]    D_LS_i(phi_j, theta_j), entry (:,:,j,i)
 %    d               10 x N_j x N_I      [A]    the same coefficients as d_i
@@ -32,7 +52,9 @@
 %                    Ihat_LS = P' D_LS P (all six coils) and Q_k = F H_I' L_k(pbar) F H_I as in nn_label.m
 %  LOSS = 'phys' (C:\Users\Kuo\Downloads\LS_inverse_model (1).pdf, Sec. 5-6, 9): for every direction j,
 %      d(phi_j, theta_j) = argmin_d sum_n [ || fhat(pbar_n, Ihat_LS) - r_hat ||^2 + LAM || Ihat_LS ||^2 ]
-%    Levenberg-Marquardt on the residual e_j(d) (9 N_p x 1) with the Jacobian of Sec. 6, started from the label
+%    lsqnonlin trust-region-reflective on the residual e_j(d) (9 N_p x 1) with the Jacobian of Sec. 6 (not
+%    Levenberg-Marquardt: with tight tolerances its damping lambda shrinks x10 per accepted step, underflows to 0
+%    after ~330 steps, and a rejected step is then retried forever inside one iteration), started from the label
 %    fit d^(0) = (T'T)^-1 T' y_i (labels LAB, sign-aligned).  The polynomial variable of tau is u = p / A (half side,
 %    A = 45 um) instead of pbar (same function space; T'T well conditioned); Q_k stays at pbar = p / l_hat.
 %    D_LS, d then refer to u.  Output ls_fit_phys.mat, adds eta (N_j x N_p) = ||Ihat_opt||^2 / ||Ihat_LS||^2
@@ -46,11 +68,278 @@ if ~exist('LBL','var'), LBL = ''; end
 if ~exist('TEST','var'), TEST = {}; end                       % e.g. {'T1','T2'} (LBL = 'd15')
 if ~exist('SAVED','var'), SAVED = false; end                   % LOSS = 'phys': take d from the saved fit, no re-fit
 if ~exist('NNLAB','var'), NNLAB = 'nnlab_phys_exp_d15_s3.mat'; end   % LAB = 'nn'
-clearvars -except REG A LAB LOSS LAM LBL TEST SAVED NNLAB;
+% LOSS = 'phys': TMAX = time limit per direction [s] (Inf = none; the LM iterate at the limit is kept and flagged);
+% JSUB = direction indices to fit ([] = all); a subset only reports the per-direction time / iterations / exit
+% flag of those directions and returns without saving (diagnostics)
+if ~exist('TMAX','var'), TMAX = Inf; end
+if ~exist('JSUB','var'), JSUB = []; end
+if ~exist('VAR','var'), VAR = 'current'; end                  % 'current' (Ihat, 6) | 'flux5' (z, 5)
+if ~exist('CAL','var'), CAL = 'eighteen'; end                 % VAR = 'flux5': 'single' | 'eighteen'
+if ~exist('GF','var'), GF = '_sph_r45'; end                   % VAR = 'flux5': positions nn_grid<GF>.mat
+if ~exist('DA','var'), DA = 5; end                            % VAR = 'flux5': direction step [deg]
+if ~exist('NN0','var'), NN0 = 'nn_phys_exp_sph_s0_flux5_%s_h210_e5000.mat'; end   % VAR = 'flux5': start net
+if ~exist('WID','var'), WID = 1; end
+if ~exist('NW','var'), NW = 1; end
+if ~exist('MERGE','var'), MERGE = false; end
+if ~exist('PX','var'), PX = []; end                           % VAR = 'flux5', TEST: N x 3 [um] positions instead of nn_grid<GF>_mid.mat -> ..._pts.mat
+if ~exist('SWP','var'), SWP = false; end                      % VAR = 'flux5': fit and test positions swapped
+if ~exist('MTD','var'), MTD = 0; end                          % VAR = 'flux5': 1 method 1, 2 method 2 of Sec. 5.1 (pbar = p / l_hat); 0 per-direction fit
+if ~exist('MAXI','var'), MAXI = 20000; end                    % MTD = 2: L-BFGS iterations
+if ~exist('ETA','var'), ETA = false; end                      % MTD: eta = ||Phi_opt|| / ||Phi_LS|| at the fitting points -> appended to ls_m<MTD>
+if ~exist('OPT','var'), OPT = false; end                      % MTD, TEST, PX: also eta (see above)
+if ~exist('S0M','var'), S0M = 'centre'; end                   % MTD = 2 start: 'centre' (centre solve) | 'm1' (method 1 D) -> ls_m2s1_*
+if ~exist('NS0','var'), NS0 = 20; end                         % MTD = 2: random starts of the centre solve
+clearvars -except REG A LAB LOSS LAM LBL TEST SAVED NNLAB TMAX JSUB VAR CAL GF DA NN0 WID NW MERGE PX SWP MTD MAXI NS0 OPT ETA S0M;
 here = fileparts(mfilename('fullpath'));  CALROOT = fileparts(fileparts(fileparts(here)));   % .../Force/Maxwell
 addpath(fullfile(CALROOT, 'function'));
 MODEL = 'long2016_hexapole_halfcut';  GEOM = 'tip40um';
 DAT  = fullfile(CALROOT, 'utils', 'data', MODEL);
+
+% ---- VAR = 'flux5': flux_force_unit.pdf Sec. 6.5 ----
+if strcmp(VAR, 'flux5')
+    MN  = struct('single', 'calib_current_maxwell_axshN43_R150_single', 'eighteen', 'calib_current_maxwell_axshN55_R150_eighteen');
+    OUT = sprintf('ls_fit_flux5_%s%s.mat', CAL, GF);
+    GFIT = [GF '.mat'];  GTST = [GF '_mid.mat'];
+    if SWP, OUT = strrep(OUT, '.mat', '_swp.mat');  GFIT = [GF '_mid.mat'];  GTST = [GF '.mat']; end
+    wf  = @(w) fullfile(DAT, strrep(OUT, '.mat', sprintf('_w%02dof%02d.mat', w, NW)));
+    cal = load_flux_calib(MODEL, GEOM, MN.(CAL), 'current');  l_hat = cal.l_m;
+    G   = load(fullfile(DAT, ['nn_grid' GFIT]), 'P_act');  P = G.P_act;  N_p = size(P, 1);
+    [PH, TH] = ndgrid(-90:DA:90, 0:DA:360);  U = TH < 360 & (abs(PH) < 90 | TH == 0);
+    phi_j = PH(U);  theta_j = TH(U);  N_j = numel(phi_j);
+    r_hat = [cosd(phi_j).*cosd(theta_j), cosd(phi_j).*sind(theta_j), sind(phi_j)];         % N_j x 3
+    pt  = P / A;  xbar = pt(:,1);  ybar = pt(:,2);  zbar = pt(:,3);                        % pbar = p / (45 um), Sec. 5
+    T   = [ones(N_p,1), 2*xbar, 2*ybar, 2*zbar, 2*xbar.*ybar, 2*xbar.*zbar, 2*ybar.*zbar, xbar.^2, ybar.^2, zbar.^2];
+    [Us, Sg, ~] = svd(cal.Mbar_m);  sigma = diag(Sg).';  U_5 = Us(:,1:5);                  % Kbar_I = U Sigma V'
+    L   = build_L(P, cal.l_m, cal.e_m, cal.Pc_base);           % N_p x 6 x 6 x 3
+    Q   = zeros(5, 5, 3, N_p);                                 % Ltilde_k = U_5' L_k U_5
+    for p = 1:N_p
+        for k = 1:3, L_k = squeeze(L(p,:,:,k));  L_k = (L_k + L_k.')/2;  Lt = U_5.' * L_k * U_5;  Q(:,:,k,p) = (Lt + Lt.')/2; end
+    end
+    if MTD > 0                                                 % ---- flux_force_unit.pdf Sec. 5.1 (3), (4) with Sec. 6.5 (z, 5 components) ----
+        A_ = @(Q_) [Q_(:,1).^2, Q_(:,2).^2, Q_(:,3).^2, 2*Q_(:,1).*Q_(:,2), 2*Q_(:,1).*Q_(:,3), 2*Q_(:,2).*Q_(:,3), ...
+                    2*Q_(:,1), 2*Q_(:,2), 2*Q_(:,3), ones(size(Q_,1),1)];     % a(pbar)'
+        pbar = P / l_hat;  Amat = A_(pbar);  Au = A_(P / A);   % Au: same function space, well conditioned (solver only)
+        sc  = (A / l_hat).^[2 2 2 2 2 2 1 1 1 0].';            % d(u) = d(pbar) .* sc
+        [ph_m, th_m] = deal(-90:DA:90, 0:DA:355);  NPH = numel(ph_m);  NTH = numel(th_m);
+        G_  = zeros(NPH, NTH+1);  [PHg, THg] = ndgrid(ph_m, [th_m 360]);  Ug = THg < 360 & (abs(PHg) < 90 | THg == 0);
+        G_(Ug) = 1:N_j;  G_(1,:) = G_(1,1);  G_(end,:) = G_(end,1);  G_(:,end) = G_(:,1);   % grid index, pole and seam shared
+        % directions: the 5 deg grid (one corner) + the cell centres (four corners, alpha = beta = 1/2)
+        [ac, bc] = ndgrid(1:NPH-1, 1:NTH);  ac = ac(:);  bc = bc(:);  N_c = numel(ac);
+        Wq  = [speye(N_j); sparse(repmat((1:N_c).', 4, 1), [G_(sub2ind(size(G_), ac, bc)); G_(sub2ind(size(G_), ac, bc+1)); ...
+               G_(sub2ind(size(G_), ac+1, bc)); G_(sub2ind(size(G_), ac+1, bc+1))], 0.25, N_c, N_j)];
+        ph_c = ph_m(ac).' + DA/2;  th_c = th_m(bc).' + DA/2;
+        r_q = [r_hat; cosd(ph_c).*cosd(th_c), cosd(ph_c).*sind(th_c), sind(ph_c)];
+        M0  = sprintf('ls_m1_%s%s.mat', CAL, GF);
+        STG = '';  if MTD == 2 && strcmp(S0M, 'm1'), STG = 's1'; end   % method 2 started from method 1 -> ls_m2s1_*
+        if ETA                                                 % eta = ||Phi_hat_opt|| / ||Phi_hat_LS|| at the fitting points, grid directions
+            MF = fullfile(DAT, sprintf('ls_m%d_%s%s.mat', MTD, CAL, GF));  F = load(MF, 'd');
+            Lb = load(fullfile(DAT, sprintf('nn_label%s_mid_flux5%s.mat', GF, strrep(['_' CAL], '_eighteen', ''))), 'IOPT', 'P_act');
+            assert(norm(Lb.P_act - P) == 0, 'ls_fit:P', 'label positions differ');
+            nOPT = squeeze(vecnorm(reshape(Lb.IOPT, 6, [], N_p), 2, 1));  nOPT = nOPT(Ug(:), :);   % N_j x N_p
+            nLS  = sqrt(sum(reshape(Amat * reshape(F.d, 10, []), N_p, N_j, 5).^2, 3)).';
+            eta  = nOPT ./ nLS;
+            save(MF, 'eta', 'nOPT', 'nLS', '-append');
+            fprintf('method %d %s: eta < 1 %d, eta > 1 %d of %d -> %s\n', MTD, CAL, nnz(eta < 1), nnz(eta > 1), numel(eta), MF);
+            return
+        end
+        if ~isempty(TEST)                                      % the saved method-MTD fit at the positions PX, every DA/2 deg
+            F  = load(fullfile(DAT, sprintf('ls_m%d%s_%s%s.mat', MTD, STG, CAL, GF)), 'd');
+            x  = reshape(reshape(F.d, 10, []) .* sc, [], 1);
+            Pt = PX;  Nt = size(Pt, 1);  Aut = A_(Pt / A);
+            Lf = build_L(Pt, cal.l_m, cal.e_m, cal.Pc_base);  Qt = zeros(5, 5, 3, Nt);
+            for p = 1:Nt
+                for k = 1:3, L_k = squeeze(Lf(p,:,:,k));  L_k = (L_k + L_k.')/2;  Lt = U_5.' * L_k * U_5;  Qt(:,:,k,p) = (Lt + Lt.')/2; end
+            end
+            [PHt, THt] = ndgrid(-90:DA/2:90, 0:DA/2:360);  Ut = THt < 360 & (abs(PHt) < 90 | THt == 0);
+            pht = PHt(Ut);  tht = THt(Ut);  Nq = numel(pht);
+            ia = floor((pht + 90)/DA) + 1;  ib = floor(tht/DA) + 1;   % corner (phi_k, theta_j), Sec. 5.1 (2) step a
+            al = (pht + 90)/DA + 1 - ia;  be = tht/DA + 1 - ib;
+            ia2 = min(ia + 1, NPH);  ib2 = ib + 1;                   % theta_j+1 = 360 -> column NTH+1 (= theta 0)
+            Wt = sparse(repmat((1:Nq).', 4, 1), [G_(sub2ind(size(G_), ia, ib)); G_(sub2ind(size(G_), ia, ib2)); ...
+                        G_(sub2ind(size(G_), ia2, ib)); G_(sub2ind(size(G_), ia2, ib2))], ...
+                        [(1-al).*(1-be); (1-al).*be; al.*(1-be); al.*be], Nq, N_j);
+            rt = [cosd(pht).*cosd(tht), cosd(pht).*sind(tht), sind(pht)];
+            S25 = struct('e', m2_err(x, Aut, Wt, Qt, rt), 'phi', pht, 'theta', tht, 'P', Pt);
+            R_act = cal.R_act;
+            if OPT                                             % eta = ||Phi_hat_opt|| / ||Phi_hat_LS|| on the grid directions
+                addpath(here);
+                ZL  = reshape(Aut * reshape(x, 10, []), Nt, N_j, 5);
+                nLS = sqrt(sum(ZL.^2, 3)).';                   % N_j x Nt, ||Phi_hat_LS|| = ||z_LS||
+                nOPT = nan(N_j, Nt);  GLB = false(N_j, Nt);
+                for p = 1:Nt                                   % Sec. 6.4 at the position, Gurobi on every uncertified direction
+                    S_ = rho_solve(Qt(:,:,:,p), struct('DA',DA, 'NS',NS0, 'GRB',true, 'GTHR',1, 'TLIM',600, 'SEED',0, 'RETRY',true));
+                    zo = reshape(S_.IOPT, 5, []);  nOPT(:,p) = vecnorm(zo(:, Ug(:))).';  GLB(:,p) = S_.GLOB(Ug);
+                end
+                eta = nOPT ./ nLS;
+                fprintf('eta: %d directions, proved global %.2f %%, eta < 1: %d, min %.3f, median %.3f\n', numel(eta), 100*mean(GLB(:)), nnz(eta < 1), min(eta(:)), median(eta(:)));
+            end
+            TOUT = sprintf('ls_test_m%d%s_%s%s_pts.mat', MTD, STG, CAL, GF);
+            save(fullfile(DAT, TOUT), 'S25', 'R_act');
+            if OPT, save(fullfile(DAT, TOUT), 'eta', 'nOPT', 'nLS', 'GLB', 'phi_j', 'theta_j', '-append'); end
+            fprintf('method %d test: %d positions x %d directions, e mean %.4f, max %.3f -> %s\n', MTD, Nt, Nq, mean(S25.e(:)), max(S25.e(:)), TOUT);
+            return
+        end
+        if MTD == 1
+            % Step 1 labels: nn_label (Sec. 6.4), z_opt = U_5' Phi_hat_opt
+            F = load(fullfile(DAT, sprintf('nn_label%s_mid_flux5%s.mat', GF, strrep(['_' CAL], '_eighteen', ''))), 'IOPT', 'P_act', 'U_5', 'T1', 'NGRB');
+            assert(norm(F.P_act - P) == 0, 'ls_fit:P', 'label positions differ');
+            I_ = reshape(F.IOPT, 6, [], N_p);  I_ = I_(:, Ug(1:end, 1:NTH+1), :);    % 6 x N_j x N_p
+            t0 = tic;
+            z_ = reshape(F.U_5.' * reshape(I_, 6, []), 5, N_j, N_p);
+            % signs: Phi_hat and -Phi_hat are both optimal: every position to the direction's mean (Sec. 5.1 (3))
+            [~, ic_] = min(vecnorm(P, 2, 2));  V_ = zeros(5, N_j);
+            for j = 1:N_j
+                Zj = squeeze(z_(:,j,:));  rf = Zj(:,ic_);
+                for it_ = 1:5, sg = sign(rf.' * Zj);  sg(sg == 0) = 1;  rf = mean(Zj .* sg, 2); end
+                z_(:,j,:) = reshape(Zj .* sg, 5, 1, N_p);  V_(:,j) = rf / norm(rf);
+            end
+            % neighbouring directions agree (max-|cos| spanning tree, as nn_train.m SGN = 'dir'); corners of Sec. 5.1 (2)
+            sd = dir_sign_(V_, G_, phi_j, theta_j);
+            z_ = z_ .* sd.';
+            y_m = reshape(permute(z_, [3 2 1]), N_p, []);      % N_p x (N_j 5)
+            d_hat = Amat \ y_m;                                % d_hat_m = (A'A)^-1 A' y_m
+            t_fit = toc(t0);
+            d = reshape(d_hat, 10, N_j, 5);  x = reshape(reshape(d, 10, []) .* sc, [], 1);
+            t_lab = sum(F.T1);  N_grb = sum(F.NGRB);
+            e_q = m2_err(x, Au, Wq, Q, r_q);  LOSS_ = m2_loss(x, Au, Wq, Q, r_q, LAM);
+            res = reshape(Amat * d_hat - y_m, N_p, N_j, 5);    % z_LS - z_opt
+            save(fullfile(DAT, M0), 'd', 'U_5', 'sigma', 'phi_j', 'theta_j', 'P', 'l_hat', 'e_q', 'r_q', 'res', 't_fit', 't_lab', 'N_grb', 'LOSS_', 'LAM', 'CAL', 'GF', 'DA');
+            fprintf('method 1 %s: step 1 %.1f h CPU (stage 1), step 2 %.2f s | loss %.6g | e grid mean %.4f, std %.4f, max %.3f | e centres mean %.4f, std %.4f, max %.3f | z fit RMS %.4g\n', CAL, t_lab/3600, t_fit, LOSS_, ...
+                    mean(e_q(1:N_j,:),'all'), std(e_q(1:N_j,:),0,'all'), max(e_q(1:N_j,:),[],'all'), mean(e_q(N_j+1:end,:),'all'), std(e_q(N_j+1:end,:),0,'all'), max(e_q(N_j+1:end,:),[],'all'), rms(res(:)));
+            return
+        end
+        % method 2: one nonlinear problem in all D_m at once on the 5 deg training directions (at grid directions the bilinear
+        % weights are 1), matrix-free L-BFGS.  Start, timed with the fit: the unit-force solution at the centre per direction
+        % (rho_solve stage 1), constant in position
+        addpath(here);
+        OUT2 = sprintf('ls_m2%s_%s%s.mat', STG, CAL, GF);
+        if strcmp(S0M, 'm1')                                   % start = the method 1 D (its time not counted here)
+            S1 = load(fullfile(DAT, M0), 'd');  x0 = reshape(reshape(S1.d, 10, []) .* sc, [], 1);
+            t0 = tic;  t_start = 0;
+        else
+            t0  = tic;
+            L0  = build_L([0 0 0], cal.l_m, cal.e_m, cal.Pc_base);  Q0 = zeros(5, 5, 3);
+            for k = 1:3, L_k = squeeze(L0(1,:,:,k));  L_k = (L_k + L_k.')/2;  Lt = U_5.' * L_k * U_5;  Q0(:,:,k) = (Lt + Lt.')/2; end
+            S0  = rho_solve(Q0, struct('DA',DA, 'NS',NS0, 'GRB',false, 'SEED',0, 'RETRY',true));
+            z0  = reshape(S0.IOPT, 5, []);  z0 = z0(:, Ug(:));      % 5 x N_j
+            sd  = dir_sign_(z0 ./ vecnorm(z0), G_, phi_j, theta_j);  z0 = z0 .* sd.';
+            t_start = toc(t0);
+            d0  = zeros(10, N_j, 5);  d0(10,:,:) = reshape(z0.', 1, N_j, 5);
+            x0  = d0(:);
+        end
+        Wt  = speye(N_j);                                       % training directions: the 5 deg grid
+        opt = optimoptions('fminunc', 'Algorithm','quasi-newton', 'HessianApproximation',{'lbfgs', 30}, 'SpecifyObjectiveGradient',true, ...
+                           'MaxIterations',MAXI, 'MaxFunctionEvaluations',3*MAXI, 'OptimalityTolerance',1e-9, 'StepTolerance',1e-12, ...
+                           'FunctionTolerance',0, 'Display','off', 'OutputFcn',@out_);
+        clear out_
+        [x, fv, ef, oi] = fminunc(@(x) m2_loss(x, Au, Wt, Q, r_hat, LAM), x0, opt);
+        t_fit = toc(t0);
+        d = reshape(reshape(x, 10, N_j*5) ./ sc, 10, N_j, 5);
+        e_q = m2_err(x, Au, Wq, Q, r_q);
+        save(fullfile(DAT, OUT2), 'd', 'U_5', 'sigma', 'phi_j', 'theta_j', 'P', 'l_hat', 'e_q', 'r_q', 't_fit', 't_start', 'fv', 'ef', 'LAM', 'CAL', 'GF', 'DA', 'MAXI', 'NS0');
+        fprintf('method 2 %s: start %.1f s, total %.1f s, %d iterations, exit %d | loss %.6g -> %.6g | e grid mean %.4f, std %.4f, max %.3f, >1%% %.2f | e centres mean %.4f, std %.4f, max %.3f\n', CAL, t_start, t_fit, oi.iterations, ef, m2_loss(x0, Au, Wt, Q, r_hat, LAM), fv, ...
+                mean(e_q(1:N_j,:),'all'), std(e_q(1:N_j,:),0,'all'), max(e_q(1:N_j,:),[],'all'), 100*mean(e_q(1:N_j,:) > 1,'all'), mean(e_q(N_j+1:end,:),'all'), std(e_q(N_j+1:end,:),0,'all'), max(e_q(N_j+1:end,:),[],'all'));
+        return
+    end
+    if ~isempty(TEST)                                          % ---- the saved fit on the test sets ----
+        F   = load(fullfile(DAT, OUT), 'd');
+        GT0 = load(fullfile(DAT, ['nn_grid' GTST]), 'P_act');  Pt = GT0.P_act;
+        if ~isempty(PX), Pt = PX; end
+        Nt  = size(Pt, 1);
+        ptt = Pt / A;
+        Tt  = [ones(Nt,1), 2*ptt(:,1), 2*ptt(:,2), 2*ptt(:,3), 2*ptt(:,1).*ptt(:,2), 2*ptt(:,1).*ptt(:,3), ...
+               2*ptt(:,2).*ptt(:,3), ptt(:,1).^2, ptt(:,2).^2, ptt(:,3).^2];
+        Lf  = build_L(Pt, cal.l_m, cal.e_m, cal.Pc_base);
+        Qt  = zeros(5, 5, 3, Nt);
+        for p = 1:Nt
+            for k = 1:3, L_k = squeeze(Lf(p,:,:,k));  L_k = (L_k + L_k.')/2;  Lt = U_5.' * L_k * U_5;  Qt(:,:,k,p) = (Lt + Lt.')/2; end
+        end
+        Zf  = reshape(Tt * reshape(F.d, 10, []), Nt, N_j, 5);  % z_LS of every grid direction at the test positions
+        jof = @(ph, th) find(phi_j == ph & (theta_j == mod(th, 360) | abs(ph) == 90), 1);
+        RES = struct();
+        for t = string(TEST)
+            ph_t = -87.5:DA:87.5;  th_t = 2.5:DA:357.5;
+            if t == "S2", ph_t = -90:DA:90;  th_t = 0:DA:360; end
+            if t == "S25", ph_t = -90:DA/2:90;  th_t = 0:DA/2:360; end   % every DA/2
+            [PHt, THt] = ndgrid(ph_t, th_t);  Ut = THt < 360 & (abs(PHt) < 90 | THt == 0);
+            pht = PHt(Ut);  tht = THt(Ut);  Njt = numel(pht);
+            Zt  = Zf;
+            if t ~= "S2"                                       % Sec. 5.1 (4): bilinear, corners sign-aligned at each position
+                Zt = zeros(Nt, Njt, 5);
+                for q = 1:Njt
+                    p0 = floor(pht(q)/DA)*DA;  t0 = floor(tht(q)/DA)*DA;
+                    al = (pht(q) - p0)/DA;     be = (tht(q) - t0)/DA;
+                    p1 = min(p0 + DA, 90);
+                    jc = [jof(p0, t0), jof(p0, t0+DA), jof(p1, t0), jof(p1, t0+DA)];
+                    w  = [(1-al)*(1-be), (1-al)*be, al*(1-be), al*be];
+                    Ic = permute(Zf(:, jc, :), [1 3 2]);       % Nt x 5 x 4
+                    for c = 2:4
+                        sg = sign(sum(Ic(:,:,c) .* Ic(:,:,1), 2));  sg(sg == 0) = 1;
+                        Ic(:,:,c) = sg .* Ic(:,:,c);
+                    end
+                    Zt(:, q, :) = reshape(sum(Ic .* reshape(w, 1, 1, 4), 3), Nt, 1, 5);
+                end
+            end
+            rt = [cosd(pht).*cosd(tht), cosd(pht).*sind(tht), sind(pht)];
+            RES.(t).e = force_err(Zt, Qt, rt);  RES.(t).nz = squeeze(sum(Zt.^2, 3)).';
+            RES.(t).P = Pt;  RES.(t).phi = pht;  RES.(t).theta = tht;
+            fprintf('%s: %d positions x %d directions | e [%%]: mean %.4f, std %.4f, max %.3f, >1%% %.2f %% | ||Phi||^2 mean %.4f\n', t, Nt, Njt, ...
+                    mean(RES.(t).e(:)), std(RES.(t).e(:)), max(RES.(t).e(:)), 100*mean(RES.(t).e(:) > 1), mean(RES.(t).nz(:)));
+        end
+        TOUT = strrep(OUT, 'ls_fit', 'ls_test');
+        if ~isempty(PX), TOUT = strrep(TOUT, '.mat', '_pts.mat'); end
+        save(fullfile(DAT, TOUT), '-struct', 'RES');
+        fprintf('-> %s\n', fullfile(DAT, TOUT));
+        return
+    end
+    if MERGE
+        d = nan(10, N_j, 5);  tdir = nan(N_j, 1);  itdir = nan(N_j, 1);  efdir = nan(N_j, 1);
+        for w = 1:NW
+            W = load(wf(w));  d(:,W.js,:) = W.d(:,W.js,:);  tdir(W.js) = W.tdir(W.js);  itdir(W.js) = W.itdir(W.js);  efdir(W.js) = W.efdir(W.js);
+            assert(all(W.done(W.js)), 'ls_fit:missing', 'worker %d not finished', w);
+        end
+        d0 = W.d0;
+        e_ij0 = force_err(reshape(T*reshape(d0, 10, []), N_p, N_j, 5), Q, r_hat);
+        z_LS  = reshape(T*reshape(d, 10, []), N_p, N_j, 5);
+        e_ij  = force_err(z_LS, Q, r_hat);
+        nz    = squeeze(sum(z_LS.^2, 3)).';                    % N_j x N_p, ||Phi_hat_LS||^2 = ||z_LS||^2
+        save(fullfile(DAT, OUT), 'd', 'd0', 'U_5', 'sigma', 'phi_j', 'theta_j', 'P', 'A', 'l_hat', 'e_ij', 'e_ij0', 'nz', 'tdir', 'itdir', 'efdir', 'LAM', 'CAL', 'GF', 'DA', 'VAR');
+        for w = 1:NW, delete(wf(w)); end
+        fprintf('LS flux5 %s: %d x %d | e_ij [%%]: mean %.4f, std %.4f, max %.3f, >1%% %.2f %% | start: mean %.4f | ||Phi||^2 mean %.4f | exit<=0 %d | %.1f h CPU -> %s\n', ...
+                CAL, N_j, N_p, mean(e_ij(:)), std(e_ij(:)), max(e_ij(:)), 100*mean(e_ij(:) > 1), mean(e_ij0(:)), mean(nz(:)), nnz(efdir <= 0), sum(tdir)/3600, fullfile(DAT, OUT));
+        return
+    end
+    % d^(0): quadratic fit of the z of the trained net (NN0) at the fitting positions
+    W0 = load(fullfile(DAT, sprintf(NN0, CAL)), 'net', 'R');
+    Z0 = zeros(N_p, N_j, 5);
+    for p = 1:N_p
+        X = single([r_hat, repmat(P(p,:) / W0.R, N_j, 1)]);
+        Z0(p,:,:) = permute(U_5.' * double(extractdata(predict(W0.net, dlarray(X.', 'CB')))), [3 2 1]);
+    end
+    d0 = reshape((T.'*T) \ (T.' * reshape(Z0, N_p, [])), 10, N_j, 5);
+    opt = optimoptions('lsqnonlin', 'Algorithm','trust-region-reflective', 'SpecifyObjectiveGradient',true, ...
+                       'FunctionTolerance',1e-10, 'StepTolerance',1e-10, 'OptimalityTolerance',1e-10, ...
+                       'MaxIterations',300, 'MaxFunctionEvaluations',5000, 'Display','off');
+    js = WID:NW:N_j;  if ~isempty(JSUB), js = JSUB(:).'; end
+    d = d0;  tdir = nan(N_j, 1);  itdir = nan(N_j, 1);  efdir = nan(N_j, 1);  done = false(N_j, 1);
+    if isempty(JSUB) && isfile(wf(WID))
+        W = load(wf(WID));  d = W.d;  tdir = W.tdir;  itdir = W.itdir;  efdir = W.efdir;  done = W.done;
+    end
+    t0 = tic;  nd = 0;
+    for j = js(~done(js))
+        tj = tic;
+        [dj, ~, ~, ef, out] = lsqnonlin(@(x) e_j(x, T, Q, r_hat(j,:).', LAM), reshape(d0(:,j,:), [], 1), [], [], opt);
+        d(:,j,:) = reshape(dj, 10, 1, 5);
+        tdir(j) = toc(tj);  itdir(j) = out.iterations;  efdir(j) = ef;  done(j) = true;  nd = nd + 1;
+        if ~isempty(JSUB), fprintf('  j %d (phi %g, theta %g): %.1f s, %d iterations, exitflag %d\n', j, phi_j(j), theta_j(j), tdir(j), out.iterations, ef); end
+        if isempty(JSUB) && mod(nd, 50) == 0
+            save(wf(WID), 'd', 'd0', 'tdir', 'itdir', 'efdir', 'done', 'js');
+            fprintf('[w%02d] %d / %d directions, %.0f s\n', WID, nnz(done(js)), numel(js), toc(t0));
+        end
+    end
+    if isempty(JSUB), save(wf(WID), 'd', 'd0', 'tdir', 'itdir', 'efdir', 'done', 'js');  fprintf('[w%02d] finished\n', WID); end
+    return
+end
 SFX  = '';  if ~isempty(LBL), SFX = ['_' LBL]; end
 LF   = 'nn_label_sgn.mat';  if ~isempty(LBL), LF = ['nn_label' SFX '.mat']; end
 S    = load(fullfile(DAT, LF), 'P_act', 'ph', 'th', 'IOPT', 'l_hat', 'MATNAME');
@@ -63,6 +352,7 @@ switch REG
     case 'oct',  n = all(S.P_act >= -1e-9, 2);             OUT = 'ls_fit_oct.mat';
     otherwise,   error('ls_fit:REG', 'REG = ''cube'' | ''all'' | ''oct''');
 end
+if strcmp(LAB, 'grb') && ~isempty(LBL), OUT = strrep(OUT, '.mat', ['_grb' SFX '.mat']); end   % ls_fit_grb_d15.mat
 pbar = S.P_act(n, :) / l_hat;
 N_p  = size(pbar, 1);
 pt   = pbar;                                                  % variable of tau
@@ -118,19 +408,31 @@ e_ij0 = [];
 if strcmp(LOSS, 'phys')
     e_ij0 = force_err(Ihat_LS, Q, fhat_d);                   % label fit d^(0)
     d0 = reshape(d, 10, N_j, N_I);
-    opt = optimoptions('lsqnonlin', 'Algorithm','levenberg-marquardt', 'SpecifyObjectiveGradient',true, ...
-                       'FunctionTolerance',1e-14, 'StepTolerance',1e-14, 'MaxIterations',2000, 'Display','off');
+    opt = optimoptions('lsqnonlin', 'Algorithm','trust-region-reflective', 'SpecifyObjectiveGradient',true, ...
+                       'FunctionTolerance',1e-10, 'StepTolerance',1e-10, 'OptimalityTolerance',1e-10, ...
+                       'MaxIterations',300, 'MaxFunctionEvaluations',5000, 'Display','off');
     t0 = tic;
     if SAVED                                                   % the saved fit (TEST runs)
         F = load(fullfile(DAT, ['ls_fit_phys' strrep(['_' LAB], '_chain', '') SFX '.mat']), 'd', 'LAM');
         assert(F.LAM == LAM, 'ls_fit:saved', 'saved fit has another LAM');
         d0 = F.d;
     else
-        for j = 1:N_j
-            dj = lsqnonlin(@(x) e_j(x, T, Q, fhat_d(j,:).', LAM), reshape(d0(:,j,:), [], 1), [], [], opt);
+        js = 1:N_j;  if ~isempty(JSUB), js = JSUB(:).'; end
+        tdir = nan(N_j, 1);  itdir = nan(N_j, 1);  efdir = nan(N_j, 1);
+        for j = js
+            if ~isempty(JSUB), fprintf('  start %d (phi %g, theta %g) at %.0f s\n', j, phi_j(j), theta_j(j), toc(t0)); end
+            tj = tic;
+            optj = optimoptions(opt, 'OutputFcn', @(x, ov, st) toc(tj) > TMAX);   % stop at the time limit
+            [dj, ~, ~, ef, out] = lsqnonlin(@(x) e_j(x, T, Q, fhat_d(j,:).', LAM), reshape(d0(:,j,:), [], 1), [], [], optj);
             d0(:,j,:) = reshape(dj, 10, 1, N_I);
-            if mod(j, 500) == 0, fprintf('  %d / %d directions, %.0f s\n', j, N_j, toc(t0)); end
+            tdir(j) = toc(tj);  itdir(j) = out.iterations;  efdir(j) = ef;
+            if tdir(j) > 20, fprintf('  slow direction %d (phi %g, theta %g): %.1f s, %d iterations, exitflag %d\n', ...
+                                     j, phi_j(j), theta_j(j), tdir(j), out.iterations, ef); end
+            if mod(j, 100) == 0, fprintf('  %d / %d directions, %.0f s\n', j, N_j, toc(t0)); end
         end
+        fprintf('LM: %d directions, time median %.2f s, max %.1f s; iterations median %d, max %d; stopped by TMAX %d\n', ...
+                numel(js), median(tdir(js)), max(tdir(js)), median(itdir(js)), max(itdir(js)), nnz(efdir(js) == -1));
+        if ~isempty(JSUB), return, end
     end
     d = reshape(d0, 10, []);
     Ihat_LS = reshape(T*d, N_p, N_j, N_I);
@@ -157,6 +459,7 @@ end
 
 save(fullfile(DAT, OUT), 'D_LS', 'd', 'phi_j', 'theta_j', 'pbar', 'l_hat', 'e_ij', 'eta', 'e_ij0', 'REG', 'A', 'LAB', 'LOSS', 'LAM', ...
      'N_p', 'N_j', 'N_I');
+if exist('tdir', 'var'), save(fullfile(DAT, OUT), 'tdir', 'itdir', 'efdir', 'TMAX', '-append'); end
 fprintf('REG %s: N_p = %d, N_j = %d, N_I = %d, cond(T''T) = %.3g -> %s\n', REG, N_p, N_j, N_I, cond(T.'*T), fullfile(DAT, OUT));
 fprintf('e_ij [%%]: median %.3g, 95th pct %.3g, max %.3g | eta: median %.4f, min %.4f\n', median(e_ij(:)), prctile(e_ij(:), 95), ...
         max(e_ij(:)), median(eta(:)), min(eta(:)));
@@ -234,10 +537,11 @@ end
 end
 
 function [e, Jac] = e_j(dv, T, Q, r, LAM)
-% Sec. 6: e_j(d) = [fhat(pbar_n, Ihat_LS) - r_hat (n = 1..N_p); sqrt(LAM) Ihat_LS (n = 1..N_p)],  d = [d_1; ...; d_6]
-N_p = size(T, 1);
-I_LS = T * reshape(dv, 10, 6);                                 % N_p x 6, row n = Ihat_LS(pbar_n)'
-e = zeros(9*N_p, 1);  Jac = zeros(9*N_p, 60);
+% Sec. 6: e_j(d) = [fhat(pbar_n, Ihat_LS) - r_hat (n = 1..N_p); sqrt(LAM) Ihat_LS (n = 1..N_p)],  d = [d_1; ...; d_NI]
+% (NI = 6: Ihat_LS, Q_k; NI = 5: z_LS, Ltilde_k)
+N_p = size(T, 1);  NI = numel(dv) / 10;
+I_LS = T * reshape(dv, 10, NI);                                % N_p x NI, row n = Ihat_LS(pbar_n)'
+e = zeros((3+NI)*N_p, 1);  Jac = zeros((3+NI)*N_p, 10*NI);
 for n = 1:N_p
     In = I_LS(n,:).';
     for k = 1:3
@@ -245,8 +549,67 @@ for n = 1:N_p
         e(3*(n-1)+k) = In.' * QI - r(k);
         Jac(3*(n-1)+k, :) = 2 * kron(QI.', T(n,:));          % 2 [Q_k Ihat_LS]_i tau(pbar_n)'
     end
-    rows = 3*N_p + 6*(n-1) + (1:6);
+    rows = 3*N_p + NI*(n-1) + (1:NI);
     e(rows) = sqrt(LAM) * In;
-    Jac(rows, :) = sqrt(LAM) * kron(eye(6), T(n,:));          % sqrt(LAM) tau(pbar_n)'
+    Jac(rows, :) = sqrt(LAM) * kron(eye(NI), T(n,:));          % sqrt(LAM) tau(pbar_n)'
 end
+end
+
+function sd = dir_sign_(V_, G_, phi_j, theta_j)
+% +-1 per direction so that neighbouring directions agree (max-|cos| spanning tree, as nn_train.m SGN = 'dir')
+N_j = size(V_, 2);
+e1 = [reshape(G_(1:end-1,1:end-1), [], 1); reshape(G_(:,1:end-1), [], 1)];  e2 = [reshape(G_(2:end,1:end-1), [], 1); reshape(G_(:,2:end), [], 1)];
+Ed = unique(sort([e1 e2], 2), 'rows');  Ed = Ed(Ed(:,1) ~= Ed(:,2), :);
+c_ = sum(V_(:,Ed(:,1)) .* V_(:,Ed(:,2)), 1).';  j0 = find(phi_j == 0 & theta_j == 0);
+[~, pred] = minspantree(graph(Ed(:,1), Ed(:,2), 1 - abs(c_) + eps, N_j), 'Root', j0);
+ord = bfsearch(graph(find(pred > 0), pred(pred > 0), ones(nnz(pred > 0), 1), N_j), j0);
+sd = zeros(N_j, 1);  sd(j0) = 1;
+for k = ord(2:end).', sd(k) = sd(pred(k)) * sign(V_(:,k).' * V_(:,pred(k))); end
+end
+
+function stop = out_(~, ov, st)
+% method 2: progress line every 100 iterations; stop when the loss changes by < 1e-6 (relative) over 100 iterations
+persistent Lp
+stop = false;
+if strcmp(st, 'init'), Lp = Inf; end
+if strcmp(st, 'iter') && mod(ov.iteration, 100) == 0
+    stop = abs(Lp - ov.fval) < 1e-6 * ov.fval;  Lp = ov.fval;
+    fprintf('  iteration %d: loss %.8g, first-order %.3g, %d evaluations\n', ov.iteration, ov.fval, ov.firstorderopt, ov.funccount);
+end
+end
+
+function P_ = m2_z(x, Au, Wq)
+% z at the directions Wq: 5 x N_q x N_p  (x = coefficients of Au, 10 x N_j x 5 stacked)
+N_p = size(Au, 1);  N_j = size(Wq, 2);
+Zg = reshape(Au * reshape(x, 10, []), N_p, N_j, 5);
+Zq = reshape(permute(Zg, [3 1 2]), 5*N_p, N_j) * Wq.';
+P_ = permute(reshape(Zq, 5, N_p, []), [1 3 2]);
+end
+
+function [L, g] = m2_loss(x, Au, Wq, Q, r, LAM)
+% (1 / (N_q N_p)) sum [ || fhat - r_hat ||^2 + LAM || z ||^2 ],  fhat_k = z' Ltilde_k z, and its gradient
+P_ = m2_z(x, Au, Wq);  [~, N_q, N_p] = size(P_);
+Gz = 2 * LAM * P_;  Lf = 0;
+for k = 1:3
+    Qz = pagemtimes(reshape(Q(:,:,k,:), 5, 5, N_p), P_);
+    R  = sum(P_ .* Qz, 1) - r(:,k).';                          % 1 x N_q x N_p
+    Lf = Lf + sum(R.^2, 'all');
+    Gz = Gz + 4 * R .* Qz;
+end
+L = (Lf + LAM * sum(P_.^2, 'all')) / (N_q * N_p);
+if nargout > 1
+    Gq = reshape(permute(Gz, [1 3 2]), 5*N_p, N_q) * Wq / (N_q * N_p);   % (5 N_p) x N_j
+    Gg = reshape(permute(reshape(Gq, 5, N_p, []), [2 3 1]), N_p, []);
+    g  = reshape(Au.' * Gg, [], 1);
+end
+end
+
+function e = m2_err(x, Au, Wq, Q, r)
+% e_f [%], N_q x N_p
+P_ = m2_z(x, Au, Wq);  [~, N_q, N_p] = size(P_);  S2 = zeros(N_q, N_p);
+for k = 1:3
+    R  = sum(P_ .* pagemtimes(reshape(Q(:,:,k,:), 5, 5, N_p), P_), 1) - r(:,k).';
+    S2 = S2 + reshape(R.^2, N_q, N_p);
+end
+e = sqrt(S2) * 100;
 end
