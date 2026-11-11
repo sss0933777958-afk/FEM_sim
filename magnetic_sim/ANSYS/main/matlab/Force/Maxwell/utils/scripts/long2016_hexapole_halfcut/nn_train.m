@@ -42,6 +42,9 @@
 %    L = || fhat(p_i, Ihat_NN) - r_hat ||^2 + LAM || Ihat_NN ||^2      (mean over the mini-batch)
 %    positions: GRID = 'origin': multiples of DP inside [-A, A] on each axis (A = 45, DP = 30 um: -30, 0, 30 -> 27 points)
 %               GRID = 'edge'  : -A:DP:A (DP = 10 um: 10^3 = 1000 points); actuator frame;
+%               GRID = 'sph'   : the 343 points uniform in the 45 um ball (nn_grid_sph_r45.mat); pass R = 45 (pbar =
+%                                p / 45 um); output tagged _sph and _e<EP>, e.g. nn_phys_exp_sph_s0_h630_e5000.mat
+%                                (NH = 630: one hidden layer, forward_nn.pdf Sec. 3)
 %    directions as ls_fit.m (phi, theta every 5 deg, N_j = 2522); input x = [r_hat; p / R] (R = 90 um);
 %    custom loop (dlfeval, adamupdate), shuffled every epoch.  RESUME continues the saved run.
 %    INIT = 'chain': start from the net trained on the chain labels (nn_train_chain.mat, same R) -> nn_phys_chain.mat.
@@ -50,6 +53,18 @@
 %    Output nn_phys.mat: net, loss (per epoch: total, force term, LAM term), e_ij (N_j x N_p [%]),
 %    nI (N_j x N_p [A], || I_NN ||), phi_j, theta_j, P, R, A, DP, LAM, MB, EP, LR, NH, ttrain, ep_run, LR_run.
 %  INP (LOSS = 'phys' and TEST): input of the net.  'rhat' (default): x = [r_hat; p / R] (6).
+%  VAR = 'flux5' (LOSS = 'phys', GRID = 'sph'; reference/Force_model/Real_time_inverse model/forward_nn_en.pdf Sec. 3 and
+%    flux_force_unit.pdf Sec. 5.2, 6.6): unit flux with the weak direction removed,  y = W2 tanh(W1 x + b1) + b2,
+%    Phi_hat_NN = y - (u_6' y) u_6,  fhat_k = Phi_hat_NN' L_k Phi_hat_NN (no gain),  Kbar_I = U Sigma V' of calibration CAL
+%    ('single' N43, 'eighteen' N55); weights and biases Glorot-uniform (nn_net GB); adds _flux5_<CAL> to every output name.
+%    VAR = 'flux': the same unit-flux model WITHOUT removing the weak direction, Phi_hat_NN = y (6, no projection),
+%    fhat_k = Phi_hat_NN' L_k Phi_hat_NN; adds _flux_<CAL> to every output name.
+%    PB = 'lhat': pbar = p / l_hat of CAL instead of p / R.
+%  DA (LOSS = 'phys'): direction spacing [deg]; phi = -90:DA:90, theta = 0:DA:360 generated here (no label file read);
+%    adds _d<DA> to every output name. [] (default): the directions of nn_label_sgn.mat (5 deg).
+%  SWP = true (GRID = 'sph'): training and test positions swapped: trained on nn_grid_sph_r45_mid.mat (300 points), S2* test
+%    on nn_grid_sph_r45.mat (343 points); adds _swp to every output name.
+%  CK > 0 (LOSS = 'phys'): every CK epochs the run is saved to <output>_ck.mat and a stopped run resumes from it.
 %    'ang': x = [p / R; phi / 90; theta / 180 - 1] (5; angles in deg normalised to [-1, 1]; a pole phi = +-90 is the
 %    single direction theta = 0, as in the direction grid); adds _ang to every output name, e.g. nn_phys_exp_d15_s3_ang_e1000.mat
 if ~exist('LOSS','var'), LOSS = 'label'; end
@@ -76,21 +91,35 @@ if ~exist('TEST','var'), TEST = {}; end
 if ~exist('SEED','var'), SEED = []; end                       % rng seed of the initial weights ([] = as before); label loss: adds _s<SEED>
 if ~exist('GEN','var'), GEN = false; end
 if ~exist('INP','var'), INP = 'rhat'; end                     % net input: 'rhat' (6) | 'ang' (5)
-clearvars -except LOSS LAB R A DP LAM GRID MB EP EP0 LR NH RESUME SGN CONV TOLE KE INIT LRD LBL TEST SEED GEN INP;
+if ~exist('VAR','var'), VAR = 'current'; end                  % 'current' (I_hat) | 'flux5' (Phi_hat, c_6 = 0)
+if ~exist('CAL','var'), CAL = 'eighteen'; end                 % VAR = 'flux5': 'single' | 'eighteen'
+if ~exist('PB','var'), PB = 'R'; end                          % pbar = p / R ('R') | p / l_hat ('lhat')
+if ~exist('CK','var'), CK = 0; end                            % checkpoint period [epochs], 0 = none
+if ~exist('PX','var'), PX = []; end                           % TEST S2*: N x 3 [um] positions instead of the T2 points -> ..._pts.mat
+if ~exist('SWP','var'), SWP = false; end                      % GRID = 'sph': training and test positions swapped
+if ~exist('DA','var'), DA = []; end                           % LOSS = 'phys': direction spacing [deg] ([] = label-file grid)
+clearvars -except LOSS LAB R A DP LAM GRID MB EP EP0 LR NH RESUME SGN CONV TOLE KE INIT LRD LBL TEST SEED GEN INP VAR CAL PB CK PX SWP DA;
 if GEN, TEST = {'T1'}; end                                     % GEN: the T1 positions and directions
 HTAG = '';  if ~isequal(NH, [64 64]), HTAG = sprintf('_h%d', NH(1)); end   % NH other than 64-64: output tag, e.g. _h128
 if strcmp(INP, 'ang'), HTAG = ['_ang' HTAG]; end                % angle input: e.g. nn_phys_exp_d15_s3_ang_e1000.mat
+if any(strcmp(VAR, {'flux', 'flux5'})), HTAG = ['_' VAR '_' CAL HTAG]; end
+if ~isempty(DA), HTAG = sprintf('%s_d%g', HTAG, DA); end
+if SWP, HTAG = ['_swp' HTAG]; end
 NIN = 6;  if strcmp(INP, 'ang'), NIN = 5; end
 RTAG = HTAG;                                                   % tag of the run RESUME starts from
-if ~isempty(LBL) && EP0 + EP ~= 200, HTAG = sprintf('%s_e%d', HTAG, EP0 + EP); end   % d15 runs, total epochs other than 200: e.g. _e600
+if (~isempty(LBL) || strcmp(GRID, 'sph')) && EP0 + EP ~= 200, HTAG = sprintf('%s_e%d', HTAG, EP0 + EP); end   % d15 / sph runs, total epochs other than 200: e.g. _e600
 if ~isempty(LBL) && EP0 ~= 200 && EP0 > 0, RTAG = sprintf('%s_e%d', RTAG, EP0); end
 here = fileparts(mfilename('fullpath'));  CALROOT = fileparts(fileparts(fileparts(here)));   % .../Force/Maxwell
 addpath(fullfile(CALROOT, 'function'), here);                  % here: nn_net.m
 MODEL = 'long2016_hexapole_halfcut';  GEOM = 'tip40um';
 DAT = fullfile(CALROOT, 'utils', 'data', MODEL);
+FX5 = strcmp(VAR, 'flux5');                                    % remove the weak direction u_6
+FXF = any(strcmp(VAR, {'flux', 'flux5'}));                     % unit-flux model: Q_k = L_k, Glorot biases
+MN  = struct('single', 'calib_current_maxwell_axshN43_R150_single', 'eighteen', 'calib_current_maxwell_axshN55_R150_eighteen');
 if ~isempty(TEST)                                              % ---- evaluate the saved net on the test sets ----
     SFX = '';  if ~isempty(LBL), SFX = ['_' LBL]; end
     if strcmp(LOSS, 'phys'), OUT = 'nn_phys.mat';  if LRD ~= 1, OUT = 'nn_phys_exp.mat'; end, OUT = strrep(OUT, '.mat', [SFX '.mat']);
+        if strcmp(GRID, 'sph'), OUT = strrep(OUT, '.mat', '_sph.mat'); end
         if ~isempty(SEED), OUT = strrep(OUT, '.mat', sprintf('_s%d.mat', SEED)); end
     else, OUT = 'nn_train.mat';  if strcmp(LAB, 'chain'), OUT = 'nn_train_chain.mat'; end, OUT = strrep(OUT, '.mat', [SFX '.mat']);
     end
@@ -102,12 +131,26 @@ if ~isempty(TEST)                                              % ---- evaluate t
     mgB = 0.0451;  UF = 1e3;                                   % M g_B [A um^2/mT]; unit factor -> pN
     RES = struct();
     for t = string(TEST)
-        G = load(fullfile(DAT, TF.(t)), 'P_act', 'ph', 'th', 'IOPT', 'MATNAME');
+        if startsWith(t, "S2")                                 % sphere test: nn_grid_sph_r45_mid.mat (T2, between the
+            GTF = 'nn_grid_sph_r45_mid.mat';  if SWP, GTF = 'nn_grid_sph_r45.mat'; end
+            G  = load(fullfile(DAT, GTF), 'P_act');                % training shells) x directions offset
+            G0 = load(fullfile(DAT, 'nn_label_sgn.mat'), 'MATNAME');        % by 2.5 deg (no pole); no labels -> eta NaN
+            G.ph = -87.5:5:87.5;  G.th = 2.5:5:357.5;  G.MATNAME = G0.MATNAME;
+            if t == "S2", G.ph = -90:5:90;  G.th = 0:5:360; end   % S2: the 5 deg grid directions; S2off: offset 2.5 deg
+            if t == "S25", G.ph = -90:2.5:90;  G.th = 0:2.5:360; end   % S25: every 2.5 deg
+            if ~isempty(PX), G.P_act = PX; end
+            if FXF, G.MATNAME = MN.(CAL); end
+            G.IOPT = nan(6, numel(G.ph), numel(G.th), size(G.P_act, 1));
+        else
+            G = load(fullfile(DAT, TF.(t)), 'P_act', 'ph', 'th', 'IOPT', 'MATNAME');
+        end
         [PHt, THt] = ndgrid(G.ph, G.th);  Ut = THt < 360 & (abs(PHt) < 90 | THt == 0);
         pht = PHt(Ut);  tht = THt(Ut);  Njt = numel(pht);
         Pt  = G.P_act;  Nt = size(Pt, 1);
         cal = load_flux_calib(MODEL, GEOM, G.MATNAME, 'current');
         FH  = sqrt(UF * mgB / (2*cal.l_m) * cal.gB_m^2) * cal.Mbar_m;   % F H_I [sqrt(pN)/A]
+        u_6 = [];  if FXF, FH = eye(6); end
+        if FX5, [Us, ~, ~] = svd(cal.Mbar_m);  u_6 = Us(:,6); end
         Lt  = build_L(Pt, cal.l_m, cal.e_m, cal.Pc_base);
         rt  = [cosd(pht).*cosd(tht), cosd(pht).*sind(tht), sind(pht)];
         Io  = reshape(G.IOPT, 6, [], Nt);  Io = Io(:, Ut(:), :);
@@ -115,6 +158,7 @@ if ~isempty(TEST)                                              % ---- evaluate t
         for p = 1:Nt
             X = single(net_in(INP, rt, pht, tht, repmat(Pt(p,:) / W.R, Njt, 1)));
             I = double(extractdata(predict(W.net, dlarray(X.', 'CB'))));      % 6 x Njt
+            if FX5, I = I - u_6 * (u_6.' * I); end
             f = zeros(3, Njt);
             for k = 1:3
                 Q_k = FH.' * squeeze(Lt(p,:,:,k)) * FH;  Q_k = (Q_k + Q_k.')/2;
@@ -140,30 +184,41 @@ if ~isempty(TEST)                                              % ---- evaluate t
                 t, Nt, Njt, median(e(:)), prctile(e(:), 95), max(e(:)), median(eta(:)), min(eta(:)), max(eta(:)));
     end
     TOUT = strrep(OUT, 'nn_', 'nn_test_');  TOUT = strrep(TOUT, 'nn_test_train', 'nn_test');
+    if ~isempty(PX), TOUT = strrep(TOUT, '.mat', '_pts.mat'); end
     if isfile(fullfile(DAT, TOUT)), save(fullfile(DAT, TOUT), '-struct', 'RES', '-append');
     else, save(fullfile(DAT, TOUT), '-struct', 'RES'); end
     fprintf('-> %s\n', fullfile(DAT, TOUT));
     return
 end
 if strcmp(LOSS, 'phys')
-    S = load(fullfile(DAT, 'nn_label_sgn.mat'), 'ph', 'th', 'MATNAME');
+    if isempty(DA), S = load(fullfile(DAT, 'nn_label_sgn.mat'), 'ph', 'th', 'MATNAME');
+    else, assert(FXF, 'nn_train:da', 'DA needs VAR = ''flux'' or ''flux5'' (calibration from CAL)');
+          S = struct('ph', -90:DA:90, 'th', 0:DA:360);         % no labels: physics loss needs directions only
+    end
+    if FXF, S.MATNAME = MN.(CAL); end
     % ---- samples: 1000 grid positions x 2522 directions ----
     g = DP * (ceil(-A/DP):floor(A/DP));                         % GRID = 'origin'
     if strcmp(GRID, 'edge'), g = -A:DP:A; end
     [GX, GY, GZ] = ndgrid(g, g, g);
-    P = [GX(:), GY(:), GZ(:)];  N_p = size(P, 1);
+    P = [GX(:), GY(:), GZ(:)];
+    GTF = 'nn_grid_sph_r45.mat';  if SWP, GTF = 'nn_grid_sph_r45_mid.mat'; end
+    if strcmp(GRID, 'sph'), G = load(fullfile(DAT, GTF), 'P_act');  P = G.P_act; end
+    N_p = size(P, 1);
     [PH, TH] = ndgrid(S.ph, S.th);
     U = TH < 360 & (abs(PH) < 90 | TH == 0);
     phi_j = PH(U);  theta_j = TH(U);  N_j = numel(phi_j);
     r_hat = [cosd(phi_j).*cosd(theta_j), cosd(phi_j).*sind(theta_j), sind(phi_j)];         % N_j x 3
     [J, Pi] = ndgrid(1:N_j, 1:N_p);  J = J(:);  Pi = Pi(:);       % sample s = (j, p)
+    cal = load_flux_calib(MODEL, GEOM, S.MATNAME, 'current');
+    if strcmp(PB, 'lhat'), R = cal.l_m; end
     X = single(net_in(INP, r_hat(J,:), phi_j(J), theta_j(J), P(Pi,:) / R));   % N_s x NIN
     N_s = size(X, 1);
     % ---- force model: fhat_k = I' Q_k I  (Q_k as nn_label.m) ----
     mgB = 0.0451;  UF = 1e3;                                   % M g_B [A um^2/mT]; unit factor -> pN
-    cal = load_flux_calib(MODEL, GEOM, S.MATNAME, 'current');
     gF  = UF * mgB / (2*cal.l_m) * cal.gB_m^2;                 % F g_I [pN/A^2]
     FH  = sqrt(gF) * cal.Mbar_m;                               % F H_I [sqrt(pN)/A]
+    u_6 = [];  if FXF, FH = eye(6); end                        % flux / flux5: Q_k = L_k
+    if FX5, [Us, ~, ~] = svd(cal.Mbar_m);  u_6 = single(Us(:,6)); end   % flux5 only: project out u_6
     L   = build_L(P, cal.l_m, cal.e_m, cal.Pc_base);           % N_p x 6 x 6 x 3
     Q   = zeros(6, 6, 3, N_p);
     for p = 1:N_p
@@ -176,6 +231,7 @@ if strcmp(LOSS, 'phys')
     OUT = 'nn_phys.mat';  if strcmp(INIT, 'chain'), OUT = 'nn_phys_chain.mat'; end
     if LRD ~= 1, OUT = 'nn_phys_exp.mat'; end
     if ~isempty(LBL), OUT = strrep(OUT, '.mat', ['_' LBL '.mat']); end   % e.g. nn_phys_exp_d15.mat
+    if strcmp(GRID, 'sph'), OUT = strrep(OUT, '.mat', '_sph.mat'); end    % e.g. nn_phys_exp_sph.mat
     if ~isempty(SEED), OUT = strrep(OUT, '.mat', sprintf('_s%d.mat', SEED)); end   % e.g. nn_phys_exp_d15_s1.mat
     OUT = strrep(OUT, '.mat', [HTAG '.mat']);                     % e.g. nn_phys_exp_d15_h128.mat
     lossE = zeros(0, 3);  ep_run = [];  LR_run = [];  t_prev = 0;
@@ -188,7 +244,7 @@ if strcmp(LOSS, 'phys')
         avg = W.avg;  avgSq = W.avgSq;  it = W.it;
     else
         if ~isempty(SEED), rng(SEED); end                     % initial weights only; the shuffle seed stays as before
-        net = nn_net(NH, NIN);  avg = [];  avgSq = [];  it = 0;
+        net = nn_net(NH, NIN, FXF);  avg = [];  avgSq = [];  it = 0;
         if strcmp(INIT, 'chain')                                % pretrained on the chain labels
             W0 = load(fullfile(DAT, 'nn_train_chain.mat'), 'net', 'R', 'A', 'NH');
             assert(W0.R == R && W0.A == A && isequal(W0.NH, NH), 'nn_train:init', 'nn_train_chain.mat has another R / A / NH');
@@ -198,18 +254,26 @@ if strcmp(LOSS, 'phys')
     rng(numel(ep_run));
     e0 = sum(ep_run);                                          % epochs done before: the LR decay continues from there
     NB = ceil(N_s / MB);
+    CKF = fullfile(DAT, strrep(OUT, '.mat', '_ck.mat'));  ep1 = 1;
+    if CK > 0 && isfile(CKF)                                   % resume a stopped run
+        C = load(CKF);  net = C.net;  avg = C.avg;  avgSq = C.avgSq;  it = C.it;  lossE = C.lossE;  ep1 = C.ep + 1;  t_prev = C.tt;
+        rng(C.ep);  fprintf('resumed at epoch %d\n', C.ep);
+    end
     t0 = tic;
-    for ep = 1:EP
+    for ep = ep1:EP
         idx = randperm(N_s);  acc = zeros(1, 3);
         for b = 1:NB
             s  = idx((b-1)*MB+1 : min(b*MB, N_s));
             Xb = dlarray(X(s,:).', 'CB');
             it = it + 1;
-            [Lb, gr, parts] = dlfeval(@phys_loss, net, Xb, Q(:,:,:,Pi(s)), RH(J(s),:).', LAM);
+            [Lb, gr, parts] = dlfeval(@phys_loss, net, Xb, Q(:,:,:,Pi(s)), RH(J(s),:).', LAM, u_6);
             [net, avg, avgSq] = adamupdate(net, gr, avg, avgSq, it, LR * LRD^(e0+ep-1));
             acc = acc + numel(s) * double(extractdata([Lb, parts]));
         end
         lossE(end+1, :) = acc / N_s;                                %#ok<SAGROW>
+        if CK > 0 && mod(ep, CK) == 0
+            tt = t_prev + toc(t0);  save(CKF, 'net', 'avg', 'avgSq', 'it', 'lossE', 'ep', 'tt');
+        end
         if ep == 1 || mod(ep, 10) == 0 || ep == EP
             fprintf('epoch %d/%d: loss %.4g (force %.4g, LAM |I|^2 %.4g), %.0f s\n', ep, EP, lossE(end,:), toc(t0));
         end
@@ -221,6 +285,7 @@ if strcmp(LOSS, 'phys')
     for c = 1:ceil(N_s / 1e5)
         s = (c-1)*1e5+1 : min(c*1e5, N_s);
         I = double(extractdata(predict(net, dlarray(X(s,:).', 'CB'))));   % 6 x n
+        if FX5, I = I - double(u_6) * (double(u_6).' * I); end
         f = zeros(3, numel(s));
         for k = 1:3, f(k,:) = sum(I .* reshape(pagemtimes(double(squeeze(Q(:,:,k,Pi(s)))), reshape(I, 6, 1, [])), 6, []), 1); end
         e_ij(s) = vecnorm(f - r_hat(J(s),:).', 2, 1).' * 100;     % || fhat_d || = 1
@@ -235,7 +300,8 @@ if strcmp(LOSS, 'phys')
     end
     fprintf('convergence (%d epochs in a row < %g %%): epoch %g\n', KE, 100*TOLE, ep_conv);
     save(fullfile(DAT, OUT), 'net', 'loss', 'e_ij', 'nI', 'phi_j', 'theta_j', 'P', 'R', 'A', 'DP', 'GRID', 'LAM', 'MB', 'EP', 'LR', 'NH', ...
-         'ttrain', 'ep_run', 'LR_run', 'avg', 'avgSq', 'it', 'INIT', 'LRD', 'ep_conv', 'TOLE', 'KE', 'SEED', 'INP');
+         'ttrain', 'ep_run', 'LR_run', 'avg', 'avgSq', 'it', 'INIT', 'LRD', 'ep_conv', 'TOLE', 'KE', 'SEED', 'INP', 'VAR', 'CAL', 'PB', 'u_6');
+    if CK > 0 && isfile(CKF), delete(CKF); end
     fprintf('LOSS phys: %d samples, MB %d, epochs %s, LR %s, %.0f s total | final loss %.4g\n', N_s, MB, mat2str(ep_run), ...
             mat2str(LR_run), ttrain, loss(end, 1));
     fprintf('e_ij [%%]: median %.3g, 95th pct %.3g, max %.3g | ||I|| [A]: median %.3g, max %.3g -> %s\n', median(e_ij(:)), ...
@@ -357,9 +423,10 @@ if strcmp(INP, 'ang'), X = [pn, ph(:) / 90, th(:) / 180 - 1];
 else, X = [rh, pn]; end
 end
 
-function [Lb, gr, parts] = phys_loss(net, Xb, Qb, Rb, LAM)
+function [Lb, gr, parts] = phys_loss(net, Xb, Qb, Rb, LAM, u_6)
 % LOSS = 'phys':  mean_b || fhat(p_b, I_b) - r_hat_b ||^2 + LAM mean_b || I_b ||^2,  fhat_k = I' Q_k I.
 I  = stripdims(forward(net, Xb));                         % 6 x B
+if ~isempty(u_6), I = I - u_6 * (u_6.' * I); end          % Phi_hat_NN = y - (u_6' y) u_6
 B  = size(I, 2);
 O  = reshape(I, 6, 1, B) .* reshape(I, 1, 6, B);          % I I^T, 6 x 6 x B
 f  = [sum(O .* reshape(Qb(:,:,1,:), 6, 6, B), [1 2]); ...

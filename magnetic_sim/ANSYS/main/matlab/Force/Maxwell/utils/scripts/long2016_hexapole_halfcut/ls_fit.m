@@ -34,6 +34,16 @@
 %      2  one step: physics loss, all D_m together, on the 5 deg training directions, matrix-free L-BFGS, started from the
 %         centre solution of each direction (NS0 random starts), constant in position -> ls_m2_<CAL><GF>.mat
 %      e_q (N_q x N_p [%]): grid directions first, then the cell centres; t_fit [s]; d refers to pbar = p / l_hat.
+%      MTD = 2 options:
+%      TRN = 'gc': training directions = the DA grid + the cell centres (offset DA/2 in phi and theta), every term of the
+%            loss weighted by cos(phi_k) (direction_fourier.pdf Sec. 12.4), normalised by sum(cos phi_k) N_p; 'grid' = the
+%            DA grid only, unweighted (as before)
+%      DIR = 'fourier' (direction_fourier.pdf Sec. 9-13): D_m(theta, phi) = sum_l psi_l(theta, phi) C_m,l instead of the
+%            bilinear grid, l = 0..L-1, L = (N+1)^2; psi_l: per degree n = 0..N the monomials r_x^a r_y^(n-a) (a = n..0),
+%            then r_x^a r_y^(n-1-a) r_z (a = n-1..0) (r_z^2 eliminated by r_x^2 + r_y^2 + r_z^2 = 1).  Start: the same
+%            centre solution z0 on the grid directions, its constant (position) term projected on psi_l by LS weighted
+%            with cos(phi_k), the other 9 coefficients 0.  Saves C (10 x L x 5, pbar = p / l_hat) instead of d.
+%      Output ls_m2[s1][c|f<N>]_<CAL><GF>.mat (c: bilinear with TRN 'gc'; f<N>: Fourier, TRN 'gc'; f<N>g: Fourier, 'grid')
 %      TEST (any set) with PX: the saved fit at the positions PX every DA/2 deg (bilinear, Sec. 5.1 (2))
 %      -> ls_test_m<MTD>_<CAL><GF>_pts.mat: S25 (e N_q x N_t [%], phi, theta, P), R_act.
 %      OPT = true: also the Sec. 6.4 minimum at PX on the grid directions (rho_solve, Gurobi on every uncertified one) and
@@ -88,8 +98,53 @@ if ~exist('MAXI','var'), MAXI = 20000; end                    % MTD = 2: L-BFGS 
 if ~exist('ETA','var'), ETA = false; end                      % MTD: eta = ||Phi_opt|| / ||Phi_LS|| at the fitting points -> appended to ls_m<MTD>
 if ~exist('OPT','var'), OPT = false; end                      % MTD, TEST, PX: also eta (see above)
 if ~exist('S0M','var'), S0M = 'centre'; end                   % MTD = 2 start: 'centre' (centre solve) | 'm1' (method 1 D) -> ls_m2s1_*
+                                                               % | 'fou' (Fourier fit S0F, e.g. 'ls_m2f4_single_sph_r45', projected)
+                                                               % | 'lab' (global labels S0F: per-direction LS D*, then LS of the Fourier matrices)
 if ~exist('NS0','var'), NS0 = 20; end                         % MTD = 2: random starts of the centre solve
-clearvars -except REG A LAB LOSS LAM LBL TEST SAVED NNLAB TMAX JSUB VAR CAL GF DA NN0 WID NW MERGE PX SWP MTD MAXI NS0 OPT ETA S0M;
+if ~exist('S0F','var'), S0F = 'nn_label_o_lg_flux5_single'; end   % MTD = 2, S0M = 'olab': label file whose position 1 is the origin
+if ~exist('TRN','var'), TRN = 'grid'; end                     % MTD = 2: training directions 'grid' | 'gc' (grid + centres, cos(phi) weight)
+if ~exist('DIR','var'), DIR = 'bilin'; end                    % MTD = 2: direction function 'bilin' | 'fourier'
+if ~exist('N','var'), N = 4; end                              % DIR = 'fourier': highest degree, L = (N+1)^2
+% DIR = 'f2d' (C:\Users\Kuo\Downloads\fourier2d.pdf): 2D Fourier series in (theta, phi), m <= M, n <= N, pole conditions
+% built in (null space Z2); output tag t<M>_<N>[g]; saves C (10 x L_free x NV), Z2, M, d (D at the grid directions) and
+% the matrices of Sec. 6.4: A, Ap, B, Bp (4 x 4 x (M+1) x (N+1) x N_k, entry (:,:,m+1,n+1,k) = A_k,mn etc., pbar = p / l_hat;
+% N_k = 5 D_k (z, weak direction excluded) or 6 with I6)
+if ~exist('M','var'), M = N; end
+if ~exist('TT','var'), TT = ''; end                           % TEST with TRN 'gc' / DIR 'fourier': output tag, e.g. '_4p' -> ls_test_..._d<TDA>_4p_pts.mat
+% MTD = 1: Q1 = true fits only the first-octant positions (x, y, z >= 0); LABF = label file (no .mat) instead of
+% nn_label<GF>_mid_flux5<CAL>, e.g. 'nn_label_q1r_flux5_single' (position relay, nn_label.m REL); TG = output tag
+% (ls_m1_<CAL><GF><TG>.mat)
+if ~exist('Q1','var'), Q1 = false; end
+if ~exist('LABF','var'), LABF = ''; end
+if ~exist('TG','var'), TG = ''; end
+% LONG = true (VAR 'flux5'): Long's force model (R_norm = 550 um, e = 0, sum(Phi) = 0), as nn_label.m LONG; use DA = 6
+if ~exist('LONG','var'), LONG = false; end
+% TEST (MTD > 0): OLAB = label file (no .mat) whose position 1 is the origin, e.g. 'nn_label_o_creg_lg_flux5_single', or
+% 'LUT' (Long's LUT column 1, DA = 6): the origin solutions are interpolated directly (no position fit) ->
+% ls_test_<OLAB>_d<TDA>_pts.mat; TDA = test direction step [deg] ([] = DA/2)
+if ~exist('OLAB','var'), OLAB = ''; end
+% MTD = 1: FIX0 = true fixes the constant term to the origin label (Long's LUT "0CenterErr"); the origin must be a fitting point
+if ~exist('FIX0','var'), FIX0 = false; end
+% TEST: TEB = true evaluates the force with the eighteen-parameter charge offset e_hat (N55 calibration) in L, the rest
+% unchanged (with LONG: R_norm = 550 um, sum(Phi) = 0); output tagged _eb
+if ~exist('TEB','var'), TEB = false; end
+% EBSC = false (with TEB): e_hat used as it is, not scaled by l_hat(N55) / l, tag _eb0
+if ~exist('EBSC','var'), EBSC = true; end
+if ~exist('TDA','var'), TDA = []; end
+% I6 = true (LONG, MTD = 2): fit the six currents Ihat directly (6 D_k, weak direction not removed) instead of the 5 z;
+% force fhat_k = Ihat' K_I' L_k K_I Ihat with K_I = U_5 U_5' (= I_6 - 11'/6), the common mode is left to LAM.  The start
+% is the same 5-dim centre solution lifted by Ihat = U_5 z.  Use a TG of its own (e.g. '_lg_i6')
+if ~exist('I6','var'), I6 = false; end
+% ON (MTD = 2): output file name (no .mat) instead of the composed one, e.g. 'fit_lg_bl_I' (Long, bilinear, 6 currents)
+if ~exist('ON','var'), ON = ''; end
+% EBF = true (LONG): Long's model with the eighteen-parameter charge offset e_hat in the fit itself (EBSC as below), e.g.
+% physics loss with bias, ON = 'fit_lg_f2d_eb_I'
+if ~exist('EBF','var'), EBF = false; end
+% PH6 = true (MTD = 2): fit Phi_hat with 6 D_k (weak direction not removed, fourier2d.pdf Sec. 7), force Phi' L_k Phi, LAM ||Phi||^2
+if ~exist('PH6','var'), PH6 = false; end
+% LSG = false (MTD = 1): no sign alignment of the labels (constrained labels, e.g. phi_cons.mat: the region fixes the sign)
+if ~exist('LSG','var'), LSG = true; end
+clearvars -except REG A LAB LOSS LAM LBL TEST SAVED NNLAB TMAX JSUB VAR CAL GF DA NN0 WID NW MERGE PX SWP MTD MAXI NS0 OPT ETA S0M Q1 LABF TG LONG OLAB TDA FIX0 TEB EBSC TRN DIR N M TT S0F I6 ON EBF PH6 LSG;
 here = fileparts(mfilename('fullpath'));  CALROOT = fileparts(fileparts(fileparts(here)));   % .../Force/Maxwell
 addpath(fullfile(CALROOT, 'function'));
 MODEL = 'long2016_hexapole_halfcut';  GEOM = 'tip40um';
@@ -102,16 +157,33 @@ if strcmp(VAR, 'flux5')
     GFIT = [GF '.mat'];  GTST = [GF '_mid.mat'];
     if SWP, OUT = strrep(OUT, '.mat', '_swp.mat');  GFIT = [GF '_mid.mat'];  GTST = [GF '.mat']; end
     wf  = @(w) fullfile(DAT, strrep(OUT, '.mat', sprintf('_w%02dof%02d.mat', w, NW)));
-    cal = load_flux_calib(MODEL, GEOM, MN.(CAL), 'current');  l_hat = cal.l_m;
+    cal = load_flux_calib(MODEL, GEOM, MN.(CAL), 'current');
+    if LONG, cal.l_m = 550;  cal.e_m(:) = 0; end               % Long's model: R_norm = 550 um, no charge offset
+    if LONG && EBF                                             % EBF: fit (and test) with the eighteen-parameter e_hat in L,
+        c18 = load_flux_calib(MODEL, GEOM, MN.eighteen, 'current');   % as nn_label.m LONG EB: used as it is (EBSC = false)
+        cal.e_m = c18.e_m;  if EBSC, cal.e_m = c18.e_m * c18.l_m / cal.l_m; end   % or scaled by l_hat(N55) / l
+    end
+    l_hat = cal.l_m;
     G   = load(fullfile(DAT, ['nn_grid' GFIT]), 'P_act');  P = G.P_act;  N_p = size(P, 1);
+    if Q1, P = P(all(P >= -1e-9, 2), :);  N_p = size(P, 1); end    % first octant only
     [PH, TH] = ndgrid(-90:DA:90, 0:DA:360);  U = TH < 360 & (abs(PH) < 90 | TH == 0);
     phi_j = PH(U);  theta_j = TH(U);  N_j = numel(phi_j);
     r_hat = [cosd(phi_j).*cosd(theta_j), cosd(phi_j).*sind(theta_j), sind(phi_j)];         % N_j x 3
     pt  = P / A;  xbar = pt(:,1);  ybar = pt(:,2);  zbar = pt(:,3);                        % pbar = p / (45 um), Sec. 5
     T   = [ones(N_p,1), 2*xbar, 2*ybar, 2*zbar, 2*xbar.*ybar, 2*xbar.*zbar, 2*ybar.*zbar, xbar.^2, ybar.^2, zbar.^2];
     [Us, Sg, ~] = svd(cal.Mbar_m);  sigma = diag(Sg).';  U_5 = Us(:,1:5);                  % Kbar_I = U Sigma V'
+    if LONG, U_5 = null(ones(1, 6)); end                       % Long's model: theoretical K_I, sum(Phi) = 0
+    U_r = U_5;                                                 % 5-dim basis of the start solve
+    if PH6                                                     % fourier2d.pdf Sec. 7 "weak direction not considered": 6 D_k,
+        U_5 = eye(6);                                          % z = Phi_hat itself (6), Ltilde_k = L_k; start lifted by U_5 z
+    end
+    if I6
+        assert(LONG && MTD == 2, 'ls_fit:i6', 'I6 needs LONG and MTD = 2');
+        U_5 = U_5 * U_5.';                                     % K_I = I_6 - 11'/6: z = Ihat (6), Phi_hat = K_I Ihat
+    end
+    NV  = size(U_5, 2);                                        % 5 (z) or 6 (Ihat)
     L   = build_L(P, cal.l_m, cal.e_m, cal.Pc_base);           % N_p x 6 x 6 x 3
-    Q   = zeros(5, 5, 3, N_p);                                 % Ltilde_k = U_5' L_k U_5
+    Q   = zeros(NV, NV, 3, N_p);                               % Ltilde_k = U_5' L_k U_5
     for p = 1:N_p
         for k = 1:3, L_k = squeeze(L(p,:,:,k));  L_k = (L_k + L_k.')/2;  Lt = U_5.' * L_k * U_5;  Q(:,:,k,p) = (Lt + Lt.')/2; end
     end
@@ -120,7 +192,7 @@ if strcmp(VAR, 'flux5')
                     2*Q_(:,1), 2*Q_(:,2), 2*Q_(:,3), ones(size(Q_,1),1)];     % a(pbar)'
         pbar = P / l_hat;  Amat = A_(pbar);  Au = A_(P / A);   % Au: same function space, well conditioned (solver only)
         sc  = (A / l_hat).^[2 2 2 2 2 2 1 1 1 0].';            % d(u) = d(pbar) .* sc
-        [ph_m, th_m] = deal(-90:DA:90, 0:DA:355);  NPH = numel(ph_m);  NTH = numel(th_m);
+        [ph_m, th_m] = deal(-90:DA:90, 0:DA:360-DA);  NPH = numel(ph_m);  NTH = numel(th_m);
         G_  = zeros(NPH, NTH+1);  [PHg, THg] = ndgrid(ph_m, [th_m 360]);  Ug = THg < 360 & (abs(PHg) < 90 | THg == 0);
         G_(Ug) = 1:N_j;  G_(1,:) = G_(1,1);  G_(end,:) = G_(end,1);  G_(:,end) = G_(:,1);   % grid index, pole and seam shared
         % directions: the 5 deg grid (one corner) + the cell centres (four corners, alpha = beta = 1/2)
@@ -129,9 +201,17 @@ if strcmp(VAR, 'flux5')
                G_(sub2ind(size(G_), ac+1, bc)); G_(sub2ind(size(G_), ac+1, bc+1))], 0.25, N_c, N_j)];
         ph_c = ph_m(ac).' + DA/2;  th_c = th_m(bc).' + DA/2;
         r_q = [r_hat; cosd(ph_c).*cosd(th_c), cosd(ph_c).*sind(th_c), sind(ph_c)];
-        M0  = sprintf('ls_m1_%s%s.mat', CAL, GF);
+        M0  = sprintf('ls_m1_%s%s%s.mat', CAL, GF, TG);
         STG = '';  if MTD == 2 && strcmp(S0M, 'm1'), STG = 's1'; end   % method 2 started from method 1 -> ls_m2s1_*
-        if ETA                                                 % eta = ||Phi_hat_opt|| / ||Phi_hat_LS|| at the fitting points, grid directions
+        if MTD == 2 && strcmp(S0M, 'olab'), STG = 'og'; end    % started from the origin labels S0F -> ls_m2og_*
+        F2D = strcmp(DIR, 'f2d');  FOU = strcmp(DIR, 'fourier') || F2D;  GC = MTD == 2 && strcmp(TRN, 'gc');
+        PSI = @(r) psi_(r, N);                                 % direction basis (columns) at the unit vectors r
+        if F2D, [~, Z2] = f2d_(r_hat(1,:), M, N);  PSI = @(r) f2d_(r, M, N) * Z2; end   % fourier2d.pdf, pole conditions built in
+        TAG = '';  if GC, TAG = 'c'; end                       % c: bilinear with TRN 'gc'; f<N>[g]: Fourier
+        if FOU, TAG = sprintf('f%d', N);  if ~GC && MTD == 2, TAG = [TAG 'g']; end, end
+        if F2D, TAG = sprintf('t%d_%d', M, N);  if ~GC && MTD == 2, TAG = [TAG 'g']; end, end
+        if MTD == 1, M0 = sprintf('ls_m1%s_%s%s%s.mat', TAG, CAL, GF, TG); end   % method 1 Fourier -> ls_m1f<N>_*
+        if ETA                                                % eta = ||Phi_hat_opt|| / ||Phi_hat_LS|| at the fitting points, grid directions
             MF = fullfile(DAT, sprintf('ls_m%d_%s%s.mat', MTD, CAL, GF));  F = load(MF, 'd');
             Lb = load(fullfile(DAT, sprintf('nn_label%s_mid_flux5%s.mat', GF, strrep(['_' CAL], '_eighteen', ''))), 'IOPT', 'P_act');
             assert(norm(Lb.P_act - P) == 0, 'ls_fit:P', 'label positions differ');
@@ -143,14 +223,43 @@ if strcmp(VAR, 'flux5')
             return
         end
         if ~isempty(TEST)                                      % the saved method-MTD fit at the positions PX, every DA/2 deg
-            F  = load(fullfile(DAT, sprintf('ls_m%d%s_%s%s.mat', MTD, STG, CAL, GF)), 'd');
+            FF = sprintf('ls_m%d%s%s_%s%s%s.mat', MTD, STG, TAG, CAL, GF, TG);  if ~isempty(ON), FF = [ON '.mat']; end
+            if isempty(OLAB) && FOU                            % Fourier: the coefficients C_m,l take the place of d
+                F  = load(fullfile(DAT, FF), 'C');  F.d = F.C;
+            elseif isempty(OLAB)
+                F  = load(fullfile(DAT, FF), 'd');
+            else                                               % origin solutions only: constant term = the label at p = 0
+                if strcmp(OLAB, 'LUT')                         % Long's LUT column 1 (r_controller_package), unit force
+                    assert(DA == 6, 'ls_fit:lut', 'OLAB = LUT needs DA = 6');
+                    LD = 'G:\my_workspace\code\r_controller_package\data\lut';  C_ = zeros(6, 1891);
+                    for k = 1:6, d_ = dlmread(fullfile(LD, sprintf('Feb28_2013 Coeff2nd_0CenterErr_I%d_1891x20.txt', k)));  C_(k,:) = d_(:,1).'; end
+                    C_ = C_ * sqrt(10);  [IT_, IP_] = ndgrid(0:60, 0:30);  row_ = IT_(:)*31 + IP_(:) + 1;
+                    ib_ = mod(-180 + 6*IT_(:), 360)/6 + 1;  I0 = zeros(6, NPH, NTH+1);
+                    for n = 1:numel(row_)
+                        I0(:, IP_(n)+1, ib_(n)) = C_(:, row_(n));  if ib_(n) == 1, I0(:, IP_(n)+1, NTH+1) = C_(:, row_(n)); end
+                    end
+                else
+                    S_ = load(fullfile(DAT, [OLAB '.mat']), 'IOPT', 'P_act');   % the label position equal to the (single) PX
+                    ip_ = find(vecnorm(S_.P_act - PX(1,:), 2, 2) < 1e-9, 1);
+                    assert(size(PX, 1) == 1 && ~isempty(ip_), 'ls_fit:olab', 'OLAB: PX must be one position of the label file');
+                    I0 = S_.IOPT(:,:,:,ip_);
+                end
+                Z_ = U_5.' * reshape(I0, 6, []);  Z_ = Z_(:, Ug(:));            % 5 x N_j
+                F.d = zeros(10, N_j, 5);  F.d(10,:,:) = reshape(Z_.', 1, N_j, 5);
+            end
             x  = reshape(reshape(F.d, 10, []) .* sc, [], 1);
             Pt = PX;  Nt = size(Pt, 1);  Aut = A_(Pt / A);
-            Lf = build_L(Pt, cal.l_m, cal.e_m, cal.Pc_base);  Qt = zeros(5, 5, 3, Nt);
+            eT = cal.e_m;                                      % TEB: evaluate with the eighteen-parameter charge offset e_hat
+            if TEB                                             % same physical offset: e_hat l_hat(N55) / l of this model
+                c18 = load_flux_calib(MODEL, GEOM, MN.eighteen, 'current');  eT = c18.e_m * c18.l_m / cal.l_m;
+                if ~EBSC, eT = c18.e_m; end
+            end
+            Lf = build_L(Pt, cal.l_m, eT, cal.Pc_base);  Qt = zeros(NV, NV, 3, Nt);
             for p = 1:Nt
                 for k = 1:3, L_k = squeeze(Lf(p,:,:,k));  L_k = (L_k + L_k.')/2;  Lt = U_5.' * L_k * U_5;  Qt(:,:,k,p) = (Lt + Lt.')/2; end
             end
-            [PHt, THt] = ndgrid(-90:DA/2:90, 0:DA/2:360);  Ut = THt < 360 & (abs(PHt) < 90 | THt == 0);
+            if isempty(TDA), TDA = DA/2; end
+            [PHt, THt] = ndgrid(-90:TDA:90, 0:TDA:360);  Ut = THt < 360 & (abs(PHt) < 90 | THt == 0);
             pht = PHt(Ut);  tht = THt(Ut);  Nq = numel(pht);
             ia = floor((pht + 90)/DA) + 1;  ib = floor(tht/DA) + 1;   % corner (phi_k, theta_j), Sec. 5.1 (2) step a
             al = (pht + 90)/DA + 1 - ia;  be = tht/DA + 1 - ib;
@@ -159,7 +268,9 @@ if strcmp(VAR, 'flux5')
                         G_(sub2ind(size(G_), ia2, ib)); G_(sub2ind(size(G_), ia2, ib2))], ...
                         [(1-al).*(1-be); (1-al).*be; al.*(1-be); al.*be], Nq, N_j);
             rt = [cosd(pht).*cosd(tht), cosd(pht).*sind(tht), sind(pht)];
+            if FOU && isempty(OLAB), Wt = PSI(rt); end          % Fourier: D_m at the test directions directly
             S25 = struct('e', m2_err(x, Aut, Wt, Qt, rt), 'phi', pht, 'theta', tht, 'P', Pt);
+            S25.z = m2_z(x, Aut, Wt);                          % z_LS (5 x N_q x N_t); Phi_hat_LS = U_5 z_LS
             R_act = cal.R_act;
             if OPT                                             % eta = ||Phi_hat_opt|| / ||Phi_hat_LS|| on the grid directions
                 addpath(here);
@@ -173,36 +284,80 @@ if strcmp(VAR, 'flux5')
                 eta = nOPT ./ nLS;
                 fprintf('eta: %d directions, proved global %.2f %%, eta < 1: %d, min %.3f, median %.3f\n', numel(eta), 100*mean(GLB(:)), nnz(eta < 1), min(eta(:)), median(eta(:)));
             end
-            TOUT = sprintf('ls_test_m%d%s_%s%s_pts.mat', MTD, STG, CAL, GF);
-            save(fullfile(DAT, TOUT), 'S25', 'R_act');
+            TOUT = sprintf('ls_test_m%d%s_%s%s%s%s_pts.mat', MTD, STG, CAL, GF, TG, TT);
+            if ~isempty(TAG), TOUT = sprintf('ls_test_m%d%s%s_%s%s%s_d%g%s_pts.mat', MTD, STG, TAG, CAL, GF, TG, TDA, TT); end
+            if ~isempty(OLAB), TOUT = sprintf('ls_test_%s_d%g_pts.mat', OLAB, TDA); end
+            if ~isempty(OLAB) && any(PX ~= 0), TOUT = sprintf('ls_test_%s_p%g_%g_%g_d%g_pts.mat', OLAB, PX, TDA); end
+            if TEB, TOUT = strrep(TOUT, '_pts.mat', '_eb_pts.mat');  if ~EBSC, TOUT = strrep(TOUT, '_eb_pts.mat', '_eb0_pts.mat'); end, end
+            if ~isempty(ON)                                    % short name: fit_lg_f2d_I + PX (45,45,45) -> test_lg_f2d_I_p45.mat
+                pt_ = sprintf('_p%g_%g_%g', PX(1,:));  if size(PX, 1) == 1 && all(PX == PX(1)), pt_ = sprintf('_p%g', PX(1)); end
+                if size(PX, 1) > 1, pt_ = '_all'; end          % several positions -> test_lg_f2d_I_all.mat
+                TOUT = [regexprep(ON, '^fit_', 'test_') pt_ '.mat'];
+            end
+            save(fullfile(DAT, TOUT), 'S25', 'R_act', 'U_5');
             if OPT, save(fullfile(DAT, TOUT), 'eta', 'nOPT', 'nLS', 'GLB', 'phi_j', 'theta_j', '-append'); end
             fprintf('method %d test: %d positions x %d directions, e mean %.4f, max %.3f -> %s\n', MTD, Nt, Nq, mean(S25.e(:)), max(S25.e(:)), TOUT);
             return
         end
         if MTD == 1
             % Step 1 labels: nn_label (Sec. 6.4), z_opt = U_5' Phi_hat_opt
-            F = load(fullfile(DAT, sprintf('nn_label%s_mid_flux5%s.mat', GF, strrep(['_' CAL], '_eighteen', ''))), 'IOPT', 'P_act', 'U_5', 'T1', 'NGRB');
+            LF = sprintf('nn_label%s_mid_flux5%s', GF, strrep(['_' CAL], '_eighteen', ''));  if ~isempty(LABF), LF = LABF; end
+            F = load(fullfile(DAT, [LF '.mat']));                 % nn_label file (IOPT) or phi_cons.mat (Phihat_cons, i_cons.m PHI)
+            if isfield(F, 'Phihat_cons'), F.IOPT = F.Phihat_cons; end
+            if ~isfield(F, 'T1'), F.T1 = 0;  F.NGRB = 0; end
             assert(norm(F.P_act - P) == 0, 'ls_fit:P', 'label positions differ');
             I_ = reshape(F.IOPT, 6, [], N_p);  I_ = I_(:, Ug(1:end, 1:NTH+1), :);    % 6 x N_j x N_p
             t0 = tic;
-            z_ = reshape(F.U_5.' * reshape(I_, 6, []), 5, N_j, N_p);
+            z_ = reshape(U_5.' * reshape(I_, 6, []), NV, N_j, N_p);   % z (5) or Phi_hat itself (PH6, 6)
+            if LSG                                             % LSG = false: constrained labels, the sign is fixed by the region
             % signs: Phi_hat and -Phi_hat are both optimal: every position to the direction's mean (Sec. 5.1 (3))
-            [~, ic_] = min(vecnorm(P, 2, 2));  V_ = zeros(5, N_j);
+            [~, ic_] = min(vecnorm(P, 2, 2));  V_ = zeros(NV, N_j);
             for j = 1:N_j
                 Zj = squeeze(z_(:,j,:));  rf = Zj(:,ic_);
                 for it_ = 1:5, sg = sign(rf.' * Zj);  sg(sg == 0) = 1;  rf = mean(Zj .* sg, 2); end
-                z_(:,j,:) = reshape(Zj .* sg, 5, 1, N_p);  V_(:,j) = rf / norm(rf);
+                z_(:,j,:) = reshape(Zj .* sg, NV, 1, N_p);  V_(:,j) = rf / norm(rf);
             end
             % neighbouring directions agree (max-|cos| spanning tree, as nn_train.m SGN = 'dir'); corners of Sec. 5.1 (2)
             sd = dir_sign_(V_, G_, phi_j, theta_j);
             z_ = z_ .* sd.';
-            y_m = reshape(permute(z_, [3 2 1]), N_p, []);      % N_p x (N_j 5)
-            d_hat = Amat \ y_m;                                % d_hat_m = (A'A)^-1 A' y_m
+            end
+            y_m = reshape(permute(z_, [3 2 1]), N_p, []);      % N_p x (N_j NV)
+            if FIX0                                            % constant term = the label at p = 0 (Long's LUT "0CenterErr"),
+                i0_ = find(all(abs(P) < 1e-9, 2), 1);          % the other 9 coefficients by LS on the remainder
+                assert(~isempty(i0_), 'ls_fit:fix0', 'FIX0 needs the origin among the fitting points');
+                d_hat = [Amat(:,1:9) \ (y_m - y_m(i0_,:)); y_m(i0_,:)];
+            else
+                d_hat = Amat \ y_m;                            % d_hat_m = (A'A)^-1 A' y_m
+            end
+            % FOU: label loss on the current, sum_i sum_j sum_k || Ihat_LS - Ihat_opt ||^2 (Long solves for the current).  With
+            % LONG, K_I = I_6 - 11'/6 and sum(Ihat_opt) = 0, so Ihat = Phi_hat = U_5 z and the loss equals || z_LS - z_opt ||^2
+            if FOU && LONG, assert(max(abs(sum(I_, 1)), [], 'all') < 1e-9, 'ls_fit:isum', 'labels with sum(I) ~= 0'); end
+            if FOU                                             % label loss sum_i sum_j sum_k || Phi_LS - Phi_opt ||^2 with
+                assert(~FIX0, 'ls_fit:fou1', 'DIR = fourier with FIX0 not implemented');   % D_m = sum_l psi_l C_m,l:
+                Psi_g = PSI(r_hat);  L = size(Psi_g, 2);       % separable LS  C = A^+ Y (Psi^+)'  (unweighted)
+                Cm = reshape(permute(reshape(d_hat, 10, N_j, NV), [2 1 3]), N_j, []);  % N_j x (10 NV)
+                C  = permute(reshape(Psi_g \ Cm, L, 10, NV), [2 1 3]);                % 10 x L x NV
+                t_fit = toc(t0);
+                x  = reshape(reshape(C, 10, []) .* sc, [], 1);  Wqe = PSI(r_q);
+                t_lab = sum(F.T1);  N_grb = sum(F.NGRB);
+                e_q = m2_err(x, Au, Wqe, Q, r_q);  LOSS_ = m2_loss(x, Au, Wqe, Q, r_q, LAM);
+                res = reshape(Amat * reshape(permute(reshape(Psi_g * reshape(permute(C, [2 1 3]), L, []), N_j, 10, NV), [2 1 3]), 10, []) - y_m, N_p, N_j, NV);
+                if ~isempty(ON), M0 = [ON '.mat']; end         % short output name
+                d = permute(reshape(Psi_g * reshape(permute(C, [2 1 3]), L, []), N_j, 10, NV), [2 1 3]);   %#ok<NASGU> D at the grid directions
+                save(fullfile(DAT, M0), 'C', 'd', 'N', 'L', 'U_5', 'sigma', 'phi_j', 'theta_j', 'P', 'l_hat', 'e_q', 'r_q', 'res', 't_fit', 't_lab', 'N_grb', 'LOSS_', 'LAM', 'CAL', 'GF', 'DA', 'DIR', 'LF');
+                if F2D                                         % fourier2d.pdf Sec. 6.4 matrices
+                    Fm = struct();  [Fm.A, Fm.Ap, Fm.B, Fm.Bp] = f2d_mat_(C, Z2, M, N);
+                    save(fullfile(DAT, M0), 'M', 'Z2', '-append');  save(fullfile(DAT, M0), '-struct', 'Fm', '-append');
+                end
+                fprintf('method 1 Fourier N = %d %s: %d coefficients | e grid mean %.4f, max %.3f | e centres mean %.4f, max %.3f | z fit RMS %.4g -> %s\n', N, CAL, numel(C), ...
+                        mean(e_q(1:N_j,:),'all'), max(e_q(1:N_j,:),[],'all'), mean(e_q(N_j+1:end,:),'all'), max(e_q(N_j+1:end,:),[],'all'), rms(res(:)), M0);
+                return
+            end
             t_fit = toc(t0);
-            d = reshape(d_hat, 10, N_j, 5);  x = reshape(reshape(d, 10, []) .* sc, [], 1);
+            d = reshape(d_hat, 10, N_j, NV);  x = reshape(reshape(d, 10, []) .* sc, [], 1);
             t_lab = sum(F.T1);  N_grb = sum(F.NGRB);
             e_q = m2_err(x, Au, Wq, Q, r_q);  LOSS_ = m2_loss(x, Au, Wq, Q, r_q, LAM);
-            res = reshape(Amat * d_hat - y_m, N_p, N_j, 5);    % z_LS - z_opt
+            res = reshape(Amat * d_hat - y_m, N_p, N_j, NV);    % z_LS - z_opt
             save(fullfile(DAT, M0), 'd', 'U_5', 'sigma', 'phi_j', 'theta_j', 'P', 'l_hat', 'e_q', 'r_q', 'res', 't_fit', 't_lab', 'N_grb', 'LOSS_', 'LAM', 'CAL', 'GF', 'DA');
             fprintf('method 1 %s: step 1 %.1f h CPU (stage 1), step 2 %.2f s | loss %.6g | e grid mean %.4f, std %.4f, max %.3f | e centres mean %.4f, std %.4f, max %.3f | z fit RMS %.4g\n', CAL, t_lab/3600, t_fit, LOSS_, ...
                     mean(e_q(1:N_j,:),'all'), std(e_q(1:N_j,:),0,'all'), max(e_q(1:N_j,:),[],'all'), mean(e_q(N_j+1:end,:),'all'), std(e_q(N_j+1:end,:),0,'all'), max(e_q(N_j+1:end,:),[],'all'), rms(res(:)));
@@ -212,33 +367,119 @@ if strcmp(VAR, 'flux5')
         % weights are 1), matrix-free L-BFGS.  Start, timed with the fit: the unit-force solution at the centre per direction
         % (rho_solve stage 1), constant in position
         addpath(here);
-        OUT2 = sprintf('ls_m2%s_%s%s.mat', STG, CAL, GF);
+        OUT2 = sprintf('ls_m2%s%s_%s%s%s.mat', STG, TAG, CAL, GF, TG);   % TG: output tag (e.g. '_lg' for LONG)
+        if ~isempty(ON), OUT2 = [ON '.mat']; end
+        assert(~(FOU && strcmp(S0M, 'm1')), 'ls_fit:fou', 'DIR = fourier starts from the centre solution only');
         if strcmp(S0M, 'm1')                                   % start = the method 1 D (its time not counted here)
             S1 = load(fullfile(DAT, M0), 'd');  x0 = reshape(reshape(S1.d, 10, []) .* sc, [], 1);
             t0 = tic;  t_start = 0;
+        elseif strcmp(S0M, 'lab')                              % start from the global-minimum labels S0F (e.g. nn_label_sph_r45_mid_flux5_single,
+            t0 = tic;                                          % any direction step): (1) per direction the label-loss LS D*_k(theta_j, phi_j)
+            F = load(fullfile(DAT, [S0F '.mat']), 'IOPT', 'P_act', 'ph', 'th');   % over the positions; (2) LS of the Fourier matrices
+            assert(norm(F.P_act - P) == 0, 'ls_fit:lab', 'label positions differ');   % sum_l psi_l(theta_j, phi_j) X_l ~= D*_k(theta_j, phi_j)
+            [PH5, TH5] = ndgrid(F.ph, F.th);  U5g = TH5 < 360 & (abs(PH5) < 90 | TH5 == 0);
+            ph5 = PH5(U5g);  th5 = TH5(U5g);  N5 = numel(ph5);  r5 = [cosd(ph5).*cosd(th5), cosd(ph5).*sind(th5), sind(ph5)];
+            I_ = reshape(F.IOPT, 6, [], N_p);  I_ = I_(:, U5g(:), :);           % Phi_hat_opt, 6 x N5 x N_p
+            z_ = reshape(U_5.' * reshape(I_, 6, []), NV, N5, N_p);            % NV = 6 (PH6: Phi_hat) or 5 (z)
+            [~, ic_] = min(vecnorm(P, 2, 2));  V_ = zeros(NV, N5);            % signs: positions to the direction's mean (as MTD = 1)
+            for j = 1:N5
+                Zj = squeeze(z_(:,j,:));  rf = Zj(:,ic_);
+                for it_ = 1:5, sg = sign(rf.' * Zj);  sg(sg == 0) = 1;  rf = mean(Zj .* sg, 2); end
+                z_(:,j,:) = reshape(Zj .* sg, NV, 1, N_p);  V_(:,j) = rf / norm(rf);
+            end
+            G5 = zeros(size(PH5));  G5(U5g) = 1:N5;  G5(1,:) = G5(1,1);  G5(end,:) = G5(end,1);  G5(:,end) = G5(:,1);
+            z_ = z_ .* dir_sign_(V_, G5, ph5, th5).';                         % neighbouring directions agree
+            Dst = Amat \ reshape(permute(z_, [3 2 1]), N_p, []);               % (1) 10 x (N5 NV), pbar = p / l_hat
+            Pn = PSI(r5);  L_ = size(Pn, 2);                                   % (2) f2d basis with the pole conditions
+            Dst = reshape(permute(reshape(Dst, 10, N5, NV), [2 1 3]), N5, []); % N5 x (10 NV)
+            c0 = Pn \ Dst;  d0 = permute(reshape(c0, L_, 10, NV), [2 1 3]);
+            x0 = reshape(reshape(d0, 10, []) .* sc, [], 1);  t_start = toc(t0);
+            fprintf('start from labels %s (%d directions): rms of the direction LS residual %.4g (D* rms %.4g)\n', S0F, N5, ...
+                    rms(Pn*c0 - Dst, 'all'), rms(Dst, 'all'));
+        elseif strcmp(S0M, 'fou')                              % start = an earlier Fourier fit S0F (r-monomial psi_ or f2d),
+            t0 = tic;  S1 = load(fullfile(DAT, [S0F '.mat']), 'C', 'N', 'M', 'Z2');   % its D on the grid directions
+            if isfield(S1, 'Z2'), P1 = f2d_(r_hat, S1.M, S1.N) * S1.Z2;  else, P1 = psi_(r_hat, S1.N); end   % projected on PSI
+            L1 = size(S1.C, 2);
+            if size(S1.C, 3) == 5 && NV == 6                   % 5-dim fit as the start of a 6-dim one: Phi_hat = U_5 z
+                S1.C = reshape(reshape(S1.C, [], 5) * U_r.', 10, L1, 6);
+            end
+            Dg = P1 * reshape(permute(S1.C, [2 1 3]), L1, []);                                              % N_j x (10 NV)
+            Pn = PSI(r_hat);  L_ = size(Pn, 2);  c0 = Pn \ Dg;                                              % L x (10 NV)
+            d0 = permute(reshape(c0, L_, 10, NV), [2 1 3]);  x0 = reshape(reshape(d0, 10, []) .* sc, [], 1);
+            t_start = toc(t0);
+            fprintf('start from %s: projection residual max %.2e\n', S0F, max(abs(Pn*c0 - Dg), [], 'all'));
         else
             t0  = tic;
             L0  = build_L([0 0 0], cal.l_m, cal.e_m, cal.Pc_base);  Q0 = zeros(5, 5, 3);
-            for k = 1:3, L_k = squeeze(L0(1,:,:,k));  L_k = (L_k + L_k.')/2;  Lt = U_5.' * L_k * U_5;  Q0(:,:,k) = (Lt + Lt.')/2; end
-            S0  = rho_solve(Q0, struct('DA',DA, 'NS',NS0, 'GRB',false, 'SEED',0, 'RETRY',true));
-            z0  = reshape(S0.IOPT, 5, []);  z0 = z0(:, Ug(:));      % 5 x N_j
+            for k = 1:3, L_k = squeeze(L0(1,:,:,k));  L_k = (L_k + L_k.')/2;  Lt = U_r.' * L_k * U_r;  Q0(:,:,k) = (Lt + Lt.')/2; end
+            if strcmp(S0M, 'olab')                             % start: the origin solutions of the label file S0F (e.g. the
+                S_ = load(fullfile(DAT, [S0F '.mat']), 'IOPT', 'P_act', 'ph', 'th');   % Gurobi-proved global minimum)
+                assert(norm(S_.P_act(1,:)) < 1e-9, 'ls_fit:s0f', 'S0F: position 1 must be the origin');
+                z0 = zeros(5, N_j);
+                for j = 1:N_j
+                    a_ = find(abs(S_.ph - phi_j(j)) < 1e-9, 1);  b_ = find(abs(mod(S_.th, 360) - theta_j(j)) < 1e-9, 1);
+                    z0(:,j) = U_r.' * S_.IOPT(:, a_, b_, 1);
+                end
+            else
+                S0  = rho_solve(Q0, struct('DA',DA, 'NS',NS0, 'GRB',false, 'SEED',0, 'RETRY',true));
+                z0  = reshape(S0.IOPT, 5, []);  z0 = z0(:, Ug(:));  % 5 x N_j
+            end
             sd  = dir_sign_(z0 ./ vecnorm(z0), G_, phi_j, theta_j);  z0 = z0 .* sd.';
+            if I6 || PH6, z0 = U_r * z0; end                   % Ihat (I6) or Phi_hat (PH6) = U_5 z (6 x N_j)
+            if FOU                                             % constant term: weighted LS projection of z0 on psi_l
+                Psi_g = PSI(r_hat);  w_g = cosd(phi_j);  L_ = size(Psi_g, 2);
+                c0 = (Psi_g.' * (w_g .* Psi_g)) \ (Psi_g.' * (w_g .* z0.'));   % L x NV
+                d0 = zeros(10, L_, NV);  d0(10,:,:) = reshape(c0, 1, L_, NV);
+            else
+                d0 = zeros(10, N_j, NV);  d0(10,:,:) = reshape(z0.', 1, N_j, NV);
+            end
             t_start = toc(t0);
-            d0  = zeros(10, N_j, 5);  d0(10,:,:) = reshape(z0.', 1, N_j, 5);
             x0  = d0(:);
         end
-        Wt  = speye(N_j);                                       % training directions: the 5 deg grid
+        Wt = speye(N_j);  r_t = r_hat;  w_t = [];               % training directions: the DA grid, unweighted
+        if GC, Wt = Wq;  r_t = r_q;  w_t = cosd(asind(r_q(:,3))); end   % grid + cell centres, weight cos(phi_k)
+        Wqe = Wq;                                              % evaluation directions (grid, then cell centres)
+        if FOU, Wt = PSI(r_t);  Wqe = PSI(r_q); end            % D_m(theta, phi) = sum_l psi_l C_m,l
         opt = optimoptions('fminunc', 'Algorithm','quasi-newton', 'HessianApproximation',{'lbfgs', 30}, 'SpecifyObjectiveGradient',true, ...
                            'MaxIterations',MAXI, 'MaxFunctionEvaluations',3*MAXI, 'OptimalityTolerance',1e-9, 'StepTolerance',1e-12, ...
                            'FunctionTolerance',0, 'Display','off', 'OutputFcn',@out_);
         clear out_
-        [x, fv, ef, oi] = fminunc(@(x) m2_loss(x, Au, Wt, Q, r_hat, LAM), x0, opt);
+        [x, fv, ef, oi] = fminunc(@(x) m2_loss(x, Au, Wt, Q, r_t, LAM, w_t), x0, opt);
         t_fit = toc(t0);
-        d = reshape(reshape(x, 10, N_j*5) ./ sc, 10, N_j, 5);
-        e_q = m2_err(x, Au, Wq, Q, r_q);
-        save(fullfile(DAT, OUT2), 'd', 'U_5', 'sigma', 'phi_j', 'theta_j', 'P', 'l_hat', 'e_q', 'r_q', 't_fit', 't_start', 'fv', 'ef', 'LAM', 'CAL', 'GF', 'DA', 'MAXI', 'NS0');
-        fprintf('method 2 %s: start %.1f s, total %.1f s, %d iterations, exit %d | loss %.6g -> %.6g | e grid mean %.4f, std %.4f, max %.3f, >1%% %.2f | e centres mean %.4f, std %.4f, max %.3f\n', CAL, t_start, t_fit, oi.iterations, ef, m2_loss(x0, Au, Wt, Q, r_hat, LAM), fv, ...
-                mean(e_q(1:N_j,:),'all'), std(e_q(1:N_j,:),0,'all'), max(e_q(1:N_j,:),[],'all'), 100*mean(e_q(1:N_j,:) > 1,'all'), mean(e_q(N_j+1:end,:),'all'), std(e_q(N_j+1:end,:),0,'all'), max(e_q(N_j+1:end,:),[],'all'));
+        e_q = m2_err(x, Au, Wqe, Q, r_q);
+        sv  = {'U_5', 'sigma', 'phi_j', 'theta_j', 'P', 'l_hat', 'e_q', 'r_q', 't_fit', 't_start', 'fv', 'ef', 'LAM', 'CAL', 'GF', 'DA', 'MAXI', 'NS0', 'TRN', 'DIR'};
+        if FOU
+            L = size(Wt, 2);  C = reshape(reshape(x, 10, L*NV) ./ sc, 10, L, NV);
+            % d: the same D at the grid directions (10 x N_j x NV, pbar = p / l_hat), for plotting
+            d = permute(reshape(PSI(r_hat) * reshape(permute(C, [2 1 3]), L, []), N_j, 10, NV), [2 1 3]);   %#ok<NASGU>
+            save(fullfile(DAT, OUT2), 'C', 'd', 'N', 'L', 'I6', sv{:});
+            if F2D                                             % C = coefficients of PSI = f2d_ basis * Z2; also the matrices
+                Fm = struct();                                 % of fourier2d.pdf Sec. 6.4 (A_k,mn, A'_k,mn, B_k,mn, B'_k,mn);
+                [Fm.A, Fm.Ap, Fm.B, Fm.Bp] = f2d_mat_(C, Z2, M, N);   % in a struct: A is also the 45 um half side here
+                Ap = Fm.Ap;  B = Fm.B;  Bp = Fm.Bp;
+                % check: D_k from the matrices = D_k from C at the grid directions
+                th_ = atan2(r_hat(:,2), r_hat(:,1));  ph_ = asin(r_hat(:,3));  Dm = zeros(10, N_j, NV);
+                ij_ = [1 1; 2 2; 3 3; 1 2; 1 3; 2 3; 1 4; 2 4; 3 4; 4 4];
+                for m_ = 0:M
+                    for n_ = 0:N
+                        if mod(m_ + n_, 2) == 0, X_ = Fm.A;  Xp = Ap;  g_ = cos(n_*ph_);  else, X_ = B;  Xp = Bp;  g_ = sin(n_*ph_); end
+                        for e_ = 1:10
+                            Dm(e_,:,:) = Dm(e_,:,:) + reshape((cos(m_*th_) .* g_) * squeeze(X_(ij_(e_,1), ij_(e_,2), m_+1, n_+1, :)).' ...
+                                       + (sin(m_*th_) .* g_) * squeeze(Xp(ij_(e_,1), ij_(e_,2), m_+1, n_+1, :)).', 1, N_j, NV);
+                        end
+                    end
+                end
+                fprintf('fourier2d matrices: max |D(matrices) - D(C)| = %.2e\n', max(abs(Dm - d), [], 'all'));
+                save(fullfile(DAT, OUT2), 'M', 'Z2', '-append');  save(fullfile(DAT, OUT2), '-struct', 'Fm', '-append');
+            end
+        else
+            d = reshape(reshape(x, 10, N_j*NV) ./ sc, 10, N_j, NV);              %#ok<NASGU>
+            sv{end+1} = 'I6';
+            save(fullfile(DAT, OUT2), 'd', sv{:});
+        end
+        fprintf('method 2 %s %s %s: %d parameters, start %.1f s, total %.1f s, %d iterations, exit %d | loss %.6g -> %.6g | e grid mean %.4f, std %.4f, max %.3f, >1%% %.2f | e centres mean %.4f, std %.4f, max %.3f -> %s\n', ...
+                CAL, DIR, TRN, numel(x), t_start, t_fit, oi.iterations, ef, m2_loss(x0, Au, Wt, Q, r_t, LAM, w_t), fv, ...
+                mean(e_q(1:N_j,:),'all'), std(e_q(1:N_j,:),0,'all'), max(e_q(1:N_j,:),[],'all'), 100*mean(e_q(1:N_j,:) > 1,'all'), mean(e_q(N_j+1:end,:),'all'), std(e_q(N_j+1:end,:),0,'all'), max(e_q(N_j+1:end,:),[],'all'), OUT2);
         return
     end
     if ~isempty(TEST)                                          % ---- the saved fit on the test sets ----
@@ -579,36 +820,102 @@ end
 end
 
 function P_ = m2_z(x, Au, Wq)
-% z at the directions Wq: 5 x N_q x N_p  (x = coefficients of Au, 10 x N_j x 5 stacked)
-N_p = size(Au, 1);  N_j = size(Wq, 2);
-Zg = reshape(Au * reshape(x, 10, []), N_p, N_j, 5);
-Zq = reshape(permute(Zg, [3 1 2]), 5*N_p, N_j) * Wq.';
-P_ = permute(reshape(Zq, 5, N_p, []), [1 3 2]);
+% z at the directions Wq: NV x N_q x N_p  (x = coefficients of Au, 10 x N_j x NV stacked; NV = 5 z, 6 Ihat)
+N_p = size(Au, 1);  N_j = size(Wq, 2);  NV = numel(x) / (10*N_j);
+Zg = reshape(Au * reshape(x, 10, []), N_p, N_j, NV);
+Zq = reshape(permute(Zg, [3 1 2]), NV*N_p, N_j) * Wq.';
+P_ = permute(reshape(Zq, NV, N_p, []), [1 3 2]);
 end
 
-function [L, g] = m2_loss(x, Au, Wq, Q, r, LAM)
-% (1 / (N_q N_p)) sum [ || fhat - r_hat ||^2 + LAM || z ||^2 ],  fhat_k = z' Ltilde_k z, and its gradient
-P_ = m2_z(x, Au, Wq);  [~, N_q, N_p] = size(P_);
-Gz = 2 * LAM * P_;  Lf = 0;
+function [L, g] = m2_loss(x, Au, Wq, Q, r, LAM, w)
+% (1 / (sum(w) N_p)) sum_q w_q sum_i [ || fhat - r_hat ||^2 + LAM || z ||^2 ],  fhat_k = z' Ltilde_k z, and its gradient;
+% w = direction weights (N_q x 1, e.g. cos(phi_k)); omitted or [] = 1
+P_ = m2_z(x, Au, Wq);  [NV, N_q, N_p] = size(P_);
+if nargin < 7 || isempty(w), w = ones(N_q, 1); end
+w  = reshape(w, 1, N_q);  W_ = sum(w) * N_p;
+Gz = 2 * LAM * (w .* P_);  Lf = 0;
 for k = 1:3
-    Qz = pagemtimes(reshape(Q(:,:,k,:), 5, 5, N_p), P_);
+    Qz = pagemtimes(reshape(Q(:,:,k,:), NV, NV, N_p), P_);
     R  = sum(P_ .* Qz, 1) - r(:,k).';                          % 1 x N_q x N_p
-    Lf = Lf + sum(R.^2, 'all');
-    Gz = Gz + 4 * R .* Qz;
+    Lf = Lf + sum(w .* R.^2, 'all');
+    Gz = Gz + 4 * (w .* R) .* Qz;
 end
-L = (Lf + LAM * sum(P_.^2, 'all')) / (N_q * N_p);
+L = (Lf + LAM * sum(w .* P_.^2, 'all')) / W_;
 if nargout > 1
-    Gq = reshape(permute(Gz, [1 3 2]), 5*N_p, N_q) * Wq / (N_q * N_p);   % (5 N_p) x N_j
-    Gg = reshape(permute(reshape(Gq, 5, N_p, []), [2 3 1]), N_p, []);
+    Gq = reshape(permute(Gz, [1 3 2]), NV*N_p, N_q) * Wq / W_; % (NV N_p) x (N_j or L)
+    Gg = reshape(permute(reshape(Gq, NV, N_p, []), [2 3 1]), N_p, []);
     g  = reshape(Au.' * Gg, [], 1);
+end
+end
+
+function [A, Ap, B, Bp] = f2d_mat_(C, Z, M, N)
+% fourier2d.pdf Sec. 6.3-6.4: D_k(theta, phi) = sum_m sum_n [X_k,mn cos(m theta) + X'_k,mn sin(m theta)] g_n(phi), with
+% (X, X', g_n) = (A, A', cos n phi) for m + n even, (B, B', sin n phi) for m + n odd; each a 4 x 4 symmetric matrix of
+% P_hat = [pbar; 1].  C: 10 x L_free x N_k (free coefficients, pbar = p / l_hat), Z: null space of the pole conditions.
+% Output A, Ap, B, Bp: 4 x 4 x (M+1) x (N+1) x N_k, entry (:,:,m+1,n+1,k); terms that do not exist are 0.
+% Row order of C (the a(pbar) basis): d11 d22 d33 d12 d13 d23 d14 d24 d34 d44.
+[~, ~, K] = f2d_([1 0 0], M, N);  Nk = size(C, 3);
+ij = [1 1; 2 2; 3 3; 1 2; 1 3; 2 3; 1 4; 2 4; 3 4; 4 4];
+A = zeros(4, 4, M+1, N+1, Nk);  Ap = A;  B = A;  Bp = A;
+for k = 1:Nk
+    Cf = C(:,:,k) * Z.';                                       % 10 x L: coefficient of every basis function (Sec. 5)
+    for l = 1:size(K, 1)
+        m = K(l,1);  n = K(l,2);  X = zeros(4);
+        for e = 1:10, X(ij(e,1), ij(e,2)) = Cf(e, l);  X(ij(e,2), ij(e,1)) = Cf(e, l); end
+        if mod(m + n, 2) == 0
+            if K(l,3) == 1, A(:,:,m+1,n+1,k) = X;  else, Ap(:,:,m+1,n+1,k) = X; end
+        else
+            if K(l,3) == 1, B(:,:,m+1,n+1,k) = X;  else, Bp(:,:,m+1,n+1,k) = X; end
+        end
+    end
+end
+end
+
+function [B, Z, K] = f2d_(r, M, N)
+% fourier2d.pdf Sec. 3.7, 5: basis cos(m theta) g_n(phi), sin(m theta) g_n(phi), m = 0..M, n = 0..N,
+% g_n = cos(n phi) for m + n even (a_mn, a'_mn), sin(n phi) for m + n odd (b_mn, b'_mn); a'_0n, b'_0n and b_m0 do not exist.
+% r: N_q x 3 unit vectors (theta = atan2(r_y, r_x), phi = asin(r_z)).  B: N_q x L, L = (N+1)(2M+1) - 2 ceil(M/2) (Sec. 7).
+% Z: L x (L - 4 floor(M/2)) orthonormal null space of the pole conditions (Sec. 4.5): for every even m >= 2 and each pole
+% phi = +-90 deg, the cos(m theta) and sin(m theta) coefficients sum_n x_mn g_n(+-90 deg) = 0; the fit uses B Z.
+th = atan2(r(:,2), r(:,1));  ph = asin(max(-1, min(1, r(:,3))));
+B = [];  K = zeros(0, 3);                                      % per column: m, n, 1 = cos(m theta) / 2 = sin(m theta)
+for m = 0:M
+    for n = 0:N
+        if mod(m + n, 2) == 0, g = cos(n*ph);  else, if n == 0, continue, end, g = sin(n*ph); end
+        B = [B, cos(m*th) .* g];  K = [K; m n 1];              %#ok<AGROW>
+        if m >= 1, B = [B, sin(m*th) .* g];  K = [K; m n 2]; end   %#ok<AGROW>
+    end
+end
+gp = @(m, n, s) (mod(m + n, 2) == 0) * cos(n*s*pi/2) + (mod(m + n, 2) == 1) * sin(n*s*pi/2);   % g_n(s 90 deg)
+Cp = zeros(0, size(K, 1));
+for m = 2:2:M
+    for s = [1 -1]
+        for t = 1:2
+            row = zeros(1, size(K, 1));  sel = find(K(:,1) == m & K(:,3) == t);
+            for c = sel.', row(c) = gp(m, K(c,2), s); end
+            Cp = [Cp; row];                                    %#ok<AGROW>
+        end
+    end
+end
+Z = eye(size(K, 1));  if ~isempty(Cp), Z = null(Cp); end
+end
+
+function Psi = psi_(r, N)
+% direction basis psi_l(theta, phi), l = 0..(N+1)^2-1 (direction_fourier.pdf Sec. 9.5-9.7), r = N_q x 3 unit vectors:
+% per degree n the monomials r_x^a r_y^(n-a) (a = n..0), then r_x^a r_y^(n-1-a) r_z (a = n-1..0)
+r_x = r(:,1);  r_y = r(:,2);  r_z = r(:,3);
+Psi = ones(size(r, 1), (N+1)^2);  l = 1;
+for n = 1:N
+    for a = n:-1:0,   l = l + 1;  Psi(:,l) = r_x.^a .* r_y.^(n-a); end
+    for a = n-1:-1:0, l = l + 1;  Psi(:,l) = r_x.^a .* r_y.^(n-1-a) .* r_z; end
 end
 end
 
 function e = m2_err(x, Au, Wq, Q, r)
 % e_f [%], N_q x N_p
-P_ = m2_z(x, Au, Wq);  [~, N_q, N_p] = size(P_);  S2 = zeros(N_q, N_p);
+P_ = m2_z(x, Au, Wq);  [NV, N_q, N_p] = size(P_);  S2 = zeros(N_q, N_p);
 for k = 1:3
-    R  = sum(P_ .* pagemtimes(reshape(Q(:,:,k,:), 5, 5, N_p), P_), 1) - r(:,k).';
+    R  = sum(P_ .* pagemtimes(reshape(Q(:,:,k,:), NV, NV, N_p), P_), 1) - r(:,k).';
     S2 = S2 + reshape(R.^2, N_q, N_p);
 end
 e = sqrt(S2) * 100;
