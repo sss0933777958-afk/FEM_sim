@@ -18,23 +18,25 @@ if ~exist('NPC','var'), NPC = false; end
 %    T        terms per element of each D_k;  src  initial value ('labels' or '(m,n)');  loss  final training loss [pN^2];
 %    it       LM iterations;  e_blue  mean force error, 300 blue points x 1742 directions (6 deg) [%];  e_red  same, 343 red
 %    E_blue   cell, force error per sample (1742 directions x 300 points, single) [%]
-%    A, Ap, B, Bp, C   cell, Fourier matrices (4 x 4 x (M+1) x (N+1) x 6) and free coefficients (10 x T x 6) of each fit
+%    A, B, C  cell, matrices A_h,mn / B_h,mn of fourier2d_new.pdf Sec. 4.3 (4 x 4 x (M+1) x (N+1) x 6, phi = azimuth,
+%             theta from +z) and coefficients (10 x T x 6) of each fit;  DEF = 'new'
 if ~exist('GRD','var'), GRD = false; end
 here = fileparts(mfilename('fullpath'));  CALROOT = fileparts(fileparts(fileparts(here)));   % .../Force/Maxwell
 DAT  = fullfile(CALROOT, 'utils', 'data', 'long2016_hexapole_halfcut');
 if GRD
     fn = @(m, n) sprintf('f2d6_single_lam0_M%dN%d_lmg', m, n);  f11 = 'f2d6_single_lam0_M1N1_lmmu6';
-    [T, loss, it, e_blue, e_red] = deal(nan(3));  src = cell(3);  [E_blue, A, Ap, B, Bp, C] = deal(cell(3));
+    [T, loss, it, e_blue, e_red] = deal(nan(3));  src = cell(3);  [E_blue, A, B, C] = deal(cell(3));
     for M = 1:3
         for N = 1:3
             tag = fn(M, N);  if M == 1 && N == 1, tag = f11; end
-            F = load(fullfile(DAT, ['fit_' tag '.mat']), 'M', 'N', 'C', 'A', 'Ap', 'B', 'Bp', 'fv', 'LH', 'e_q', 'phi_j');
+            F = load(fullfile(DAT, ['fit_' tag '.mat']), 'M', 'N', 'C', 'A', 'B', 'DEF', 'fv', 'LH', 'e_q', 'phi_j');
             assert(F.M == M && F.N == N, 'f2d_mn:grd', '%s is M = %d, N = %d', tag, F.M, F.N);
+            assert(strcmp(F.DEF, 'new'), 'f2d_mn:def', '%s: not fourier2d_new (convert with ls_fit.m CNV)', tag);
             S = load(fullfile(DAT, ['test_' tag '_all.mat']), 'S25');
             Nj = numel(F.phi_j);  Eb = F.e_q(1:Nj, :);                   % grid directions only (the rest are cell centres)
             T(M,N) = size(F.C, 2);  loss(M,N) = F.fv;  it(M,N) = numel(F.LH) - 1;
             e_blue(M,N) = mean(Eb(:));  e_red(M,N) = mean(S.S25.e(:));  E_blue{M,N} = single(Eb);
-            A{M,N} = F.A;  Ap{M,N} = F.Ap;  B{M,N} = F.B;  Bp{M,N} = F.Bp;  C{M,N} = F.C;
+            A{M,N} = F.A;  B{M,N} = F.B;  C{M,N} = F.C;
             src{M,N} = 'labels';  fb = inf;                              % the upstream of smaller final loss
             for u = {[M-1 N], [M N-1]}
                 m_ = u{1}(1);  n_ = u{1}(2);  if m_ < 1 || n_ < 1, continue, end
@@ -44,8 +46,8 @@ if GRD
             end
         end
     end
-    M_ = 1:3;  N_ = 1:3;  LAM = 0;  CAL = 'single';
-    save(fullfile(DAT, 'f2d_grid.mat'), 'M_', 'N_', 'T', 'src', 'loss', 'it', 'e_blue', 'e_red', 'E_blue', 'A', 'Ap', 'B', 'Bp', 'C', 'LAM', 'CAL');
+    M_ = 1:3;  N_ = 1:3;  LAM = 0;  CAL = 'single';  DEF = 'new';
+    save(fullfile(DAT, 'f2d_grid.mat'), 'M_', 'N_', 'T', 'src', 'loss', 'it', 'e_blue', 'e_red', 'E_blue', 'A', 'B', 'C', 'LAM', 'CAL', 'DEF');
     disp('e_blue [%] (rows M = 1..3, columns N = 1..3):');  disp(e_blue);
     fprintf('-> %s\n', fullfile(DAT, 'f2d_grid.mat'));
     return

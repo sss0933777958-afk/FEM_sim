@@ -131,6 +131,8 @@ if ~exist('TEB','var'), TEB = false; end
 % EBSC = false (with TEB): e_hat used as it is, not scaled by l_hat(N55) / l, tag _eb0
 if ~exist('EBSC','var'), EBSC = true; end
 if ~exist('TDA','var'), TDA = []; end
+if ~exist('THR','var'), THR = []; end                           % TEST, DIR f2d: drop coefficients below THR % of their a / b table
+                                                               %   max (fourier2d.pdf Sec. 8.3) -> test file gets _thr<THR>
 % I6 = true (LONG, MTD = 2): fit the six currents Ihat directly (6 D_k, weak direction not removed) instead of the 5 z;
 % force fhat_k = Ihat' K_I' L_k K_I Ihat with K_I = U_5 U_5' (= I_6 - 11'/6), the common mode is left to LAM.  The start
 % is the same 5-dim centre solution lifted by Ihat = U_5 z.  Use a TG of its own (e.g. '_lg_i6')
@@ -142,13 +144,65 @@ if ~exist('ON','var'), ON = ''; end
 if ~exist('EBF','var'), EBF = false; end
 % PH6 = true (MTD = 2): fit Phi_hat with 6 D_k (weak direction not removed, fourier2d.pdf Sec. 7), force Phi' L_k Phi, LAM ||Phi||^2
 if ~exist('PH6','var'), PH6 = false; end
+% PC = false (DIR f2d): no pole conditions, Z2 = identity (full basis of fourier2d.pdf Sec. 3.7, function not single-valued at
+% phi = +-90 deg); use its own ON
+if ~exist('PC','var'), PC = true; end
+% S0M = 'rand' (MTD = 2): random start x0 = RS * randn (rng(RSEED)); use its own ON
+if ~exist('RSEED','var'), RSEED = 1; end
+if ~exist('RS','var'), RS = 0.5; end
+if ~exist('S0V','var'), S0V = 1; end                         % S0M = 'val': value of every start coefficient
+if ~exist('S0D','var'), S0D = 'all'; end                     % S0M = 'lab': directions of the Fourier LS ('all' | 'ax6' = +-x_a, +-y_a, +-z_a)
+if ~exist('CTOL','var'), CTOL = 1e-6; end                    % MTD = 2: stop when the loss drops by < CTOL (relative) over 100 iterations
+if ~exist('MINI','var'), MINI = 0; end                         % MTD = 2: CTOL is checked only from iteration MINI on
+if ~exist('CKN','var'), CKN = 0; end                           % MTD = 2: > 0 stops after CKN consecutive iterations with relative change < CTOL
+if ~exist('OPTM','var'), OPTM = 'lbfgs'; end                  % MTD = 2 optimizer: 'lbfgs' (fminunc) | 'lm' (Levenberg-Marquardt, J'J exact)
+if ~exist('MUMIN','var'), MUMIN = 0; end                      % OPTM lm: lower bound of the damping mu (0 = none)
 % LSG = false (MTD = 1): no sign alignment of the labels (constrained labels, e.g. phi_cons.mat: the region fixes the sign)
 if ~exist('LSG','var'), LSG = true; end
-clearvars -except REG A LAB LOSS LAM LBL TEST SAVED NNLAB TMAX JSUB VAR CAL GF DA NN0 WID NW MERGE PX SWP MTD MAXI NS0 OPT ETA S0M Q1 LABF TG LONG OLAB TDA FIX0 TEB EBSC TRN DIR N M TT S0F I6 ON EBF PH6 LSG;
+% CNV: cell of DIR f2d fit files (no .mat) saved with the OLD basis (fourier2d_old.pdf, no DEF field) -> converted in place to
+% fourier2d_new.pdf: every basis function of the new definition is +-1 times the old one with the same (m, n, cos/sin) index,
+% so C_new = C_old .* sign (per term; through the pole-condition null space Z2 when PC was on), A, B recomputed (Ap, Bp
+% removed), DEF = 'new'; check: D at the grid directions from the new A, B = the stored d.  No fitting.
+if ~exist('CNV','var'), CNV = {}; end
+clearvars -except REG A LAB LOSS LAM LBL TEST SAVED NNLAB TMAX JSUB VAR CAL GF DA NN0 WID NW MERGE PX SWP MTD MAXI NS0 OPT ETA S0M Q1 LABF TG LONG OLAB TDA FIX0 TEB EBSC TRN DIR N M TT S0F I6 ON EBF PH6 LSG THR PC RSEED RS S0V S0D CTOL MINI CKN OPTM MUMIN CNV;
 here = fileparts(mfilename('fullpath'));  CALROOT = fileparts(fileparts(fileparts(here)));   % .../Force/Maxwell
 addpath(fullfile(CALROOT, 'function'));
 MODEL = 'long2016_hexapole_halfcut';  GEOM = 'tip40um';
 DAT  = fullfile(CALROOT, 'utils', 'data', MODEL);
+if ~isempty(CNV)                                               % ---- old -> new basis definition, in place ----
+    for f_ = string(CNV)
+        S = load(fullfile(DAT, f_ + ".mat"));
+        if isfield(S, 'DEF'), fprintf('%s: already %s, skipped\n', f_, S.DEF);  continue, end
+        rq = randn(4000, 3);  rq = rq ./ vecnorm(rq, 2, 2);    % random directions: per-term sign new vs old
+        [Bo, Zo] = f2d_old_(rq, S.M, S.N);  [Bn, Zn, Kn] = f2d_(rq, S.M, S.N);
+        sg = sign(sum(Bo .* Bn, 1));
+        assert(max(abs(Bo - Bn .* sg), [], 'all') < 1e-12, 'ls_fit:cnv', '%s: bases are not +-1 of each other', f_);
+        Z2o = S.Z2;  pc_ = size(Z2o, 2) < size(Z2o, 1);        % pole conditions on (null space smaller than the basis)
+        Z2n = eye(size(Zn, 1));  if pc_, Z2n = Zn; end
+        Nk = size(S.C, 3);  Cn = zeros(10, size(Z2n, 2), Nk);
+        for k = 1:Nk, Cn(:,:,k) = ((S.C(:,:,k) * Z2o.') .* sg) * Z2n; end   % full old -> full new -> new free coefficients
+        [An, Bm] = f2d_mat_(Cn, Z2n, S.M, S.N);
+        r_ = [cosd(S.phi_j).*cosd(S.theta_j), cosd(S.phi_j).*sind(S.theta_j), sind(S.phi_j)];   % grid directions (old labels)
+        ph_ = atan2(r_(:,2), r_(:,1));  th_ = acos(max(-1, min(1, r_(:,3))));  Dm = zeros(10, numel(ph_), Nk);
+        ij_ = [1 1; 2 2; 3 3; 1 2; 1 3; 2 3; 1 4; 2 4; 3 4; 4 4];
+        for m_ = 0:S.M
+            for n_ = 0:S.N
+                if mod(m_, 2) == 0, g_ = cos(n_*th_);  else, g_ = sin(n_*th_); end
+                for e_ = 1:10
+                    Dm(e_,:,:) = Dm(e_,:,:) + reshape((cos(m_*ph_) .* g_) * squeeze(An(ij_(e_,1), ij_(e_,2), m_+1, n_+1, :)).' ...
+                               + (sin(m_*ph_) .* g_) * squeeze(Bm(ij_(e_,1), ij_(e_,2), m_+1, n_+1, :)).', 1, numel(ph_), Nk);
+                end
+            end
+        end
+        err_ = max(abs(Dm - S.d), [], 'all');
+        assert(err_ < 1e-9 * max(abs(S.d), [], 'all'), 'ls_fit:cnv', '%s: D check failed (%.2e)', f_, err_);
+        S = rmfield(S, intersect(fieldnames(S), {'Ap', 'Bp'}));
+        S.C = Cn;  S.Z2 = Z2n;  S.A = An;  S.B = Bm;  S.DEF = 'new';
+        save(fullfile(DAT, f_ + ".mat"), '-struct', 'S');
+        fprintf('%s: converted to fourier2d_new (signs %s), max |D(new A,B) - d| = %.2e\n', f_, mat2str(sg), err_);
+    end
+    return
+end
 
 % ---- VAR = 'flux5': flux_force_unit.pdf Sec. 6.5 ----
 if strcmp(VAR, 'flux5')
@@ -206,7 +260,8 @@ if strcmp(VAR, 'flux5')
         if MTD == 2 && strcmp(S0M, 'olab'), STG = 'og'; end    % started from the origin labels S0F -> ls_m2og_*
         F2D = strcmp(DIR, 'f2d');  FOU = strcmp(DIR, 'fourier') || F2D;  GC = MTD == 2 && strcmp(TRN, 'gc');
         PSI = @(r) psi_(r, N);                                 % direction basis (columns) at the unit vectors r
-        if F2D, [~, Z2] = f2d_(r_hat(1,:), M, N);  PSI = @(r) f2d_(r, M, N) * Z2; end   % fourier2d.pdf, pole conditions built in
+        F2DF = @f2d_;                                          % 2D Fourier basis (fourier2d_new.pdf); @f2d_old_ for old fits
+        if F2D, [~, Z2] = f2d_(r_hat(1,:), M, N);  if ~PC, Z2 = eye(size(Z2, 1)); end;  PSI = @(r) f2d_(r, M, N) * Z2; end   % fourier2d_new.pdf
         TAG = '';  if GC, TAG = 'c'; end                       % c: bilinear with TRN 'gc'; f<N>[g]: Fourier
         if FOU, TAG = sprintf('f%d', N);  if ~GC && MTD == 2, TAG = [TAG 'g']; end, end
         if F2D, TAG = sprintf('t%d_%d', M, N);  if ~GC && MTD == 2, TAG = [TAG 'g']; end, end
@@ -225,7 +280,25 @@ if strcmp(VAR, 'flux5')
         if ~isempty(TEST)                                      % the saved method-MTD fit at the positions PX, every DA/2 deg
             FF = sprintf('ls_m%d%s%s_%s%s%s.mat', MTD, STG, TAG, CAL, GF, TG);  if ~isempty(ON), FF = [ON '.mat']; end
             if isempty(OLAB) && FOU                            % Fourier: the coefficients C_m,l take the place of d
-                F  = load(fullfile(DAT, FF), 'C');  F.d = F.C;
+                vn_ = who('-file', fullfile(DAT, FF));  F = load(fullfile(DAT, FF), 'C', vn_{ismember(vn_, {'DEF', 'Z2'})});  F.d = F.C;
+                if F2D && ~isfield(F, 'DEF')                   % fit saved with the OLD basis (fourier2d_old.pdf): evaluate it so
+                    if isfield(F, 'Z2'), Z2 = F.Z2; end
+                    F2DF = @f2d_old_;  PSI = @(r) f2d_old_(r, M, N) * Z2;
+                    fprintf('%s: old basis definition (no DEF), evaluated with f2d_old_\n', FF);
+                end
+                if F2D && ~isempty(THR)                        % fourier2d.pdf Sec. 8: per element d_ij,k the a table (cos m theta)
+                    [~, ~, K_] = f2d_([1 0 0], M, N);          % and the b table (sin m theta) normalised by their own max |.|;
+                    Cf = zeros(10, size(K_, 1), size(F.C, 3)); % coefficients below THR % set to 0 (the pole conditions are
+                    for k_ = 1:size(F.C, 3)                    % then no longer exact); full basis f2d_ without Z2
+                        Cf(:,:,k_) = F.C(:,:,k_) * Z2.';
+                        for t_ = 1:2
+                            c_ = Cf(:, K_(:,3) == t_, k_);  c_(abs(c_) ./ max(abs(c_), [], 2) * 100 < THR) = 0;
+                            Cf(:, K_(:,3) == t_, k_) = c_;
+                        end
+                    end
+                    fprintf('THR %g %%: %d of %d coefficients kept\n', THR, nnz(Cf), numel(Cf));
+                    F.d = Cf;
+                end
             elseif isempty(OLAB)
                 F  = load(fullfile(DAT, FF), 'd');
             else                                               % origin solutions only: constant term = the label at p = 0
@@ -269,6 +342,7 @@ if strcmp(VAR, 'flux5')
                         [(1-al).*(1-be); (1-al).*be; al.*(1-be); al.*be], Nq, N_j);
             rt = [cosd(pht).*cosd(tht), cosd(pht).*sind(tht), sind(pht)];
             if FOU && isempty(OLAB), Wt = PSI(rt); end          % Fourier: D_m at the test directions directly
+            if FOU && isempty(OLAB) && F2D && ~isempty(THR), Wt = F2DF(rt, M, N); end   % THR: full basis (coefficients C Z2')
             S25 = struct('e', m2_err(x, Aut, Wt, Qt, rt), 'phi', pht, 'theta', tht, 'P', Pt);
             S25.z = m2_z(x, Aut, Wt);                          % z_LS (5 x N_q x N_t); Phi_hat_LS = U_5 z_LS
             R_act = cal.R_act;
@@ -292,7 +366,8 @@ if strcmp(VAR, 'flux5')
             if ~isempty(ON)                                    % short name: fit_lg_f2d_I + PX (45,45,45) -> test_lg_f2d_I_p45.mat
                 pt_ = sprintf('_p%g_%g_%g', PX(1,:));  if size(PX, 1) == 1 && all(PX == PX(1)), pt_ = sprintf('_p%g', PX(1)); end
                 if size(PX, 1) > 1, pt_ = '_all'; end          % several positions -> test_lg_f2d_I_all.mat
-                TOUT = [regexprep(ON, '^fit_', 'test_') pt_ '.mat'];
+                if ~isempty(THR), pt_ = sprintf('_thr%g%s', THR, pt_); end   % e.g. test_f2d6_single_lam0_thr10_all.mat
+                TOUT = [regexprep(ON, '^fit_', 'test_') pt_ TT '.mat'];   % TT: e.g. '_r6' -> test_..._all_r6.mat
             end
             save(fullfile(DAT, TOUT), 'S25', 'R_act', 'U_5');
             if OPT, save(fullfile(DAT, TOUT), 'eta', 'nOPT', 'nLS', 'GLB', 'phi_j', 'theta_j', '-append'); end
@@ -346,8 +421,8 @@ if strcmp(VAR, 'flux5')
                 d = permute(reshape(Psi_g * reshape(permute(C, [2 1 3]), L, []), N_j, 10, NV), [2 1 3]);   %#ok<NASGU> D at the grid directions
                 save(fullfile(DAT, M0), 'C', 'd', 'N', 'L', 'U_5', 'sigma', 'phi_j', 'theta_j', 'P', 'l_hat', 'e_q', 'r_q', 'res', 't_fit', 't_lab', 'N_grb', 'LOSS_', 'LAM', 'CAL', 'GF', 'DA', 'DIR', 'LF');
                 if F2D                                         % fourier2d.pdf Sec. 6.4 matrices
-                    Fm = struct();  [Fm.A, Fm.Ap, Fm.B, Fm.Bp] = f2d_mat_(C, Z2, M, N);
-                    save(fullfile(DAT, M0), 'M', 'Z2', '-append');  save(fullfile(DAT, M0), '-struct', 'Fm', '-append');
+                    Fm = struct();  [Fm.A, Fm.B] = f2d_mat_(C, Z2, M, N);  DEF = 'new';
+                    save(fullfile(DAT, M0), 'M', 'Z2', 'DEF', '-append');  save(fullfile(DAT, M0), '-struct', 'Fm', '-append');
                 end
                 fprintf('method 1 Fourier N = %d %s: %d coefficients | e grid mean %.4f, max %.3f | e centres mean %.4f, max %.3f | z fit RMS %.4g -> %s\n', N, CAL, numel(C), ...
                         mean(e_q(1:N_j,:),'all'), max(e_q(1:N_j,:),[],'all'), mean(e_q(N_j+1:end,:),'all'), max(e_q(N_j+1:end,:),[],'all'), rms(res(:)), M0);
@@ -392,13 +467,29 @@ if strcmp(VAR, 'flux5')
             Dst = Amat \ reshape(permute(z_, [3 2 1]), N_p, []);               % (1) 10 x (N5 NV), pbar = p / l_hat
             Pn = PSI(r5);  L_ = size(Pn, 2);                                   % (2) f2d basis with the pole conditions
             Dst = reshape(permute(reshape(Dst, 10, N5, NV), [2 1 3]), N5, []); % N5 x (10 NV)
+            if strcmp(S0D, 'ax6')                              % only the six axis directions +-x_a, +-y_a, +-z_a enter the LS
+                sel = find(sum(abs(abs(r5) - 1) < 1e-9, 2) == 1);
+                assert(numel(sel) == 6 && L_ <= 6, 'ls_fit:ax6', 'ax6 needs the 6 axis directions and L <= 6');
+                fprintf('S0D ax6: Fourier LS on %d axis directions only\n', numel(sel));
+                Pn = Pn(sel,:);  Dst = Dst(sel,:);
+            end
             c0 = Pn \ Dst;  d0 = permute(reshape(c0, L_, 10, NV), [2 1 3]);
             x0 = reshape(reshape(d0, 10, []) .* sc, [], 1);  t_start = toc(t0);
             fprintf('start from labels %s (%d directions): rms of the direction LS residual %.4g (D* rms %.4g)\n', S0F, N5, ...
                     rms(Pn*c0 - Dst, 'all'), rms(Dst, 'all'));
+        elseif strcmp(S0M, 'val')                              % start = every Fourier coefficient S0V (pbar = p / l_hat units)
+            t0 = tic;  L_ = size(PSI(r_hat(1,:)), 2);
+            x0 = reshape(reshape(S0V * ones(10, L_, NV), 10, []) .* sc, [], 1);  t_start = toc(t0);
+            fprintf('constant start: every coefficient %g, %d parameters\n', S0V, numel(x0));
+        elseif strcmp(S0M, 'rand')                             % start = random coefficients, RS * randn (seed RSEED), same scaling as x0
+            t0 = tic;  L_ = size(PSI(r_hat(1,:)), 2);  rng(RSEED);
+            x0 = RS * randn(10 * L_ * NV, 1);  t_start = toc(t0);
+            fprintf('random start: seed %d, RS %g, %d parameters\n', RSEED, RS, numel(x0));
         elseif strcmp(S0M, 'fou')                              % start = an earlier Fourier fit S0F (r-monomial psi_ or f2d),
-            t0 = tic;  S1 = load(fullfile(DAT, [S0F '.mat']), 'C', 'N', 'M', 'Z2');   % its D on the grid directions
-            if isfield(S1, 'Z2'), P1 = f2d_(r_hat, S1.M, S1.N) * S1.Z2;  else, P1 = psi_(r_hat, S1.N); end   % projected on PSI
+            t0 = tic;  vn_ = who('-file', fullfile(DAT, [S0F '.mat']));  S1 = load(fullfile(DAT, [S0F '.mat']), 'C', 'N', vn_{ismember(vn_, {'M', 'Z2', 'DEF'})});   % its D on the grid directions
+            if isfield(S1, 'Z2') && isfield(S1, 'DEF'), P1 = f2d_(r_hat, S1.M, S1.N) * S1.Z2;          % projected on PSI
+            elseif isfield(S1, 'Z2'), P1 = f2d_old_(r_hat, S1.M, S1.N) * S1.Z2;                          % fit with the OLD basis
+            else, P1 = psi_(r_hat, S1.N); end
             L1 = size(S1.C, 2);
             if size(S1.C, 3) == 5 && NV == 6                   % 5-dim fit as the start of a 6-dim one: Phi_hat = U_5 z
                 S1.C = reshape(reshape(S1.C, [], 5) * U_r.', 10, L1, 6);
@@ -440,37 +531,46 @@ if strcmp(VAR, 'flux5')
         if GC, Wt = Wq;  r_t = r_q;  w_t = cosd(asind(r_q(:,3))); end   % grid + cell centres, weight cos(phi_k)
         Wqe = Wq;                                              % evaluation directions (grid, then cell centres)
         if FOU, Wt = PSI(r_t);  Wqe = PSI(r_q); end            % D_m(theta, phi) = sum_l psi_l C_m,l
+        OTOL = 1e-9;  STOL = 1e-12;  if CKN > 0, OTOL = 0;  STOL = 0; end   % CKN: only the iteration count and CKN stop it
         opt = optimoptions('fminunc', 'Algorithm','quasi-newton', 'HessianApproximation',{'lbfgs', 30}, 'SpecifyObjectiveGradient',true, ...
-                           'MaxIterations',MAXI, 'MaxFunctionEvaluations',3*MAXI, 'OptimalityTolerance',1e-9, 'StepTolerance',1e-12, ...
-                           'FunctionTolerance',0, 'Display','off', 'OutputFcn',@out_);
+                           'MaxIterations',MAXI, 'MaxFunctionEvaluations',3*MAXI, 'OptimalityTolerance',OTOL, 'StepTolerance',STOL, ...
+                           'FunctionTolerance',0, 'Display','off', 'OutputFcn',@(x_, ov_, st_) out_(x_, ov_, st_, CTOL, MINI, CKN));
         clear out_
-        [x, fv, ef, oi] = fminunc(@(x) m2_loss(x, Au, Wt, Q, r_t, LAM, w_t), x0, opt);
+        if strcmp(OPTM, 'lm')                                  % Levenberg-Marquardt with the exact Gauss-Newton matrix J'J
+            assert(isempty(w_t), 'ls_fit:lm', 'OPTM lm: unweighted directions only');
+            [x, LH] = lm_(x0, Au, Wt, Q, r_t, MAXI, CTOL, CKN, MUMIN, LAM);
+            fv = LH(end);  ef = 0;  oi = struct('iterations', numel(LH) - 1);
+        else
+            [x, fv, ef, oi] = fminunc(@(x) m2_loss(x, Au, Wt, Q, r_t, LAM, w_t), x0, opt);
+        end
         t_fit = toc(t0);
+        if ~strcmp(OPTM, 'lm'), [~, LH] = out_([], [], 'get', CTOL, MINI, CKN); end   %#ok<ASGLU> loss of every iteration (LH(1) = iteration 0)
         e_q = m2_err(x, Au, Wqe, Q, r_q);
-        sv  = {'U_5', 'sigma', 'phi_j', 'theta_j', 'P', 'l_hat', 'e_q', 'r_q', 't_fit', 't_start', 'fv', 'ef', 'LAM', 'CAL', 'GF', 'DA', 'MAXI', 'NS0', 'TRN', 'DIR'};
+        sv  = {'U_5', 'sigma', 'phi_j', 'theta_j', 'P', 'l_hat', 'e_q', 'r_q', 't_fit', 't_start', 'fv', 'ef', 'LAM', 'CAL', 'GF', 'DA', 'MAXI', 'NS0', 'TRN', 'DIR', ...
+               'LH', 'CTOL', 'CKN', 'MINI'};
         if FOU
             L = size(Wt, 2);  C = reshape(reshape(x, 10, L*NV) ./ sc, 10, L, NV);
             % d: the same D at the grid directions (10 x N_j x NV, pbar = p / l_hat), for plotting
             d = permute(reshape(PSI(r_hat) * reshape(permute(C, [2 1 3]), L, []), N_j, 10, NV), [2 1 3]);   %#ok<NASGU>
             save(fullfile(DAT, OUT2), 'C', 'd', 'N', 'L', 'I6', sv{:});
             if F2D                                             % C = coefficients of PSI = f2d_ basis * Z2; also the matrices
-                Fm = struct();                                 % of fourier2d.pdf Sec. 6.4 (A_k,mn, A'_k,mn, B_k,mn, B'_k,mn);
-                [Fm.A, Fm.Ap, Fm.B, Fm.Bp] = f2d_mat_(C, Z2, M, N);   % in a struct: A is also the 45 um half side here
-                Ap = Fm.Ap;  B = Fm.B;  Bp = Fm.Bp;
-                % check: D_k from the matrices = D_k from C at the grid directions
-                th_ = atan2(r_hat(:,2), r_hat(:,1));  ph_ = asin(r_hat(:,3));  Dm = zeros(10, N_j, NV);
+                Fm = struct();                                 % A_h,mn, B_h,mn of fourier2d_new.pdf Sec. 4.3-4.4
+                [Fm.A, Fm.B] = f2d_mat_(C, Z2, M, N);          % in a struct: A is also the 45 um half side here
+                % check: D_h from the matrices = D_h from C at the grid directions (phi azimuth, theta from +z)
+                ph_ = atan2(r_hat(:,2), r_hat(:,1));  th_ = acos(max(-1, min(1, r_hat(:,3))));  Dm = zeros(10, N_j, NV);
                 ij_ = [1 1; 2 2; 3 3; 1 2; 1 3; 2 3; 1 4; 2 4; 3 4; 4 4];
                 for m_ = 0:M
                     for n_ = 0:N
-                        if mod(m_ + n_, 2) == 0, X_ = Fm.A;  Xp = Ap;  g_ = cos(n_*ph_);  else, X_ = B;  Xp = Bp;  g_ = sin(n_*ph_); end
+                        if mod(m_, 2) == 0, g_ = cos(n_*th_);  else, g_ = sin(n_*th_); end
                         for e_ = 1:10
-                            Dm(e_,:,:) = Dm(e_,:,:) + reshape((cos(m_*th_) .* g_) * squeeze(X_(ij_(e_,1), ij_(e_,2), m_+1, n_+1, :)).' ...
-                                       + (sin(m_*th_) .* g_) * squeeze(Xp(ij_(e_,1), ij_(e_,2), m_+1, n_+1, :)).', 1, N_j, NV);
+                            Dm(e_,:,:) = Dm(e_,:,:) + reshape((cos(m_*ph_) .* g_) * squeeze(Fm.A(ij_(e_,1), ij_(e_,2), m_+1, n_+1, :)).' ...
+                                       + (sin(m_*ph_) .* g_) * squeeze(Fm.B(ij_(e_,1), ij_(e_,2), m_+1, n_+1, :)).', 1, N_j, NV);
                         end
                     end
                 end
-                fprintf('fourier2d matrices: max |D(matrices) - D(C)| = %.2e\n', max(abs(Dm - d), [], 'all'));
-                save(fullfile(DAT, OUT2), 'M', 'Z2', '-append');  save(fullfile(DAT, OUT2), '-struct', 'Fm', '-append');
+                fprintf('fourier2d_new matrices: max |D(matrices) - D(C)| = %.2e\n', max(abs(Dm - d), [], 'all'));
+                DEF = 'new';                                   % basis definition of C, A, B (fourier2d_new.pdf)
+                save(fullfile(DAT, OUT2), 'M', 'Z2', 'DEF', '-append');  save(fullfile(DAT, OUT2), '-struct', 'Fm', '-append');
             end
         else
             d = reshape(reshape(x, 10, N_j*NV) ./ sc, 10, N_j, NV);              %#ok<NASGU>
@@ -808,14 +908,97 @@ sd = zeros(N_j, 1);  sd(j0) = 1;
 for k = ord(2:end).', sd(k) = sd(pred(k)) * sign(V_(:,k).' * V_(:,pred(k))); end
 end
 
-function stop = out_(~, ov, st)
-% method 2: progress line every 100 iterations; stop when the loss changes by < 1e-6 (relative) over 100 iterations
-persistent Lp
-stop = false;
-if strcmp(st, 'init'), Lp = Inf; end
-if strcmp(st, 'iter') && mod(ov.iteration, 100) == 0
-    stop = abs(Lp - ov.fval) < 1e-6 * ov.fval;  Lp = ov.fval;
+function [stop, LH] = out_(~, ov, st, CTOL, MINI, CKN)
+% method 2: progress line every 100 iterations.  CKN = 0: stop when the loss changes by < CTOL (relative) over 100
+% iterations, checked only from iteration MINI on.  CKN > 0: stop when CKN consecutive iterations each change the loss
+% by < CTOL relative to the previous iteration (|L_k - L_(k-1)| < CTOL L_(k-1)).
+% Every iteration's loss is kept; st = 'get' returns it (LH, 1 x (iterations + 1), entry 1 = iteration 0).
+persistent Lp L1 cnt H
+stop = false;  LH = H;
+if strcmp(st, 'get'), return, end
+if strcmp(st, 'init'), Lp = Inf;  L1 = Inf;  cnt = 0;  H = zeros(1, 0); end
+if ~strcmp(st, 'iter'), return, end
+H(end+1) = ov.fval;
+if CKN > 0
+    if abs(L1 - ov.fval) < CTOL * L1, cnt = cnt + 1; else, cnt = 0; end
+    L1 = ov.fval;  stop = cnt >= CKN;
+    if stop, fprintf('  stop at iteration %d: %d consecutive iterations with relative change < %g, loss %.8g\n', ...
+                     ov.iteration, CKN, CTOL, ov.fval); end
+end
+if mod(ov.iteration, 100) == 0
+    if CKN == 0, stop = ov.iteration >= MINI && abs(Lp - ov.fval) < CTOL * ov.fval;  Lp = ov.fval; end
     fprintf('  iteration %d: loss %.8g, first-order %.3g, %d evaluations\n', ov.iteration, ov.fval, ov.firstorderopt, ov.funccount);
+end
+end
+
+function [x, LH] = lm_(x, Au, Wq, Q, r, MAXI, CTOL, CKN, MUMIN, LAM)
+% Levenberg-Marquardt on the summed loss sum ||fhat - r_hat||^2 + LAM ||z||^2: residuals R_k(q, p) = z' Q_k z - r_k
+% and sqrt(LAM) z_h(q, p) (the LAM term, flux_force_unit.pdf Sec. 5.1 (4)),
+% step (J'J + mu diag(J'J)) dx = -J'R; mu / 3 on success, x 2 on failure (Marquardt).  J'J and J'R are built
+% exactly (lm_sys_).  Stops after MAXI iterations, or (CKN > 0) after CKN consecutive iterations with relative loss
+% change < CTOL, or when no step decreases the loss (mu > 1e12).  MUMIN: lower bound of mu (> 0 keeps
+% every step damped, for a smooth loss history; 0 = plain Marquardt).  LH: loss of every iteration (LH(1) = iteration 0).
+if nargin < 10, LAM = 0; end
+mu = max(1e-3, MUMIN);  [F, H, g] = lm_sys_(x, Au, Wq, Q, r, LAM);  LH = F;  cnt = 0;
+[F0, g0] = m2_loss(x, Au, Wq, Q, r, LAM);                % check: loss and gradient 2 J'R against m2_loss
+fprintf('  LM iteration 0: loss %.8g (m2_loss %.8g), |2 J''R - grad| / |grad| = %.2e\n', F, F0, norm(2*g - g0) / norm(g0));
+for it = 1:MAXI
+    dH = max(diag(H), 1e-12 * max(diag(H)));
+    while true
+        dx = -(H + mu * diag(dH)) \ g;
+        Fn = m2_loss(x + dx, Au, Wq, Q, r, LAM);
+        if Fn < F, x = x + dx;  mu = max(mu / 3, max(MUMIN, 1e-15));  break, end
+        mu = mu * 2;
+        if mu > 1e12, break, end
+    end
+    if mu > 1e12, fprintf('  LM stop at iteration %d: no decreasing step (mu > 1e12)\n', it);  break, end
+    if CKN > 0
+        if abs(F - Fn) < CTOL * F, cnt = cnt + 1; else, cnt = 0; end
+    end
+    [F, H, g] = lm_sys_(x, Au, Wq, Q, r, LAM);  LH(end+1) = F;          %#ok<AGROW>
+    if mod(it, 100) == 0, fprintf('  LM iteration %d: loss %.8g, mu %.3g\n', it, F, mu); end
+    if CKN > 0 && cnt >= CKN
+        fprintf('  LM stop at iteration %d: %d consecutive iterations with relative change < %g, loss %.8g\n', it, CKN, CTOL, F);
+        break
+    end
+end
+end
+
+function [F, H, g] = lm_sys_(x, Au, Wq, Q, r, LAM)
+% loss F = sum R^2, H = J'J, g = J'R of the residuals R_k(q, p) = z' Q_k z - r_k(q), z = Phi_hat at (q, p),
+% plus (LAM > 0) the residuals sqrt(LAM) z_h(q, p): H(h, h) += LAM kron(Wq' Wq, Au_p' Au_p), g(h) += LAM kron(Wq' z_h, Au_p').
+% dR_k / dx(e, l, h) = 2 (Q_k z)_h Au(p, e) Wq(q, l)  ->  per position p the blocks are Kronecker products:
+%   H(h, h') += kron( Wq' diag(sum_k a_kh a_kh') Wq , Au_p' Au_p ),   g(h) += kron( Wq' sum_k a_kh R_k , Au_p' ),
+% a_k = 2 Q_k z (NV x N_q);  x index = e + 10 (l - 1) + 10 L (h - 1).
+if nargin < 6, LAM = 0; end
+P_ = m2_z(x, Au, Wq);  [NV, N_q, N_p] = size(P_);  Lq = size(Wq, 2);  nb = 10 * Lq;
+H = zeros(nb * NV);  g = zeros(nb * NV, 1);  F = 0;
+if LAM > 0                                                     % LAM term: same block on every h
+    HL = LAM * kron(Wq.' * Wq, Au.' * Au);
+    for h = 1:NV, ih = (h-1)*nb + (1:nb);  H(ih, ih) = HL; end
+    F = LAM * sum(P_.^2, 'all');
+end
+for p = 1:N_p
+    zp = P_(:,:,p);  ap = Au(p,:);  aa = ap.' * ap;
+    if LAM > 0
+        for h = 1:NV, ih = (h-1)*nb + (1:nb);  g(ih) = g(ih) + LAM * kron(Wq.' * zp(h,:).', ap.'); end
+    end
+    A = zeros(NV, N_q, 3);  R = zeros(3, N_q);
+    for k = 1:3
+        Qz = Q(:,:,k,p) * zp;  R(k,:) = sum(zp .* Qz, 1) - r(:,k).';  A(:,:,k) = 2 * Qz;
+    end
+    F = F + sum(R.^2, 'all');
+    for h = 1:NV
+        ih = (h-1)*nb + (1:nb);
+        g(ih) = g(ih) + kron(Wq.' * sum(squeeze(A(h,:,:)).' .* R, 1).', ap.');
+        for h2 = h:NV
+            S = sum(squeeze(A(h,:,:)) .* squeeze(A(h2,:,:)), 2);          % N_q x 1
+            B = kron(Wq.' * (S .* Wq), aa);
+            ih2 = (h2-1)*nb + (1:nb);
+            H(ih, ih2) = H(ih, ih2) + B;
+            if h2 ~= h, H(ih2, ih) = H(ih2, ih) + B.'; end
+        end
+    end
 end
 end
 
@@ -828,11 +1011,12 @@ P_ = permute(reshape(Zq, NV, N_p, []), [1 3 2]);
 end
 
 function [L, g] = m2_loss(x, Au, Wq, Q, r, LAM, w)
-% (1 / (sum(w) N_p)) sum_q w_q sum_i [ || fhat - r_hat ||^2 + LAM || z ||^2 ],  fhat_k = z' Ltilde_k z, and its gradient;
+% flux_force_unit.pdf Sec. 5.1 (4): Loss = sum_q w_q sum_i [ || fhat - r_hat ||^2 + LAM || z ||^2 ] (a plain sum, no
+% division by the number of samples), fhat_k = z' Ltilde_k z, and its gradient;
 % w = direction weights (N_q x 1, e.g. cos(phi_k)); omitted or [] = 1
 P_ = m2_z(x, Au, Wq);  [NV, N_q, N_p] = size(P_);
 if nargin < 7 || isempty(w), w = ones(N_q, 1); end
-w  = reshape(w, 1, N_q);  W_ = sum(w) * N_p;
+w  = reshape(w, 1, N_q);  W_ = 1;                              % [MODIFIED] was sum(w) N_p (mean); the document sums
 Gz = 2 * LAM * (w .* P_);  Lf = 0;
 for k = 1:3
     Qz = pagemtimes(reshape(Q(:,:,k,:), NV, NV, N_p), P_);
@@ -848,30 +1032,57 @@ if nargout > 1
 end
 end
 
-function [A, Ap, B, Bp] = f2d_mat_(C, Z, M, N)
-% fourier2d.pdf Sec. 6.3-6.4: D_k(theta, phi) = sum_m sum_n [X_k,mn cos(m theta) + X'_k,mn sin(m theta)] g_n(phi), with
-% (X, X', g_n) = (A, A', cos n phi) for m + n even, (B, B', sin n phi) for m + n odd; each a 4 x 4 symmetric matrix of
-% P_hat = [pbar; 1].  C: 10 x L_free x N_k (free coefficients, pbar = p / l_hat), Z: null space of the pole conditions.
-% Output A, Ap, B, Bp: 4 x 4 x (M+1) x (N+1) x N_k, entry (:,:,m+1,n+1,k); terms that do not exist are 0.
+function [A, B] = f2d_mat_(C, Z, M, N)
+% fourier2d_new.pdf Sec. 4.3-4.4: D_h(phi, theta) = sum_m sum_n [A_h,mn cos(m phi) + B_h,mn sin(m phi)] g_mn(theta),
+% g_mn = cos(n theta) (m even) / sin(n theta) (m odd); A_h,mn, B_h,mn 4 x 4 symmetric matrices of P(pbar) = [pbar; 1].
+% C: 10 x T x N_h (coefficients of the f2d_ basis times Z, pbar = p / l_hat), Z: null space of the pole conditions.
+% Output A, B: 4 x 4 x (M+1) x (N+1) x N_h, entry (:,:,m+1,n+1,h) = A_h,mn / B_h,mn; terms that do not exist are 0.
 % Row order of C (the a(pbar) basis): d11 d22 d33 d12 d13 d23 d14 d24 d34 d44.
 [~, ~, K] = f2d_([1 0 0], M, N);  Nk = size(C, 3);
 ij = [1 1; 2 2; 3 3; 1 2; 1 3; 2 3; 1 4; 2 4; 3 4; 4 4];
-A = zeros(4, 4, M+1, N+1, Nk);  Ap = A;  B = A;  Bp = A;
+A = zeros(4, 4, M+1, N+1, Nk);  B = A;
 for k = 1:Nk
-    Cf = C(:,:,k) * Z.';                                       % 10 x L: coefficient of every basis function (Sec. 5)
+    Cf = C(:,:,k) * Z.';                                       % 10 x T: coefficient of every basis function
     for l = 1:size(K, 1)
         m = K(l,1);  n = K(l,2);  X = zeros(4);
         for e = 1:10, X(ij(e,1), ij(e,2)) = Cf(e, l);  X(ij(e,2), ij(e,1)) = Cf(e, l); end
-        if mod(m + n, 2) == 0
-            if K(l,3) == 1, A(:,:,m+1,n+1,k) = X;  else, Ap(:,:,m+1,n+1,k) = X; end
-        else
-            if K(l,3) == 1, B(:,:,m+1,n+1,k) = X;  else, Bp(:,:,m+1,n+1,k) = X; end
-        end
+        if K(l,3) == 1, A(:,:,m+1,n+1,k) = X;  else, B(:,:,m+1,n+1,k) = X; end
     end
 end
 end
 
 function [B, Z, K] = f2d_(r, M, N)
+% fourier2d_new.pdf Sec. 2-5: phi = azimuth from +x in the xy plane, theta = angle from +z, r = [sin th cos ph; sin th sin ph;
+% cos th]; basis cos(m phi) g_mn(theta) (coefficient a_mn), sin(m phi) g_mn(theta) (b_mn, m >= 1), m = 0..M, n = 0..N,
+% g_mn = cos(n theta) for m even, sin(n theta) for m odd (n = 0 dropped).  Order: m, then n, then a before b (Sec. 4.1,
+% 6.3 example: [1, cos th, cos ph sin th, sin ph sin th] for M = N = 1).  B: N_q x T, T = (N+1)(2M+1) - 2 ceil(M/2) (Sec. 5).
+% K per column: m, n, 1 = cos(m phi) (A) / 2 = sin(m phi) (B).  Z: null space of the pole conditions (theta = 0, 180 deg:
+% for every even m >= 2 the cos(m phi) and sin(m phi) parts sum_n x_mn g_mn(pole) = 0); PC = false uses Z = I.
+ph = atan2(r(:,2), r(:,1));  th = acos(max(-1, min(1, r(:,3))));
+B = [];  K = zeros(0, 3);
+for m = 0:M
+    for n = 0:N
+        if mod(m, 2) == 0, g = cos(n*th);  else, if n == 0, continue, end, g = sin(n*th); end
+        B = [B, cos(m*ph) .* g];  K = [K; m n 1];              %#ok<AGROW>
+        if m >= 1, B = [B, sin(m*ph) .* g];  K = [K; m n 2]; end   %#ok<AGROW>
+    end
+end
+gp = @(m, n, s) (mod(m, 2) == 0) * cos(n*(1-s)*pi/2);         % g_mn at theta = 0 (s = 1) / 180 deg (s = -1)
+Cp = zeros(0, size(K, 1));
+for m = 2:2:M
+    for s = [1 -1]
+        for t = 1:2
+            row = zeros(1, size(K, 1));  sel = find(K(:,1) == m & K(:,3) == t);
+            for c = sel.', row(c) = gp(m, K(c,2), s); end
+            Cp = [Cp; row];                                    %#ok<AGROW>
+        end
+    end
+end
+Z = eye(size(K, 1));  if ~isempty(Cp), Z = null(Cp); end
+end
+
+function [B, Z, K] = f2d_old_(r, M, N)
+% OLD definition (fourier2d_old.pdf), kept to read fits saved before 2026-11-19 (no DEF field):
 % fourier2d.pdf Sec. 3.7, 5: basis cos(m theta) g_n(phi), sin(m theta) g_n(phi), m = 0..M, n = 0..N,
 % g_n = cos(n phi) for m + n even (a_mn, a'_mn), sin(n phi) for m + n odd (b_mn, b'_mn); a'_0n, b'_0n and b_m0 do not exist.
 % r: N_q x 3 unit vectors (theta = atan2(r_y, r_x), phi = asin(r_z)).  B: N_q x L, L = (N+1)(2M+1) - 2 ceil(M/2) (Sec. 7).
