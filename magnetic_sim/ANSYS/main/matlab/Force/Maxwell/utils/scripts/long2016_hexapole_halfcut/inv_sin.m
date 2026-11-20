@@ -20,6 +20,9 @@ if ~exist('FR', 'var'), FR = 100; end                              % frequency [
 if ~exist('TEND', 'var'), TEND = 0.02; end                         % duration [s] (two periods)
 if ~exist('DT', 'var'), DT = 1e-5; end                            % sample time [s] (1 sample = 10 us)
 if ~exist('OUTN', 'var'), OUTN = 'inv_sin'; end                    % output name (no .mat)
+% VCAL: voltage calibration of Flux/Maxwell (no .mat, e.g. 'calib_voltage_maxwell_axshN43_soff3mm_R150_single') -> also the
+%   coil voltages V_d = (B_ghat_Phi / B_ghat_V) Mbar^-1 Phi_nWb [mV] (Mbar = D_bar, B_ghat_V = gV_hat [mT/mV]); '' = none
+if ~exist('VCAL', 'var'), VCAL = ''; end
 here = fileparts(mfilename('fullpath'));  CALROOT = fileparts(fileparts(fileparts(here)));   % .../Force/Maxwell
 addpath(fullfile(CALROOT, 'function'));
 DAT = fullfile(CALROOT, 'utils', 'data', 'long2016_hexapole_halfcut');
@@ -56,6 +59,15 @@ F_ghat_Phi = UF * M_ghat_B / (2*cal.l_m) * B_ghat_Phi^2;           % [pN / (mT u
 Phi_nWb = Phi / sqrt(F_ghat_Phi) * 1e-15 * 1e9;                    % [nWb]
 save(fullfile(DAT, [OUTN '.mat']), 't', 'f_cmd', 'Phi', 'Phi_nWb', 'F_ghat_Phi', 'B_ghat_Phi', 'f_hat', 'e_f', 'FIT', 'PX', ...
      'F0', 'FR', 'M', 'N', 'DT');
+if ~isempty(VCAL)                                                  % coil voltages from the flux (voltage calibration)
+    VC = load(fullfile(fileparts(fileparts(CALROOT)), 'Flux', 'Maxwell', 'data', 'long2016_hexapole_halfcut', '.mat', [VCAL '.mat']), ...
+              'D_bar', 'gV_hat');
+    Mbar = VC.D_bar;  B_ghat_V = VC.gV_hat;                         % [-], [mT/mV]
+    B_ghat_Phi_mTnWb = B_ghat_Phi * 1e6;                            % [1/um^2] -> [mT/nWb] (1 mT um^2 = 1e-6 nWb)
+    V_d  = (B_ghat_Phi_mTnWb / B_ghat_V) * (Mbar \ Phi_nWb);        % [mV]
+    save(fullfile(DAT, [OUTN '.mat']), 'V_d', 'Mbar', 'B_ghat_V', 'B_ghat_Phi_mTnWb', 'VCAL', '-append');
+    fprintf('V_d [mV] at the last sample: %s (B_ghat_Phi/B_ghat_V = %.4f mV/nWb)\n', mat2str(V_d(:,end).', 5), B_ghat_Phi_mTnWb/B_ghat_V);
+end
 fprintf('F_ghat_Phi = %.4g pN/(mT um^2)^2, Phi_nWb range [%.2f, %.2f] nWb\n', F_ghat_Phi, min(Phi_nWb(:)), max(Phi_nWb(:)));
 fprintf('%s at p = %s um: max |e_f| %.4f %%, Phi range [%.3f, %.3f] -> %s\n', FIT, mat2str(PX), max(e_f), ...
         min(Phi(:)), max(Phi(:)), fullfile(DAT, [OUTN '.mat']));
