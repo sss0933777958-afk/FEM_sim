@@ -30,6 +30,16 @@
 | (e) | Step_pole_block | 442 | 1.72 | 137 | 61.0 | 32.1 | 單調下降 |
 | (f) | Tip_cut_flat_block | 447 | 0.0660 | 140 | 1464.3 | 3.83 | 單調下降 |
 
+RMS 對 N_c 曲線（水平軸 N_c = 2 到收斂點；點沿曲線等距抽取顯示）：
+
+| (a) cylinder_sharp_tip | (b) cylinder_half_sharp_tip | — Tip_cut_cylinder |
+|---|---|---|
+| ![](sp_rms_cylinder_sharp_tip.png) | ![](sp_rms_cylinder_half_sharp_tip.png) | ![](sp_rms_Tip_cut_cylinder.png) |
+| **(c) Tip_cut_half_cylinder** | **(d) Flat_pole_block** | **(e) Step_pole_block** |
+| ![](sp_rms_Tip_cut_half_cylinder.png) | ![](sp_rms_Flat_pole_block.png) | ![](sp_rms_Step_pole_block.png) |
+| **(f) Tip_cut_flat_block** | | |
+| ![](sp_rms_Tip_cut_flat_block.png) | | |
+
 ### 3.2 點數少時 RMS 由極尖的橫向場決定
 
 模型在極軸上只產生 b_x；極尖（x = 0）的橫向場 b_⊥ 消不掉。N_c = 2 時 b_x 幾乎完全擬合，RMS ≈ |b_⊥(極尖)| / √6：
